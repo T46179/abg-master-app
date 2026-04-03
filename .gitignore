@@ -1,0 +1,6 @@
+node_modules/
+dist/
+staged-docs/
+.env.local
+nppBackup/
+*.bak

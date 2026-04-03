@@ -1,0 +1,37 @@
+:root {
+  --color-background: #f9fbfb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f1f3f3;
+  --color-surface-soft: #f6f8f8;
+  --color-border: #e3e7e8;
+  --color-border-strong: #d0d6d8;
+  --color-text: #161b1d;
+  --color-text-soft: #4b585b;
+  --color-text-muted: #67787c;
+  --color-text-faint: #9ca8ab;
+  --color-primary: #161b1d;
+  --color-primary-foreground: #ffffff;
+  --color-link: #2563eb;
+  --color-link-hover: #1d4ed8;
+  --color-blue-soft: #eff6ff;
+  --color-blue: #2563eb;
+  --color-green-soft: #ecfdf3;
+  --color-green: #16a34a;
+  --color-violet-soft: #f5f3ff;
+  --color-violet: #7c3aed;
+  --color-orange-soft: #fff7ed;
+  --color-orange: #ea580c;
+  --color-red-soft: #fef2f2;
+  --color-red: #dc2626;
+  --color-yellow-soft: #fefce8;
+  --color-yellow: #ca8a04;
+  --radius-sm: 0.625rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --shadow-card: 0 1px 2px rgba(9, 11, 12, 0.04), 0 10px 24px rgba(9, 11, 12, 0.04);
+  --shadow-soft: 0 1px 2px rgba(9, 11, 12, 0.03);
+  --shell-max: 1120px;
+  --screen-max: 980px;
+  --practice-max: 860px;
+}
