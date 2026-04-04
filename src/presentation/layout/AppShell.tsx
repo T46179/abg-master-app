@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { trackPageView } from "../../core/analytics";
-import { canAccessLearn, getReleaseFlags } from "../../core/progression";
 import { useAppContext } from "../../app/AppProvider";
+import { trackPageView } from "../../core/analytics";
+import { clearPendingPracticeSubmission, savePracticeSlotsCache } from "../../core/protectedPracticeCache";
+import { canAccessLearn, getReleaseFlags } from "../../core/progression";
 import { Surface } from "../primitives/Surface";
 import { MainNav } from "./MainNav";
 
 export function AppShell() {
-  const { state, patchSessionState } = useAppContext();
+  const { state, patchSessionState, patchPracticeState } = useAppContext();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const learnEnabled = canAccessLearn({
@@ -32,6 +33,40 @@ export function AppShell() {
     setMobileOpen(false);
   }, [location.pathname, patchSessionState, state.practiceState.lastCaseSummary]);
 
+  function handleDiscardPendingCase() {
+    const pendingSubmission = state.practiceState.pendingSubmission;
+    if (typeof window === "undefined" || !pendingSubmission) return;
+
+    const confirmed = window.confirm("Discard this unsaved case?");
+    if (!confirmed) return;
+
+    clearPendingPracticeSubmission(window.localStorage);
+
+    const nextSlots = {
+      ...state.practiceState.practiceSlotsByDifficulty,
+      [pendingSubmission.difficultyKey]: null
+    };
+    savePracticeSlotsCache(window.localStorage, nextSlots);
+
+    patchPracticeState({
+      currentCase: state.practiceState.currentCaseToken === pendingSubmission.caseToken ? null : state.practiceState.currentCase,
+      currentCaseToken: state.practiceState.currentCaseToken === pendingSubmission.caseToken ? null : state.practiceState.currentCaseToken,
+      currentCaseExpiresAt: state.practiceState.currentCaseToken === pendingSubmission.caseToken ? null : state.practiceState.currentCaseExpiresAt,
+      practiceSlotsByDifficulty: nextSlots,
+      pendingSubmission: null,
+      syncState: "idle",
+      syncMessage: null
+    });
+
+    patchSessionState({
+      currentStepIndex: 0,
+      selectedAnswers: [],
+      stepResults: [],
+      stepOptionOverrides: {},
+      caseStartMs: null
+    });
+  }
+
   return (
     <div className="app-shell">
       <MainNav
@@ -44,8 +79,15 @@ export function AppShell() {
 
       <div className="app-shell__status-stack">
         {state.practiceState.syncState === "pending_retry" ? (
-          <div className="app-shell__warning">
-            Protected practice sync pending. Your case is not complete yet.
+          <div className="app-shell__warning app-shell__warning--actionable">
+            <span>Sorry, your case hasn't finished saving yet. Please wait.</span>
+            <button
+              className="app-shell__warning-action"
+              type="button"
+              onClick={handleDiscardPendingCase}
+            >
+              Discard this unsaved case
+            </button>
           </div>
         ) : null}
         {Object.values(state.appStatus.warnings).map((warning, index) => (

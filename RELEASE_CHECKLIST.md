@@ -13,9 +13,9 @@ python -m generator.generate_cases
 
 Expected result:
 
-- `docs/abg_cases.json` is updated in `abg-master-content`
-- `docs/runtime_bootstrap.json` is updated in `abg-master-content`
-- `docs/published_cases_seed.sql` is updated in `abg-master-content`
+- `generated/abg_cases.json` is updated in `abg-master-content`
+- `generated/runtime_bootstrap.json` is updated in `abg-master-content`
+- `generated/published_cases_seed.sql` is updated in `abg-master-content`
 - `public/abg_cases.json` is mirrored and updated in `abg-master-app`
 - `public/runtime_bootstrap.json` is mirrored and updated in `abg-master-app`
 

@@ -10,8 +10,8 @@
    - `issued_case_sessions`
    - `practice_prepare_events`
 6. Generate fresh content from the private content repo so it writes:
-   - `docs/runtime_bootstrap.json`
-   - `docs/published_cases_seed.sql`
+   - `generated/runtime_bootstrap.json`
+   - `generated/published_cases_seed.sql`
 7. Open `SQL Editor` again and paste the generated `published_cases_seed.sql` file from the content repo. Run it to load the canonical protected cases.
 8. Deploy the two Edge Functions from this repo:
    - `prepare-practice-cases`

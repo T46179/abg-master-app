@@ -74,6 +74,33 @@ button:disabled {
   color: #1d4ed8;
 }
 
+.app-shell__warning--actionable {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.app-shell__warning-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.1rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid #93c5fd;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1d4ed8;
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.app-shell__warning-action:hover {
+  background: #f8fbff;
+}
+
 .main-nav {
   position: sticky;
   top: 0;

@@ -43,7 +43,13 @@ export function isProtectedPracticeError(error: unknown): error is ProtectedPrac
 function normalizeProtectedPracticeError(payload: unknown, status: number): ProtectedPracticeError {
   const typedPayload = (payload && typeof payload === "object" ? payload : {}) as ProtectedPracticeErrorResponse;
   return new ProtectedPracticeError(
-    typedPayload.message ?? `Protected practice request failed (${status}).`,
+    typedPayload.message ??
+      ({
+        401: "We couldn’t verify your session. Please refresh and try again.",
+        409: "This case is no longer available. Please start a new one.",
+        429: "You’re going too fast. Please wait a moment and try again.",
+        500: "Something went wrong on our end. Please try again."
+      }[status] ?? `Protected practice request failed (${status}).`),
     {
       code: typedPayload.code ?? "PROTECTED_PRACTICE_ERROR",
       recoverable: Boolean(typedPayload.recoverable),
@@ -59,7 +65,7 @@ async function getAccessToken(supabase: SupabaseClient): Promise<string> {
 
   const accessToken = session?.access_token;
   if (!accessToken) {
-    throw new ProtectedPracticeError("You need an active session to use protected practice.", {
+    throw new ProtectedPracticeError("Please reload the app to continue.", {
       code: "AUTH_REQUIRED",
       recoverable: true,
       status: 401
@@ -76,7 +82,7 @@ async function invokeProtectedFunction<TResponse>(
   body: Record<string, unknown>
 ): Promise<TResponse> {
   if (!config.SUPABASE_URL || !config.SUPABASE_ANON_KEY) {
-    throw new ProtectedPracticeError("Supabase runtime configuration is missing.", {
+    throw new ProtectedPracticeError("Something isn’t set up correctly. Please refresh the app.", {
       code: "SUPABASE_CONFIG_MISSING",
       recoverable: true,
       status: 503

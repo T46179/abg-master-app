@@ -50,6 +50,14 @@ function isExpiredSlot(slot: IssuedPracticeSlot | null | undefined) {
   return new Date(slot.expiresAt).getTime() <= Date.now();
 }
 
+function getProtectedPracticeUnavailableMessage() {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return "You're offline. Reconnect to load a new case.";
+  }
+
+  return "Protected practice temporarily unavailable.";
+}
+
 export function ProtectedPracticeScreen() {
   const { state, setUserState, patchPracticeState, patchSessionState } = useAppContext();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -208,7 +216,7 @@ export function ProtectedPracticeScreen() {
         syncState: hasAnyCachedSlot ? "idle" : "unavailable",
         syncMessage: hasAnyCachedSlot
           ? "Unable to refresh protected case slots right now."
-          : "Protected practice temporarily unavailable."
+          : getProtectedPracticeUnavailableMessage()
       });
       return state.practiceState.practiceSlotsByDifficulty;
     }
@@ -301,7 +309,7 @@ export function ProtectedPracticeScreen() {
     if (!slot || isExpiredSlot(slot)) {
       patchPracticeState({
         syncState: "unavailable",
-        syncMessage: "Protected practice temporarily unavailable."
+        syncMessage: getProtectedPracticeUnavailableMessage()
       });
       return;
     }
@@ -428,7 +436,7 @@ export function ProtectedPracticeScreen() {
 
     if (answers.length !== totalSteps) {
       patchPracticeState({
-        syncMessage: "Answer every step before submitting the case."
+        syncMessage: "Please answer all steps before submitting."
       });
       return;
     }
@@ -525,7 +533,7 @@ export function ProtectedPracticeScreen() {
           practiceSlotsByDifficulty: nextSlots,
           pendingSubmission: null,
           syncState: "idle",
-          syncMessage: "This case expired before it could be graded. Start a fresh case."
+          syncMessage: "This case expired before it could be checked. Please start a new one."
         });
         patchSessionState({
           currentStepIndex: 0,
@@ -540,7 +548,7 @@ export function ProtectedPracticeScreen() {
       patchPracticeState({
         pendingSubmission,
         syncState: "pending_retry",
-        syncMessage: "Your answers are saved locally. The case is not complete yet, and we will retry automatically."
+        syncMessage: "Your answers are saved. We’ll complete this case automatically once it reconnects."
       });
     }
   }
@@ -599,7 +607,9 @@ export function ProtectedPracticeScreen() {
             <PracticeDifficultyRail items={difficultyItems} />
           )}
 
-          {state.practiceState.syncMessage ? (
+          {state.practiceState.syncMessage &&
+          state.practiceState.syncState !== "pending_retry" &&
+          state.practiceState.syncState !== "unavailable" ? (
             <Surface className="practice-alert-card">
               {state.practiceState.syncMessage}
             </Surface>
@@ -651,7 +661,7 @@ export function ProtectedPracticeScreen() {
                   interactionDisabled={interactionLocked}
                   interactionDisabledMessage={
                     interactionLocked && !isSubmittingCase
-                      ? "Protected grading retry is in progress. This case is locked until sync finishes."
+                      ? "We're finishing your submission. This case is locked for now."
                       : null
                   }
                   isSubmittingCase={isSubmittingCase}
@@ -660,7 +670,7 @@ export function ProtectedPracticeScreen() {
             </div>
           ) : state.practiceState.syncState === "unavailable" ? (
             <Surface className="practice-alert-card">
-              Protected practice temporarily unavailable.
+              {getProtectedPracticeUnavailableMessage()}
             </Surface>
           ) : (
             <Surface className="practice-alert-card">

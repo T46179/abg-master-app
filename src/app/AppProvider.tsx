@@ -173,7 +173,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       patchPracticeState({
         pendingSubmission,
         syncState: "pending_retry",
-        syncMessage: "Retrying your pending practice submission."
+        syncMessage: "We’re retrying your submission."
       });
 
       try {
@@ -235,7 +235,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             practiceSlotsByDifficulty: nextSlots,
             pendingSubmission: null,
             syncState: "idle",
-            syncMessage: "Your pending case expired before it could sync. Start a fresh case."
+            syncMessage: "This case took too long to save. Please start a new one."
           });
           return;
         }
@@ -243,7 +243,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         patchPracticeState({
           pendingSubmission,
           syncState: "pending_retry",
-          syncMessage: "Your answers are saved locally. We will keep retrying when the connection comes back."
+          syncMessage: "Your answers are saved. We’ll finish submitting when you’re back online."
         });
       }
     }
