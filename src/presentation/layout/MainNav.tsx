@@ -1,4 +1,4 @@
-import { Droplet, GraduationCap, LayoutDashboard, Menu, User, X } from "lucide-react";
+import { Droplet, GraduationCap, LayoutDashboard, Menu, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "../utils";
 
@@ -22,8 +22,7 @@ export function MainNav(props: MainNavProps) {
   const navItems: NavItem[] = [
     { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
     { to: "/learn", label: "Learn", icon: GraduationCap, disabled: !props.learnEnabled },
-    { to: "/practice", label: "Practice", icon: Droplet },
-    { to: "/profile", label: "Profile", icon: User }
+    { to: "/practice", label: "Practice", icon: Droplet }
   ];
 
   return (

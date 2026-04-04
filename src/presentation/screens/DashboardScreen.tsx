@@ -79,6 +79,7 @@ export function DashboardScreen() {
 
         <Surface className="dashboard-card dashboard-card--continue">
           <SectionHeader
+            className="dashboard-continue-header"
             title="Continue Learning"
             subtitle={
               casesRemaining == null

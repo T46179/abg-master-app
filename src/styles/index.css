@@ -814,6 +814,12 @@ button:disabled {
   margin-bottom: 1.35rem;
 }
 
+.dashboard-continue-header .section-header__title,
+.dashboard-mastery-header .section-header__title {
+  color: #4b585b;
+}
+
+.dashboard-continue-header .section-header__subtitle,
 .dashboard-mastery-header .section-header__subtitle {
   font-size: 0.88rem;
 }

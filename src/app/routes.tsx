@@ -5,7 +5,6 @@ import { PracticeScreen } from "../presentation/screens/PracticeScreen";
 import { LearnScreen } from "../presentation/screens/LearnScreen";
 import { ExamScreen } from "../presentation/screens/ExamScreen";
 import { LeaderboardScreen } from "../presentation/screens/LeaderboardScreen";
-import { ProfileScreen } from "../presentation/screens/ProfileScreen";
 
 export const router = createBrowserRouter([
   {
@@ -17,7 +16,6 @@ export const router = createBrowserRouter([
       { path: "learn", element: <LearnScreen /> },
       { path: "exam", element: <ExamScreen /> },
       { path: "leaderboard", element: <LeaderboardScreen /> },
-      { path: "profile", element: <ProfileScreen /> },
       { path: "*", element: <Navigate to="/" replace /> }
     ]
   }
