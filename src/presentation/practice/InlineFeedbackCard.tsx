@@ -5,6 +5,7 @@ interface InlineFeedbackCardProps {
   isLastStep: boolean;
   onContinue: () => void;
   disabled?: boolean;
+  isSubmitting?: boolean;
 }
 
 export function InlineFeedbackCard(props: InlineFeedbackCardProps) {
@@ -31,7 +32,16 @@ export function InlineFeedbackCard(props: InlineFeedbackCardProps) {
         onClick={props.onContinue}
         disabled={props.disabled}
       >
-        {props.isLastStep ? "See results" : "Continue"}
+        {props.isLastStep && props.isSubmitting ? (
+          <>
+            <span className="figma-button__spinner" aria-hidden="true" />
+            <span>Submitting case</span>
+          </>
+        ) : props.isLastStep ? (
+          "Submit Case"
+        ) : (
+          "Continue"
+        )}
       </button>
     </div>
   );

@@ -19,6 +19,7 @@ interface QuestionFlowCardProps {
   activeStepRef: RefObject<HTMLButtonElement | null>;
   interactionDisabled?: boolean;
   interactionDisabledMessage?: string | null;
+  isSubmittingCase?: boolean;
 }
 
 export function QuestionFlowCard(props: QuestionFlowCardProps) {
@@ -79,7 +80,16 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
                 onClick={props.onContinueStep}
                 disabled={props.interactionDisabled}
               >
-                {props.currentStepIndex >= props.questions.length - 1 ? "Submit case" : "Continue"}
+                {props.currentStepIndex >= props.questions.length - 1 && props.isSubmittingCase ? (
+                  <>
+                    <span className="figma-button__spinner" aria-hidden="true" />
+                    <span>Submitting case</span>
+                  </>
+                ) : props.currentStepIndex >= props.questions.length - 1 ? (
+                  "Submit Case"
+                ) : (
+                  "Continue"
+                )}
               </button>
             </div>
           ) : (
@@ -103,6 +113,7 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
             isLastStep={props.currentStepIndex >= props.questions.length - 1}
             onContinue={props.onContinueStep}
             disabled={props.interactionDisabled}
+            isSubmitting={props.isSubmittingCase}
           />
         )}
       </div>

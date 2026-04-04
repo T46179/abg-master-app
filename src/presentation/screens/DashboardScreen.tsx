@@ -4,6 +4,7 @@ import { useAppContext } from "../../app/AppProvider";
 import {
   canAccessDifficulty,
   getCasesRemainingToday,
+  getHighestAccessibleDifficultyKey,
   getDifficultyMeta,
   getLevelProgress
 } from "../../core/progression";
@@ -33,7 +34,7 @@ export function DashboardScreen() {
   const recentAccuracy = recent.length ? Math.round((recent.filter(Boolean).length / recent.length) * 100) : 100;
   const casesRemaining = getCasesRemainingToday(payload?.progressionConfig ?? null, state.userState);
   const longestStreak = state.userState.longestStreak ?? state.userState.streak ?? 0;
-  const defaultDifficulty = difficultyMeta.find(item => canAccessDifficulty(progressionInput, item.level))?.key ?? "beginner";
+  const defaultDifficulty = getHighestAccessibleDifficultyKey(progressionInput);
 
   async function handleResetProgress() {
     if (!state.storage) return;

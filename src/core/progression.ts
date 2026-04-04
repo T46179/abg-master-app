@@ -198,6 +198,11 @@ export function getAccessibleDifficultyKeys(input: ProgressionStateInput): strin
     .map(item => item.key);
 }
 
+export function getHighestAccessibleDifficultyKey(input: ProgressionStateInput): string {
+  const accessible = getAccessibleDifficultyKeys(input);
+  return accessible[accessible.length - 1] ?? "beginner";
+}
+
 export function normalizeDifficultyKey(input: ProgressionStateInput, difficultyKey: string): string {
   const normalized = String(difficultyKey ?? "").toLowerCase();
   const requestedLevel = getDifficultyLevel(input.progressionConfig, normalized);
@@ -206,8 +211,7 @@ export function normalizeDifficultyKey(input: ProgressionStateInput, difficultyK
     return getDifficultyLabel(input.progressionConfig, requestedLevel);
   }
 
-  const accessible = getAccessibleDifficultyKeys(input);
-  return accessible[accessible.length - 1] ?? "beginner";
+  return getHighestAccessibleDifficultyKey(input);
 }
 
 export function canStartNewCase(input: ProgressionStateInput): boolean {

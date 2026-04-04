@@ -12,6 +12,7 @@ import {
   savePracticeSlotsCache
 } from "./protectedPracticeCache";
 import {
+  getHighestAccessibleDifficultyKey,
   getLevelProgress,
   mapDefaultUserState
 } from "./progression";
@@ -172,6 +173,23 @@ describe("progression helpers", () => {
 
     expect(userState.level).toBe(2);
     expect(progress.xpIntoLevel).toBe(15);
+  });
+
+  it("defaults practice entry to the highest accessible difficulty", () => {
+    const highestDifficulty = getHighestAccessibleDifficultyKey({
+      progressionConfig: {
+        difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" },
+        difficulty_unlock_levels: { 1: 1, 2: 5, 3: 10, 4: 20 }
+      },
+      userState: createUserState({
+        xp: 200,
+        level: 10,
+        unlockedDifficulties: ["beginner", "intermediate", "advanced"],
+        isPremium: true
+      })
+    });
+
+    expect(highestDifficulty).toBe("advanced");
   });
 });
 

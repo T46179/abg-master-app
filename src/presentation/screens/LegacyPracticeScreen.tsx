@@ -18,6 +18,7 @@ import {
   canStartNewCase,
   getAccessibleDifficultyKeys,
   getDifficultyLabel,
+  getHighestAccessibleDifficultyKey,
   getLevelProgress,
   getDifficultyMeta,
   normalizeDifficultyKey,
@@ -53,7 +54,8 @@ export function LegacyPracticeScreen() {
     cases: payload?.cases ?? []
   };
 
-  const requestedDifficulty = searchParams.get("difficulty") ?? state.sessionState.currentDifficulty;
+  const defaultDifficulty = getHighestAccessibleDifficultyKey(progressionInput);
+  const requestedDifficulty = searchParams.get("difficulty") ?? defaultDifficulty;
   const normalizedDifficulty = normalizeDifficultyKey(progressionInput, requestedDifficulty);
   const difficultyMeta = getDifficultyMeta(progressionInput);
   const finalLevelProgress = getLevelProgress(payload?.progressionConfig ?? null, state.userState);

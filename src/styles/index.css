@@ -346,6 +346,15 @@ button:disabled {
   opacity: 0.55;
 }
 
+.figma-button__spinner {
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 2px solid rgba(255, 255, 255, 0.32);
+  border-top-color: #ffffff;
+  border-radius: 999px;
+  animation: loading-chip-spin 0.9s linear infinite;
+}
+
 .figma-button--secondary {
   border-color: var(--color-border);
   background: var(--color-surface);

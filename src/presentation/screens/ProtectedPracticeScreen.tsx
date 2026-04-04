@@ -24,6 +24,7 @@ import {
   getAccessibleDifficultyKeys,
   getDifficultyLabel,
   getDifficultyMeta,
+  getHighestAccessibleDifficultyKey,
   getLevelProgress,
   normalizeDifficultyKey,
   syncUserStateDerivedFields
@@ -67,7 +68,8 @@ export function ProtectedPracticeScreen() {
     userState: state.userState,
     cases: []
   };
-  const requestedDifficulty = searchParams.get("difficulty") ?? state.sessionState.currentDifficulty;
+  const defaultDifficulty = getHighestAccessibleDifficultyKey(progressionInput);
+  const requestedDifficulty = searchParams.get("difficulty") ?? defaultDifficulty;
   const normalizedDifficulty = normalizeDifficultyKey(progressionInput, requestedDifficulty);
   const difficultyMeta = getDifficultyMeta(progressionInput);
   const accessibleDifficulties = getAccessibleDifficultyKeys(progressionInput);
@@ -104,6 +106,9 @@ export function ProtectedPracticeScreen() {
     state.practiceState.pendingSubmission &&
     state.practiceState.pendingSubmission.caseToken === state.practiceState.currentCaseToken
   );
+  const isSubmittingCase =
+    state.practiceState.syncState === "submitting" &&
+    state.practiceState.pendingSubmission?.caseToken === state.practiceState.currentCaseToken;
 
   useEffect(() => {
     if (requestedDifficulty !== normalizedDifficulty) {
@@ -232,13 +237,16 @@ export function ProtectedPracticeScreen() {
         setPendingDifficulty(normalizedDifficulty);
         setIntroOpen(true);
       }
+      if (!currentCase) {
+        void beginCase(normalizedDifficulty, { preview: true, confirmAbandon: false });
+      }
       return;
     }
 
     void beginCase(normalizedDifficulty);
   }, [currentCase, introOpen, normalizedDifficulty, pendingDifficulty, shouldAutoLoadPracticeCase, shouldOpenPracticeIntro]);
 
-  async function activateSlot(difficultyKey: string, slot: IssuedPracticeSlot) {
+  async function activateSlot(difficultyKey: string, slot: IssuedPracticeSlot, options?: { preview?: boolean }) {
     patchPracticeState({
       currentCase: slot.caseData,
       currentCaseToken: slot.caseToken,
@@ -252,17 +260,33 @@ export function ProtectedPracticeScreen() {
       selectedAnswers: [],
       stepResults: [],
       stepOptionOverrides: {},
-      caseStartMs: Date.now()
+      caseStartMs: options?.preview ? null : Date.now()
     });
     setRecentArchetypes(previous => rememberRecentArchetype(previous, slot.caseData));
+    if (!options?.preview) {
+      trackEvent("case_started", {
+        case_id: slot.caseData.case_id,
+        archetype: slot.caseData.archetype,
+        difficulty: difficultyKey
+      });
+    }
+  }
+
+  function activatePreviewedSlot(difficultyKey: string) {
+    if (!currentCase) return;
+
+    patchSessionState({
+      currentDifficulty: difficultyKey,
+      caseStartMs: Date.now()
+    });
     trackEvent("case_started", {
-      case_id: slot.caseData.case_id,
-      archetype: slot.caseData.archetype,
+      case_id: currentCase.case_id,
+      archetype: currentCase.archetype,
       difficulty: difficultyKey
     });
   }
 
-  async function beginCase(difficultyKey: string, options?: { confirmAbandon?: boolean }) {
+  async function beginCase(difficultyKey: string, options?: { confirmAbandon?: boolean; preview?: boolean }) {
     const nextDifficulty = normalizeDifficultyKey(progressionInput, difficultyKey);
     const shouldConfirmAbandon = options?.confirmAbandon ?? true;
 
@@ -282,7 +306,7 @@ export function ProtectedPracticeScreen() {
       return;
     }
 
-    await activateSlot(nextDifficulty, slot);
+    await activateSlot(nextDifficulty, slot, { preview: options?.preview });
   }
 
   function requestCaseStart(difficultyKey: string) {
@@ -301,6 +325,10 @@ export function ProtectedPracticeScreen() {
     introAcceptedRef.current = true;
     setIntroOpen(false);
     setPendingDifficulty(null);
+    if (currentCase && !summary) {
+      activatePreviewedSlot(nextDifficulty);
+      return;
+    }
     void beginCase(nextDifficulty);
   }
 
@@ -423,7 +451,7 @@ export function ProtectedPracticeScreen() {
     patchPracticeState({
       pendingSubmission,
       syncState: "submitting",
-      syncMessage: "Submitting your answers for protected grading."
+      syncMessage: null
     });
 
     try {
@@ -621,7 +649,12 @@ export function ProtectedPracticeScreen() {
                   onContinueStep={handleContinueStep}
                   activeStepRef={activeStepRef}
                   interactionDisabled={interactionLocked}
-                  interactionDisabledMessage={interactionLocked ? "Protected grading retry is in progress. This case is locked until sync finishes." : null}
+                  interactionDisabledMessage={
+                    interactionLocked && !isSubmittingCase
+                      ? "Protected grading retry is in progress. This case is locked until sync finishes."
+                      : null
+                  }
+                  isSubmittingCase={isSubmittingCase}
                 />
               </div>
             </div>
