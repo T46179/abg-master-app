@@ -1,16 +1,25 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createAttemptRecord, getFinalDiagnosisCorrect, mapStepResultsToAttemptStepResults } from "./attempts";
 import { getCaseFeedbackFormUrl } from "./feedback";
 import { getVisibleCaseMetrics } from "./metrics";
 import { applyPracticeOutcome } from "./practice";
+import { applyProtectedCaseCompletion } from "./protectedPractice";
+import {
+  clearPendingPracticeSubmission,
+  loadPendingPracticeSubmission,
+  loadPracticeSlotsCache,
+  savePendingPracticeSubmission,
+  savePracticeSlotsCache
+} from "./protectedPracticeCache";
 import {
   getLevelProgress,
   mapDefaultUserState
 } from "./progression";
+import { createMemoryStorage } from "./storage";
 import { getRuntimeAssetPath, normalizeCasesPayload } from "./runtime";
 import { getEligibleCasesForDifficulty } from "./selection";
 import {
   createAppStorage,
-  createMemoryStorage,
   mapAttemptToAttemptRow,
   mapProgressRowToUserState,
   mapUserStateToProgressRow,
@@ -21,6 +30,7 @@ import type { CaseData, UserState } from "./types";
 const sampleCase: CaseData = {
   case_id: "case-1",
   title: "Sample ABG",
+  archetype: "sepsis_respiratory_alkalosis",
   difficulty_level: 3,
   clinical_stem: "Test stem",
   inputs: {
@@ -64,6 +74,7 @@ function createUserState(overrides: Partial<UserState> = {}): UserState {
     isPremium: false,
     badges: [],
     recentResults: [],
+    appliedProtectedCaseTokens: [],
     ...overrides
   };
 }
@@ -107,16 +118,32 @@ function createFakeSupabase(remoteProgress: Record<string, unknown> | null) {
 }
 
 describe("runtime normalization", () => {
+  it("normalizes protected runtime bootstraps", () => {
+    const payload = normalizeCasesPayload({
+      delivery_mode: "protected_runtime",
+      progression_config: { difficulty_labels: { 1: "beginner" } },
+      default_user_state: { total_xp: 0, level: 1 },
+      dashboard_state: { user: { level: 1 } },
+      content_version: "beta-1_2026-04-03"
+    });
+
+    expect(payload.deliveryMode).toBe("protected_runtime");
+    expect(payload.cases).toEqual([]);
+    expect(payload.contentVersion).toBe("beta-1_2026-04-03");
+  });
+
   it("normalizes wrapped payloads", () => {
     const payload = normalizeCasesPayload({
       cases: [sampleCase],
       progression_config: { difficulty_labels: { 1: "beginner" } },
       default_user_state: { total_xp: 0, level: 1 },
-      dashboard_state: { user: { level: 1 } }
+      dashboard_state: { user: { level: 1 } },
+      content_version: "beta-1_2026-04-03"
     });
 
     expect(payload.cases).toHaveLength(1);
     expect(payload.progressionConfig?.difficulty_labels?.[1]).toBe("beginner");
+    expect(payload.contentVersion).toBe("beta-1_2026-04-03");
   });
 
   it("builds runtime asset paths from BASE_URL-compatible bases", () => {
@@ -199,6 +226,95 @@ describe("practice outcome", () => {
     expect(outcome.summary.accuracy).toBe(100);
     expect(outcome.summary.difficulty).toBe("Advanced");
   });
+
+  it("does not award duplicate xp for the same protected case token", () => {
+    const progressionConfig = {
+      difficulty_labels: { 3: "advanced" },
+      xp_required_per_level: { 1: 30, 2: 40 }
+    };
+    const summary = {
+      caseToken: "token-1",
+      caseId: "case-1",
+      title: "Sample ABG",
+      difficulty: "Advanced",
+      explanation: { overview: "", sections: [] },
+      learningObjective: "",
+      elapsedSeconds: 20,
+      accuracy: 100,
+      correctSteps: 2,
+      totalSteps: 2,
+      totalXpAward: 30,
+      baseXp: 25,
+      perfectBonus: 0,
+      speedBonus: 5,
+      level: 2,
+      stepResults: [],
+      caseData: sampleCase
+    };
+
+    const once = applyProtectedCaseCompletion({
+      userState: createUserState(),
+      summary,
+      progressionConfig,
+      now: new Date("2026-03-26T00:00:00Z")
+    });
+    const twice = applyProtectedCaseCompletion({
+      userState: once,
+      summary,
+      progressionConfig,
+      now: new Date("2026-03-26T00:00:00Z")
+    });
+
+    expect(once.xp).toBe(30);
+    expect(twice.xp).toBe(30);
+    expect(twice.casesCompleted).toBe(1);
+    expect(twice.appliedProtectedCaseTokens).toEqual(["token-1"]);
+  });
+});
+
+describe("attempt helpers", () => {
+  it("stores balanced step result detail for analytics", () => {
+    const stepResults = mapStepResultsToAttemptStepResults([
+      { key: "ph_status", label: "pH status", chosen: "Acidaemia", correctAnswer: "Acidaemia", correct: true },
+      { key: "final_diagnosis", label: "Diagnosis", chosen: "COPD", correctAnswer: "Sepsis", correct: false }
+    ]);
+
+    expect(stepResults).toEqual([
+      { key: "ph_status", correct: true },
+      { key: "final_diagnosis", correct: false, chosen: "COPD", correct_answer: "Sepsis" }
+    ]);
+  });
+
+  it("derives final diagnosis correctness from the final diagnosis step when present", () => {
+    expect(getFinalDiagnosisCorrect([
+      { key: "ph_status", label: "pH status", chosen: "Acidaemia", correctAnswer: "Acidaemia", correct: true },
+      { key: "final_diagnosis", label: "Diagnosis", chosen: "Sepsis", correctAnswer: "Sepsis", correct: true }
+    ])).toBe(true);
+  });
+
+  it("warns when content_version is missing before building an attempt record", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const attempt = createAttemptRecord({
+      userId: "user-1",
+      caseItem: sampleCase,
+      difficultyLabel: "advanced",
+      elapsedSeconds: 20,
+      correctSteps: 1,
+      totalSteps: 2,
+      totalXpAward: 30,
+      completedAt: "2026-03-26T00:00:00Z",
+      stepResults: [
+        { key: "ph_status", label: "pH status", chosen: "Acidaemia", correctAnswer: "Acidaemia", correct: true },
+        { key: "final_diagnosis", label: "Diagnosis", chosen: "COPD", correctAnswer: "Sepsis", correct: false }
+      ],
+      contentVersion: null
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith("Missing content_version");
+    expect(attempt.content_version).toBeNull();
+    warnSpy.mockRestore();
+  });
 });
 
 describe("storage mappers", () => {
@@ -218,18 +334,26 @@ describe("storage mappers", () => {
     const attemptRow = mapAttemptToAttemptRow({
       user_id: "user-1",
       case_id: "case-1",
-      difficulty: "advanced",
+      archetype: "sepsis_respiratory_alkalosis",
+      difficulty_label: "advanced",
       difficulty_level: 3,
-      xp_earned: 30,
-      correct: 2,
-      total_questions: 2,
-      time_taken_ms: 20000,
-      completed_at: "2026-03-26T00:00:00Z"
+      xp_total_awarded: 30,
+      correct_steps: 2,
+      total_steps: 2,
+      elapsed_seconds: 20,
+      completed_at: "2026-03-26T00:00:00Z",
+      final_diagnosis_correct: true,
+      accuracy_percent: 100,
+      step_results_json: [{ key: "ph_status", correct: true }],
+      app_version: "0.1.0",
+      content_version: "beta-1_2026-04-03",
+      mode: "practice"
     });
 
     expect(mappedBack?.casesCompleted).toBe(3);
     expect(attemptRow.elapsed_seconds).toBe(20);
     expect(attemptRow.final_diagnosis_correct).toBe(true);
+    expect(attemptRow.content_version).toBe("beta-1_2026-04-03");
   });
 });
 
@@ -342,17 +466,70 @@ describe("storage adapters", () => {
     await storage.saveAttempt({
       user_id: "user-1",
       case_id: "case-1",
-      difficulty: "advanced",
+      archetype: "sepsis_respiratory_alkalosis",
+      difficulty_label: "advanced",
       difficulty_level: 3,
-      xp_earned: 30,
-      correct: 2,
-      total_questions: 2,
-      time_taken_ms: 20000,
-      completed_at: "2026-03-26T00:00:00Z"
+      xp_total_awarded: 30,
+      correct_steps: 2,
+      total_steps: 2,
+      elapsed_seconds: 20,
+      completed_at: "2026-03-26T00:00:00Z",
+      final_diagnosis_correct: true,
+      accuracy_percent: 100,
+      step_results_json: [{ key: "ph_status", correct: true }],
+      app_version: "0.1.0",
+      content_version: "beta-1_2026-04-03",
+      mode: "practice"
     });
 
     expect(calls.inserts).toHaveLength(1);
-    expect(calls.inserts[0]).toMatchObject({ table: "attempts" });
+    expect(calls.inserts[0]).toMatchObject({
+      table: "attempts",
+      payload: expect.objectContaining({
+        archetype: "sepsis_respiratory_alkalosis",
+        content_version: "beta-1_2026-04-03",
+        mode: "practice"
+      })
+    });
+  });
+});
+
+describe("protected practice cache", () => {
+  it("round-trips pending submissions and clears them", () => {
+    const storage = createMemoryStorage();
+
+    savePendingPracticeSubmission(storage, {
+      caseToken: "token-1",
+      caseId: "case-1",
+      contentVersion: "beta-1_2026-04-03",
+      difficultyKey: "advanced",
+      answers: [{ key: "ph_status", chosen: "Acidaemia" }],
+      elapsedSeconds: 20,
+      timedMode: false,
+      clientCompletedAt: "2026-03-26T00:00:00Z"
+    });
+
+    expect(loadPendingPracticeSubmission(storage)?.caseToken).toBe("token-1");
+
+    clearPendingPracticeSubmission(storage);
+    expect(loadPendingPracticeSubmission(storage)).toBeNull();
+  });
+
+  it("filters stale cached slots from older content versions", () => {
+    const storage = createMemoryStorage();
+
+    savePracticeSlotsCache(storage, {
+      advanced: {
+        caseToken: "token-1",
+        issuedAt: "2026-03-26T00:00:00Z",
+        expiresAt: "2026-03-27T00:00:00Z",
+        contentVersion: "old-version",
+        difficultyKey: "advanced",
+        caseData: sampleCase
+      }
+    });
+
+    expect(loadPracticeSlotsCache(storage, "new-version").advanced).toBeNull();
   });
 });
 
@@ -362,7 +539,7 @@ describe("feedback helpers", () => {
       caseId: "case-1",
       title: "Sample ABG",
       difficulty: "Advanced",
-      explanation: "",
+      explanation: { overview: "", sections: [] },
       learningObjective: "",
       elapsedSeconds: 20,
       accuracy: 100,

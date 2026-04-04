@@ -587,16 +587,16 @@ button:disabled {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 2.6rem;
-  height: 2.6rem;
+  width: 2.2rem;
+  height: 2.2rem;
   border-radius: 999px;
   background: #67787c;
   color: #ffffff;
 }
 
 .dashboard-feedback-banner__icon svg {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 0.92rem;
+  height: 0.92rem;
 }
 
 .dashboard-feedback-banner__copy {
@@ -621,13 +621,13 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.5rem;
-  padding: 0.58rem 1rem;
+  min-height: 2.2rem;
+  padding: 0.5rem 0.85rem;
   border: 1px solid #9ca8ab;
   border-radius: 999px;
   background: #eef1f1;
   color: #161b1d;
-  font-size: 0.92rem;
+  font-size: 0.86rem;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -715,7 +715,11 @@ button:disabled {
 
 .stat-card__meta {
   margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
   color: var(--color-text-muted);
+  opacity: 0.78;
 }
 
 .dashboard-card,
@@ -768,6 +772,14 @@ button:disabled {
 .learn-screen__grid {
   display: grid;
   gap: 1rem;
+}
+
+.dashboard-mastery-header {
+  margin-bottom: 1.35rem;
+}
+
+.dashboard-mastery-header .section-header__subtitle {
+  font-size: 0.88rem;
 }
 
 .dashboard-badge-card,

@@ -278,7 +278,8 @@ export function mapDefaultUserState(
       : Array.isArray(source?.badges)
         ? [...source.badges]
         : [],
-    recentResults: []
+    recentResults: [],
+    appliedProtectedCaseTokens: []
   };
 }
 
@@ -308,7 +309,8 @@ export function createEmptyUserState(): UserState {
     unlockedDifficulties: ["beginner"],
     isPremium: false,
     badges: [],
-    recentResults: []
+    recentResults: [],
+    appliedProtectedCaseTokens: []
   };
 }
 

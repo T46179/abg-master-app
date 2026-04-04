@@ -7,7 +7,7 @@ import {
   syncUserStateDerivedFields
 } from "./progression";
 import { markCaseSeen } from "./selection";
-import type { CaseData, CaseSummary, ProgressionConfig, StepResult, UserState } from "./types";
+import type { CaseData, CaseSummary, ProgressionConfig, StepResult, StructuredExplanation, UserState } from "./types";
 
 export function prettyStepLabel(stepKey: string): string {
   const labels: Record<string, string> = {
@@ -46,6 +46,41 @@ export function getCorrectAnswer(caseItem: CaseData, stepKey: string): string {
 
 export function isCorrectAnswer(caseItem: CaseData, stepKey: string, chosen: string): boolean {
   return chosen === getCorrectAnswer(caseItem, stepKey);
+}
+
+export function normalizeStructuredExplanation(explanation: unknown): StructuredExplanation {
+  if (explanation && typeof explanation === "object" && !Array.isArray(explanation)) {
+    const typedExplanation = explanation as {
+      overview?: unknown;
+      sections?: Array<{ title?: unknown; body?: unknown }>;
+    };
+
+    return {
+      overview: String(typedExplanation.overview ?? "").trim(),
+      sections: Array.isArray(typedExplanation.sections)
+        ? typedExplanation.sections
+            .map(section => ({
+              title: String(section?.title ?? "").trim(),
+              body: String(section?.body ?? "").trim()
+            }))
+            .filter(section => section.title && section.body)
+        : []
+    };
+  }
+
+  return {
+    overview: String(explanation ?? "").trim(),
+    sections: []
+  };
+}
+
+export function canUseClientSidePracticeFeedback(caseItem: CaseData | null | undefined): boolean {
+  return Boolean(
+    caseItem &&
+    caseItem.protected_payload_mode === "practice_learning" &&
+    caseItem.answer_key &&
+    Object.keys(caseItem.answer_key).length
+  );
 }
 
 export function todayKey(now = new Date()): string {
@@ -120,7 +155,7 @@ export function createCaseSummary(input: {
     caseId: input.caseItem.case_id,
     title: input.caseItem.title ?? "ABG Case",
     difficulty: input.difficultyLabel,
-    explanation: input.caseItem.explanation ?? "",
+    explanation: normalizeStructuredExplanation(input.caseItem.explanation),
     learningObjective: input.caseItem.learning_objective ?? "Review the reasoning steps and pattern recognition for this case.",
     elapsedSeconds: input.elapsedSeconds,
     accuracy,

@@ -2,6 +2,13 @@ import { createContext, startTransition, useCallback, useContext, useEffect, use
 import { loadCasesPayload, loadRuntimeConfig } from "../core/runtime";
 import { createAppStorage } from "../core/storage";
 import { createRuntimeSupabaseClient, ensureAnonymousSession } from "../core/supabase";
+import { applyProtectedCaseCompletion, isProtectedPracticeError, submitProtectedPracticeCase } from "../core/protectedPractice";
+import {
+  clearPendingPracticeSubmission,
+  loadPendingPracticeSubmission,
+  loadPracticeSlotsCache,
+  savePracticeSlotsCache
+} from "../core/protectedPracticeCache";
 import type { PracticeFlowState, SessionState, UserState } from "../core/types";
 import {
   createEmptyUserState,
@@ -65,7 +72,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ),
             badges: Array.isArray(persistedUserState?.badges)
               ? persistedUserState.badges
-              : fallbackUserState.badges
+              : fallbackUserState.badges,
+            appliedProtectedCaseTokens: Array.isArray(persistedUserState?.appliedProtectedCaseTokens)
+              ? persistedUserState.appliedProtectedCaseTokens
+              : fallbackUserState.appliedProtectedCaseTokens
           },
           payload.progressionConfig
         );
@@ -85,7 +95,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 ...initialAppState.sessionState,
                 showAdvancedRanges: storage.loadAdvancedRangesPreference()
               },
+              practiceState: {
+                ...initialAppState.practiceState,
+                practiceSlotsByDifficulty: loadPracticeSlotsCache(window.localStorage, payload.contentVersion),
+                pendingSubmission: loadPendingPracticeSubmission(window.localStorage),
+                syncState: loadPendingPracticeSubmission(window.localStorage) ? "pending_retry" : "idle"
+              },
               storage,
+              supabase: supabaseRuntime.supabase,
+              supabaseEnabled: supabaseRuntime.supabaseEnabled,
               userId,
               syncUnavailable
             }
@@ -131,6 +149,133 @@ export function AppProvider({ children }: { children: ReactNode }) {
       patch
     });
   }, []);
+
+  useEffect(() => {
+    if (
+      state.status !== "ready" ||
+      state.payload?.deliveryMode !== "protected_runtime" ||
+      !state.supabase ||
+      !state.runtimeConfig ||
+      typeof window === "undefined"
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function retryPendingSubmission() {
+      const pendingSubmission = loadPendingPracticeSubmission(window.localStorage);
+      const runtimeConfig = state.runtimeConfig;
+      const payload = state.payload;
+      const supabase = state.supabase;
+      if (!pendingSubmission || !runtimeConfig || !payload || !supabase) return;
+
+      patchPracticeState({
+        pendingSubmission,
+        syncState: "pending_retry",
+        syncMessage: "Retrying your pending practice submission."
+      });
+
+      try {
+        const result = await submitProtectedPracticeCase(runtimeConfig, supabase, pendingSubmission);
+        if (cancelled) return;
+
+        const nextUserState = applyProtectedCaseCompletion({
+          userState: state.userState,
+          summary: {
+            ...result.summary,
+            caseToken: pendingSubmission.caseToken
+          },
+          progressionConfig: payload.progressionConfig
+        });
+
+        if (nextUserState !== state.userState) {
+          await setUserState(nextUserState);
+        }
+
+        const nextSlots = {
+          ...loadPracticeSlotsCache(window.localStorage, payload.contentVersion),
+          [pendingSubmission.difficultyKey]: {
+            ...result.replacementSlot,
+            contentVersion: payload.contentVersion ?? pendingSubmission.contentVersion,
+            difficultyKey: pendingSubmission.difficultyKey
+          }
+        };
+        savePracticeSlotsCache(window.localStorage, nextSlots);
+        clearPendingPracticeSubmission(window.localStorage);
+
+        patchPracticeState({
+          currentCase: null,
+          currentCaseToken: null,
+          currentCaseExpiresAt: null,
+          lastCaseSummary: {
+            ...result.summary,
+            caseToken: pendingSubmission.caseToken
+          },
+          practiceSlotsByDifficulty: nextSlots,
+          pendingSubmission: null,
+          syncState: "idle",
+          syncMessage: null
+        });
+      } catch (error) {
+        if (cancelled) return;
+
+        if (isProtectedPracticeError(error) && error.code === "CASE_TOKEN_EXPIRED") {
+          clearPendingPracticeSubmission(window.localStorage);
+          const nextSlots = {
+            ...loadPracticeSlotsCache(window.localStorage, payload.contentVersion),
+            [pendingSubmission.difficultyKey]: null
+          };
+          savePracticeSlotsCache(window.localStorage, nextSlots);
+
+          patchPracticeState({
+            currentCase: state.practiceState.currentCaseToken === pendingSubmission.caseToken ? null : state.practiceState.currentCase,
+            currentCaseToken: state.practiceState.currentCaseToken === pendingSubmission.caseToken ? null : state.practiceState.currentCaseToken,
+            currentCaseExpiresAt: state.practiceState.currentCaseToken === pendingSubmission.caseToken ? null : state.practiceState.currentCaseExpiresAt,
+            practiceSlotsByDifficulty: nextSlots,
+            pendingSubmission: null,
+            syncState: "idle",
+            syncMessage: "Your pending case expired before it could sync. Start a fresh case."
+          });
+          return;
+        }
+
+        patchPracticeState({
+          pendingSubmission,
+          syncState: "pending_retry",
+          syncMessage: "Your answers are saved locally. We will keep retrying when the connection comes back."
+        });
+      }
+    }
+
+    void retryPendingSubmission();
+
+    function handleResumeOrReconnect() {
+      void retryPendingSubmission();
+    }
+
+    window.addEventListener("online", handleResumeOrReconnect);
+    window.addEventListener("focus", handleResumeOrReconnect);
+    document.addEventListener("visibilitychange", handleResumeOrReconnect);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("online", handleResumeOrReconnect);
+      window.removeEventListener("focus", handleResumeOrReconnect);
+      document.removeEventListener("visibilitychange", handleResumeOrReconnect);
+    };
+  }, [
+    patchPracticeState,
+    setUserState,
+    state.payload,
+    state.practiceState.currentCase,
+    state.practiceState.currentCaseExpiresAt,
+    state.practiceState.currentCaseToken,
+    state.runtimeConfig,
+    state.status,
+    state.supabase,
+    state.userState
+  ]);
 
   return (
     <AppContext.Provider

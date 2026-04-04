@@ -17,9 +17,14 @@ Create a local `.env.local` file if you want Supabase-enabled persistence:
 ```bash
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_ENABLE_PROTECTED_CASE_DELIVERY=false
 ```
 
 If these values are omitted, the app falls back to local-only behavior.
+Set `VITE_ENABLE_PROTECTED_CASE_DELIVERY=true` only after:
+- the protected practice schema has been created in Supabase
+- `published_cases` has been seeded from the generated SQL
+- both Edge Functions have been deployed
 
 ## Local Commands
 
@@ -33,6 +38,10 @@ npm run build
 npm run preview -- --host 127.0.0.1 --port 4173
 ```
 
+## Release Workflow
+
+Use [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md) before pushing a public update.
+
 ## Runtime Notes
 
 - runtime asset loading stays `import.meta.env.BASE_URL`-relative
@@ -43,4 +52,8 @@ npm run preview -- --host 127.0.0.1 --port 4173
 
 ## Next Architecture Step
 
-This repo intentionally keeps `public/abg_cases.json` as a temporary standalone source for this phase only. A later pass will move case delivery and grading server-side so the browser requests individual cases instead of loading the full case bank.
+This repo now supports a protected-practice rollout path:
+- legacy mode still reads `public/abg_cases.json`
+- protected mode reads `public/runtime_bootstrap.json` and requests issued cases through Supabase Edge Functions
+
+Manual Supabase setup scripts live in [`supabase/manual`](./supabase/manual/README.md).

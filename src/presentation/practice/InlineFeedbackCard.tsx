@@ -4,6 +4,7 @@ interface InlineFeedbackCardProps {
   result: StepResult;
   isLastStep: boolean;
   onContinue: () => void;
+  disabled?: boolean;
 }
 
 export function InlineFeedbackCard(props: InlineFeedbackCardProps) {
@@ -24,7 +25,12 @@ export function InlineFeedbackCard(props: InlineFeedbackCardProps) {
         </div>
       </div>
 
-      <button className="figma-button inline-feedback__button" type="button" onClick={props.onContinue}>
+      <button
+        className="figma-button inline-feedback__button"
+        type="button"
+        onClick={props.onContinue}
+        disabled={props.disabled}
+      >
         {props.isLastStep ? "See results" : "Continue"}
       </button>
     </div>

@@ -1,4 +1,5 @@
 import { createEmptyUserState } from "../core/progression";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AppStatus,
   CasesPayload,
@@ -18,6 +19,8 @@ export interface AppState {
   practiceState: PracticeFlowState;
   appStatus: AppStatus;
   storage: StorageAdapter | null;
+  supabase: SupabaseClient | null;
+  supabaseEnabled: boolean;
   userId: string | null;
   syncUnavailable: boolean;
   errorMessage: string | null;
@@ -32,7 +35,10 @@ export type AppAction =
       payload: CasesPayload;
       userState: UserState;
       sessionState: SessionState;
+      practiceState: PracticeFlowState;
       storage: StorageAdapter;
+      supabase: SupabaseClient | null;
+      supabaseEnabled: boolean;
       userId: string | null;
       syncUnavailable: boolean;
     };
@@ -46,6 +52,7 @@ export const initialSessionState: SessionState = {
   currentView: "dashboard",
   currentDifficulty: "beginner",
   currentStepIndex: 0,
+  selectedAnswers: [],
   stepResults: [],
   stepOptionOverrides: {},
   caseStartMs: null,
@@ -60,7 +67,13 @@ export const initialAppStatus: AppStatus = {
 
 export const initialPracticeState: PracticeFlowState = {
   currentCase: null,
-  lastCaseSummary: null
+  currentCaseToken: null,
+  currentCaseExpiresAt: null,
+  lastCaseSummary: null,
+  practiceSlotsByDifficulty: {},
+  pendingSubmission: null,
+  syncState: "idle",
+  syncMessage: null
 };
 
 export const initialAppState: AppState = {
@@ -72,6 +85,8 @@ export const initialAppState: AppState = {
   practiceState: initialPracticeState,
   appStatus: initialAppStatus,
   storage: null,
+  supabase: null,
+  supabaseEnabled: false,
   userId: null,
   syncUnavailable: false,
   errorMessage: null
@@ -93,7 +108,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         payload: action.payload.payload,
         userState: action.payload.userState,
         sessionState: action.payload.sessionState,
+        practiceState: action.payload.practiceState,
         storage: action.payload.storage,
+        supabase: action.payload.supabase,
+        supabaseEnabled: action.payload.supabaseEnabled,
         userId: action.payload.userId,
         syncUnavailable: action.payload.syncUnavailable,
         appStatus: {

@@ -32,10 +32,16 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
           <span className="results-card__time">{formatElapsed(props.summary.elapsedSeconds)}</span>
         </div>
 
-        {props.summary.explanation ? (
+        {props.summary.explanation.overview ? (
           <div className="results-review-card__section results-card__summary-section">
             <span className="section-header__eyebrow">Case review</span>
-            <p>{props.summary.explanation}</p>
+            <p>{props.summary.explanation.overview}</p>
+            {props.summary.explanation.sections.map(section => (
+              <div key={`${section.title}-${section.body}`} className="results-review-card__section">
+                <strong>{section.title}</strong>
+                <p>{section.body}</p>
+              </div>
+            ))}
           </div>
         ) : null}
 

@@ -43,6 +43,11 @@ export function AppShell() {
       />
 
       <div className="app-shell__status-stack">
+        {state.practiceState.syncState === "pending_retry" ? (
+          <div className="app-shell__warning">
+            Protected practice sync pending. Your case is not complete yet.
+          </div>
+        ) : null}
         {Object.values(state.appStatus.warnings).map((warning, index) => (
           <div key={`${warning.message ?? "warning"}-${index}`} className="app-shell__warning">
             {warning.message}

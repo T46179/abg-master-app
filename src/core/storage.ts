@@ -155,24 +155,37 @@ export function mapProgressRowToUserState(source: Partial<ProgressRow> | null | 
 }
 
 export function mapAttemptToAttemptRow(attempt: AttemptRecord): AttemptRow {
-  const totalSteps = Math.max(0, Number(attempt.total_questions ?? 0));
-  const correctSteps = Math.max(0, Number(attempt.correct ?? 0));
-  const accuracyPercent = totalSteps > 0
-    ? Math.round((correctSteps / totalSteps) * 100)
-    : 0;
+  const totalSteps = Math.max(0, Number(attempt.total_steps ?? attempt.total_questions ?? 0));
+  const correctSteps = Math.max(0, Number(attempt.correct_steps ?? attempt.correct ?? 0));
+  const accuracyPercent = Number.isFinite(Number(attempt.accuracy_percent))
+    ? Math.round(Number(attempt.accuracy_percent))
+    : totalSteps > 0
+      ? Math.round((correctSteps / totalSteps) * 100)
+      : 0;
+  const elapsedSeconds = attempt.elapsed_seconds != null
+    ? Math.max(0, Math.round(Number(attempt.elapsed_seconds)))
+    : Math.max(0, Math.round(Number(attempt.time_taken_ms ?? 0) / 1000));
 
   return {
     user_id: attempt.user_id ?? null,
     case_id: attempt.case_id ?? null,
-    difficulty_label: String(attempt.difficulty ?? ""),
+    archetype: attempt.archetype ?? null,
+    difficulty_label: String(attempt.difficulty_label ?? attempt.difficulty ?? ""),
     difficulty_level: attempt.difficulty_level != null ? Number(attempt.difficulty_level) : null,
-    xp_total_awarded: Number(attempt.xp_earned ?? 0),
+    xp_total_awarded: Number(attempt.xp_total_awarded ?? attempt.xp_earned ?? 0),
     correct_steps: correctSteps,
     total_steps: totalSteps,
-    elapsed_seconds: Math.max(0, Math.round(Number(attempt.time_taken_ms ?? 0) / 1000)),
+    elapsed_seconds: elapsedSeconds,
     completed_at: attempt.completed_at ?? null,
-    final_diagnosis_correct: totalSteps > 0 && correctSteps === totalSteps,
-    accuracy_percent: Number.isFinite(accuracyPercent) ? accuracyPercent : 0
+    final_diagnosis_correct: Boolean(
+      attempt.final_diagnosis_correct ??
+      (totalSteps > 0 && correctSteps === totalSteps)
+    ),
+    accuracy_percent: Number.isFinite(accuracyPercent) ? accuracyPercent : 0,
+    step_results_json: Array.isArray(attempt.step_results_json) ? attempt.step_results_json : [],
+    app_version: attempt.app_version ?? null,
+    content_version: attempt.content_version ?? null,
+    mode: String(attempt.mode ?? "practice")
   };
 }
 

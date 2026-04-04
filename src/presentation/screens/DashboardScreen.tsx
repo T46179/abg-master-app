@@ -56,7 +56,7 @@ export function DashboardScreen() {
             <Megaphone />
           </div>
           <div className="dashboard-feedback-banner__copy">
-            <p>We&apos;d love to hear what you think about the beta experience.</p>
+            <p>We&apos;d love to hear what you think about the beta experience</p>
           </div>
           <a
             className="dashboard-feedback-banner__action"
@@ -81,7 +81,7 @@ export function DashboardScreen() {
             title="Continue Learning"
             subtitle={
               casesRemaining == null
-                ? "Unlimited cases available today."
+                ? "Unlimited cases available today"
                 : `${casesRemaining} case${casesRemaining === 1 ? "" : "s"} remaining today.`
             }
           />
@@ -103,7 +103,11 @@ export function DashboardScreen() {
         </section>
 
         <Surface className="dashboard-card">
-          <SectionHeader title="Difficulty Levels" subtitle="Unlock new challenges as you progress." />
+          <SectionHeader
+            className="dashboard-mastery-header"
+            title="Mastery"
+            subtitle="Unlock new challenges as you progress"
+          />
           <div className="dashboard-difficulty-grid">
             {difficultyMeta.map(item => {
               const unlocked = canAccessDifficulty(progressionInput, item.level);
