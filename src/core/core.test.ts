@@ -5,6 +5,7 @@ import { getVisibleCaseMetrics } from "./metrics";
 import { applyPracticeOutcome } from "./practice";
 import { applyProtectedCaseCompletion } from "./protectedPractice";
 import {
+  clearPracticeSlotCache,
   clearPendingPracticeSubmission,
   loadPendingPracticeSubmission,
   loadPracticeSlotsCache,
@@ -548,6 +549,39 @@ describe("protected practice cache", () => {
     });
 
     expect(loadPracticeSlotsCache(storage, "new-version").advanced).toBeNull();
+  });
+
+  it("clears only the matching cached slot for a pending submission", () => {
+    const storage = createMemoryStorage();
+
+    savePracticeSlotsCache(storage, {
+      advanced: {
+        caseToken: "token-1",
+        issuedAt: "2026-03-26T00:00:00Z",
+        expiresAt: "2026-03-27T00:00:00Z",
+        contentVersion: "beta-1",
+        difficultyKey: "advanced",
+        caseData: sampleCase
+      },
+      beginner: {
+        caseToken: "token-2",
+        issuedAt: "2026-03-26T00:00:00Z",
+        expiresAt: "2026-03-27T00:00:00Z",
+        contentVersion: "beta-1",
+        difficultyKey: "beginner",
+        caseData: sampleCase
+      }
+    });
+
+    const nextSlots = clearPracticeSlotCache(
+      storage,
+      loadPracticeSlotsCache(storage),
+      "advanced",
+      "token-1"
+    );
+
+    expect(nextSlots.advanced).toBeNull();
+    expect(nextSlots.beginner?.caseToken).toBe("token-2");
   });
 });
 

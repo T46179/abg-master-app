@@ -1,9 +1,10 @@
-import { createContext, startTransition, useCallback, useContext, useEffect, useReducer, type ReactNode } from "react";
+import { createContext, startTransition, useCallback, useContext, useEffect, useReducer, useRef, type ReactNode } from "react";
 import { loadCasesPayload, loadRuntimeConfig } from "../core/runtime";
 import { createAppStorage } from "../core/storage";
 import { createRuntimeSupabaseClient, ensureAnonymousSession } from "../core/supabase";
 import { applyProtectedCaseCompletion, isProtectedPracticeError, submitProtectedPracticeCase } from "../core/protectedPractice";
 import {
+  clearPracticeSlotCache,
   clearPendingPracticeSubmission,
   loadPendingPracticeSubmission,
   loadPracticeSlotsCache,
@@ -17,6 +18,7 @@ import {
   sanitizeUnlockedDifficulties,
   syncUserStateDerivedFields
 } from "../core/progression";
+import { getPendingRetryDelayMs, getPendingSubmissionInvalidReason } from "./protectedPracticeRecovery";
 import { appReducer, initialAppState, type AppState } from "./state";
 
 interface AppContextValue {
@@ -24,12 +26,17 @@ interface AppContextValue {
   setUserState: (userState: UserState) => Promise<void>;
   patchSessionState: (patch: Partial<SessionState>) => void;
   patchPracticeState: (patch: Partial<PracticeFlowState>) => void;
+  retryPendingSubmissionNow: () => void;
+  discardPendingSubmission: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryInFlightRef = useRef(false);
+  const retryAttemptCountRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +92,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
 
         startTransition(() => {
+          const pendingSubmission = loadPendingPracticeSubmission(window.localStorage);
           dispatch({
             type: "ready",
             payload: {
@@ -98,8 +106,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
               practiceState: {
                 ...initialAppState.practiceState,
                 practiceSlotsByDifficulty: loadPracticeSlotsCache(window.localStorage, payload.contentVersion),
-                pendingSubmission: loadPendingPracticeSubmission(window.localStorage),
-                syncState: loadPendingPracticeSubmission(window.localStorage) ? "pending_retry" : "idle"
+                pendingSubmission,
+                syncState: pendingSubmission ? "pending_retry" : "idle"
               },
               storage,
               supabase: supabaseRuntime.supabase,
@@ -150,8 +158,110 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  useEffect(() => {
+  const clearRetryTimer = useCallback(() => {
+    if (retryTimerRef.current != null) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  }, []);
+
+  const clearPendingSubmissionState = useCallback((pendingSubmission: PracticeFlowState["pendingSubmission"], message: string | null) => {
+    if (typeof window === "undefined" || !pendingSubmission) return;
+
+    clearPendingPracticeSubmission(window.localStorage);
+    const nextSlots = clearPracticeSlotCache(
+      window.localStorage,
+      state.practiceState.practiceSlotsByDifficulty,
+      pendingSubmission.difficultyKey,
+      pendingSubmission.caseToken
+    );
+
+    retryAttemptCountRef.current = 0;
+    clearRetryTimer();
+
+    patchPracticeState({
+      currentCase: state.practiceState.currentCaseToken === pendingSubmission.caseToken ? null : state.practiceState.currentCase,
+      currentCaseToken: state.practiceState.currentCaseToken === pendingSubmission.caseToken ? null : state.practiceState.currentCaseToken,
+      currentCaseExpiresAt: state.practiceState.currentCaseToken === pendingSubmission.caseToken ? null : state.practiceState.currentCaseExpiresAt,
+      practiceSlotsByDifficulty: nextSlots,
+      pendingSubmission: null,
+      syncState: "idle",
+      syncMessage: message
+    });
+
+    patchSessionState({
+      currentStepIndex: 0,
+      selectedAnswers: [],
+      stepResults: [],
+      stepOptionOverrides: {},
+      caseStartMs: null
+    });
+  }, [
+    clearRetryTimer,
+    patchPracticeState,
+    patchSessionState,
+    state.practiceState.currentCase,
+    state.practiceState.currentCaseExpiresAt,
+    state.practiceState.currentCaseToken,
+    state.practiceState.practiceSlotsByDifficulty
+  ]);
+
+  const completePendingSubmissionSuccess = useCallback(async (pendingSubmission: NonNullable<PracticeFlowState["pendingSubmission"]>) => {
+    if (!state.runtimeConfig || !state.payload || !state.supabase || typeof window === "undefined") return;
+
+    const result = await submitProtectedPracticeCase(state.runtimeConfig, state.supabase, pendingSubmission);
+    const nextUserState = applyProtectedCaseCompletion({
+      userState: state.userState,
+      summary: {
+        ...result.summary,
+        caseToken: pendingSubmission.caseToken
+      },
+      progressionConfig: state.payload.progressionConfig
+    });
+
+    if (nextUserState !== state.userState) {
+      await setUserState(nextUserState);
+    }
+
+    const nextSlots = {
+      ...loadPracticeSlotsCache(window.localStorage, state.payload.contentVersion),
+      [pendingSubmission.difficultyKey]: {
+        ...result.replacementSlot,
+        contentVersion: state.payload.contentVersion ?? pendingSubmission.contentVersion,
+        difficultyKey: pendingSubmission.difficultyKey
+      }
+    };
+    savePracticeSlotsCache(window.localStorage, nextSlots);
+    clearPendingPracticeSubmission(window.localStorage);
+    retryAttemptCountRef.current = 0;
+    clearRetryTimer();
+
+    patchPracticeState({
+      currentCase: null,
+      currentCaseToken: null,
+      currentCaseExpiresAt: null,
+      lastCaseSummary: {
+        ...result.summary,
+        caseToken: pendingSubmission.caseToken
+      },
+      practiceSlotsByDifficulty: nextSlots,
+      pendingSubmission: null,
+      syncState: "idle",
+      syncMessage: null
+    });
+  }, [
+    clearRetryTimer,
+    patchPracticeState,
+    setUserState,
+    state.payload,
+    state.runtimeConfig,
+    state.supabase,
+    state.userState
+  ]);
+
+  const retryPendingSubmissionNow = useCallback(() => {
     if (
+      retryInFlightRef.current ||
       state.status !== "ready" ||
       state.payload?.deliveryMode !== "protected_runtime" ||
       !state.supabase ||
@@ -161,120 +271,127 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    let cancelled = false;
+    const pendingSubmission = loadPendingPracticeSubmission(window.localStorage) ?? state.practiceState.pendingSubmission;
+    if (!pendingSubmission) return;
 
-    async function retryPendingSubmission() {
-      const pendingSubmission = loadPendingPracticeSubmission(window.localStorage);
-      const runtimeConfig = state.runtimeConfig;
-      const payload = state.payload;
-      const supabase = state.supabase;
-      if (!pendingSubmission || !runtimeConfig || !payload || !supabase) return;
+    const invalidReason = getPendingSubmissionInvalidReason(pendingSubmission, state.payload?.contentVersion);
+    if (invalidReason === "expired") {
+      clearPendingSubmissionState(pendingSubmission, "This unsaved case expired. Please start a new one.");
+      return;
+    }
+    if (invalidReason === "content_mismatch") {
+      clearPendingSubmissionState(pendingSubmission, "This unsaved case no longer matches the current content. Please start a new one.");
+      return;
+    }
 
-      patchPracticeState({
-        pendingSubmission,
-        syncState: "pending_retry",
-        syncMessage: "We’re retrying your submission."
-      });
+    retryInFlightRef.current = true;
+    clearRetryTimer();
+    patchPracticeState({
+      pendingSubmission,
+      syncState: "pending_retry",
+      syncMessage: "We're retrying your submission."
+    });
 
-      try {
-        const result = await submitProtectedPracticeCase(runtimeConfig, supabase, pendingSubmission);
-        if (cancelled) return;
-
-        const nextUserState = applyProtectedCaseCompletion({
-          userState: state.userState,
-          summary: {
-            ...result.summary,
-            caseToken: pendingSubmission.caseToken
-          },
-          progressionConfig: payload.progressionConfig
-        });
-
-        if (nextUserState !== state.userState) {
-          await setUserState(nextUserState);
-        }
-
-        const nextSlots = {
-          ...loadPracticeSlotsCache(window.localStorage, payload.contentVersion),
-          [pendingSubmission.difficultyKey]: {
-            ...result.replacementSlot,
-            contentVersion: payload.contentVersion ?? pendingSubmission.contentVersion,
-            difficultyKey: pendingSubmission.difficultyKey
-          }
-        };
-        savePracticeSlotsCache(window.localStorage, nextSlots);
-        clearPendingPracticeSubmission(window.localStorage);
-
-        patchPracticeState({
-          currentCase: null,
-          currentCaseToken: null,
-          currentCaseExpiresAt: null,
-          lastCaseSummary: {
-            ...result.summary,
-            caseToken: pendingSubmission.caseToken
-          },
-          practiceSlotsByDifficulty: nextSlots,
-          pendingSubmission: null,
-          syncState: "idle",
-          syncMessage: null
-        });
-      } catch (error) {
-        if (cancelled) return;
-
+    void completePendingSubmissionSuccess(pendingSubmission)
+      .catch((error) => {
         if (isProtectedPracticeError(error) && error.code === "CASE_TOKEN_EXPIRED") {
-          clearPendingPracticeSubmission(window.localStorage);
-          const nextSlots = {
-            ...loadPracticeSlotsCache(window.localStorage, payload.contentVersion),
-            [pendingSubmission.difficultyKey]: null
-          };
-          savePracticeSlotsCache(window.localStorage, nextSlots);
-
-          patchPracticeState({
-            currentCase: state.practiceState.currentCaseToken === pendingSubmission.caseToken ? null : state.practiceState.currentCase,
-            currentCaseToken: state.practiceState.currentCaseToken === pendingSubmission.caseToken ? null : state.practiceState.currentCaseToken,
-            currentCaseExpiresAt: state.practiceState.currentCaseToken === pendingSubmission.caseToken ? null : state.practiceState.currentCaseExpiresAt,
-            practiceSlotsByDifficulty: nextSlots,
-            pendingSubmission: null,
-            syncState: "idle",
-            syncMessage: "This case took too long to save. Please start a new one."
-          });
+          clearPendingSubmissionState(pendingSubmission, "This case expired before it could be checked. Please start a new one.");
           return;
         }
 
+        retryAttemptCountRef.current += 1;
         patchPracticeState({
           pendingSubmission,
           syncState: "pending_retry",
-          syncMessage: "Your answers are saved. We’ll finish submitting when you’re back online."
+          syncMessage: "Your answers are saved. We'll finish submitting when you're back online."
         });
+      })
+      .finally(() => {
+        retryInFlightRef.current = false;
+      });
+  }, [
+    clearPendingSubmissionState,
+    clearRetryTimer,
+    completePendingSubmissionSuccess,
+    patchPracticeState,
+    state.payload,
+    state.practiceState.pendingSubmission,
+    state.runtimeConfig,
+    state.status,
+    state.supabase
+  ]);
+
+  const discardPendingSubmission = useCallback(() => {
+    if (!state.practiceState.pendingSubmission) return;
+    clearPendingSubmissionState(state.practiceState.pendingSubmission, null);
+  }, [clearPendingSubmissionState, state.practiceState.pendingSubmission]);
+
+  useEffect(() => {
+    if (
+      state.status !== "ready" ||
+      state.payload?.deliveryMode !== "protected_runtime" ||
+      typeof window === "undefined"
+    ) {
+      return;
+    }
+
+    const pendingSubmission = loadPendingPracticeSubmission(window.localStorage) ?? state.practiceState.pendingSubmission;
+    if (!pendingSubmission) return;
+
+    const invalidReason = getPendingSubmissionInvalidReason(pendingSubmission, state.payload?.contentVersion);
+    if (invalidReason === "expired") {
+      clearPendingSubmissionState(pendingSubmission, "This unsaved case expired. Please start a new one.");
+      return;
+    }
+    if (invalidReason === "content_mismatch") {
+      clearPendingSubmissionState(pendingSubmission, "This unsaved case no longer matches the current content. Please start a new one.");
+    }
+  }, [clearPendingSubmissionState, state.payload, state.practiceState.pendingSubmission, state.status]);
+
+  useEffect(() => {
+    if (
+      state.status !== "ready" ||
+      state.payload?.deliveryMode !== "protected_runtime" ||
+      !state.practiceState.pendingSubmission ||
+      state.practiceState.syncState !== "pending_retry" ||
+      typeof window === "undefined"
+    ) {
+      clearRetryTimer();
+      return;
+    }
+
+    function handleResumeOrReconnect() {
+      retryPendingSubmissionNow();
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        retryPendingSubmissionNow();
       }
     }
 
-    void retryPendingSubmission();
-
-    function handleResumeOrReconnect() {
-      void retryPendingSubmission();
-    }
+    clearRetryTimer();
+    retryTimerRef.current = setTimeout(() => {
+      retryPendingSubmissionNow();
+    }, getPendingRetryDelayMs(retryAttemptCountRef.current));
 
     window.addEventListener("online", handleResumeOrReconnect);
     window.addEventListener("focus", handleResumeOrReconnect);
-    document.addEventListener("visibilitychange", handleResumeOrReconnect);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      cancelled = true;
+      clearRetryTimer();
       window.removeEventListener("online", handleResumeOrReconnect);
       window.removeEventListener("focus", handleResumeOrReconnect);
-      document.removeEventListener("visibilitychange", handleResumeOrReconnect);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [
-    patchPracticeState,
-    setUserState,
+    clearRetryTimer,
+    retryPendingSubmissionNow,
     state.payload,
-    state.practiceState.currentCase,
-    state.practiceState.currentCaseExpiresAt,
-    state.practiceState.currentCaseToken,
-    state.runtimeConfig,
-    state.status,
-    state.supabase,
-    state.userState
+    state.practiceState.pendingSubmission,
+    state.practiceState.syncState,
+    state.status
   ]);
 
   return (
@@ -283,7 +400,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         state,
         setUserState,
         patchSessionState,
-        patchPracticeState
+        patchPracticeState,
+        retryPendingSubmissionNow,
+        discardPendingSubmission
       }}
     >
       {children}

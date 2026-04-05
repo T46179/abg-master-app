@@ -82,6 +82,29 @@ export function savePracticeSlotsCache(storage: BrowserStorageLike, slots: Recor
   safeSetItem(storage, PRACTICE_SLOTS_STORAGE_KEY, JSON.stringify(slots ?? {}));
 }
 
+export function clearPracticeSlotCache(
+  storage: BrowserStorageLike,
+  slots: Record<string, IssuedPracticeSlot | null>,
+  difficultyKey: string,
+  caseToken?: string | null
+) {
+  const nextSlots = { ...(slots ?? {}) };
+  const existingSlot = nextSlots[difficultyKey] ?? null;
+  if (!existingSlot) {
+    savePracticeSlotsCache(storage, nextSlots);
+    return nextSlots;
+  }
+
+  if (caseToken && existingSlot.caseToken !== caseToken) {
+    savePracticeSlotsCache(storage, nextSlots);
+    return nextSlots;
+  }
+
+  nextSlots[difficultyKey] = null;
+  savePracticeSlotsCache(storage, nextSlots);
+  return nextSlots;
+}
+
 export function loadPendingPracticeSubmission(storage: BrowserStorageLike): PendingPracticeSubmission | null {
   const raw = safeGetItem(storage, PENDING_SUBMISSION_STORAGE_KEY);
   if (!raw) return null;
