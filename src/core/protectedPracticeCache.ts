@@ -3,6 +3,7 @@ import type { IssuedPracticeSlot, PendingPracticeSubmission } from "./types";
 
 const PRACTICE_SLOTS_STORAGE_KEY = "abgmaster_practiceSlotsByDifficulty";
 const PENDING_SUBMISSION_STORAGE_KEY = "abgmaster_pendingPracticeSubmission";
+const DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced", "master"] as const;
 
 function safeGetItem(storage: BrowserStorageLike, key: string): string | null {
   try {
@@ -34,27 +35,46 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function sanitizePracticeSlot(source: unknown): IssuedPracticeSlot | null {
+export function slotMatchesDifficultyKey(slot: IssuedPracticeSlot | null | undefined, difficultyKey: string): boolean {
+  if (!slot?.caseData) return false;
+
+  const normalizedDifficultyKey = String(difficultyKey ?? "").trim().toLowerCase();
+  if (!normalizedDifficultyKey) return false;
+
+  const caseDifficultyLabel = String(
+    slot.caseData.difficulty_label ??
+    DIFFICULTY_ORDER[Math.max(0, Number(slot.caseData.difficulty_level ?? 1) - 1)] ??
+    ""
+  ).trim().toLowerCase();
+  const caseDifficultyLevel = Number(slot.caseData.difficulty_level ?? 0);
+  const requestedDifficultyLevel = DIFFICULTY_ORDER.indexOf(normalizedDifficultyKey as (typeof DIFFICULTY_ORDER)[number]) + 1;
+
+  return caseDifficultyLabel === normalizedDifficultyKey || (requestedDifficultyLevel > 0 && caseDifficultyLevel === requestedDifficultyLevel);
+}
+
+function sanitizePracticeSlot(source: unknown, difficultyKey: string): IssuedPracticeSlot | null {
   if (!isRecord(source) || !isRecord(source.caseData)) return null;
 
   const caseToken = String(source.caseToken ?? "").trim();
   const issuedAt = String(source.issuedAt ?? "").trim();
   const expiresAt = String(source.expiresAt ?? "").trim();
   const contentVersion = String(source.contentVersion ?? "").trim();
-  const difficultyKey = String(source.difficultyKey ?? "").trim();
+  const slotDifficultyKey = String(source.difficultyKey ?? "").trim();
 
-  if (!caseToken || !issuedAt || !expiresAt || !contentVersion || !difficultyKey) {
+  if (!caseToken || !issuedAt || !expiresAt || !contentVersion || !slotDifficultyKey) {
     return null;
   }
 
-  return {
+  const slot = {
     caseToken,
     issuedAt,
     expiresAt,
     contentVersion,
-    difficultyKey,
+    difficultyKey: slotDifficultyKey,
     caseData: source.caseData as unknown as IssuedPracticeSlot["caseData"]
   };
+
+  return slotMatchesDifficultyKey(slot, difficultyKey) ? slot : null;
 }
 
 export function loadPracticeSlotsCache(storage: BrowserStorageLike, contentVersion?: string | null): Record<string, IssuedPracticeSlot | null> {
@@ -67,7 +87,7 @@ export function loadPracticeSlotsCache(storage: BrowserStorageLike, contentVersi
 
     return Object.fromEntries(
       Object.entries(parsed).map(([difficultyKey, slotValue]) => {
-        const slot = sanitizePracticeSlot(slotValue);
+        const slot = sanitizePracticeSlot(slotValue, difficultyKey);
         if (!slot) return [difficultyKey, null];
         if (contentVersion && slot.contentVersion !== contentVersion) return [difficultyKey, null];
         return [difficultyKey, slot];

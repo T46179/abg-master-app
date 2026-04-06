@@ -17,7 +17,8 @@ import {
   loadPendingPracticeSubmission,
   loadPracticeSlotsCache,
   savePendingPracticeSubmission,
-  savePracticeSlotsCache
+  savePracticeSlotsCache,
+  slotMatchesDifficultyKey
 } from "./protectedPracticeCache";
 import {
   getHighestAccessibleDifficultyKey,
@@ -785,6 +786,29 @@ describe("protected practice cache", () => {
     expect(loadPracticeSlotsCache(storage, "new-version").advanced).toBeNull();
   });
 
+  it("rejects cached slots whose embedded case difficulty does not match the slot key", () => {
+    const storage = createMemoryStorage();
+
+    savePracticeSlotsCache(storage, {
+      master: {
+        caseToken: "token-1",
+        issuedAt: "2026-03-26T00:00:00Z",
+        expiresAt: "2026-03-27T00:00:00Z",
+        contentVersion: "beta-1",
+        difficultyKey: "master",
+        caseData: {
+          ...sampleCase,
+          difficulty_level: 1,
+          difficulty_label: "beginner"
+        }
+      }
+    });
+
+    const loadedSlots = loadPracticeSlotsCache(storage, "beta-1");
+    expect(loadedSlots.master).toBeNull();
+    expect(slotMatchesDifficultyKey(loadedSlots.master, "master")).toBe(false);
+  });
+
   it("clears only the matching cached slot for a pending submission", () => {
     const storage = createMemoryStorage();
 
@@ -803,7 +827,7 @@ describe("protected practice cache", () => {
         expiresAt: "2026-03-27T00:00:00Z",
         contentVersion: "beta-1",
         difficultyKey: "beginner",
-        caseData: sampleCase
+        caseData: beginnerCase
       }
     });
 

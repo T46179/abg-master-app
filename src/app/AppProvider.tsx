@@ -8,6 +8,7 @@ import {
   clearPendingPracticeSubmission,
   loadPendingPracticeSubmission,
   loadPracticeSlotsCache,
+  slotMatchesDifficultyKey,
   savePracticeSlotsCache
 } from "../core/protectedPracticeCache";
 import type { PracticeFlowState, SessionState, UserState } from "../core/types";
@@ -263,6 +264,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         difficultyKey: pendingSubmission.difficultyKey
       }
     };
+    if (!slotMatchesDifficultyKey(nextSlots[pendingSubmission.difficultyKey], pendingSubmission.difficultyKey)) {
+      nextSlots[pendingSubmission.difficultyKey] = null;
+    }
     savePracticeSlotsCache(window.localStorage, nextSlots);
     clearPendingPracticeSubmission(window.localStorage);
     retryAttemptCountRef.current = 0;

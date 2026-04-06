@@ -1333,9 +1333,50 @@ button:disabled {
   margin-top: 1.15rem;
 }
 
-.results-card__summary-section {
-  margin-top: 1.85rem;
-  margin-bottom: 0.85rem;
+.results-card__diagnosis h3,
+.results-card__detail-section h3,
+.results-card__detail-card h4,
+.results-card__takeaway-card h4 {
+  margin: 0;
+}
+
+.results-card__diagnosis-main {
+  margin-top: 0.65rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.results-card__diagnosis-sub {
+  margin-top: 0.35rem;
+  color: var(--color-text-soft);
+  line-height: 1.6;
+}
+
+.results-card__detail-section,
+.results-card__takeaway-card {
+  margin-top: 1.5rem;
+}
+
+.results-card__detail-stack {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.8rem;
+}
+
+.card.results-card__detail-card,
+.card.results-card__takeaway-card {
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-soft);
+}
+
+.results-card__detail-card p {
+  margin: 0.45rem 0 0;
+  color: var(--color-text-soft);
+  line-height: 1.6;
 }
 
 .results-card__metric-section + .results-card__metric-section {

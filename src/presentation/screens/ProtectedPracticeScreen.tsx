@@ -16,6 +16,7 @@ import {
 import {
   clearPendingPracticeSubmission,
   loadPracticeSlotsCache,
+  slotMatchesDifficultyKey,
   savePendingPracticeSubmission,
   savePracticeSlotsCache
 } from "../../core/protectedPracticeCache";
@@ -188,7 +189,10 @@ export function ProtectedPracticeScreen() {
 
     const missingDifficulties = difficulties.filter(difficultyKey => {
       const cachedSlot = state.practiceState.practiceSlotsByDifficulty[difficultyKey];
-      return !cachedSlot || cachedSlot.contentVersion !== payload.contentVersion || isExpiredSlot(cachedSlot);
+      return !cachedSlot ||
+        !slotMatchesDifficultyKey(cachedSlot, difficultyKey) ||
+        cachedSlot.contentVersion !== payload.contentVersion ||
+        isExpiredSlot(cachedSlot);
     });
 
     if (!missingDifficulties.length) {
@@ -215,6 +219,11 @@ export function ProtectedPracticeScreen() {
         ...state.practiceState.practiceSlotsByDifficulty,
         ...response.slots
       };
+      for (const difficultyKey of Object.keys(nextSlots)) {
+        if (!slotMatchesDifficultyKey(nextSlots[difficultyKey], difficultyKey)) {
+          nextSlots[difficultyKey] = null;
+        }
+      }
       savePracticeSlotsCache(window.localStorage, nextSlots);
       patchPracticeState({
         practiceSlotsByDifficulty: nextSlots,
@@ -267,6 +276,17 @@ export function ProtectedPracticeScreen() {
   }, [currentCase, introOpen, normalizedDifficulty, pendingDifficulty, shouldAutoLoadPracticeCase, shouldOpenPracticeIntro]);
 
   async function activateSlot(difficultyKey: string, slot: IssuedPracticeSlot, options?: { preview?: boolean }) {
+    if (!slotMatchesDifficultyKey(slot, difficultyKey)) {
+      patchPracticeState({
+        currentCase: null,
+        currentCaseToken: null,
+        currentCaseExpiresAt: null,
+        syncState: "unavailable",
+        syncMessage: "The selected case did not match the requested difficulty. Please try again."
+      });
+      return;
+    }
+
     patchPracticeState({
       currentCase: slot.caseData,
       currentCaseToken: slot.caseToken,
