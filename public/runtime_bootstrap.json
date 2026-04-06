@@ -1,7 +1,7 @@
 {
   "delivery_mode": "protected_runtime",
   "protected_payload_mode": "practice_learning",
-  "content_version": "beta-1_2026-04-05",
+  "content_version": "beta-1_2026-04-06",
   "progression_config": {
     "version": "v1",
     "release_flags": {

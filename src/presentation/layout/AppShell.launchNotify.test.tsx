@@ -174,6 +174,58 @@ describe("AppShell launch notify flow", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("shows the same invalid state when submit is clicked with an empty email", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderShell();
+
+    act(() => {
+      getDesktopStayUpdatedButton()?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const emailInput = container.querySelector<HTMLInputElement>("#launch-notify-email");
+
+    expect(emailInput?.className).not.toContain("is-invalid");
+
+    await act(async () => {
+      getLaunchNotifyForm()?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+
+    expect(emailInput?.className).toContain("is-invalid");
+    expect(emailInput?.getAttribute("aria-invalid")).toBe("true");
+    expect(container.textContent).toContain("Enter a valid email address.");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("switches to the valid blue state after the user corrects the email", async () => {
+    renderShell();
+
+    act(() => {
+      getDesktopStayUpdatedButton()?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    act(() => {
+      setEmailInputValue("bad");
+    });
+
+    await act(async () => {
+      getLaunchNotifyForm()?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+
+    const emailInput = container.querySelector<HTMLInputElement>("#launch-notify-email");
+    expect(emailInput?.className).toContain("is-invalid");
+
+    act(() => {
+      setEmailInputValue("user@example.com");
+    });
+
+    expect(emailInput?.className).toContain("is-valid");
+    expect(emailInput?.className).not.toContain("is-invalid");
+    expect(emailInput?.getAttribute("aria-invalid")).toBe("false");
+    expect(container.textContent).not.toContain("Enter a valid email address.");
+  });
+
   it("submits only the email field and shows success feedback", async () => {
     let resolveFetch: ((value: Response) => void) | null = null;
     const fetchMock = vi.fn(() => new Promise<Response>((resolve) => {

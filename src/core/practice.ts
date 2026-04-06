@@ -8,7 +8,7 @@ import {
 } from "./progression";
 import { markCaseSeen } from "./selection";
 import { composeCaseStructuredExplanation } from "./explanations";
-import type { CaseData, CaseSummary, ProgressionConfig, StepResult, StructuredExplanation, UserState } from "./types";
+import type { AnswerSelection, CaseData, CaseSummary, ProgressionConfig, StepResult, StructuredExplanation, UserState } from "./types";
 
 export function prettyStepLabel(stepKey: string): string {
   const labels: Record<string, string> = {
@@ -47,6 +47,100 @@ export function getCorrectAnswer(caseItem: CaseData, stepKey: string): string {
 
 export function isCorrectAnswer(caseItem: CaseData, stepKey: string, chosen: string): boolean {
   return chosen === getCorrectAnswer(caseItem, stepKey);
+}
+
+export function getQuestionFlowStepStatus(input: {
+  caseItem?: CaseData | null;
+  stepKey: string;
+  stepResult?: StepResult | null;
+  stepSelection?: AnswerSelection | null;
+  isPastStep?: boolean;
+}): "correct" | "incorrect" | "complete" | undefined {
+  if (input.stepResult) {
+    return input.stepResult.correct ? "correct" : "incorrect";
+  }
+
+  if (input.stepSelection?.chosen) {
+    if (input.caseItem && Number(input.caseItem.difficulty_level ?? 1) >= 3) {
+      return isCorrectAnswer(input.caseItem, input.stepKey, input.stepSelection.chosen)
+        ? "correct"
+        : "incorrect";
+    }
+
+    return "complete";
+  }
+
+  return input.isPastStep ? "complete" : undefined;
+}
+
+export function buildFinalStepResults(input: {
+  caseItem: CaseData;
+  selectedAnswers: AnswerSelection[];
+  existingStepResults?: StepResult[];
+}): StepResult[] {
+  return (input.caseItem.questions_flow ?? []).map((step, index) => {
+    const existingResult = input.existingStepResults?.[index];
+    if (existingResult) return existingResult;
+
+    const selection = input.selectedAnswers[index];
+    const chosen = selection?.chosen ?? "";
+
+    return {
+      key: step.key,
+      label: step.label ?? prettyStepLabel(step.key),
+      prompt: step.prompt,
+      chosen,
+      correctAnswer: getCorrectAnswer(input.caseItem, step.key),
+      correct: isCorrectAnswer(input.caseItem, step.key, chosen),
+      feedback: null
+    };
+  });
+}
+
+export function reconcileProtectedSummaryWithLockedStepResults(input: {
+  summary: CaseSummary;
+  lockedStepResults: StepResult[];
+  progressionConfig: ProgressionConfig | null;
+}): CaseSummary {
+  const hasLockedIncorrectStep = input.lockedStepResults.some(result => Boolean(result) && !result.correct);
+  if (!hasLockedIncorrectStep) {
+    return input.summary;
+  }
+
+  const mergedStepResults = buildFinalStepResults({
+    caseItem: input.summary.caseData,
+    selectedAnswers: input.summary.stepResults.map(result => ({
+      key: result.key,
+      label: result.label,
+      prompt: result.prompt,
+      chosen: result.chosen
+    })),
+    existingStepResults: input.summary.stepResults.map((result, index) => {
+      const lockedResult = input.lockedStepResults[index];
+      return lockedResult && !lockedResult.correct ? lockedResult : result;
+    })
+  });
+
+  const totalSteps = mergedStepResults.length;
+  const correctSteps = mergedStepResults.filter(result => result.correct).length;
+  const accuracy = totalSteps ? Math.round((correctSteps / totalSteps) * 100) : 0;
+  const difficultyLevel = Number(input.summary.caseData.difficulty_level ?? 1);
+  const perfectBonus = totalSteps > 0 && correctSteps === totalSteps
+    ? getPerfectBonus(input.progressionConfig, difficultyLevel)
+    : 0;
+  const totalXpAward = Math.round(
+    (input.summary.baseXp + perfectBonus + input.summary.speedBonus) * getEffectiveXpMultiplier(input.progressionConfig)
+  );
+
+  return {
+    ...input.summary,
+    accuracy,
+    correctSteps,
+    totalSteps,
+    totalXpAward,
+    perfectBonus,
+    stepResults: mergedStepResults
+  };
 }
 
 export function normalizeStructuredExplanation(explanation: unknown): StructuredExplanation {

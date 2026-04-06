@@ -1,11 +1,12 @@
 import type { RefObject } from "react";
-import type { AnswerSelection, QuestionFlowStep, StepResult } from "../../core/types";
+import type { AnswerSelection, CaseData, QuestionFlowStep, StepResult } from "../../core/types";
 import { Surface } from "../primitives/Surface";
 import { PillNav } from "../primitives/PillNav";
-import { prettyStepLabel } from "../../core/practice";
+import { getQuestionFlowStepStatus, prettyStepLabel } from "../../core/practice";
 import { InlineFeedbackCard } from "./InlineFeedbackCard";
 
 interface QuestionFlowCardProps {
+  caseItem: CaseData | null;
   questions: QuestionFlowStep[];
   currentStepIndex: number;
   currentStep: QuestionFlowStep | null;
@@ -26,15 +27,13 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
   const items = props.questions.map((step, index) => {
     const stepResult = props.stepResults[index];
     const stepSelection = props.selectedAnswers[index];
-    const status: "correct" | "incorrect" | "complete" | undefined = stepResult
-      ? stepResult.correct
-        ? "correct"
-        : "incorrect"
-      : stepSelection
-        ? "complete"
-        : index < props.currentStepIndex
-        ? "complete"
-        : undefined;
+    const status = getQuestionFlowStepStatus({
+      caseItem: props.caseItem,
+      stepKey: step.key,
+      stepResult,
+      stepSelection,
+      isPastStep: index < props.currentStepIndex
+    });
 
     return {
       key: `${step.key}-${index}`,

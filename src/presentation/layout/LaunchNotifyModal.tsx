@@ -33,8 +33,9 @@ export function LaunchNotifyModal(props: LaunchNotifyModalProps) {
   const trimmedEmail = email.trim();
   const isNativeEmailValid = inputRef.current?.validity.valid ?? EMAIL_PATTERN.test(trimmedEmail);
   const isEmailFormatValid = trimmedEmail !== "" && EMAIL_PATTERN.test(trimmedEmail) && isNativeEmailValid;
-  const hasInvalidEmail = showValidationError && trimmedEmail !== "" && !isEmailFormatValid;
-  const validationMessage = showValidationError && hasInvalidEmail ? LAUNCH_NOTIFY_COPY.invalidEmail : "";
+  const hasInvalidEmail = showValidationError && !isEmailFormatValid;
+  const hasValidEmail = showValidationError && isEmailFormatValid;
+  const validationMessage = hasInvalidEmail ? LAUNCH_NOTIFY_COPY.invalidEmail : "";
 
   useEffect(() => {
     if (!props.open) return;
@@ -106,7 +107,7 @@ export function LaunchNotifyModal(props: LaunchNotifyModalProps) {
             <input
               id="launch-notify-email"
               ref={inputRef}
-              className={`launch-notify-input${hasInvalidEmail ? " is-invalid" : ""}`}
+              className={`launch-notify-input${hasInvalidEmail ? " is-invalid" : ""}${hasValidEmail ? " is-valid" : ""}`}
               type="email"
               name="email"
               placeholder={LAUNCH_NOTIFY_COPY.placeholder}

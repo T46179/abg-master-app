@@ -3,7 +3,13 @@ import { createAttemptRecord, getFinalDiagnosisCorrect, mapStepResultsToAttemptS
 import { composeCaseStructuredExplanation } from "./explanations";
 import { getCaseFeedbackFormUrl } from "./feedback";
 import { getVisibleCaseMetrics } from "./metrics";
-import { applyPracticeOutcome, canUseClientSidePracticeFeedback } from "./practice";
+import {
+  applyPracticeOutcome,
+  buildFinalStepResults,
+  canUseClientSidePracticeFeedback,
+  getQuestionFlowStepStatus,
+  reconcileProtectedSummaryWithLockedStepResults
+} from "./practice";
 import { applyProtectedCaseCompletion } from "./protectedPractice";
 import {
   clearPracticeSlotCache,
@@ -403,6 +409,119 @@ describe("explanations", () => {
 
     expect(withoutMiss.sections.map(section => section.key)).not.toContain("ph_status");
     expect(withMiss.sections.map(section => section.key)).toContain("ph_status");
+  });
+});
+
+describe("question flow pill status", () => {
+  it("derives correct and incorrect statuses from selected answers for advanced cases", () => {
+    expect(getQuestionFlowStepStatus({
+      caseItem: sampleCase,
+      stepKey: "ph_status",
+      stepSelection: {
+        key: "ph_status",
+        label: "pH status",
+        chosen: "Acidaemia"
+      }
+    })).toBe("correct");
+
+    expect(getQuestionFlowStepStatus({
+      caseItem: sampleCase,
+      stepKey: "ph_status",
+      stepSelection: {
+        key: "ph_status",
+        label: "pH status",
+        chosen: "Alkalaemia"
+      }
+    })).toBe("incorrect");
+  });
+
+  it("keeps selected-only beginner steps as complete instead of correctness-colored", () => {
+    expect(getQuestionFlowStepStatus({
+      caseItem: beginnerCase,
+      stepKey: "ph_status",
+      stepSelection: {
+        key: "ph_status",
+        label: "pH status",
+        chosen: "Acidaemia"
+      }
+    })).toBe("complete");
+  });
+
+  it("auto-advancing advanced flows require an answer key to judge correctness locally", () => {
+    const protectedAdvancedCase: CaseData = {
+      ...sampleCase,
+      protected_payload_mode: "practice_learning"
+    };
+
+    expect(getQuestionFlowStepStatus({
+      caseItem: protectedAdvancedCase,
+      stepKey: "ph_status",
+      stepSelection: {
+        key: "ph_status",
+        label: "pH status",
+        chosen: "Acidaemia"
+      }
+    })).toBe("correct");
+  });
+});
+
+describe("locked advanced/master step handling", () => {
+  it("preserves locked incorrect step results when building final legacy summaries", () => {
+    const stepResults = buildFinalStepResults({
+      caseItem: sampleCase,
+      selectedAnswers: [
+        { key: "ph_status", label: "pH status", chosen: "Acidaemia" },
+        { key: "final_diagnosis", label: "Diagnosis", chosen: "Sepsis" }
+      ],
+      existingStepResults: [
+        { key: "ph_status", label: "pH status", chosen: "Alkalaemia", correctAnswer: "Acidaemia", correct: false }
+      ]
+    });
+
+    expect(stepResults).toEqual([
+      { key: "ph_status", label: "pH status", chosen: "Alkalaemia", correctAnswer: "Acidaemia", correct: false },
+      { key: "final_diagnosis", label: "Diagnosis", prompt: undefined, chosen: "Sepsis", correctAnswer: "Sepsis", correct: true, feedback: null }
+    ]);
+  });
+
+  it("keeps locked incorrect protected steps in the final summary and removes the perfect bonus", () => {
+    const summary = reconcileProtectedSummaryWithLockedStepResults({
+      summary: {
+        caseId: sampleCase.case_id,
+        title: sampleCase.title ?? "Sample ABG",
+        difficulty: "Advanced",
+        explanation: { overview: "overview", sections: [] },
+        learningObjective: "objective",
+        elapsedSeconds: 42,
+        accuracy: 100,
+        correctSteps: 2,
+        totalSteps: 2,
+        totalXpAward: 96,
+        baseXp: 25,
+        perfectBonus: 3,
+        speedBonus: 4,
+        level: 3,
+        stepResults: [
+          { key: "ph_status", label: "pH status", chosen: "Acidaemia", correctAnswer: "Acidaemia", correct: true },
+          { key: "final_diagnosis", label: "Diagnosis", chosen: "Sepsis", correctAnswer: "Sepsis", correct: true }
+        ],
+        caseData: sampleCase
+      },
+      lockedStepResults: [
+        { key: "ph_status", label: "pH status", chosen: "Alkalaemia", correctAnswer: "Acidaemia", correct: false }
+      ],
+      progressionConfig: {
+        release_flags: { xp_multiplier: 3 },
+        perfect_case_bonus_percent: 0.1,
+        base_xp_by_difficulty: { 3: 25 }
+      }
+    });
+
+    expect(summary.stepResults[0]?.correct).toBe(false);
+    expect(summary.correctSteps).toBe(1);
+    expect(summary.accuracy).toBe(50);
+    expect(summary.perfectBonus).toBe(0);
+    expect(summary.totalXpAward).toBe(87);
   });
 });
 

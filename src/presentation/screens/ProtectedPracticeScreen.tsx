@@ -19,7 +19,13 @@ import {
   savePendingPracticeSubmission,
   savePracticeSlotsCache
 } from "../../core/protectedPracticeCache";
-import { canUseClientSidePracticeFeedback, getCorrectAnswer, isCorrectAnswer, prettyStepLabel } from "../../core/practice";
+import {
+  canUseClientSidePracticeFeedback,
+  getCorrectAnswer,
+  isCorrectAnswer,
+  prettyStepLabel,
+  reconcileProtectedSummaryWithLockedStepResults
+} from "../../core/practice";
 import {
   canStartNewCase,
   getAccessibleDifficultyKeys,
@@ -88,10 +94,13 @@ export function ProtectedPracticeScreen() {
   const currentStepIndex = state.sessionState.currentStepIndex;
   const currentStep = currentCase?.questions_flow?.[currentStepIndex] ?? null;
   const allowsClientSideFeedback = canUseClientSidePracticeFeedback(currentCase);
-  const currentSelection = allowsClientSideFeedback ? null : state.sessionState.selectedAnswers[currentStepIndex] ?? null;
-  const currentResult = allowsClientSideFeedback ? state.sessionState.stepResults[currentStepIndex] ?? null : null;
+  const currentResult = state.sessionState.stepResults[currentStepIndex] ?? null;
   const currentOptions = currentStep?.options ?? [];
   const totalSteps = currentCase?.questions_flow?.length ?? 0;
+  const isFinalStep = currentStepIndex >= Math.max(0, totalSteps - 1);
+  const currentSelection = !allowsClientSideFeedback && isFinalStep && !currentResult
+    ? state.sessionState.selectedAnswers[currentStepIndex] ?? null
+    : null;
   const hasAnsweredSteps = allowsClientSideFeedback
     ? state.sessionState.stepResults.some(result => Boolean(result))
     : state.sessionState.selectedAnswers.some(result => Boolean(result));
@@ -414,17 +423,61 @@ export function ProtectedPracticeScreen() {
 
     const nextSelections = [...state.sessionState.selectedAnswers];
     nextSelections[currentStepIndex] = {
-        key: currentStep.key,
-        label: currentStep.label ?? prettyStepLabel(currentStep.key),
-        prompt: currentStep.prompt,
-        chosen: option
-      };
+      key: currentStep.key,
+      label: currentStep.label ?? prettyStepLabel(currentStep.key),
+      prompt: currentStep.prompt,
+      chosen: option
+    };
+
+    const correctAnswer = getCorrectAnswer(currentCase, currentStep.key);
+    const correct = isCorrectAnswer(currentCase, currentStep.key, option);
+
+    if (correct) {
+      if (currentStepIndex >= totalSteps - 1) {
+        patchSessionState({
+          selectedAnswers: nextSelections
+        });
+        trackEvent("step_answered", {
+          case_id: currentCase.case_id,
+          step: currentStep.key,
+          correct: true
+        });
+        return;
+      }
+
+      patchSessionState({
+        selectedAnswers: nextSelections,
+        currentStepIndex: currentStepIndex + 1
+      });
+      trackEvent("step_answered", {
+        case_id: currentCase.case_id,
+        step: currentStep.key,
+        correct: true
+      });
+      return;
+    }
+
+    const nextResults = [...state.sessionState.stepResults];
+    nextResults[currentStepIndex] = {
+      key: currentStep.key,
+      label: currentStep.label ?? prettyStepLabel(currentStep.key),
+      prompt: currentStep.prompt,
+      chosen: option,
+      correctAnswer,
+      correct: false
+    };
     patchSessionState({
-      selectedAnswers: nextSelections
+      selectedAnswers: nextSelections,
+      stepResults: nextResults
+    });
+    trackEvent("step_answered", {
+      case_id: currentCase.case_id,
+      step: currentStep.key,
+      correct: false
     });
   }
 
-  async function submitCase() {
+  async function submitCase(selectedAnswersOverride?: AnswerSelection[]) {
     if (!currentCase || !state.practiceState.currentCaseToken || !payload?.contentVersion || !state.supabase || !state.runtimeConfig) {
       return;
     }
@@ -433,10 +486,10 @@ export function ProtectedPracticeScreen() {
       ? state.sessionState.stepResults
           .filter((result): result is StepResult => Boolean(result))
           .map(result => ({ key: result.key, chosen: result.chosen }))
-      : (currentCase.questions_flow ?? []).map((step, index) => {
-          const selection = state.sessionState.selectedAnswers[index];
-          return selection ? { key: step.key, chosen: selection.chosen } : null;
-        }).filter((answer): answer is { key: string; chosen: string } => Boolean(answer));
+      : (selectedAnswersOverride ?? state.sessionState.selectedAnswers).map(selection => ({
+          key: selection.key,
+          chosen: selection.chosen
+        }));
 
     if (answers.length !== totalSteps) {
       patchPracticeState({
@@ -468,12 +521,17 @@ export function ProtectedPracticeScreen() {
 
     try {
       const result = await submitProtectedPracticeCase(state.runtimeConfig, state.supabase, pendingSubmission);
-      const nextUserState = applyProtectedCaseCompletion({
-        userState: state.userState,
+      const reconciledSummary = reconcileProtectedSummaryWithLockedStepResults({
         summary: {
           ...result.summary,
           caseToken: pendingSubmission.caseToken
         },
+        lockedStepResults: state.sessionState.stepResults,
+        progressionConfig: payload.progressionConfig ?? null
+      });
+      const nextUserState = applyProtectedCaseCompletion({
+        userState: state.userState,
+        summary: reconciledSummary,
         progressionConfig: payload.progressionConfig
       });
       if (nextUserState !== state.userState) {
@@ -498,10 +556,7 @@ export function ProtectedPracticeScreen() {
         currentCase: null,
         currentCaseToken: null,
         currentCaseExpiresAt: null,
-        lastCaseSummary: {
-          ...result.summary,
-          caseToken: pendingSubmission.caseToken
-        },
+        lastCaseSummary: reconciledSummary,
         practiceSlotsByDifficulty: nextSlots,
         pendingSubmission: null,
         syncState: "idle",
@@ -651,6 +706,7 @@ export function ProtectedPracticeScreen() {
 
               <div className="practice-stage__main">
                 <QuestionFlowCard
+                  caseItem={currentCase}
                   questions={currentCase.questions_flow ?? []}
                   currentStepIndex={currentStepIndex}
                   currentStep={currentStep}

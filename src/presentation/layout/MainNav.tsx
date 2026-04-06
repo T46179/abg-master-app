@@ -29,7 +29,7 @@ export function MainNav(props: MainNavProps) {
   return (
     <header className="main-nav">
       <div className="main-nav__inner">
-        <div className="main-nav__brand">
+        <NavLink className="main-nav__brand" to="/" end>
           <span className="main-nav__brand-mark" aria-hidden="true">
             <Droplet />
           </span>
@@ -37,7 +37,7 @@ export function MainNav(props: MainNavProps) {
             <div className="main-nav__brand-title">ABG Master</div>
             {props.showBetaBadge ? <span className="main-nav__beta-badge">Beta</span> : null}
           </div>
-        </div>
+        </NavLink>
 
         <nav className="main-nav__desktop" aria-label="Primary">
           {navItems.map(item => {

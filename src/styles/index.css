@@ -375,7 +375,7 @@ button:disabled {
 .progress-bar__fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #e7e4e7 0%, #79697b 100%);
+  background: linear-gradient(90deg, #f4c09d 0%, #e8956f 52%, #d86f57 100%);
 }
 
 .progress-bar__fill--animated {
@@ -705,7 +705,7 @@ button:disabled {
 }
 
 .dashboard-feedback-banner__action:hover {
-  background: #ffffff;
+  background: #e3e7e8;
 }
 
 .dashboard-stats-grid,
@@ -1545,6 +1545,17 @@ button:disabled {
   outline: 2px solid rgba(239, 68, 68, 0.18);
   border-color: #ef4444;
   background: #fff7f7;
+}
+
+.launch-notify-input.is-valid {
+  border-color: #93c5fd;
+  background: #f8fbff;
+}
+
+.launch-notify-input.is-valid:focus {
+  outline: 2px solid rgba(59, 130, 246, 0.2);
+  border-color: #60a5fa;
+  background: #ffffff;
 }
 
 .launch-notify-help,
