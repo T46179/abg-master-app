@@ -99,6 +99,10 @@ describe("AppProvider protected practice recovery", () => {
     return container.querySelector("[data-testid='sync-state']")?.textContent;
   }
 
+  function syncMessageText() {
+    return container.querySelector("[data-testid='sync-message']")?.textContent;
+  }
+
   beforeEach(() => {
     vi.useFakeTimers();
     localStorage.clear();
@@ -163,6 +167,7 @@ describe("AppProvider protected practice recovery", () => {
     await flush();
 
     expect(syncStateText()).toBe("idle");
+    expect(syncMessageText()).toBe("This unsaved case expired. Please start a new one.");
     expect(loadPendingPracticeSubmission(localStorage)).toBeNull();
     expect(submitProtectedPracticeCase).not.toHaveBeenCalled();
   });
@@ -185,6 +190,7 @@ describe("AppProvider protected practice recovery", () => {
     await flush();
 
     expect(syncStateText()).toBe("idle");
+    expect(syncMessageText()).toBe("This unsaved case no longer matches the current content. Please start a new one.");
     expect(loadPendingPracticeSubmission(localStorage)).toBeNull();
     expect(submitProtectedPracticeCase).not.toHaveBeenCalled();
   });

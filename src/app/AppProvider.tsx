@@ -92,7 +92,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
 
         startTransition(() => {
-          const pendingSubmission = loadPendingPracticeSubmission(window.localStorage);
+          let practiceSlotsByDifficulty = loadPracticeSlotsCache(window.localStorage, payload.contentVersion);
+          let pendingSubmission = loadPendingPracticeSubmission(window.localStorage);
+          let syncState: PracticeFlowState["syncState"] = pendingSubmission ? "pending_retry" : "idle";
+          let syncMessage: string | null = null;
+
+          if (pendingSubmission) {
+            const invalidReason = getPendingSubmissionInvalidReason(pendingSubmission, payload.contentVersion);
+            if (invalidReason === "expired") {
+              clearPendingPracticeSubmission(window.localStorage);
+              practiceSlotsByDifficulty = clearPracticeSlotCache(
+                window.localStorage,
+                practiceSlotsByDifficulty,
+                pendingSubmission.difficultyKey,
+                pendingSubmission.caseToken
+              );
+              pendingSubmission = null;
+              syncState = "idle";
+              syncMessage = "This unsaved case expired. Please start a new one.";
+            } else if (invalidReason === "content_mismatch") {
+              clearPendingPracticeSubmission(window.localStorage);
+              practiceSlotsByDifficulty = clearPracticeSlotCache(
+                window.localStorage,
+                practiceSlotsByDifficulty,
+                pendingSubmission.difficultyKey,
+                pendingSubmission.caseToken
+              );
+              pendingSubmission = null;
+              syncState = "idle";
+              syncMessage = "This unsaved case no longer matches the current content. Please start a new one.";
+            }
+          }
+
           dispatch({
             type: "ready",
             payload: {
@@ -105,9 +136,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               },
               practiceState: {
                 ...initialAppState.practiceState,
-                practiceSlotsByDifficulty: loadPracticeSlotsCache(window.localStorage, payload.contentVersion),
+                practiceSlotsByDifficulty,
                 pendingSubmission,
-                syncState: pendingSubmission ? "pending_retry" : "idle"
+                syncState,
+                syncMessage
               },
               storage,
               supabase: supabaseRuntime.supabase,

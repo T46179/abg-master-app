@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { composeStructuredExplanation } from "../_shared/explanations.ts";
 import {
   buildIssuedSlot,
   buildSummary,
@@ -117,10 +118,14 @@ Deno.serve(async req => {
       answerKey,
       answers: Array.isArray(body.answers) ? body.answers : []
     });
-    const structuredExplanation = publishedCase.grading_payload?.structured_explanation ?? {
-      overview: "",
-      sections: []
-    };
+    const structuredExplanation = composeStructuredExplanation({
+      publicPayload: {
+        ...publishedCase.public_payload,
+        answer_key: answerKey
+      },
+      explanationBlueprint: publishedCase.grading_payload?.explanation_blueprint ?? [],
+      stepResults: grading.stepResults
+    });
     const summary = buildSummary({
       session,
       publicPayload: publishedCase.public_payload,

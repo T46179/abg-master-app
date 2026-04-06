@@ -5,6 +5,7 @@ import { shouldConfirmDifficultySwitch, shouldShowPracticeIntro } from "../../ap
 import { trackEvent } from "../../core/analytics";
 import { openCaseFeedbackForm } from "../../core/feedback";
 import { shouldShowMetricReferences } from "../../core/metrics";
+import { buildConciseStepFeedback } from "../../core/explanations";
 import {
   applyProtectedCaseCompletion,
   buildPendingPracticeSubmission,
@@ -91,7 +92,9 @@ export function ProtectedPracticeScreen() {
   const currentResult = allowsClientSideFeedback ? state.sessionState.stepResults[currentStepIndex] ?? null : null;
   const currentOptions = currentStep?.options ?? [];
   const totalSteps = currentCase?.questions_flow?.length ?? 0;
-  const hasAnsweredSteps = state.sessionState.stepResults.some(result => Boolean(result));
+  const hasAnsweredSteps = allowsClientSideFeedback
+    ? state.sessionState.stepResults.some(result => Boolean(result))
+    : state.sessionState.selectedAnswers.some(result => Boolean(result));
   const showSummaryReferences = Boolean(summary && shouldShowMetricReferences(summary.caseData, state.sessionState.showAdvancedRanges));
   const currentDifficultyLevel = Number(currentCase?.difficulty_level ?? summary?.caseData.difficulty_level ?? 1);
   const showAbnormalHighlighting = currentDifficultyLevel <= 3;
@@ -392,7 +395,8 @@ export function ProtectedPracticeScreen() {
         prompt: currentStep.prompt,
         chosen: option,
         correctAnswer: getCorrectAnswer(currentCase, currentStep.key),
-        correct: isCorrectAnswer(currentCase, currentStep.key, option)
+        correct: isCorrectAnswer(currentCase, currentStep.key, option),
+        feedback: buildConciseStepFeedback(currentCase, currentStep.key)
       };
 
       patchSessionState({

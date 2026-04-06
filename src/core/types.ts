@@ -99,14 +99,47 @@ export interface QuestionFlowStep {
   options?: string[];
 }
 
-export interface ExplanationSection {
+export const EXPLANATION_DOMAINS = [
+  "ph_status",
+  "primary_disorder",
+  "compensation",
+  "anion_gap",
+  "additional_metabolic_process",
+  "diagnosis",
+  "clinical_context"
+] as const;
+
+export type ExplanationDomain = typeof EXPLANATION_DOMAINS[number];
+export type ExplanationVariant = "beginner" | "intermediate" | "advanced" | "master";
+export type ExplanationKind = "core_reasoning" | "diagnosis" | "clinical_context";
+
+export interface ExplanationBlueprintEntry {
+  domain: ExplanationDomain;
+  variant: ExplanationVariant;
   title: string;
   body: string;
+  order: number;
+  kind?: ExplanationKind;
+  stepKey?: string | null;
+}
+
+export interface ExplanationSection {
+  key: ExplanationDomain;
+  title: string;
+  body: string;
+  order: number;
 }
 
 export interface StructuredExplanation {
   overview: string;
   sections: ExplanationSection[];
+}
+
+export interface StepFeedbackEntry {
+  key: ExplanationDomain;
+  title: string;
+  body: string;
+  order: number;
 }
 
 export interface CaseData {
@@ -122,6 +155,8 @@ export interface CaseData {
   inputs?: CaseInputs;
   answer_key?: Record<string, string>;
   questions_flow?: QuestionFlowStep[];
+  explanation_blueprint?: ExplanationBlueprintEntry[];
+  step_feedback?: Record<string, StepFeedbackEntry>;
   explanation?: string | StructuredExplanation;
 }
 
@@ -159,6 +194,7 @@ export interface StepResult {
   chosen: string;
   correctAnswer: string;
   correct: boolean;
+  feedback?: StepFeedbackEntry | null;
 }
 
 export interface AnswerSelection {

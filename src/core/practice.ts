@@ -7,6 +7,7 @@ import {
   syncUserStateDerivedFields
 } from "./progression";
 import { markCaseSeen } from "./selection";
+import { composeCaseStructuredExplanation } from "./explanations";
 import type { CaseData, CaseSummary, ProgressionConfig, StepResult, StructuredExplanation, UserState } from "./types";
 
 export function prettyStepLabel(stepKey: string): string {
@@ -52,7 +53,7 @@ export function normalizeStructuredExplanation(explanation: unknown): Structured
   if (explanation && typeof explanation === "object" && !Array.isArray(explanation)) {
     const typedExplanation = explanation as {
       overview?: unknown;
-      sections?: Array<{ title?: unknown; body?: unknown }>;
+      sections?: Array<{ key?: unknown; title?: unknown; body?: unknown; order?: unknown }>;
     };
 
     return {
@@ -60,10 +61,12 @@ export function normalizeStructuredExplanation(explanation: unknown): Structured
       sections: Array.isArray(typedExplanation.sections)
         ? typedExplanation.sections
             .map(section => ({
+              key: String(section?.key ?? "").trim() as StructuredExplanation["sections"][number]["key"],
               title: String(section?.title ?? "").trim(),
-              body: String(section?.body ?? "").trim()
+              body: String(section?.body ?? "").trim(),
+              order: Number(section?.order ?? 0)
             }))
-            .filter(section => section.title && section.body)
+            .filter(section => section.key && section.title && section.body)
         : []
     };
   }
@@ -77,9 +80,12 @@ export function normalizeStructuredExplanation(explanation: unknown): Structured
 export function canUseClientSidePracticeFeedback(caseItem: CaseData | null | undefined): boolean {
   return Boolean(
     caseItem &&
-    caseItem.protected_payload_mode === "practice_learning" &&
+    Number(caseItem.difficulty_level ?? 1) <= 2 &&
+    (!caseItem.protected_payload_mode || caseItem.protected_payload_mode === "practice_learning") &&
     caseItem.answer_key &&
-    Object.keys(caseItem.answer_key).length
+    Object.keys(caseItem.answer_key).length &&
+    caseItem.step_feedback &&
+    Object.keys(caseItem.step_feedback).length
   );
 }
 
@@ -155,7 +161,9 @@ export function createCaseSummary(input: {
     caseId: input.caseItem.case_id,
     title: input.caseItem.title ?? "ABG Case",
     difficulty: input.difficultyLabel,
-    explanation: normalizeStructuredExplanation(input.caseItem.explanation),
+    explanation: input.caseItem.explanation_blueprint?.length
+      ? composeCaseStructuredExplanation(input.caseItem, input.stepResults)
+      : normalizeStructuredExplanation(input.caseItem.explanation),
     learningObjective: input.caseItem.learning_objective ?? "Review the reasoning steps and pattern recognition for this case.",
     elapsedSeconds: input.elapsedSeconds,
     accuracy,

@@ -26,6 +26,10 @@ export function InlineFeedbackCard(props: InlineFeedbackCardProps) {
         </div>
       </div>
 
+      {props.result.feedback?.body ? (
+        <p className="inline-feedback__note">{props.result.feedback.body}</p>
+      ) : null}
+
       <button
         className="figma-button inline-feedback__button"
         type="button"

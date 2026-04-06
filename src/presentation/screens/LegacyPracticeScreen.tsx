@@ -4,9 +4,10 @@ import { useAppContext } from "../../app/AppProvider";
 import { shouldConfirmDifficultySwitch, shouldShowPracticeIntro } from "../../app/viewHelpers";
 import { trackEvent } from "../../core/analytics";
 import { createAttemptRecord } from "../../core/attempts";
+import { buildConciseStepFeedback } from "../../core/explanations";
 import { openCaseFeedbackForm } from "../../core/feedback";
 import { shouldShowMetricReferences } from "../../core/metrics";
-import { applyPracticeOutcome, getCorrectAnswer, isCorrectAnswer, prettyStepLabel } from "../../core/practice";
+import { applyPracticeOutcome, canUseClientSidePracticeFeedback, getCorrectAnswer, isCorrectAnswer, prettyStepLabel } from "../../core/practice";
 import {
   buildStepOptionOverrides,
   createEmptySeenCasesState,
@@ -65,12 +66,16 @@ export function LegacyPracticeScreen() {
   const summary = state.practiceState.lastCaseSummary;
   const currentStepIndex = state.sessionState.currentStepIndex;
   const currentStep = currentCase?.questions_flow?.[currentStepIndex] ?? null;
-  const currentResult = state.sessionState.stepResults[currentStepIndex] ?? null;
+  const allowsClientSideFeedback = canUseClientSidePracticeFeedback(currentCase);
+  const currentSelection = allowsClientSideFeedback ? null : state.sessionState.selectedAnswers[currentStepIndex] ?? null;
+  const currentResult = allowsClientSideFeedback ? state.sessionState.stepResults[currentStepIndex] ?? null : null;
   const currentOptions = currentStep
     ? state.sessionState.stepOptionOverrides[currentStepIndex] ?? currentStep.options ?? []
     : [];
   const totalSteps = currentCase?.questions_flow?.length ?? 0;
-  const hasAnsweredSteps = state.sessionState.stepResults.some(result => Boolean(result));
+  const hasAnsweredSteps = allowsClientSideFeedback
+    ? state.sessionState.stepResults.some(result => Boolean(result))
+    : state.sessionState.selectedAnswers.some(result => Boolean(result));
   const activeCaseDifficulty = currentCase
     ? getDifficultyLabel(payload?.progressionConfig ?? null, Number(currentCase.difficulty_level ?? 1))
     : normalizedDifficulty;
@@ -315,7 +320,25 @@ export function LegacyPracticeScreen() {
   }
 
   function handleAnswer(option: string) {
-    if (!currentCase || !currentStep || currentResult) return;
+    if (!currentCase || !currentStep || currentResult || currentSelection) return;
+
+    if (!allowsClientSideFeedback) {
+      const nextSelections = [...state.sessionState.selectedAnswers];
+      nextSelections[currentStepIndex] = {
+        key: currentStep.key,
+        label: currentStep.label ?? prettyStepLabel(currentStep.key),
+        prompt: currentStep.prompt,
+        chosen: option
+      };
+      patchSessionState({ selectedAnswers: nextSelections });
+
+      trackEvent("step_answered", {
+        case_id: currentCase.case_id,
+        step: currentStep.key,
+        correct: null
+      });
+      return;
+    }
 
     const stepResult: StepResult = {
       key: currentStep.key,
@@ -323,7 +346,8 @@ export function LegacyPracticeScreen() {
       prompt: currentStep.prompt,
       chosen: option,
       correctAnswer: getCorrectAnswer(currentCase, currentStep.key),
-      correct: isCorrectAnswer(currentCase, currentStep.key, option)
+      correct: isCorrectAnswer(currentCase, currentStep.key, option),
+      feedback: buildConciseStepFeedback(currentCase, currentStep.key)
     };
 
     const nextResults = [...state.sessionState.stepResults];
@@ -343,7 +367,21 @@ export function LegacyPracticeScreen() {
     const elapsedSeconds = state.sessionState.caseStartMs
       ? Math.max(0, (Date.now() - state.sessionState.caseStartMs) / 1000)
       : 0;
-    const stepResults = state.sessionState.stepResults.filter((result): result is StepResult => Boolean(result));
+    const stepResults = allowsClientSideFeedback
+      ? state.sessionState.stepResults.filter((result): result is StepResult => Boolean(result))
+      : (currentCase.questions_flow ?? []).map((step, index) => {
+          const selection = state.sessionState.selectedAnswers[index];
+          const chosen = selection?.chosen ?? "";
+          return {
+            key: step.key,
+            label: step.label ?? prettyStepLabel(step.key),
+            prompt: step.prompt,
+            chosen,
+            correctAnswer: getCorrectAnswer(currentCase, step.key),
+            correct: isCorrectAnswer(currentCase, step.key, chosen),
+            feedback: null
+          } satisfies StepResult;
+        });
     const seenCasesByDifficulty = state.storage?.loadSeenCaseState() ?? createEmptySeenCasesState();
     const outcome = applyPracticeOutcome({
       caseItem: currentCase,
@@ -482,10 +520,10 @@ export function LegacyPracticeScreen() {
                   questions={currentCase.questions_flow ?? []}
                   currentStepIndex={currentStepIndex}
                   currentStep={currentStep}
-                  currentSelection={null}
+                  currentSelection={currentSelection}
                   currentResult={currentResult}
                   currentOptions={currentOptions}
-                  selectedAnswers={[]}
+                  selectedAnswers={allowsClientSideFeedback ? [] : state.sessionState.selectedAnswers}
                   stepResults={state.sessionState.stepResults}
                   onAnswer={handleAnswer}
                   onContinueStep={handleContinueStep}

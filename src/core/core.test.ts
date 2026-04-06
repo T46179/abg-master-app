@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAttemptRecord, getFinalDiagnosisCorrect, mapStepResultsToAttemptStepResults } from "./attempts";
+import { composeCaseStructuredExplanation } from "./explanations";
 import { getCaseFeedbackFormUrl } from "./feedback";
 import { getVisibleCaseMetrics } from "./metrics";
-import { applyPracticeOutcome } from "./practice";
+import { applyPracticeOutcome, canUseClientSidePracticeFeedback } from "./practice";
 import { applyProtectedCaseCompletion } from "./protectedPractice";
 import {
   clearPracticeSlotCache,
@@ -59,6 +60,64 @@ const sampleCase: CaseData = {
     { key: "ph_status", options: ["Acidaemia", "Alkalaemia"] },
     { key: "final_diagnosis", options: ["Sepsis", "COPD", "Sepsis"] }
   ]
+};
+
+const beginnerCase: CaseData = {
+  case_id: "case-beginner",
+  title: "Beginner ABG",
+  archetype: "simple_nagma",
+  difficulty_level: 1,
+  protected_payload_mode: "practice_learning",
+  answer_key: {
+    ph_status: "Acidaemia",
+    primary_disorder: "Metabolic acidosis"
+  },
+  questions_flow: [
+    { key: "ph_status", options: ["Acidaemia", "Alkalaemia"] },
+    { key: "primary_disorder", options: ["Metabolic acidosis", "Respiratory acidosis"] }
+  ],
+  explanation_blueprint: [
+    {
+      domain: "ph_status",
+      variant: "beginner",
+      title: "pH status",
+      body: "pH is 7.21, so this is acidaemia. The overall direction is acidic.",
+      order: 1,
+      kind: "core_reasoning",
+      stepKey: "ph_status"
+    },
+    {
+      domain: "primary_disorder",
+      variant: "beginner",
+      title: "Primary disorder",
+      body: "HCO3 is low, which supports a primary metabolic acidosis.",
+      order: 2,
+      kind: "core_reasoning",
+      stepKey: "primary_disorder"
+    },
+    {
+      domain: "diagnosis",
+      variant: "beginner",
+      title: "Diagnosis",
+      body: "This pattern fits gastrointestinal bicarbonate loss.",
+      order: 3,
+      kind: "diagnosis"
+    }
+  ],
+  step_feedback: {
+    ph_status: {
+      key: "ph_status",
+      title: "pH status",
+      body: "pH is 7.21, so this is acidaemia.",
+      order: 1
+    },
+    primary_disorder: {
+      key: "primary_disorder",
+      title: "Primary disorder",
+      body: "HCO3 is low, which supports a primary metabolic acidosis.",
+      order: 2
+    }
+  }
 };
 
 function createUserState(overrides: Partial<UserState> = {}): UserState {
@@ -288,6 +347,62 @@ describe("practice outcome", () => {
     expect(twice.xp).toBe(30);
     expect(twice.casesCompleted).toBe(1);
     expect(twice.appliedProtectedCaseTokens).toEqual(["token-1"]);
+  });
+
+  it("composes structured explanations from blueprint data for legacy summaries", () => {
+    const summary = applyPracticeOutcome({
+      caseItem: beginnerCase,
+      userState: createUserState(),
+      progressionConfig: {
+        difficulty_labels: { 1: "beginner" },
+        xp_required_per_level: { 1: 30 }
+      },
+      seenCasesByDifficulty: { beginner: [], intermediate: [], advanced: [], master: [] },
+      stepResults: [
+        { key: "ph_status", label: "pH status", chosen: "Acidaemia", correctAnswer: "Acidaemia", correct: true },
+        { key: "primary_disorder", label: "Primary disorder", chosen: "Metabolic acidosis", correctAnswer: "Metabolic acidosis", correct: true }
+      ],
+      elapsedSeconds: 10,
+      timedMode: false,
+      now: new Date("2026-03-26T00:00:00Z")
+    }).summary;
+
+    expect(summary.explanation.overview).toContain("gastrointestinal bicarbonate loss");
+    expect(summary.explanation.sections.map(section => section.key)).toEqual([
+      "ph_status",
+      "primary_disorder",
+      "diagnosis"
+    ]);
+  });
+});
+
+describe("explanations", () => {
+  it("only enables inline client-side feedback for beginner/intermediate practice_learning cases with step feedback", () => {
+    expect(canUseClientSidePracticeFeedback(beginnerCase)).toBe(true);
+    expect(canUseClientSidePracticeFeedback(sampleCase)).toBe(false);
+  });
+
+  it("reintroduces advanced ph status only when that step was missed", () => {
+    const advancedCase: CaseData = {
+      ...sampleCase,
+      explanation_blueprint: [
+        { domain: "compensation", variant: "advanced", title: "Compensation", body: "Compensation mismatch points to more than one process.", order: 1, kind: "core_reasoning", stepKey: "compensation" },
+        { domain: "anion_gap", variant: "advanced", title: "Anion gap", body: "The anion gap is raised.", order: 2, kind: "core_reasoning", stepKey: "anion_gap" },
+        { domain: "diagnosis", variant: "advanced", title: "Diagnosis", body: "This fits a mixed process.", order: 3, kind: "diagnosis", stepKey: "final_diagnosis" },
+        { domain: "ph_status", variant: "advanced", title: "pH status", body: "pH is acidaemic.", order: 4, kind: "core_reasoning", stepKey: "ph_status" },
+        { domain: "primary_disorder", variant: "advanced", title: "Primary disorder", body: "PaCO2 is elevated.", order: 5, kind: "core_reasoning", stepKey: "primary_disorder" }
+      ]
+    };
+
+    const withoutMiss = composeCaseStructuredExplanation(advancedCase, [
+      { key: "ph_status", label: "pH status", chosen: "Acidaemia", correctAnswer: "Acidaemia", correct: true }
+    ]);
+    const withMiss = composeCaseStructuredExplanation(advancedCase, [
+      { key: "ph_status", label: "pH status", chosen: "Alkalaemia", correctAnswer: "Acidaemia", correct: false }
+    ]);
+
+    expect(withoutMiss.sections.map(section => section.key)).not.toContain("ph_status");
+    expect(withMiss.sections.map(section => section.key)).toContain("ph_status");
   });
 });
 

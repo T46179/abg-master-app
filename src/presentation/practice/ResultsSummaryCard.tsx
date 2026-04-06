@@ -37,7 +37,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
             <span className="section-header__eyebrow">Case review</span>
             <p>{props.summary.explanation.overview}</p>
             {props.summary.explanation.sections.map(section => (
-              <div key={`${section.title}-${section.body}`} className="results-review-card__section">
+              <div key={`${section.key}-${section.order}`} className="results-review-card__section">
                 <strong>{section.title}</strong>
                 <p>{section.body}</p>
               </div>
