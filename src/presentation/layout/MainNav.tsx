@@ -1,4 +1,4 @@
-import { Droplet, GraduationCap, LayoutDashboard, Menu, X } from "lucide-react";
+import { Bell, Droplet, GraduationCap, LayoutDashboard, Menu, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "../utils";
 
@@ -6,6 +6,7 @@ interface MainNavProps {
   mobileOpen: boolean;
   onToggleMobile: () => void;
   onCloseMobile: () => void;
+  onOpenStayUpdated: () => void;
   learnEnabled: boolean;
   showBetaBadge: boolean;
 }
@@ -61,15 +62,31 @@ export function MainNav(props: MainNavProps) {
           })}
         </nav>
 
-        <button
-          className="main-nav__toggle"
-          type="button"
-          aria-label={props.mobileOpen ? "Close navigation menu" : "Open navigation menu"}
-          aria-expanded={props.mobileOpen}
-          onClick={props.onToggleMobile}
-        >
-          {props.mobileOpen ? <X /> : <Menu />}
-        </button>
+        <div className="main-nav__controls">
+          <button className="main-nav__stay-updated" type="button" onClick={props.onOpenStayUpdated}>
+            <Bell className="main-nav__link-icon" />
+            <span>Stay Updated</span>
+          </button>
+
+          <button
+            className="main-nav__mobile-stay-updated"
+            type="button"
+            aria-label="Stay Updated"
+            onClick={props.onOpenStayUpdated}
+          >
+            <Bell />
+          </button>
+
+          <button
+            className="main-nav__toggle"
+            type="button"
+            aria-label={props.mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={props.mobileOpen}
+            onClick={props.onToggleMobile}
+          >
+            {props.mobileOpen ? <X /> : <Menu />}
+          </button>
+        </div>
 
         <nav className={cn("main-nav__mobile", props.mobileOpen && "is-open")} aria-label="Mobile navigation">
           {navItems.map(item => {

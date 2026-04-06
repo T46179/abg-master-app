@@ -167,6 +167,13 @@ button:disabled {
   display: none;
 }
 
+.main-nav__controls {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
 .main-nav__link,
 .main-nav__mobile-link {
   display: inline-flex;
@@ -202,8 +209,31 @@ button:disabled {
   height: 1rem;
 }
 
+.main-nav__stay-updated {
+  display: none;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.2rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--color-text-soft);
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.5;
+  white-space: nowrap;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.main-nav__stay-updated:hover {
+  background: #e3e7e8;
+  transform: translateY(-1px);
+}
+
+.main-nav__mobile-stay-updated,
 .main-nav__toggle {
-  justify-self: end;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -213,6 +243,12 @@ button:disabled {
   border-radius: 999px;
   background: var(--color-surface);
   color: var(--color-text);
+}
+
+.main-nav__mobile-stay-updated svg,
+.main-nav__toggle svg {
+  width: 1.2rem;
+  height: 1.2rem;
 }
 
 .main-nav__mobile {
@@ -1414,6 +1450,145 @@ button:disabled {
   min-width: 11rem;
 }
 
+.launch-notify-modal {
+  position: relative;
+  width: min(100%, 41rem);
+  padding: 1.75rem;
+}
+
+.launch-notify-modal__close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-soft);
+}
+
+.launch-notify-modal__close:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.launch-notify-modal__header {
+  display: grid;
+  gap: 0.2rem;
+  padding-right: 2.6rem;
+}
+
+.launch-notify-modal__title {
+  color: #4b585b;
+}
+
+.launch-notify-modal__header p {
+  max-width: 31rem;
+  margin-top: 0.4rem;
+}
+
+.launch-notify-stack {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 1.5rem;
+}
+
+.launch-notify-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.launch-notify-input {
+  width: 100%;
+  min-height: 3.2rem;
+  padding: 0 1rem;
+  border: 1px solid #d7dddd;
+  border-radius: 0.95rem;
+  background: #f9fbfb;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.launch-notify-input::placeholder {
+  color: #76888b;
+}
+
+.launch-notify-input:focus {
+  outline: 2px solid rgba(59, 130, 246, 0.2);
+  outline-offset: 1px;
+  border-color: #93c5fd;
+  background: #ffffff;
+}
+
+.launch-notify-input.is-invalid {
+  border-color: #f2a4a4;
+  background: #fef2f2;
+  color: #7f1d1d;
+}
+
+.launch-notify-input.is-invalid::placeholder {
+  color: #b46a6a;
+}
+
+.launch-notify-input.is-invalid:focus {
+  outline: 2px solid rgba(239, 68, 68, 0.18);
+  border-color: #ef4444;
+  background: #fff7f7;
+}
+
+.launch-notify-help,
+.launch-notify-error,
+.launch-notify-success {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.launch-notify-help {
+  color: var(--color-text-soft);
+  margin-top: 0.1rem;
+}
+
+.launch-notify-error {
+  color: #dc2626;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.launch-notify-actions {
+  display: flex;
+  margin-top: 0.15rem;
+}
+
+.launch-notify-actions__submit {
+  width: 100%;
+}
+
+.launch-notify-success {
+  margin-top: 1.5rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(22, 163, 74, 0.18);
+  border-radius: 1rem;
+  background: #effcf3;
+  color: #166534;
+  font-weight: 600;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
 .learn-screen__grid {
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
 }
@@ -1580,6 +1755,11 @@ button:disabled {
     gap: 0.25rem;
   }
 
+  .main-nav__stay-updated {
+    display: inline-flex;
+  }
+
+  .main-nav__mobile-stay-updated,
   .main-nav__toggle,
   .main-nav__mobile {
     display: none !important;
@@ -1604,6 +1784,10 @@ button:disabled {
   .main-nav__inner {
     grid-template-columns: 1fr auto;
   }
+
+  .main-nav__stay-updated {
+    display: none;
+  }
 }
 
 @media (max-width: 639px) {
@@ -1613,6 +1797,14 @@ button:disabled {
 
   .practice-intro-modal {
     padding: 1.2rem;
+  }
+
+  .launch-notify-modal {
+    padding: 1.15rem;
+  }
+
+  .launch-notify-modal__header {
+    padding-right: 2.2rem;
   }
 
   .dashboard-feedback-banner {

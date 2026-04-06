@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
-import { trackPageView } from "../../core/analytics";
+import { trackEvent, trackPageView } from "../../core/analytics";
 import { canAccessLearn, getReleaseFlags } from "../../core/progression";
 import { Surface } from "../primitives/Surface";
+import { LaunchNotifyModal } from "./LaunchNotifyModal";
 import { MainNav } from "./MainNav";
 
 export function AppShell() {
   const { state, patchSessionState, retryPendingSubmissionNow, discardPendingSubmission } = useAppContext();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [launchNotifyOpen, setLaunchNotifyOpen] = useState(false);
+  const [launchNotifySubmitting, setLaunchNotifySubmitting] = useState(false);
+  const [launchNotifySubmitted, setLaunchNotifySubmitted] = useState(false);
+  const [launchNotifyError, setLaunchNotifyError] = useState("");
   const learnEnabled = canAccessLearn({
     progressionConfig: state.payload?.progressionConfig ?? null,
     dashboardState: state.payload?.dashboardState ?? null,
@@ -39,14 +44,66 @@ export function AppShell() {
     discardPendingSubmission();
   }
 
+  function handleOpenStayUpdated() {
+    setMobileOpen(false);
+    setLaunchNotifyError("");
+    setLaunchNotifySubmitted(false);
+    setLaunchNotifyOpen(true);
+  }
+
+  function handleCloseStayUpdated() {
+    setLaunchNotifyOpen(false);
+    setLaunchNotifySubmitting(false);
+    setLaunchNotifyError("");
+    setLaunchNotifySubmitted(false);
+  }
+
+  async function handleLaunchNotifySubmit(email: string) {
+    setLaunchNotifySubmitting(true);
+    setLaunchNotifyError("");
+
+    try {
+      const response = await fetch("https://submit-form.com/8T8RZZaL6", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ email })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Launch notify submit failed: ${response.status}`);
+      }
+
+      setLaunchNotifySubmitted(true);
+      trackEvent("launch_notify_submitted");
+    } catch (error) {
+      console.warn("Launch notify signup failed.", error);
+      setLaunchNotifyError("That didn't work. Please try again.");
+    } finally {
+      setLaunchNotifySubmitting(false);
+    }
+  }
+
   return (
     <div className="app-shell">
       <MainNav
         mobileOpen={mobileOpen}
         onToggleMobile={() => setMobileOpen(value => !value)}
         onCloseMobile={() => setMobileOpen(false)}
+        onOpenStayUpdated={handleOpenStayUpdated}
         learnEnabled={learnEnabled}
         showBetaBadge={releaseFlags.enable_beta_badge}
+      />
+
+      <LaunchNotifyModal
+        open={launchNotifyOpen}
+        onClose={handleCloseStayUpdated}
+        onSubmit={handleLaunchNotifySubmit}
+        isSubmitting={launchNotifySubmitting}
+        isSubmitted={launchNotifySubmitted}
+        error={launchNotifyError}
       />
 
       <div className="app-shell__status-stack">
