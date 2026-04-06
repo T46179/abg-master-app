@@ -3,7 +3,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ResultsSummaryCard } from "./ResultsSummaryCard";
+import { ResultsSummaryCard, ResultsSummaryHeader } from "./ResultsSummaryCard";
 import type { CaseData, CaseSummary } from "../../core/types";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -105,11 +105,9 @@ describe("ResultsSummaryCard", () => {
       );
     });
 
-    expect(container.textContent).toContain("You scored 80% and earned 25 XP.");
-    expect(container.textContent).toContain("62.0s");
     expect(container.textContent).toContain("Diagnosis");
-    expect(container.textContent).toContain("Mixed disorder");
-    expect(container.textContent).toContain("HAGMA + metabolic alkalosis (DKA + vomiting)");
+    expect(container.textContent).toContain("Mixed Disorder");
+    expect(container.textContent).toContain("HAGMA + Metabolic Alkalosis (DKA + Vomiting)");
     expect(container.textContent).toContain("Detailed Explanation");
     expect(container.textContent).toContain("Anion Gap Analysis");
     expect(container.textContent).toContain("Raised anion gap explanation.");
@@ -118,6 +116,7 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).toContain("Clinical Significance");
     expect(container.textContent).toContain("Diagnosis significance.");
     expect(container.textContent).toContain("Key Takeaway");
+    expect(container.textContent).toContain("62.0s");
     expect(container.textContent).toContain("Answer review");
     expect(container.textContent).toContain("pH status");
     expect(container.textContent).toContain("You chose Acidaemia. Correct answer: Acidaemia.");
@@ -185,5 +184,27 @@ describe("ResultsSummaryCard", () => {
 
     expect(container.textContent).toContain("NAGMA");
     expect(container.textContent).not.toContain("Diarrhoea");
+  });
+
+  it("renders the combined summary header with the XP progress bar", () => {
+    const summary = buildSummary([]);
+
+    act(() => {
+      root.render(
+        <ResultsSummaryHeader
+          summary={summary}
+          level={21}
+          xpProgressLabel="120 / 200 XP"
+          progressValue={60}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("Case complete");
+    expect(container.textContent).toContain("You scored 80% and earned 25 XP.");
+    expect(container.textContent).not.toContain("62.0s");
+    expect(container.textContent).toContain("Level 21");
+    expect(container.textContent).toContain("120 / 200 XP");
+    expect(container.querySelector(".progress-bar__fill")).not.toBeNull();
   });
 });

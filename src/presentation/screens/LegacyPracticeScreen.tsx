@@ -33,12 +33,11 @@ import {
   syncUserStateDerivedFields
 } from "../../core/progression";
 import type { StepResult } from "../../core/types";
-import { ProgressBar } from "../primitives/ProgressBar";
 import { Surface } from "../primitives/Surface";
 import { PracticeDifficultyRail } from "../practice/PracticeDifficultyRail";
 import { PracticeIntroModal } from "../practice/PracticeIntroModal";
 import { QuestionFlowCard } from "../practice/QuestionFlowCard";
-import { ResultsSummaryCard } from "../practice/ResultsSummaryCard";
+import { ResultsSummaryCard, ResultsSummaryHeader } from "../practice/ResultsSummaryCard";
 import { ScenarioCard } from "../practice/ScenarioCard";
 import { ValuePanels } from "../practice/ValuePanels";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
@@ -515,13 +514,12 @@ export function LegacyPracticeScreen() {
       <main className="app-shell__page practice-screen">
         <div className="practice-screen__container">
           {summary ? (
-            <Surface className="dashboard-progress-card">
-              <div className="dashboard-progress-card__meta">
-                <span>Level {state.userState.level}</span>
-                <span>{finalLevelProgress.xpIntoLevel} / {finalLevelProgress.xpForNextLevel || finalLevelProgress.xpIntoLevel} XP</span>
-              </div>
-              <ProgressBar value={displayedResultsProgress ?? resultsStartProgress} animate />
-            </Surface>
+            <ResultsSummaryHeader
+              summary={summary}
+              level={state.userState.level}
+              xpProgressLabel={`${finalLevelProgress.xpIntoLevel} / ${finalLevelProgress.xpForNextLevel || finalLevelProgress.xpIntoLevel} XP`}
+              progressValue={displayedResultsProgress ?? resultsStartProgress}
+            />
           ) : (
             <PracticeDifficultyRail items={difficultyItems} />
           )}

@@ -5,34 +5,34 @@ import { formatElapsed, splitMetrics } from "../../app/viewHelpers";
 import { MetricLabel, MetricReference, MetricValue } from "./MetricText";
 
 const DIAGNOSIS_DISPLAY = {
-  dka: { main: "HAGMA", sub: "Diabetic ketoacidosis" },
-  dka_vomiting: { main: "Mixed disorder", sub: "HAGMA + metabolic alkalosis (DKA + vomiting)" },
-  alcoholic_ketoacidosis: { main: "HAGMA", sub: "Alcoholic ketoacidosis" },
-  starvation_ketosis: { main: "HAGMA", sub: "Starvation ketosis" },
-  lactic_acidosis: { main: "HAGMA", sub: "Lactic acidosis" },
+  dka: { main: "HAGMA", sub: "Diabetic Ketoacidosis" },
+  dka_vomiting: { main: "Mixed Disorder", sub: "HAGMA + Metabolic Alkalosis (DKA + Vomiting)" },
+  alcoholic_ketoacidosis: { main: "HAGMA", sub: "Alcoholic Ketoacidosis" },
+  starvation_ketosis: { main: "HAGMA", sub: "Starvation Ketosis" },
+  lactic_acidosis: { main: "HAGMA", sub: "Lactic Acidosis" },
   uraemia: { main: "HAGMA", sub: "Uraemia" },
-  toxic_alcohol: { main: "HAGMA", sub: "Toxic alcohol ingestion" },
+  toxic_alcohol: { main: "HAGMA", sub: "Toxic Alcohol Ingestion" },
 
   simple_nagma: { main: "NAGMA", sub: "" },
   diarrhoea_nagma: { main: "NAGMA", sub: "Diarrhoea" },
 
-  simple_metabolic_alkalosis: { main: "Metabolic alkalosis", sub: "" },
-  vomiting_metabolic_alkalosis: { main: "Metabolic alkalosis", sub: "Vomiting" },
-  diuretic_metabolic_alkalosis: { main: "Metabolic alkalosis", sub: "Diuretic use" },
+  simple_metabolic_alkalosis: { main: "Metabolic Alkalosis", sub: "" },
+  vomiting_metabolic_alkalosis: { main: "Metabolic Alkalosis", sub: "Vomiting" },
+  diuretic_metabolic_alkalosis: { main: "Metabolic Alkalosis", sub: "Diuretic Use" },
 
-  opioid_toxicity: { main: "Respiratory acidosis", sub: "Opioid toxicity" },
-  copd_chronic_retainer: { main: "Respiratory acidosis", sub: "COPD (chronic CO\u2082 retention)" },
-  acute_copd_exacerbation: { main: "Respiratory acidosis", sub: "Acute COPD exacerbation" },
-  simple_respiratory_acidosis: { main: "Respiratory acidosis", sub: "" },
+  opioid_toxicity: { main: "Respiratory Acidosis", sub: "Opioid Toxicity" },
+  copd_chronic_retainer: { main: "Respiratory Acidosis", sub: "COPD (Chronic CO\u2082 Retention)" },
+  acute_copd_exacerbation: { main: "Respiratory Acidosis", sub: "Acute COPD Exacerbation" },
+  simple_respiratory_acidosis: { main: "Respiratory Acidosis", sub: "" },
 
-  panic_hyperventilation: { main: "Respiratory alkalosis", sub: "Panic / hyperventilation" },
-  sepsis_respiratory_alkalosis: { main: "Respiratory alkalosis", sub: "Sepsis" },
-  simple_respiratory_alkalosis: { main: "Respiratory alkalosis", sub: "" },
+  panic_hyperventilation: { main: "Respiratory Alkalosis", sub: "Panic / Hyperventilation" },
+  sepsis_respiratory_alkalosis: { main: "Respiratory Alkalosis", sub: "Sepsis" },
+  simple_respiratory_alkalosis: { main: "Respiratory Alkalosis", sub: "" },
 
-  salicylate_toxicity: { main: "Mixed disorder", sub: "Respiratory alkalosis + HAGMA (Salicylate toxicity)" },
-  mixed_hagma_metabolic_alkalosis: { main: "Mixed disorder", sub: "HAGMA + metabolic alkalosis" },
-  respiratory_alkalosis_hagma: { main: "Mixed disorder", sub: "Respiratory alkalosis + HAGMA" },
-  respiratory_acidosis_hagma: { main: "Mixed disorder", sub: "Respiratory acidosis + HAGMA" }
+  salicylate_toxicity: { main: "Mixed Disorder", sub: "Respiratory Alkalosis + HAGMA (Salicylate Toxicity)" },
+  mixed_hagma_metabolic_alkalosis: { main: "Mixed Disorder", sub: "HAGMA + Metabolic Alkalosis" },
+  respiratory_alkalosis_hagma: { main: "Mixed Disorder", sub: "Respiratory Alkalosis + HAGMA" },
+  respiratory_acidosis_hagma: { main: "Mixed Disorder", sub: "Respiratory Acidosis + HAGMA" }
 } as const satisfies Record<string, { main: string; sub: string }>;
 
 function getDiagnosisDisplay(archetype: string) {
@@ -52,6 +52,44 @@ interface ResultsSummaryCardProps {
   onOpenFeedback: () => void;
 }
 
+interface ResultsSummaryHeaderProps {
+  summary: CaseSummary;
+  level: number;
+  xpProgressLabel: string;
+  progressValue: number;
+}
+
+export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
+  return (
+    <Surface className="results-summary-card">
+      <div className="results-card__hero">
+        <div className="results-card__hero-copy">
+          <span className="results-card__icon" aria-hidden="true">
+            <Trophy />
+          </span>
+          <div>
+            <h1>Case complete</h1>
+            <p>You scored {props.summary.accuracy}% and earned {props.summary.totalXpAward} XP.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="results-summary-card__progress">
+        <div className="dashboard-progress-card__meta">
+          <span>Level {props.level}</span>
+          <span>{props.xpProgressLabel}</span>
+        </div>
+        <div className="progress-bar">
+          <div
+            className="progress-bar__fill progress-bar__fill--animated"
+            style={{ width: `${Math.max(0, Math.min(100, props.progressValue))}%` }}
+          />
+        </div>
+      </div>
+    </Surface>
+  );
+}
+
 export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
   const metrics = splitMetrics(props.caseItem);
   const archetype = props.caseItem.archetype ?? "";
@@ -64,27 +102,18 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
   return (
     <div className="results-flow">
       <Surface className="results-card">
-        <div className="results-card__hero">
-          <div className="results-card__hero-copy">
-            <span className="results-card__icon" aria-hidden="true">
-              <Trophy />
-            </span>
-            <div>
-              <h1>Case complete</h1>
-              <p>You scored {props.summary.accuracy}% and earned {props.summary.totalXpAward} XP.</p>
-            </div>
-          </div>
+        <div className="results-card__topbar">
           <span className="results-card__time">{formatElapsed(props.summary.elapsedSeconds)}</span>
         </div>
 
         <div className="results-card__diagnosis">
-          <h3>Diagnosis</h3>
+          <h3 className="results-card__section-label">Diagnosis</h3>
           <div className="results-card__diagnosis-main">{main}</div>
           {sub ? <div className="results-card__diagnosis-sub">{sub}</div> : null}
         </div>
 
         <div className="results-card__detail-section">
-          <h3>Detailed Explanation</h3>
+          <h3 className="results-card__section-label">Detailed Explanation</h3>
           <div className="results-card__detail-stack">
             <div className="card results-card__detail-card">
               <h4>Anion Gap Analysis</h4>
