@@ -1,7 +1,7 @@
 import { Award, Flame, Target, TrendingUp, Trophy } from "lucide-react";
 import { useAppContext } from "../../app/AppProvider";
 import { formatLevelProgressText } from "../../app/viewHelpers";
-import { calculateAccuracy, getLevelProgress } from "../../core/progression";
+import { calculateAccuracy, getLevelProgress, getMaxReachableLevel } from "../../core/progression";
 import { ProgressBar } from "../primitives/ProgressBar";
 import { SectionHeader } from "../primitives/SectionHeader";
 import { Surface } from "../primitives/Surface";
@@ -14,6 +14,8 @@ export function ProfileScreen() {
 
   const payload = state.payload;
   const levelProgress = getLevelProgress(payload?.progressionConfig ?? null, state.userState);
+  const maxReachableLevel = getMaxReachableLevel(payload?.progressionConfig ?? null);
+  const hasReachedMaxLevel = maxReachableLevel != null && state.userState.level >= maxReachableLevel;
   const accuracy = calculateAccuracy(state.userState.correctAnswers, state.userState.totalAnswers);
   const achievementCards = [
     { name: "First Steps", description: "Complete your first case", unlocked: state.userState.casesCompleted >= 1, icon: "TT" },
@@ -69,7 +71,7 @@ export function ProfileScreen() {
 
           <div className="profile-hero__progress">
             <div className="profile-hero__progress-meta">
-              <span>Progress to Level {state.userState.level + 1}</span>
+              <span>{hasReachedMaxLevel ? "Max level reached" : `Progress to Level ${state.userState.level + 1}`}</span>
               <span>{formatLevelProgressText(levelProgress, state.userState.xp)}</span>
             </div>
             <ProgressBar value={levelProgress.progressPercent} />

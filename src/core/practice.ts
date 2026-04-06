@@ -1,4 +1,5 @@
 import {
+  getAwardableXp,
   getBaseXp,
   getDifficultyLabel,
   getEffectiveXpMultiplier,
@@ -290,7 +291,8 @@ export function applyPracticeOutcome(input: {
   const baseXp = getBaseXp(input.progressionConfig, difficultyLevel);
   const perfectBonus = perfectCase ? getPerfectBonus(input.progressionConfig, difficultyLevel) : 0;
   const speedBonus = input.timedMode ? getTimeBonus(input.progressionConfig, input.elapsedSeconds) : 0;
-  const totalXpAward = Math.round((baseXp + perfectBonus + speedBonus) * getEffectiveXpMultiplier(input.progressionConfig));
+  const requestedXpAward = Math.round((baseXp + perfectBonus + speedBonus) * getEffectiveXpMultiplier(input.progressionConfig));
+  const totalXpAward = getAwardableXp(input.progressionConfig, input.userState.xp, requestedXpAward);
 
   let nextUserState: UserState = {
     ...input.userState,

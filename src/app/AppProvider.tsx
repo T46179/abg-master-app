@@ -14,6 +14,7 @@ import {
 import type { PracticeFlowState, SessionState, UserState } from "../core/types";
 import {
   createEmptyUserState,
+  getAwardableXp,
   getReleaseSignature,
   mapDefaultUserState,
   sanitizeUnlockedDifficulties,
@@ -243,12 +244,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!state.runtimeConfig || !state.payload || !state.supabase || typeof window === "undefined") return;
 
     const result = await submitProtectedPracticeCase(state.runtimeConfig, state.supabase, pendingSubmission);
+    const cappedSummary = {
+      ...result.summary,
+      caseToken: pendingSubmission.caseToken,
+      totalXpAward: getAwardableXp(state.payload.progressionConfig, state.userState.xp, result.summary.totalXpAward)
+    };
     const nextUserState = applyProtectedCaseCompletion({
       userState: state.userState,
-      summary: {
-        ...result.summary,
-        caseToken: pendingSubmission.caseToken
-      },
+      summary: cappedSummary,
       progressionConfig: state.payload.progressionConfig
     });
 
@@ -276,10 +279,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentCase: null,
       currentCaseToken: null,
       currentCaseExpiresAt: null,
-      lastCaseSummary: {
-        ...result.summary,
-        caseToken: pendingSubmission.caseToken
-      },
+      lastCaseSummary: cappedSummary,
       practiceSlotsByDifficulty: nextSlots,
       pendingSubmission: null,
       syncState: "idle",

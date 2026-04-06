@@ -34,6 +34,10 @@ const ADVANCED_MASTER_OVERVIEW_PRIORITY: ExplanationDomain[] = [
   "ph_status"
 ];
 
+function getTrimmedBody(body: unknown): string {
+  return String(body ?? "").trim();
+}
+
 function getExplanationVariant(caseItem: CaseData): ExplanationVariant {
   return EXPLANATION_VARIANT_BY_LEVEL[Number(caseItem.difficulty_level ?? 1)] ?? "advanced";
 }
@@ -56,12 +60,20 @@ function getEntryLookup(caseItem: CaseData, variant: ExplanationVariant): Map<Ex
   const lookup = new Map<ExplanationDomain, ExplanationBlueprintEntry>();
 
   for (const entry of caseItem.explanation_blueprint ?? []) {
-    if (entry.variant === variant) {
+    if (entry.variant === variant && getTrimmedBody(entry.body).length > 0) {
       lookup.set(entry.domain, entry);
     }
   }
 
   return lookup;
+}
+
+function hasKeyTakeawayEntry(caseItem: CaseData, variant: ExplanationVariant): boolean {
+  return getEntryLookup(caseItem, variant).has("key_takeaway");
+}
+
+function hasQuestionFlowStep(caseItem: CaseData, stepKey: string): boolean {
+  return Boolean(caseItem.questions_flow?.some(step => step.key === stepKey));
 }
 
 function getSelectedDomains(caseItem: CaseData, missedStepKeys: Set<string>): ExplanationDomain[] {
@@ -80,15 +92,17 @@ function getSelectedDomains(caseItem: CaseData, missedStepKeys: Set<string>): Ex
     const domains: ExplanationDomain[] = ["compensation", "anion_gap", "diagnosis", "clinical_context"];
     if (missedStepKeys.has("primary_disorder")) domains.push("primary_disorder");
     if (missedStepKeys.has("ph_status")) domains.push("ph_status");
+    if (hasKeyTakeawayEntry(caseItem, variant)) domains.push("key_takeaway");
     return domains;
   }
 
   const domains: ExplanationDomain[] = ["compensation", "anion_gap", "diagnosis", "clinical_context"];
-  if (additionalProcess && additionalProcess !== "None") {
+  if (hasQuestionFlowStep(caseItem, "additional_metabolic_process") && additionalProcess && additionalProcess !== "None") {
     domains.unshift("additional_metabolic_process");
   }
   if (missedStepKeys.has("primary_disorder")) domains.push("primary_disorder");
   if (missedStepKeys.has("ph_status")) domains.push("ph_status");
+  if (hasKeyTakeawayEntry(caseItem, variant)) domains.push("key_takeaway");
   return domains;
 }
 
@@ -112,20 +126,27 @@ export function composeCaseStructuredExplanation(caseItem: CaseData, stepResults
   for (const domain of selectedDomains) {
     const entry = lookup.get(domain);
     if (!entry) continue;
+    const body = getTrimmedBody(entry.body);
+    if (!body) continue;
     sections.push({
       key: entry.domain,
       title: entry.title,
-      body: entry.body,
+      body,
       order: entry.order
     });
   }
+
+  sections.sort((left, right) => {
+    if (left.order !== right.order) return left.order - right.order;
+    return left.key.localeCompare(right.key);
+  });
 
   let overview = "";
   for (const domain of getOverviewPriority(variant)) {
     if (!selectedDomains.includes(domain)) continue;
     const entry = lookup.get(domain);
     if (!entry) continue;
-    overview = firstSentence(entry.body);
+    overview = firstSentence(getTrimmedBody(entry.body));
     break;
   }
 

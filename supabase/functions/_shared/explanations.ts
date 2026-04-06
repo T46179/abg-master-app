@@ -31,6 +31,10 @@ const ADVANCED_MASTER_OVERVIEW_PRIORITY: ExplanationDomain[] = [
   "ph_status"
 ];
 
+function getTrimmedBody(body: unknown): string {
+  return String(body ?? "").trim();
+}
+
 function explanationVariantForPayload(publicPayload: PublicCasePayload): ExplanationVariant {
   return EXPLANATION_VARIANT_BY_LEVEL[Number(publicPayload.difficulty_level ?? 1)] ?? "advanced";
 }
@@ -56,7 +60,7 @@ function getEntryLookup(
   const lookup = new Map<ExplanationDomain, ExplanationBlueprintEntry>();
 
   for (const entry of explanationBlueprint) {
-    if (entry.variant === variant) {
+    if (entry.variant === variant && getTrimmedBody(entry.body).length > 0) {
       lookup.set(entry.domain, entry);
     }
   }
@@ -64,8 +68,20 @@ function getEntryLookup(
   return lookup;
 }
 
+function hasKeyTakeawayEntry(
+  explanationBlueprint: ExplanationBlueprintEntry[],
+  variant: ExplanationVariant
+): boolean {
+  return getEntryLookup(explanationBlueprint, variant).has("key_takeaway");
+}
+
+function hasQuestionFlowStep(publicPayload: PublicCasePayload, stepKey: string): boolean {
+  return Boolean(publicPayload.questions_flow?.some(step => step.key === stepKey));
+}
+
 function getSelectedDomains(
   publicPayload: PublicCasePayload,
+  explanationBlueprint: ExplanationBlueprintEntry[],
   missedStepKeys: Set<string>
 ): ExplanationDomain[] {
   const variant = explanationVariantForPayload(publicPayload);
@@ -83,15 +99,17 @@ function getSelectedDomains(
     const domains: ExplanationDomain[] = ["compensation", "anion_gap", "diagnosis", "clinical_context"];
     if (missedStepKeys.has("primary_disorder")) domains.push("primary_disorder");
     if (missedStepKeys.has("ph_status")) domains.push("ph_status");
+    if (hasKeyTakeawayEntry(explanationBlueprint, variant)) domains.push("key_takeaway");
     return domains;
   }
 
   const domains: ExplanationDomain[] = ["compensation", "anion_gap", "diagnosis", "clinical_context"];
-  if (additionalProcess && additionalProcess !== "None") {
+  if (hasQuestionFlowStep(publicPayload, "additional_metabolic_process") && additionalProcess && additionalProcess !== "None") {
     domains.unshift("additional_metabolic_process");
   }
   if (missedStepKeys.has("primary_disorder")) domains.push("primary_disorder");
   if (missedStepKeys.has("ph_status")) domains.push("ph_status");
+  if (hasKeyTakeawayEntry(explanationBlueprint, variant)) domains.push("key_takeaway");
   return domains;
 }
 
@@ -113,12 +131,20 @@ export function composeStructuredExplanation(input: {
       .filter(result => result.correct === false)
       .map(result => result.key)
   );
-  const selectedDomains = getSelectedDomains(input.publicPayload, missedStepKeys);
+  const selectedDomains = getSelectedDomains(input.publicPayload, input.explanationBlueprint, missedStepKeys);
   const sections = selectedDomains.flatMap(domain => {
     const entry = lookup.get(domain);
-    return entry
-      ? [{ key: entry.domain, title: entry.title, body: entry.body, order: entry.order }]
-      : [];
+    if (!entry) return [];
+
+    const body = getTrimmedBody(entry.body);
+    if (!body) return [];
+
+    return [{ key: entry.domain, title: entry.title, body, order: entry.order }];
+  });
+
+  sections.sort((left, right) => {
+    if (left.order !== right.order) return left.order - right.order;
+    return left.key.localeCompare(right.key);
   });
 
   let overview = "";
@@ -126,7 +152,7 @@ export function composeStructuredExplanation(input: {
     if (!selectedDomains.includes(domain)) continue;
     const entry = lookup.get(domain);
     if (!entry) continue;
-    overview = firstSentence(entry.body);
+    overview = firstSentence(getTrimmedBody(entry.body));
     break;
   }
 

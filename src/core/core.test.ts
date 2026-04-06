@@ -21,8 +21,10 @@ import {
   slotMatchesDifficultyKey
 } from "./protectedPracticeCache";
 import {
+  getAwardableXp,
   getHighestAccessibleDifficultyKey,
   getLevelProgress,
+  getMaxReachableLevel,
   mapDefaultUserState
 } from "./progression";
 import { createMemoryStorage } from "./storage";
@@ -242,6 +244,70 @@ describe("progression helpers", () => {
     expect(progress.xpIntoLevel).toBe(15);
   });
 
+  it("caps overflowed xp at the configured max level", () => {
+    const progressionConfig = {
+      xp_required_per_level: { 1: 30, 2: 40 },
+      difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced" }
+    };
+    const userState = mapDefaultUserState(
+      { total_xp: 999, level: 25, subscription_tier: "free" },
+      {
+        progressionConfig,
+        dashboardState: null
+      }
+    );
+    const progress = getLevelProgress(progressionConfig, userState);
+
+    expect(getMaxReachableLevel(progressionConfig)).toBe(3);
+    expect(userState.xp).toBe(70);
+    expect(userState.level).toBe(3);
+    expect(progress.isMaxLevel).toBe(true);
+    expect(progress.xpIntoLevel).toBe(40);
+    expect(progress.xpForNextLevel).toBe(40);
+  });
+
+  it("keeps the cap config-driven so extending xp_required_per_level raises the max level", () => {
+    expect(getMaxReachableLevel({ xp_required_per_level: { 1: 30, 2: 40, 3: 50, 4: 60 } })).toBe(5);
+    expect(getMaxReachableLevel({
+      xp_required_per_level: {
+        1: 30,
+        2: 40,
+        3: 50,
+        4: 60,
+        5: 80,
+        6: 100,
+        7: 120,
+        8: 140,
+        9: 160,
+        10: 200,
+        11: 240,
+        12: 280,
+        13: 320,
+        14: 360,
+        15: 400,
+        16: 440,
+        17: 480,
+        18: 520,
+        19: 560,
+        20: 600,
+        21: 640,
+        22: 680,
+        23: 720,
+        24: 760,
+        25: 800,
+        26: 840,
+        27: 880,
+        28: 920,
+        29: 960
+      }
+    })).toBe(30);
+  });
+
+  it("returns zero awardable xp once the configured cap has been reached", () => {
+    expect(getAwardableXp({ xp_required_per_level: { 1: 30, 2: 40 } }, 70, 25)).toBe(0);
+    expect(getAwardableXp({ xp_required_per_level: { 1: 30, 2: 40 } }, 65, 25)).toBe(5);
+  });
+
   it("defaults practice entry to the highest accessible difficulty", () => {
     const highestDifficulty = getHighestAccessibleDifficultyKey({
       progressionConfig: {
@@ -294,7 +360,7 @@ describe("practice outcome", () => {
         base_xp_by_difficulty: { 3: 25 },
         perfect_case_bonus_percent: 0.1,
         speed_bonus_tiers: [{ max_seconds: 999, bonus: 5 }],
-        xp_required_per_level: { 1: 30, 2: 40 }
+        xp_required_per_level: { 1: 30, 2: 40, 3: 50 }
       },
       seenCasesByDifficulty: { beginner: [], intermediate: [], advanced: [], master: [] },
       stepResults: [
@@ -310,6 +376,37 @@ describe("practice outcome", () => {
     expect(outcome.summary.totalXpAward).toBe(99);
     expect(outcome.summary.accuracy).toBe(100);
     expect(outcome.summary.difficulty).toBe("Advanced");
+  });
+
+  it("stops awarding xp after the configured max level is reached", () => {
+    const outcome = applyPracticeOutcome({
+      caseItem: sampleCase,
+      userState: createUserState({
+        xp: 70,
+        level: 3,
+        unlockedDifficulties: ["beginner", "intermediate", "advanced"]
+      }),
+      progressionConfig: {
+        release_flags: { xp_multiplier: 3 },
+        difficulty_labels: { 3: "advanced" },
+        base_xp_by_difficulty: { 3: 25 },
+        perfect_case_bonus_percent: 0.1,
+        speed_bonus_tiers: [{ max_seconds: 999, bonus: 5 }],
+        xp_required_per_level: { 1: 30, 2: 40 }
+      },
+      seenCasesByDifficulty: { beginner: [], intermediate: [], advanced: [], master: [] },
+      stepResults: [
+        { key: "ph_status", label: "pH status", chosen: "Acidaemia", correctAnswer: "Acidaemia", correct: true },
+        { key: "final_diagnosis", label: "Diagnosis", chosen: "Sepsis", correctAnswer: "Sepsis", correct: true }
+      ],
+      elapsedSeconds: 20,
+      timedMode: true,
+      now: new Date("2026-03-26T00:00:00Z")
+    });
+
+    expect(outcome.userState.xp).toBe(70);
+    expect(outcome.userState.level).toBe(3);
+    expect(outcome.summary.totalXpAward).toBe(0);
   });
 
   it("does not award duplicate xp for the same protected case token", () => {
@@ -410,6 +507,42 @@ describe("explanations", () => {
 
     expect(withoutMiss.sections.map(section => section.key)).not.toContain("ph_status");
     expect(withMiss.sections.map(section => section.key)).toContain("ph_status");
+  });
+
+  it("includes key takeaway for advanced cases when authored and orders it last", () => {
+    const advancedCase: CaseData = {
+      ...sampleCase,
+      explanation_blueprint: [
+        { domain: "compensation", variant: "advanced", title: "Compensation", body: "Compensation body.", order: 1, kind: "core_reasoning", stepKey: "compensation" },
+        { domain: "anion_gap", variant: "advanced", title: "Anion Gap Analysis", body: "Anion gap body.", order: 2, kind: "core_reasoning", stepKey: "anion_gap" },
+        { domain: "clinical_context", variant: "advanced", title: "Clinical Significance", body: "Clinical context body.", order: 3, kind: "clinical_context" },
+        { domain: "key_takeaway", variant: "advanced", title: "Key Takeaway", body: "Takeaway body.", order: 999, kind: "core_reasoning" }
+      ]
+    };
+
+    const explanation = composeCaseStructuredExplanation(advancedCase);
+
+    expect(explanation.sections.map(section => section.key)).toEqual([
+      "compensation",
+      "anion_gap",
+      "clinical_context",
+      "key_takeaway"
+    ]);
+    expect(explanation.sections.at(-1)?.title).toBe("Key Takeaway");
+  });
+
+  it("omits whitespace-only explanation bodies from composed sections", () => {
+    const advancedCase: CaseData = {
+      ...sampleCase,
+      explanation_blueprint: [
+        { domain: "compensation", variant: "advanced", title: "Compensation", body: "   ", order: 1, kind: "core_reasoning", stepKey: "compensation" },
+        { domain: "anion_gap", variant: "advanced", title: "Anion Gap Analysis", body: "Anion gap body.", order: 2, kind: "core_reasoning", stepKey: "anion_gap" }
+      ]
+    };
+
+    const explanation = composeCaseStructuredExplanation(advancedCase);
+
+    expect(explanation.sections.map(section => section.key)).toEqual(["anion_gap"]);
   });
 });
 

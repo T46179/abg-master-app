@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { evaluateBadges, normalizeStructuredExplanation, updateDailyStreak } from "./practice";
-import { syncUserStateDerivedFields } from "./progression";
+import { getAwardableXp, syncUserStateDerivedFields } from "./progression";
 import type {
   CaseSummary,
   IssuedPracticeSlot,
@@ -232,9 +232,10 @@ export function applyProtectedCaseCompletion(input: {
     return input.userState;
   }
 
+  const totalXpAward = getAwardableXp(input.progressionConfig, input.userState.xp, input.summary.totalXpAward);
   let nextUserState: UserState = {
     ...input.userState,
-    xp: input.userState.xp + input.summary.totalXpAward,
+    xp: input.userState.xp + totalXpAward,
     casesCompleted: input.userState.casesCompleted + 1,
     correctAnswers: input.userState.correctAnswers + input.summary.correctSteps,
     totalAnswers: input.userState.totalAnswers + input.summary.totalSteps,

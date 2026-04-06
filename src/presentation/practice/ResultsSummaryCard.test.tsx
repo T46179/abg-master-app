@@ -85,11 +85,14 @@ describe("ResultsSummaryCard", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the diagnosis and detailed explanation in the requested order", () => {
+  it("renders explanation cards from sorted sections and suppresses diagnosis when clinical context exists", () => {
     const summary = buildSummary([
-      { key: "anion_gap", title: "Anion Gap", body: "Raised anion gap explanation.", order: 1 },
-      { key: "compensation", title: "Compensation", body: "Compensation explanation.", order: 2 },
-      { key: "diagnosis", title: "Diagnosis", body: "Diagnosis significance.", order: 3 }
+      { key: "key_takeaway", title: "Key Takeaway", body: "Takeaway body.", order: 999 },
+      { key: "diagnosis", title: "Diagnosis", body: "Diagnosis significance.", order: 3 },
+      { key: "anion_gap", title: "Duplicate gap", body: "Should not render.", order: 4 },
+      { key: "clinical_context", title: "Clinical Significance", body: "Clinical significance body.", order: 3 },
+      { key: "compensation", title: "Compensation", body: "Compensation explanation.", order: 1 },
+      { key: "anion_gap", title: "Anion Gap Analysis", body: "Raised anion gap explanation.", order: 2 }
     ]);
 
     act(() => {
@@ -109,13 +112,16 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).toContain("Mixed Disorder");
     expect(container.textContent).toContain("HAGMA + Metabolic Alkalosis (DKA + Vomiting)");
     expect(container.textContent).toContain("Detailed Explanation");
-    expect(container.textContent).toContain("Anion Gap Analysis");
-    expect(container.textContent).toContain("Raised anion gap explanation.");
     expect(container.textContent).toContain("Compensation");
     expect(container.textContent).toContain("Compensation explanation.");
-    expect(container.textContent).toContain("Clinical Significance");
-    expect(container.textContent).toContain("Diagnosis significance.");
     expect(container.textContent).toContain("Key Takeaway");
+    expect(container.textContent).toContain("Takeaway body.");
+    expect(container.textContent).toContain("Anion Gap Analysis");
+    expect(container.textContent).toContain("Raised anion gap explanation.");
+    expect(container.textContent).toContain("Clinical Significance");
+    expect(container.textContent).toContain("Clinical significance body.");
+    expect(container.textContent).not.toContain("Diagnosis significance.");
+    expect(container.textContent).not.toContain("Should not render.");
     expect(container.textContent).toContain("62.0s");
     expect(container.textContent).toContain("Answer review");
     expect(container.textContent).toContain("pH status");
@@ -127,16 +133,41 @@ describe("ResultsSummaryCard", () => {
     expect(headings).toEqual([
       "Diagnosis",
       "Detailed Explanation",
-      "Anion Gap Analysis",
       "Compensation",
+      "Anion Gap Analysis",
       "Clinical Significance",
       "Key Takeaway"
     ]);
   });
 
-  it("renders unknown fallback and empty placeholders when mapping or sections are missing", () => {
+  it("falls back to diagnosis when clinical context is absent", () => {
+    const summary = buildSummary([
+      { key: "diagnosis", title: "Diagnosis", body: "Diagnosis significance.", order: 3 }
+    ]);
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={buildCaseItem("dka")}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          onOpenFeedback={() => {}}
+        />
+      );
+    });
+
+    const headings = Array.from(container.querySelectorAll(".results-card__detail-card h4")).map(node => node.textContent);
+    expect(headings).toEqual(["Diagnosis"]);
+    expect(container.textContent).toContain("Diagnosis significance.");
+  });
+
+  it("renders unknown fallback and omits empty explanation cards when sections are missing", () => {
     const summary = {
-      ...buildSummary([]),
+      ...buildSummary([
+        { key: "compensation", title: "Compensation", body: "   ", order: 1 }
+      ]),
       stepResults: []
     };
 
@@ -155,13 +186,8 @@ describe("ResultsSummaryCard", () => {
 
     expect(container.textContent).toContain("Unknown");
     expect(container.textContent).not.toContain("Diabetic ketoacidosis");
-
-    const detailCards = Array.from(container.querySelectorAll(".results-card__detail-card"));
-    expect(detailCards).toHaveLength(3);
-    for (const detailCard of detailCards) {
-      const paragraphs = detailCard.querySelectorAll("p");
-      expect(paragraphs).toHaveLength(0);
-    }
+    expect(container.textContent).not.toContain("Detailed Explanation");
+    expect(container.querySelectorAll(".results-card__detail-card")).toHaveLength(0);
   });
 
   it("omits the secondary diagnosis line when the mapping sub label is empty", () => {

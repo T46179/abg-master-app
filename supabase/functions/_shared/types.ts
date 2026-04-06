@@ -12,7 +12,8 @@ export const EXPLANATION_DOMAINS = [
   "anion_gap",
   "additional_metabolic_process",
   "diagnosis",
-  "clinical_context"
+  "clinical_context",
+  "key_takeaway"
 ] as const;
 
 export type ExplanationDomain = typeof EXPLANATION_DOMAINS[number];

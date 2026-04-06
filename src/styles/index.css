@@ -1414,12 +1414,17 @@ button:disabled {
 .card.results-card__takeaway-card {
   padding: 1.4rem 1.45rem;
   border-radius: 1.35rem;
-  background: #f5f8fc;
+  background: #F8FAFC;
 }
 
 .card.results-card__detail-card {
   border: 0;
   box-shadow: none;
+}
+
+.card.results-card__detail-card--takeaway {
+  border: 1px solid #D4E7FF;
+  background: #EFF6FF;
 }
 
 .results-card__detail-card h4 {

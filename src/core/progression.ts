@@ -88,6 +88,50 @@ export function getXpRequiredForLevel(progressionConfig: ProgressionConfig | nul
   return Number(progressionConfig?.xp_required_per_level?.[level] ?? 0);
 }
 
+function getConfiguredProgressionCap(progressionConfig: ProgressionConfig | null) {
+  const configured = progressionConfig?.xp_required_per_level;
+  if (!configured || !Object.keys(configured).length) return null;
+
+  let maxXp = 0;
+  let maxLevel = 1;
+
+  while (true) {
+    const needed = getXpRequiredForLevel(progressionConfig, maxLevel);
+    if (!needed) {
+      return {
+        maxLevel,
+        maxXp
+      };
+    }
+
+    maxXp += needed;
+    maxLevel += 1;
+  }
+}
+
+export function getMaxReachableLevel(progressionConfig: ProgressionConfig | null): number | null {
+  return getConfiguredProgressionCap(progressionConfig)?.maxLevel ?? null;
+}
+
+export function getMaxReachableXp(progressionConfig: ProgressionConfig | null): number | null {
+  return getConfiguredProgressionCap(progressionConfig)?.maxXp ?? null;
+}
+
+export function clampXpToLevelCap(progressionConfig: ProgressionConfig | null, xp: number): number {
+  const normalizedXp = Math.max(0, Number(xp) || 0);
+  const maxXp = getMaxReachableXp(progressionConfig);
+  return maxXp == null ? normalizedXp : Math.min(normalizedXp, maxXp);
+}
+
+export function getAwardableXp(progressionConfig: ProgressionConfig | null, currentXp: number, requestedXp: number): number {
+  const normalizedAward = Math.max(0, Math.round(Number(requestedXp) || 0));
+  const maxXp = getMaxReachableXp(progressionConfig);
+  if (maxXp == null) return normalizedAward;
+
+  const cappedCurrentXp = clampXpToLevelCap(progressionConfig, currentXp);
+  return Math.max(0, Math.min(normalizedAward, maxXp - cappedCurrentXp));
+}
+
 export function getLevelFromXp(progressionConfig: ProgressionConfig | null, xp: number, fallbackLevel = 1): number {
   const configured = progressionConfig?.xp_required_per_level;
   if (!configured) return Math.max(1, fallbackLevel);
@@ -105,21 +149,31 @@ export function getLevelFromXp(progressionConfig: ProgressionConfig | null, xp: 
 }
 
 export function getLevelProgress(progressionConfig: ProgressionConfig | null, userState: UserState) {
+  const cappedXp = clampXpToLevelCap(progressionConfig, userState.xp);
+  const level = Math.max(1, getLevelFromXp(progressionConfig, cappedXp, userState.level));
   let consumedXp = 0;
-  for (let level = 1; level < userState.level; level += 1) {
-    consumedXp += getXpRequiredForLevel(progressionConfig, level);
+  for (let currentLevel = 1; currentLevel < level; currentLevel += 1) {
+    consumedXp += getXpRequiredForLevel(progressionConfig, currentLevel);
   }
 
-  const xpForNextLevel = getXpRequiredForLevel(progressionConfig, userState.level);
-  const xpIntoLevel = Math.max(0, userState.xp - consumedXp);
-  const progressPercent = xpForNextLevel
+  let xpForNextLevel = getXpRequiredForLevel(progressionConfig, level);
+  let xpIntoLevel = Math.max(0, cappedXp - consumedXp);
+  let progressPercent = xpForNextLevel
     ? Math.min(100, Math.round((xpIntoLevel / xpForNextLevel) * 100))
     : 100;
+  const isMaxLevel = !xpForNextLevel && getMaxReachableLevel(progressionConfig) === level;
+
+  if (isMaxLevel && level > 1) {
+    xpForNextLevel = getXpRequiredForLevel(progressionConfig, level - 1);
+    xpIntoLevel = xpForNextLevel || xpIntoLevel;
+    progressPercent = 100;
+  }
 
   return {
     xpIntoLevel,
     xpForNextLevel,
-    progressPercent
+    progressPercent,
+    isMaxLevel
   };
 }
 
@@ -259,7 +313,7 @@ export function mapDefaultUserState(
     unlockedFromSource.push(getDifficultyLabel(input.progressionConfig, Number(source.unlocked_difficulty)));
   }
 
-  return {
+  return syncUserStateDerivedFields({
     xp: Number(source?.total_xp ?? source?.xp ?? 0),
     level,
     casesCompleted: Number(input.dashboardState?.stats?.cases_completed ?? source?.cases_completed ?? 0),
@@ -284,13 +338,15 @@ export function mapDefaultUserState(
         : [],
     recentResults: [],
     appliedProtectedCaseTokens: []
-  };
+  }, input.progressionConfig);
 }
 
 export function syncUserStateDerivedFields(userState: UserState, progressionConfig: ProgressionConfig | null): UserState {
-  const nextLevel = Math.max(1, getLevelFromXp(progressionConfig, userState.xp, userState.level));
+  const cappedXp = clampXpToLevelCap(progressionConfig, userState.xp);
+  const nextLevel = Math.max(1, getLevelFromXp(progressionConfig, cappedXp, userState.level));
   return {
     ...userState,
+    xp: cappedXp,
     level: nextLevel,
     unlockedDifficulties: sanitizeUnlockedDifficulties([
       ...userState.unlockedDifficulties,

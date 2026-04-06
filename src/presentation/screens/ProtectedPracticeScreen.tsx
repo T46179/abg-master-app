@@ -30,6 +30,7 @@ import {
 import {
   canStartNewCase,
   getAccessibleDifficultyKeys,
+  getAwardableXp,
   getDifficultyLabel,
   getDifficultyMeta,
   getHighestAccessibleDifficultyKey,
@@ -548,9 +549,13 @@ export function ProtectedPracticeScreen() {
         lockedStepResults: state.sessionState.stepResults,
         progressionConfig: payload.progressionConfig ?? null
       });
+      const cappedSummary = {
+        ...reconciledSummary,
+        totalXpAward: getAwardableXp(payload.progressionConfig ?? null, state.userState.xp, reconciledSummary.totalXpAward)
+      };
       const nextUserState = applyProtectedCaseCompletion({
         userState: state.userState,
-        summary: reconciledSummary,
+        summary: cappedSummary,
         progressionConfig: payload.progressionConfig
       });
       if (nextUserState !== state.userState) {
@@ -575,7 +580,7 @@ export function ProtectedPracticeScreen() {
         currentCase: null,
         currentCaseToken: null,
         currentCaseExpiresAt: null,
-        lastCaseSummary: reconciledSummary,
+        lastCaseSummary: cappedSummary,
         practiceSlotsByDifficulty: nextSlots,
         pendingSubmission: null,
         syncState: "idle",

@@ -4,9 +4,10 @@ import { useAppContext } from "../../app/AppProvider";
 import {
   canAccessDifficulty,
   getCasesRemainingToday,
-  getHighestAccessibleDifficultyKey,
   getDifficultyMeta,
-  getLevelProgress
+  getHighestAccessibleDifficultyKey,
+  getLevelProgress,
+  getMaxReachableLevel
 } from "../../core/progression";
 import { ProgressBar } from "../primitives/ProgressBar";
 import { SectionHeader } from "../primitives/SectionHeader";
@@ -29,6 +30,8 @@ export function DashboardScreen() {
     cases: payload?.cases ?? []
   };
   const levelProgress = getLevelProgress(payload?.progressionConfig ?? null, state.userState);
+  const maxReachableLevel = getMaxReachableLevel(payload?.progressionConfig ?? null);
+  const hasReachedMaxLevel = maxReachableLevel != null && state.userState.level >= maxReachableLevel;
   const difficultyMeta = getDifficultyMeta(progressionInput);
   const recent = state.userState.recentResults ?? [];
   const recentAccuracy = recent.length ? Math.round((recent.filter(Boolean).length / recent.length) * 100) : 100;
@@ -98,7 +101,13 @@ export function DashboardScreen() {
         </Surface>
 
         <section className="dashboard-stats-grid">
-          <StatCard label="Level" value={state.userState.level} meta={`${levelProgress.progressPercent}% to next level`} icon={TrendingUp} tone="blue" />
+          <StatCard
+            label="Level"
+            value={state.userState.level}
+            meta={hasReachedMaxLevel ? "Max level reached" : `${levelProgress.progressPercent}% to next level`}
+            icon={TrendingUp}
+            tone="blue"
+          />
           <StatCard label="Cases" value={state.userState.casesCompleted} meta="Completed" icon={BookOpen} tone="green" />
           <StatCard label="Performance" value={`${recentAccuracy}%`} meta="Recent performance" icon={Target} tone="violet" />
           <StatCard label="Streak" value={state.userState.streak} meta={`Longest: ${longestStreak} day${longestStreak === 1 ? "" : "s"}`} icon={Flame} tone="orange" />

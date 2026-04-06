@@ -1,6 +1,6 @@
 import { Trophy } from "lucide-react";
 import { Surface } from "../primitives/Surface";
-import type { CaseData, CaseSummary } from "../../core/types";
+import type { CaseData, CaseSummary, ExplanationSection } from "../../core/types";
 import { formatElapsed, splitMetrics } from "../../app/viewHelpers";
 import { MetricLabel, MetricReference, MetricValue } from "./MetricText";
 
@@ -39,8 +39,44 @@ function getDiagnosisDisplay(archetype: string) {
   return DIAGNOSIS_DISPLAY[archetype as keyof typeof DIAGNOSIS_DISPLAY] ?? { main: "Unknown", sub: "" };
 }
 
-function getExplanationSection(caseSummary: CaseSummary, key: string) {
-  return caseSummary.explanation.sections.find(section => section.key === key);
+function getTrimmedSectionBody(section: Pick<ExplanationSection, "body">) {
+  return String(section.body ?? "").trim();
+}
+
+function getRenderedExplanationSections(caseSummary: CaseSummary): ExplanationSection[] {
+  const supportedKeys = new Set<ExplanationSection["key"]>([
+    "anion_gap",
+    "compensation",
+    "clinical_context",
+    "diagnosis",
+    "key_takeaway"
+  ]);
+
+  const validSections = caseSummary.explanation.sections
+    .map(section => ({
+      ...section,
+      title: String(section.title ?? "").trim(),
+      body: getTrimmedSectionBody(section)
+    }))
+    .filter(section => supportedKeys.has(section.key) && section.title && section.body);
+
+  validSections.sort((left, right) => {
+    if (left.order !== right.order) return left.order - right.order;
+    return left.key.localeCompare(right.key);
+  });
+
+  const hasClinicalContext = validSections.some(section => section.key === "clinical_context");
+  const renderedSections: ExplanationSection[] = [];
+  const seenKeys = new Set<ExplanationSection["key"]>();
+
+  for (const section of validSections) {
+    if (section.key === "diagnosis" && hasClinicalContext) continue;
+    if (seenKeys.has(section.key)) continue;
+    seenKeys.add(section.key);
+    renderedSections.push(section);
+  }
+
+  return renderedSections;
 }
 
 interface ResultsSummaryCardProps {
@@ -94,10 +130,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
   const metrics = splitMetrics(props.caseItem);
   const archetype = props.caseItem.archetype ?? "";
   const { main, sub } = getDiagnosisDisplay(archetype);
-  const anionGapSection = getExplanationSection(props.summary, "anion_gap");
-  const compensationSection = getExplanationSection(props.summary, "compensation");
-  const clinicalSignificanceSection =
-    getExplanationSection(props.summary, "clinical_context") ?? getExplanationSection(props.summary, "diagnosis");
+  const explanationSections = getRenderedExplanationSections(props.summary);
 
   return (
     <div className="results-flow">
@@ -112,29 +145,26 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
           {sub ? <div className="results-card__diagnosis-sub">{sub}</div> : null}
         </div>
 
-        <div className="results-card__detail-section">
-          <h3 className="results-card__section-label">Detailed Explanation</h3>
-          <div className="results-card__detail-stack">
-            <div className="card results-card__detail-card">
-              <h4>Anion Gap Analysis</h4>
-              {anionGapSection ? <p>{anionGapSection.body}</p> : null}
-            </div>
-
-            <div className="card results-card__detail-card">
-              <h4>Compensation</h4>
-              {compensationSection ? <p>{compensationSection.body}</p> : null}
-            </div>
-
-            <div className="card results-card__detail-card">
-              <h4>Clinical Significance</h4>
-              {clinicalSignificanceSection ? <p>{clinicalSignificanceSection.body}</p> : null}
+        {explanationSections.length ? (
+          <div className="results-card__detail-section">
+            <h3 className="results-card__section-label">Detailed Explanation</h3>
+            <div className="results-card__detail-stack">
+              {explanationSections.map(section => (
+                <div
+                  key={`${section.key}-${section.order}`}
+                  className={[
+                    "card",
+                    "results-card__detail-card",
+                    section.key === "key_takeaway" ? "results-card__detail-card--takeaway" : ""
+                  ].filter(Boolean).join(" ")}
+                >
+                  <h4>{section.title}</h4>
+                  <p>{section.body}</p>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-
-        <div className="card results-card__takeaway-card">
-          <h4>Key Takeaway</h4>
-        </div>
+        ) : null}
 
         <div className="results-card__actions">
           <button className="figma-button results-card__button" type="button" onClick={props.onNextCase}>
