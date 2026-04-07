@@ -205,7 +205,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
 
         {explanationSections.length ? (
           <div className="results-card__detail-section">
-            <h3 className="results-card__section-label">Detailed Explanations</h3>
+            <h3 className="results-card__section-label">Detailed Explanation</h3>
             <div className="results-card__detail-stack">
               {explanationSections.map(section => (
                 <div
@@ -239,7 +239,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
         ) : null}
 
         <div className="results-card__actions">
-          <button className="figma-button results-card__button" type="button" onClick={props.onNextCase}>
+          <button className="figma-button results-card__button results-card__button--next-case" type="button" onClick={props.onNextCase}>
             Next case
           </button>
           <button className="figma-button figma-button--secondary results-card__button results-card__button--secondary" type="button" onClick={props.onOpenFeedback}>
