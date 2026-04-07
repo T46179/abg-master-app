@@ -10,7 +10,7 @@ import type {
   StorageAdapter
 } from "../../core/types";
 import { formatElapsed, splitMetrics } from "../../app/viewHelpers";
-import { MetricLabel, MetricReference, MetricValue } from "./MetricText";
+import { MetricInlineText, MetricLabel, MetricReference, MetricValue } from "./MetricText";
 
 const DIAGNOSIS_DISPLAY = {
   dka: { main: "HAGMA", sub: "Diabetic Ketoacidosis" },
@@ -231,7 +231,9 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                       </button>
                     ) : null}
                   </div>
-                  {isCollapsibleExplanationKey(section.key) && !expandedByKey[section.key] ? null : <p>{section.body}</p>}
+                  {isCollapsibleExplanationKey(section.key) && !expandedByKey[section.key] ? null : (
+                    <p><MetricInlineText text={section.body} /></p>
+                  )}
                 </div>
               ))}
             </div>
@@ -304,7 +306,10 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                   className={`review-item${stepResult.correct ? " is-correct" : " is-incorrect"}`}
                 >
                   <strong>{stepResult.label}</strong>
-                  <p>You chose {stepResult.chosen}. Correct answer: {stepResult.correctAnswer}.</p>
+                  <p>
+                    You chose <MetricInlineText text={stepResult.chosen} />. Correct answer:{" "}
+                    <MetricInlineText text={stepResult.correctAnswer} />.
+                  </p>
                 </article>
               ))}
             </div>

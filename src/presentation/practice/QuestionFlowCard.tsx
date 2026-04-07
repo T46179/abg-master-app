@@ -4,6 +4,7 @@ import { Surface } from "../primitives/Surface";
 import { PillNav } from "../primitives/PillNav";
 import { getQuestionFlowStepStatus, prettyStepLabel } from "../../core/practice";
 import { InlineFeedbackCard } from "./InlineFeedbackCard";
+import { MetricInlineText } from "./MetricText";
 
 interface QuestionFlowCardProps {
   caseItem: CaseData | null;
@@ -69,7 +70,7 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
               <div className="inline-feedback__grid">
                 <div className="inline-feedback__item">
                   <span className="inline-feedback__label">Your answer</span>
-                  <strong>{props.currentSelection.chosen}</strong>
+                  <strong><MetricInlineText text={props.currentSelection.chosen} /></strong>
                 </div>
               </div>
 

@@ -1,4 +1,5 @@
 import type { StepResult } from "../../core/types";
+import { MetricInlineText } from "./MetricText";
 
 interface InlineFeedbackCardProps {
   result: StepResult;
@@ -11,23 +12,19 @@ interface InlineFeedbackCardProps {
 export function InlineFeedbackCard(props: InlineFeedbackCardProps) {
   return (
     <div className={`inline-feedback${props.result.correct ? " is-correct" : " is-incorrect"}`}>
-      <div className="inline-feedback__hero">
-        <h3>{props.result.correct ? "Correct" : "Incorrect"}</h3>
-      </div>
-
       <div className="inline-feedback__grid">
         <div className="inline-feedback__item">
           <span className="inline-feedback__label">Your answer</span>
-          <strong>{props.result.chosen}</strong>
+          <strong><MetricInlineText text={props.result.chosen} /></strong>
         </div>
         <div className="inline-feedback__item">
           <span className="inline-feedback__label">Correct answer</span>
-          <strong>{props.result.correctAnswer}</strong>
+          <strong><MetricInlineText text={props.result.correctAnswer} /></strong>
         </div>
       </div>
 
       {props.result.feedback?.body ? (
-        <p className="inline-feedback__note">{props.result.feedback.body}</p>
+        <p className="inline-feedback__note"><MetricInlineText text={props.result.feedback.body} /></p>
       ) : null}
 
       <button
