@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatLevelProgressText, shouldConfirmDifficultySwitch, shouldShowPracticeIntro } from "./viewHelpers";
+import {
+  formatLevelProgressText,
+  getPracticeDifficultyMismatchAction,
+  shouldConfirmDifficultySwitch,
+  shouldShowPracticeIntro
+} from "./viewHelpers";
 
 describe("view helpers", () => {
   it("formats current-level progress instead of lifetime xp", () => {
@@ -21,5 +26,25 @@ describe("view helpers", () => {
     expect(shouldShowPracticeIntro(true, false, false)).toBe(false);
     expect(shouldShowPracticeIntro(false, true, false)).toBe(false);
     expect(shouldShowPracticeIntro(false, false, true)).toBe(false);
+  });
+
+  it("resumes the active case difficulty when entering practice without an explicit difficulty param", () => {
+    expect(getPracticeDifficultyMismatchAction({
+      hasExplicitDifficultyParam: false,
+      hasActiveCase: true,
+      hasSummary: false,
+      activeCaseDifficulty: "beginner",
+      normalizedDifficulty: "master"
+    })).toBe("resume_active_case");
+  });
+
+  it("replaces the active case when an explicit difficulty param requests a different level", () => {
+    expect(getPracticeDifficultyMismatchAction({
+      hasExplicitDifficultyParam: true,
+      hasActiveCase: true,
+      hasSummary: false,
+      activeCaseDifficulty: "beginner",
+      normalizedDifficulty: "master"
+    })).toBe("replace_active_case");
   });
 });

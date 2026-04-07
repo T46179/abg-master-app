@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
-import { shouldConfirmDifficultySwitch, shouldShowPracticeIntro } from "../../app/viewHelpers";
+import {
+  getPracticeDifficultyMismatchAction,
+  shouldConfirmDifficultySwitch,
+  shouldShowPracticeIntro
+} from "../../app/viewHelpers";
 import { trackEvent } from "../../core/analytics";
 import { openCaseFeedbackForm } from "../../core/feedback";
 import { shouldShowMetricReferences } from "../../core/metrics";
@@ -75,6 +79,7 @@ export function ProtectedPracticeScreen() {
   const [displayedResultsProgress, setDisplayedResultsProgress] = useState<number | null>(null);
   const activeStepRef = useRef<HTMLButtonElement | null>(null);
   const introAcceptedRef = useRef(false);
+  const difficultyReconciledRef = useRef(false);
 
   const payload = state.payload;
   const progressionInput = {
@@ -85,6 +90,7 @@ export function ProtectedPracticeScreen() {
     cases: []
   };
   const defaultDifficulty = getHighestAccessibleDifficultyKey(progressionInput);
+  const hasExplicitDifficultyParam = searchParams.has("difficulty");
   const requestedDifficulty = searchParams.get("difficulty") ?? defaultDifficulty;
   const normalizedDifficulty = normalizeDifficultyKey(progressionInput, requestedDifficulty);
   const difficultyMeta = getDifficultyMeta(progressionInput);
@@ -92,6 +98,16 @@ export function ProtectedPracticeScreen() {
   const canLoadCase = canStartNewCase(progressionInput);
   const currentCase = state.practiceState.currentCase;
   const summary = state.practiceState.lastCaseSummary;
+  const activeCaseDifficulty = currentCase
+    ? getDifficultyLabel(payload?.progressionConfig ?? null, Number(currentCase.difficulty_level ?? 1))
+    : normalizedDifficulty;
+  const difficultyMismatchAction = getPracticeDifficultyMismatchAction({
+    hasExplicitDifficultyParam,
+    hasActiveCase: Boolean(currentCase),
+    hasSummary: Boolean(summary),
+    activeCaseDifficulty: currentCase ? activeCaseDifficulty : null,
+    normalizedDifficulty
+  });
   const currentStepIndex = state.sessionState.currentStepIndex;
   const currentStep = currentCase?.questions_flow?.[currentStepIndex] ?? null;
   const allowsClientSideFeedback = canUseClientSidePracticeFeedback(currentCase);
@@ -136,6 +152,22 @@ export function ProtectedPracticeScreen() {
       setSearchParams({ difficulty: normalizedDifficulty }, { replace: true });
     }
   }, [normalizedDifficulty, requestedDifficulty, setSearchParams]);
+
+  useEffect(() => {
+    if (difficultyReconciledRef.current) return;
+    if (!difficultyMismatchAction) return;
+
+    difficultyReconciledRef.current = true;
+
+    if (difficultyMismatchAction === "resume_active_case" && currentCase) {
+      setSearchParams({ difficulty: activeCaseDifficulty }, { replace: true });
+      return;
+    }
+
+    if (difficultyMismatchAction === "replace_active_case") {
+      void handleDifficultyChange(normalizedDifficulty);
+    }
+  }, [activeCaseDifficulty, currentCase, difficultyMismatchAction, normalizedDifficulty, setSearchParams]);
 
   useEffect(() => {
     if (state.sessionState.currentDifficulty !== normalizedDifficulty) {
@@ -365,7 +397,7 @@ export function ProtectedPracticeScreen() {
     introAcceptedRef.current = true;
     setIntroOpen(false);
     setPendingDifficulty(null);
-    if (currentCase && !summary) {
+    if (currentCase && !summary && activeCaseDifficulty === nextDifficulty) {
       activatePreviewedSlot(nextDifficulty);
       return;
     }
@@ -757,9 +789,12 @@ export function ProtectedPracticeScreen() {
               {getProtectedPracticeUnavailableMessage()}
             </Surface>
           ) : (
-            <Surface className="practice-alert-card">
-              No protected case is ready for this difficulty yet. Try again in a moment.
-            </Surface>
+            <div className="status-screen status-screen--loading">
+              <div className="loading-chip" role="status" aria-live="polite">
+                <span className="loading-chip__spinner" aria-hidden="true" />
+                <span>Loading cases</span>
+              </div>
+            </div>
           )}
         </div>
       </main>

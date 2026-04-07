@@ -51,8 +51,18 @@ function getTrimmedSectionBody(section: Pick<ExplanationSection, "body">) {
   return String(section.body ?? "").trim();
 }
 
+const EXPLANATION_DISPLAY_ORDER: Partial<Record<ExplanationSection["key"], number>> = {
+  compensation: 1,
+  anion_gap: 2,
+  additional_metabolic_process: 3,
+  diagnosis: 4,
+  clinical_context: 4,
+  key_takeaway: 5
+};
+
 function getRenderedExplanationSections(caseSummary: CaseSummary): ExplanationSection[] {
   const supportedKeys = new Set<ExplanationSection["key"]>([
+    "additional_metabolic_process",
     "anion_gap",
     "compensation",
     "clinical_context",
@@ -69,6 +79,9 @@ function getRenderedExplanationSections(caseSummary: CaseSummary): ExplanationSe
     .filter(section => supportedKeys.has(section.key) && section.title && section.body);
 
   validSections.sort((left, right) => {
+    const leftDisplayOrder = EXPLANATION_DISPLAY_ORDER[left.key] ?? left.order;
+    const rightDisplayOrder = EXPLANATION_DISPLAY_ORDER[right.key] ?? right.order;
+    if (leftDisplayOrder !== rightDisplayOrder) return leftDisplayOrder - rightDisplayOrder;
     if (left.order !== right.order) return left.order - right.order;
     return left.key.localeCompare(right.key);
   });
@@ -90,6 +103,7 @@ function getRenderedExplanationSections(caseSummary: CaseSummary): ExplanationSe
 const COLLAPSIBLE_EXPLANATION_KEYS = new Set<ResultsExplanationPreferenceKey>([
   "compensation",
   "anion_gap",
+  "additional_metabolic_process",
   "clinical_context"
 ]);
 
@@ -101,6 +115,7 @@ function getExpandedPreferences(storage?: StorageAdapter | null): ResultsExplana
   return storage?.loadResultsExplanationPreferences() ?? {
     compensation: true,
     anion_gap: true,
+    additional_metabolic_process: true,
     clinical_context: true
   };
 }

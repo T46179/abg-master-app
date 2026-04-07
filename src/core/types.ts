@@ -136,7 +136,11 @@ export interface StructuredExplanation {
   sections: ExplanationSection[];
 }
 
-export type ResultsExplanationPreferenceKey = "compensation" | "anion_gap" | "clinical_context";
+export type ResultsExplanationPreferenceKey =
+  | "compensation"
+  | "anion_gap"
+  | "additional_metabolic_process"
+  | "clinical_context";
 export type ResultsExplanationPreferences = Record<ResultsExplanationPreferenceKey, boolean>;
 
 export interface StepFeedbackEntry {

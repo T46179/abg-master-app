@@ -764,6 +764,7 @@ describe("storage adapters", () => {
     initialStorage.saveResultsExplanationPreferences({
       compensation: false,
       anion_gap: true,
+      additional_metabolic_process: true,
       clinical_context: false
     });
 
@@ -782,6 +783,7 @@ describe("storage adapters", () => {
     expect(reloadedStorage.loadResultsExplanationPreferences()).toEqual({
       compensation: false,
       anion_gap: true,
+      additional_metabolic_process: true,
       clinical_context: false
     });
     expect(browserStorage.getItem(STORAGE_KEYS.USER_STATE_MODE_STORAGE_KEY)).toBe("sig-1");

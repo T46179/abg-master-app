@@ -81,6 +81,7 @@ const storageAdapter = {
   loadResultsExplanationPreferences: vi.fn(() => ({
     compensation: true,
     anion_gap: true,
+    additional_metabolic_process: true,
     clinical_context: true
   })),
   saveResultsExplanationPreferences: vi.fn(),

@@ -18,7 +18,12 @@ const ADVANCED_RANGES_STORAGE_KEY = "abgmaster_showAdvancedRanges";
 const RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY = "abgmaster_resultsExplanationPreferences";
 const SEEN_CASES_STORAGE_KEY = "abgmaster_seenCasesByDifficulty";
 const DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced", "master"];
-const RESULTS_EXPLANATION_PREFERENCE_KEYS: ResultsExplanationPreferenceKey[] = ["compensation", "anion_gap", "clinical_context"];
+const RESULTS_EXPLANATION_PREFERENCE_KEYS: ResultsExplanationPreferenceKey[] = [
+  "compensation",
+  "anion_gap",
+  "additional_metabolic_process",
+  "clinical_context"
+];
 
 export const STORAGE_KEYS = {
   USER_STATE_STORAGE_KEY,
@@ -58,6 +63,7 @@ function createDefaultResultsExplanationPreferences(): ResultsExplanationPrefere
   return {
     compensation: true,
     anion_gap: true,
+    additional_metabolic_process: true,
     clinical_context: true
   };
 }

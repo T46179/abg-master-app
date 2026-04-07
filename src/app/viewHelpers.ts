@@ -53,3 +53,15 @@ export function shouldConfirmDifficultySwitch(hasActiveUnfinishedCase: boolean, 
 export function shouldShowPracticeIntro(hasSeenPracticeIntro: boolean, hasActiveCase: boolean, hasSummary: boolean) {
   return !hasSeenPracticeIntro && !hasActiveCase && !hasSummary;
 }
+
+export function getPracticeDifficultyMismatchAction(input: {
+  hasExplicitDifficultyParam: boolean;
+  hasActiveCase: boolean;
+  hasSummary: boolean;
+  activeCaseDifficulty: string | null;
+  normalizedDifficulty: string;
+}) {
+  if (!input.hasActiveCase || input.hasSummary || !input.activeCaseDifficulty) return null;
+  if (input.activeCaseDifficulty === input.normalizedDifficulty) return null;
+  return input.hasExplicitDifficultyParam ? "replace_active_case" : "resume_active_case";
+}

@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
-import { shouldConfirmDifficultySwitch, shouldShowPracticeIntro } from "../../app/viewHelpers";
+import {
+  getPracticeDifficultyMismatchAction,
+  shouldConfirmDifficultySwitch,
+  shouldShowPracticeIntro
+} from "../../app/viewHelpers";
 import { trackEvent } from "../../core/analytics";
 import { createAttemptRecord } from "../../core/attempts";
 import { buildConciseStepFeedback } from "../../core/explanations";
@@ -51,6 +55,7 @@ export function LegacyPracticeScreen() {
   const [displayedResultsProgress, setDisplayedResultsProgress] = useState<number | null>(null);
   const activeStepRef = useRef<HTMLButtonElement | null>(null);
   const introAcceptedRef = useRef(false);
+  const difficultyReconciledRef = useRef(false);
 
   const payload = state.payload;
   const progressionInput = {
@@ -62,6 +67,7 @@ export function LegacyPracticeScreen() {
   };
 
   const defaultDifficulty = getHighestAccessibleDifficultyKey(progressionInput);
+  const hasExplicitDifficultyParam = searchParams.has("difficulty");
   const requestedDifficulty = searchParams.get("difficulty") ?? defaultDifficulty;
   const normalizedDifficulty = normalizeDifficultyKey(progressionInput, requestedDifficulty);
   const difficultyMeta = getDifficultyMeta(progressionInput);
@@ -88,6 +94,13 @@ export function LegacyPracticeScreen() {
   const activeCaseDifficulty = currentCase
     ? getDifficultyLabel(payload?.progressionConfig ?? null, Number(currentCase.difficulty_level ?? 1))
     : normalizedDifficulty;
+  const difficultyMismatchAction = getPracticeDifficultyMismatchAction({
+    hasExplicitDifficultyParam,
+    hasActiveCase: Boolean(currentCase),
+    hasSummary: Boolean(summary),
+    activeCaseDifficulty: currentCase ? activeCaseDifficulty : null,
+    normalizedDifficulty
+  });
   const currentDifficultyLevel = Number(currentCase?.difficulty_level ?? summary?.caseData.difficulty_level ?? 1);
   const showAbnormalHighlighting = currentDifficultyLevel <= 3;
   const shouldAutoLoadPracticeCase = !currentCase && !summary && canLoadCase && Boolean(payload?.cases.length);
@@ -113,6 +126,22 @@ export function LegacyPracticeScreen() {
       setSearchParams({ difficulty: normalizedDifficulty }, { replace: true });
     }
   }, [normalizedDifficulty, requestedDifficulty, setSearchParams]);
+
+  useEffect(() => {
+    if (difficultyReconciledRef.current) return;
+    if (!difficultyMismatchAction) return;
+
+    difficultyReconciledRef.current = true;
+
+    if (difficultyMismatchAction === "resume_active_case" && currentCase) {
+      setSearchParams({ difficulty: activeCaseDifficulty }, { replace: true });
+      return;
+    }
+
+    if (difficultyMismatchAction === "replace_active_case") {
+      void handleDifficultyChange(normalizedDifficulty);
+    }
+  }, [activeCaseDifficulty, currentCase, difficultyMismatchAction, normalizedDifficulty, setSearchParams]);
 
   useEffect(() => {
     if (state.sessionState.currentDifficulty !== normalizedDifficulty) {
@@ -278,7 +307,7 @@ export function LegacyPracticeScreen() {
     introAcceptedRef.current = true;
     setIntroOpen(false);
     setPendingDifficulty(null);
-    if (currentCase && !summary) {
+    if (currentCase && !summary && activeCaseDifficulty === nextDifficulty) {
       activateLoadedCase(nextDifficulty);
       return;
     }

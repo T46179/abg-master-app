@@ -83,6 +83,7 @@ function createStorageAdapter(overrides: Partial<StorageAdapter> = {}): StorageA
     loadResultsExplanationPreferences: vi.fn(() => ({
       compensation: true,
       anion_gap: true,
+      additional_metabolic_process: true,
       clinical_context: true
     })),
     saveResultsExplanationPreferences: vi.fn(),
@@ -113,6 +114,7 @@ describe("ResultsSummaryCard", () => {
       { key: "key_takeaway", title: "Key Takeaway", body: "Takeaway body.", order: 999 },
       { key: "diagnosis", title: "Diagnosis", body: "Diagnosis significance.", order: 3 },
       { key: "anion_gap", title: "Duplicate gap", body: "Should not render.", order: 4 },
+      { key: "additional_metabolic_process", title: "Additional Metabolic Process", body: "Additional process body.", order: 0 },
       { key: "clinical_context", title: "Clinical Significance", body: "Clinical significance body.", order: 3 },
       { key: "compensation", title: "Compensation", body: "Compensation explanation.", order: 1 },
       { key: "anion_gap", title: "Anion Gap Analysis", body: "Raised anion gap explanation.", order: 2 }
@@ -134,6 +136,8 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).toContain("Mixed Disorder");
     expect(container.textContent).toContain("HAGMA + Metabolic Alkalosis (DKA + Vomiting)");
     expect(container.textContent).toContain("Detailed Explanations");
+    expect(container.textContent).toContain("Additional Metabolic Process");
+    expect(container.textContent).toContain("Additional process body.");
     expect(container.textContent).toContain("Compensation");
     expect(container.textContent).toContain("Compensation explanation.");
     expect(container.textContent).toContain("Key Takeaway");
@@ -156,12 +160,13 @@ describe("ResultsSummaryCard", () => {
       "Detailed Explanations",
       "Compensation",
       "Anion Gap Analysis",
+      "Additional Metabolic Process",
       "Clinical Significance",
       "Key Takeaway"
     ]);
 
     const toggles = Array.from(container.querySelectorAll(".results-card__detail-toggle")).map(node => node.textContent);
-    expect(toggles).toEqual(["-", "-", "-"]);
+    expect(toggles).toEqual(["-", "-", "-", "-"]);
   });
 
   it("falls back to diagnosis when clinical context is absent", () => {
@@ -218,6 +223,7 @@ describe("ResultsSummaryCard", () => {
     const preferences: ResultsExplanationPreferences = {
       compensation: true,
       anion_gap: true,
+      additional_metabolic_process: true,
       clinical_context: true
     };
     const storage = createStorageAdapter({
@@ -229,6 +235,7 @@ describe("ResultsSummaryCard", () => {
     const summary = buildSummary([
       { key: "compensation", title: "Compensation", body: "Compensation explanation.", order: 1 },
       { key: "anion_gap", title: "Anion Gap Analysis", body: "Raised anion gap explanation.", order: 2 },
+      { key: "additional_metabolic_process", title: "Additional Metabolic Process", body: "Additional process body.", order: 3 },
       { key: "clinical_context", title: "Clinical Significance", body: "Clinical significance body.", order: 3 },
       { key: "key_takeaway", title: "Key Takeaway", body: "Takeaway body.", order: 999 }
     ]);
@@ -257,12 +264,14 @@ describe("ResultsSummaryCard", () => {
 
     expect(container.textContent).not.toContain("Compensation explanation.");
     expect(container.textContent).toContain("Raised anion gap explanation.");
+    expect(container.textContent).toContain("Additional process body.");
     expect(container.textContent).toContain("Clinical significance body.");
     expect(container.textContent).toContain("Takeaway body.");
     expect(toggle?.textContent).toBe("+");
     expect(storage.saveResultsExplanationPreferences).toHaveBeenCalledWith({
       compensation: false,
       anion_gap: true,
+      additional_metabolic_process: true,
       clinical_context: true
     });
 
@@ -281,7 +290,64 @@ describe("ResultsSummaryCard", () => {
     });
 
     expect(container.textContent).not.toContain("Compensation explanation.");
+    expect(container.textContent).toContain("Additional process body.");
     expect(container.textContent).toContain("Takeaway body.");
+  });
+
+  it("collapses the additional metabolic process card body and persists the setting", () => {
+    const preferences: ResultsExplanationPreferences = {
+      compensation: true,
+      anion_gap: true,
+      additional_metabolic_process: true,
+      clinical_context: true
+    };
+    const storage = createStorageAdapter({
+      loadResultsExplanationPreferences: vi.fn(() => ({ ...preferences })),
+      saveResultsExplanationPreferences: vi.fn((nextValue: ResultsExplanationPreferences) => {
+        Object.assign(preferences, nextValue);
+      })
+    });
+    const summary = buildSummary([
+      { key: "compensation", title: "Compensation", body: "Compensation explanation.", order: 1 },
+      { key: "anion_gap", title: "Anion Gap Analysis", body: "Raised anion gap explanation.", order: 2 },
+      { key: "additional_metabolic_process", title: "Additional Metabolic Process", body: "Additional process body.", order: 3 },
+      { key: "key_takeaway", title: "Key Takeaway", body: "Takeaway body.", order: 999 }
+    ]);
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={buildCaseItem("salicylate_toxicity")}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          onOpenFeedback={() => {}}
+          storage={storage}
+        />
+      );
+    });
+
+    const toggles = Array.from(container.querySelectorAll<HTMLButtonElement>(".results-card__detail-toggle"));
+    const additionalToggle = toggles.find(button => button.getAttribute("aria-label") === "Collapse Additional Metabolic Process");
+    expect(additionalToggle?.textContent).toBe("-");
+    expect(container.textContent).toContain("Additional process body.");
+
+    act(() => {
+      additionalToggle?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.textContent).not.toContain("Additional process body.");
+    expect(container.textContent).toContain("Compensation explanation.");
+    expect(container.textContent).toContain("Raised anion gap explanation.");
+    expect(container.textContent).toContain("Takeaway body.");
+    expect(additionalToggle?.textContent).toBe("+");
+    expect(storage.saveResultsExplanationPreferences).toHaveBeenCalledWith({
+      compensation: true,
+      anion_gap: true,
+      additional_metabolic_process: false,
+      clinical_context: true
+    });
   });
 
   it("keeps key takeaway always expanded with no toggle", () => {
