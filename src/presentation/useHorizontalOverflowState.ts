@@ -4,9 +4,10 @@ interface HorizontalOverflowState {
   overflowing: boolean;
   atStart: boolean;
   atEnd: boolean;
+  movedFromStart: boolean;
 }
 
-function getOverflowState(node: HTMLElement): HorizontalOverflowState {
+function getOverflowState(node: HTMLElement): Omit<HorizontalOverflowState, "movedFromStart"> {
   const maxScrollLeft = Math.max(node.scrollWidth - node.clientWidth, 0);
   const overflowing = maxScrollLeft > 1;
   const scrollLeft = node.scrollLeft;
@@ -23,7 +24,8 @@ export function useHorizontalOverflowState<T extends HTMLElement>(contentKey: st
   const [state, setState] = useState<HorizontalOverflowState>({
     overflowing: false,
     atStart: true,
-    atEnd: true
+    atEnd: true,
+    movedFromStart: false
   });
 
   useEffect(() => {
@@ -35,6 +37,14 @@ export function useHorizontalOverflowState<T extends HTMLElement>(contentKey: st
 
     let frameId = 0;
 
+    node.scrollLeft = 0;
+    setState({
+      overflowing: false,
+      atStart: true,
+      atEnd: true,
+      movedFromStart: false
+    });
+
     const update = () => {
       cancelAnimationFrame(frameId);
       frameId = requestAnimationFrame(() => {
@@ -42,9 +52,13 @@ export function useHorizontalOverflowState<T extends HTMLElement>(contentKey: st
         setState(previous =>
           previous.overflowing === nextState.overflowing &&
           previous.atStart === nextState.atStart &&
-          previous.atEnd === nextState.atEnd
+          previous.atEnd === nextState.atEnd &&
+          previous.movedFromStart === (previous.movedFromStart || !nextState.atStart)
             ? previous
-            : nextState
+            : {
+              ...nextState,
+              movedFromStart: previous.movedFromStart || !nextState.atStart
+            }
         );
       });
     };

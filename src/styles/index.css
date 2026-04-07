@@ -1136,6 +1136,35 @@ button:disabled {
   margin-top: 1rem;
 }
 
+.value-panels__secondary-scroll {
+  position: relative;
+}
+
+.value-panels__secondary-scroll::after {
+  content: "\2192";
+  position: absolute;
+  top: calc(1rem + 0.9rem);
+  right: 0.75rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.92);
+  color: #6f8488;
+  font-size: 0.95rem;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(15, 37, 71, 0.08);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(0);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.value-panels__secondary-scroll[data-show-scroll-hint="true"]::after {
+  opacity: 1;
+}
+
 .metric-card {
   padding: 0.95rem;
   border: 1px solid var(--color-border);
@@ -2047,7 +2076,14 @@ button:disabled {
     min-width: 0;
   }
 
-  .value-panels > .value-panels__card:last-child > .metric-scroll {
+  .value-panels > .value-panels__card:last-child > .value-panels__secondary-scroll {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .value-panels > .value-panels__card:last-child > .value-panels__secondary-scroll > .metric-scroll {
     width: 100%;
     max-width: 100%;
     min-width: 0;
@@ -2057,7 +2093,7 @@ button:disabled {
     -webkit-overflow-scrolling: touch;
   }
 
-  .value-panels > .value-panels__card:last-child > .metric-scroll::-webkit-scrollbar {
+  .value-panels > .value-panels__card:last-child > .value-panels__secondary-scroll > .metric-scroll::-webkit-scrollbar {
     display: none;
   }
 
