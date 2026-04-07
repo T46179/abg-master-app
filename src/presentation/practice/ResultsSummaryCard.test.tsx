@@ -4,7 +4,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ResultsSummaryCard, ResultsSummaryHeader } from "./ResultsSummaryCard";
-import type { CaseData, CaseSummary } from "../../core/types";
+import type { CaseData, CaseSummary, ResultsExplanationPreferences, StorageAdapter } from "../../core/types";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -67,6 +67,29 @@ function buildSummary(sections: CaseSummary["explanation"]["sections"]): CaseSum
   };
 }
 
+function createStorageAdapter(overrides: Partial<StorageAdapter> = {}): StorageAdapter {
+  return {
+    init: vi.fn(async () => undefined),
+    loadUserState: vi.fn(async () => null),
+    saveUserState: vi.fn(async () => undefined),
+    resetUserState: vi.fn(async () => undefined),
+    saveAttempt: vi.fn(async () => undefined),
+    loadSeenCaseState: vi.fn(() => ({})),
+    saveSeenCaseState: vi.fn(),
+    loadPracticeIntroSeen: vi.fn(() => false),
+    savePracticeIntroSeen: vi.fn(),
+    loadAdvancedRangesPreference: vi.fn(() => false),
+    saveAdvancedRangesPreference: vi.fn(),
+    loadResultsExplanationPreferences: vi.fn(() => ({
+      compensation: true,
+      anion_gap: true,
+      clinical_context: true
+    })),
+    saveResultsExplanationPreferences: vi.fn(),
+    ...overrides
+  };
+}
+
 describe("ResultsSummaryCard", () => {
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
@@ -108,10 +131,9 @@ describe("ResultsSummaryCard", () => {
       );
     });
 
-    expect(container.textContent).toContain("Diagnosis");
     expect(container.textContent).toContain("Mixed Disorder");
     expect(container.textContent).toContain("HAGMA + Metabolic Alkalosis (DKA + Vomiting)");
-    expect(container.textContent).toContain("Detailed Explanation");
+    expect(container.textContent).toContain("Detailed Explanations");
     expect(container.textContent).toContain("Compensation");
     expect(container.textContent).toContain("Compensation explanation.");
     expect(container.textContent).toContain("Key Takeaway");
@@ -131,13 +153,15 @@ describe("ResultsSummaryCard", () => {
 
     const headings = Array.from(container.querySelectorAll("h3, h4")).map(node => node.textContent);
     expect(headings).toEqual([
-      "Diagnosis",
-      "Detailed Explanation",
+      "Detailed Explanations",
       "Compensation",
       "Anion Gap Analysis",
       "Clinical Significance",
       "Key Takeaway"
     ]);
+
+    const toggles = Array.from(container.querySelectorAll(".results-card__detail-toggle")).map(node => node.textContent);
+    expect(toggles).toEqual(["-", "-", "-"]);
   });
 
   it("falls back to diagnosis when clinical context is absent", () => {
@@ -186,8 +210,100 @@ describe("ResultsSummaryCard", () => {
 
     expect(container.textContent).toContain("Unknown");
     expect(container.textContent).not.toContain("Diabetic ketoacidosis");
-    expect(container.textContent).not.toContain("Detailed Explanation");
+    expect(container.textContent).not.toContain("Detailed Explanations");
     expect(container.querySelectorAll(".results-card__detail-card")).toHaveLength(0);
+  });
+
+  it("collapses only the targeted explanation card body and persists the setting", () => {
+    const preferences: ResultsExplanationPreferences = {
+      compensation: true,
+      anion_gap: true,
+      clinical_context: true
+    };
+    const storage = createStorageAdapter({
+      loadResultsExplanationPreferences: vi.fn(() => ({ ...preferences })),
+      saveResultsExplanationPreferences: vi.fn((nextValue: ResultsExplanationPreferences) => {
+        Object.assign(preferences, nextValue);
+      })
+    });
+    const summary = buildSummary([
+      { key: "compensation", title: "Compensation", body: "Compensation explanation.", order: 1 },
+      { key: "anion_gap", title: "Anion Gap Analysis", body: "Raised anion gap explanation.", order: 2 },
+      { key: "clinical_context", title: "Clinical Significance", body: "Clinical significance body.", order: 3 },
+      { key: "key_takeaway", title: "Key Takeaway", body: "Takeaway body.", order: 999 }
+    ]);
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={buildCaseItem("dka")}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          onOpenFeedback={() => {}}
+          storage={storage}
+        />
+      );
+    });
+
+    const toggle = container.querySelector<HTMLButtonElement>(".results-card__detail-toggle");
+    expect(toggle?.textContent).toBe("-");
+    expect(container.textContent).toContain("Compensation explanation.");
+
+    act(() => {
+      toggle?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.textContent).not.toContain("Compensation explanation.");
+    expect(container.textContent).toContain("Raised anion gap explanation.");
+    expect(container.textContent).toContain("Clinical significance body.");
+    expect(container.textContent).toContain("Takeaway body.");
+    expect(toggle?.textContent).toBe("+");
+    expect(storage.saveResultsExplanationPreferences).toHaveBeenCalledWith({
+      compensation: false,
+      anion_gap: true,
+      clinical_context: true
+    });
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={buildCaseItem("dka")}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          onOpenFeedback={() => {}}
+          storage={storage}
+        />
+      );
+    });
+
+    expect(container.textContent).not.toContain("Compensation explanation.");
+    expect(container.textContent).toContain("Takeaway body.");
+  });
+
+  it("keeps key takeaway always expanded with no toggle", () => {
+    const summary = buildSummary([
+      { key: "key_takeaway", title: "Key Takeaway", body: "Takeaway body.", order: 999 }
+    ]);
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={buildCaseItem("dka")}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          onOpenFeedback={() => {}}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("Takeaway body.");
+    expect(container.querySelector(".results-card__detail-toggle")).toBeNull();
   });
 
   it("omits the secondary diagnosis line when the mapping sub label is empty", () => {

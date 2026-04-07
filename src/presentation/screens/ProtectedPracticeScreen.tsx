@@ -712,6 +712,7 @@ export function ProtectedPracticeScreen() {
               showAbnormalHighlighting={showAbnormalHighlighting}
               onNextCase={() => requestCaseStart(normalizedDifficulty)}
               onOpenFeedback={handleOpenFeedback}
+              storage={state.storage}
             />
           ) : currentCase ? (
             <div className="practice-stage">

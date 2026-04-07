@@ -136,6 +136,9 @@ export interface StructuredExplanation {
   sections: ExplanationSection[];
 }
 
+export type ResultsExplanationPreferenceKey = "compensation" | "anion_gap" | "clinical_context";
+export type ResultsExplanationPreferences = Record<ResultsExplanationPreferenceKey, boolean>;
+
 export interface StepFeedbackEntry {
   key: ExplanationDomain;
   title: string;
@@ -358,6 +361,8 @@ export interface StorageAdapter {
   savePracticeIntroSeen(value: boolean): void;
   loadAdvancedRangesPreference(): boolean;
   saveAdvancedRangesPreference(value: boolean): void;
+  loadResultsExplanationPreferences(): ResultsExplanationPreferences;
+  saveResultsExplanationPreferences(value: ResultsExplanationPreferences): void;
 }
 
 export interface SupabaseSyncAdapter {

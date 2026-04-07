@@ -761,6 +761,11 @@ describe("storage adapters", () => {
     initialStorage.saveSeenCaseState({ beginner: ["case-1"], intermediate: [], advanced: ["case-2"], master: [] });
     initialStorage.savePracticeIntroSeen(true);
     initialStorage.saveAdvancedRangesPreference(true);
+    initialStorage.saveResultsExplanationPreferences({
+      compensation: false,
+      anion_gap: true,
+      clinical_context: false
+    });
 
     const reloadedStorage = createAppStorage({ browserStorage });
     await reloadedStorage.init({ releaseSignature: "sig-1" });
@@ -774,6 +779,11 @@ describe("storage adapters", () => {
     });
     expect(reloadedStorage.loadPracticeIntroSeen()).toBe(true);
     expect(reloadedStorage.loadAdvancedRangesPreference()).toBe(true);
+    expect(reloadedStorage.loadResultsExplanationPreferences()).toEqual({
+      compensation: false,
+      anion_gap: true,
+      clinical_context: false
+    });
     expect(browserStorage.getItem(STORAGE_KEYS.USER_STATE_MODE_STORAGE_KEY)).toBe("sig-1");
   });
 

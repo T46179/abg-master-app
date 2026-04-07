@@ -3,6 +3,8 @@ import type {
   AttemptRecord,
   AttemptRow,
   ProgressRow,
+  ResultsExplanationPreferenceKey,
+  ResultsExplanationPreferences,
   SaveFailureKind,
   StorageAdapter,
   StorageInitOptions,
@@ -13,14 +15,17 @@ const USER_STATE_STORAGE_KEY = "abgmaster_userState";
 const USER_STATE_MODE_STORAGE_KEY = "abgmaster_userState_mode";
 const PRACTICE_INTRO_SEEN_STORAGE_KEY = "practiceIntroSeen";
 const ADVANCED_RANGES_STORAGE_KEY = "abgmaster_showAdvancedRanges";
+const RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY = "abgmaster_resultsExplanationPreferences";
 const SEEN_CASES_STORAGE_KEY = "abgmaster_seenCasesByDifficulty";
 const DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced", "master"];
+const RESULTS_EXPLANATION_PREFERENCE_KEYS: ResultsExplanationPreferenceKey[] = ["compensation", "anion_gap", "clinical_context"];
 
 export const STORAGE_KEYS = {
   USER_STATE_STORAGE_KEY,
   USER_STATE_MODE_STORAGE_KEY,
   PRACTICE_INTRO_SEEN_STORAGE_KEY,
   ADVANCED_RANGES_STORAGE_KEY,
+  RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY,
   SEEN_CASES_STORAGE_KEY
 } as const;
 
@@ -47,6 +52,14 @@ export function createMemoryStorage(): BrowserStorageLike {
 
 function createEmptySeenCaseState() {
   return Object.fromEntries(DIFFICULTY_ORDER.map(key => [key, [] as string[]]));
+}
+
+function createDefaultResultsExplanationPreferences(): ResultsExplanationPreferences {
+  return {
+    compensation: true,
+    anion_gap: true,
+    clinical_context: true
+  };
 }
 
 function safeGetItem(storage: BrowserStorageLike, key: string): string | null {
@@ -100,6 +113,17 @@ export function sanitizeSeenCaseState(source: unknown): Record<string, string[]>
   });
 
   return sanitized;
+}
+
+export function sanitizeResultsExplanationPreferences(source: unknown): ResultsExplanationPreferences {
+  const defaults = createDefaultResultsExplanationPreferences();
+  if (!source || typeof source !== "object") return defaults;
+
+  const typedSource = source as Record<string, unknown>;
+  return RESULTS_EXPLANATION_PREFERENCE_KEYS.reduce((preferences, key) => {
+    preferences[key] = typedSource[key] == null ? defaults[key] : Boolean(typedSource[key]);
+    return preferences;
+  }, { ...defaults });
 }
 
 function getCoreUserState(source: UserState | Record<string, unknown> | null | undefined) {
@@ -256,6 +280,25 @@ export function createLocalStorageAdapter(browserStorage: BrowserStorageLike): S
 
     saveAdvancedRangesPreference(value) {
       safeSetItem(browserStorage, ADVANCED_RANGES_STORAGE_KEY, String(Boolean(value)));
+    },
+
+    loadResultsExplanationPreferences() {
+      const raw = safeGetItem(browserStorage, RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY);
+      if (!raw) return createDefaultResultsExplanationPreferences();
+
+      try {
+        return sanitizeResultsExplanationPreferences(JSON.parse(raw));
+      } catch {
+        return createDefaultResultsExplanationPreferences();
+      }
+    },
+
+    saveResultsExplanationPreferences(value) {
+      safeSetItem(
+        browserStorage,
+        RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY,
+        JSON.stringify(sanitizeResultsExplanationPreferences(value))
+      );
     }
   };
 }
@@ -423,6 +466,14 @@ export function createSupabaseStorageAdapter(
 
     saveAdvancedRangesPreference(value) {
       localAdapter.saveAdvancedRangesPreference(value);
+    },
+
+    loadResultsExplanationPreferences() {
+      return localAdapter.loadResultsExplanationPreferences();
+    },
+
+    saveResultsExplanationPreferences(value) {
+      localAdapter.saveResultsExplanationPreferences(value);
     }
   };
 }
@@ -480,6 +531,12 @@ export function createAppStorage(options?: {
     },
     saveAdvancedRangesPreference(value) {
       activeAdapter.saveAdvancedRangesPreference(value);
+    },
+    loadResultsExplanationPreferences() {
+      return activeAdapter.loadResultsExplanationPreferences();
+    },
+    saveResultsExplanationPreferences(value) {
+      activeAdapter.saveResultsExplanationPreferences(value);
     }
   };
 }

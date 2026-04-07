@@ -78,6 +78,12 @@ const storageAdapter = {
   resetUserState: vi.fn(async () => undefined),
   loadAdvancedRangesPreference: vi.fn(() => false),
   saveAdvancedRangesPreference: vi.fn(),
+  loadResultsExplanationPreferences: vi.fn(() => ({
+    compensation: true,
+    anion_gap: true,
+    clinical_context: true
+  })),
+  saveResultsExplanationPreferences: vi.fn(),
   loadPracticeIntroSeen: vi.fn(() => false),
   savePracticeIntroSeen: vi.fn(),
   loadSeenCaseState: vi.fn(() => ({})),

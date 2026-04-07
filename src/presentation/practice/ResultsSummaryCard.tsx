@@ -1,6 +1,14 @@
+import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 import { Surface } from "../primitives/Surface";
-import type { CaseData, CaseSummary, ExplanationSection } from "../../core/types";
+import type {
+  CaseData,
+  CaseSummary,
+  ExplanationSection,
+  ResultsExplanationPreferenceKey,
+  ResultsExplanationPreferences,
+  StorageAdapter
+} from "../../core/types";
 import { formatElapsed, splitMetrics } from "../../app/viewHelpers";
 import { MetricLabel, MetricReference, MetricValue } from "./MetricText";
 
@@ -79,6 +87,24 @@ function getRenderedExplanationSections(caseSummary: CaseSummary): ExplanationSe
   return renderedSections;
 }
 
+const COLLAPSIBLE_EXPLANATION_KEYS = new Set<ResultsExplanationPreferenceKey>([
+  "compensation",
+  "anion_gap",
+  "clinical_context"
+]);
+
+function isCollapsibleExplanationKey(key: ExplanationSection["key"]): key is ResultsExplanationPreferenceKey {
+  return COLLAPSIBLE_EXPLANATION_KEYS.has(key as ResultsExplanationPreferenceKey);
+}
+
+function getExpandedPreferences(storage?: StorageAdapter | null): ResultsExplanationPreferences {
+  return storage?.loadResultsExplanationPreferences() ?? {
+    compensation: true,
+    anion_gap: true,
+    clinical_context: true
+  };
+}
+
 interface ResultsSummaryCardProps {
   summary: CaseSummary;
   caseItem: CaseData;
@@ -86,6 +112,7 @@ interface ResultsSummaryCardProps {
   showAbnormalHighlighting: boolean;
   onNextCase: () => void;
   onOpenFeedback: () => void;
+  storage?: StorageAdapter | null;
 }
 
 interface ResultsSummaryHeaderProps {
@@ -103,7 +130,7 @@ export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
           <span className="results-card__icon" aria-hidden="true">
             <Trophy />
           </span>
-          <div>
+          <div className="results-card__hero-text">
             <h1>Case complete</h1>
             <p>You scored {props.summary.accuracy}% and earned {props.summary.totalXpAward} XP.</p>
           </div>
@@ -131,6 +158,23 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
   const archetype = props.caseItem.archetype ?? "";
   const { main, sub } = getDiagnosisDisplay(archetype);
   const explanationSections = getRenderedExplanationSections(props.summary);
+  const [expandedByKey, setExpandedByKey] = useState<ResultsExplanationPreferences>(() => getExpandedPreferences(props.storage));
+
+  useEffect(() => {
+    setExpandedByKey(getExpandedPreferences(props.storage));
+  }, [props.storage]);
+
+  function handleToggleSection(key: ResultsExplanationPreferenceKey) {
+    setExpandedByKey(current => {
+      const nextValue = !current[key];
+      const nextPreferences = {
+        ...current,
+        [key]: nextValue
+      };
+      props.storage?.saveResultsExplanationPreferences(nextPreferences);
+      return nextPreferences;
+    });
+  }
 
   return (
     <div className="results-flow">
@@ -140,14 +184,13 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
         </div>
 
         <div className="results-card__diagnosis">
-          <h3 className="results-card__section-label">Diagnosis</h3>
           <div className="results-card__diagnosis-main">{main}</div>
           {sub ? <div className="results-card__diagnosis-sub">{sub}</div> : null}
         </div>
 
         {explanationSections.length ? (
           <div className="results-card__detail-section">
-            <h3 className="results-card__section-label">Detailed Explanation</h3>
+            <h3 className="results-card__section-label">Detailed Explanations</h3>
             <div className="results-card__detail-stack">
               {explanationSections.map(section => (
                 <div
@@ -155,11 +198,25 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                   className={[
                     "card",
                     "results-card__detail-card",
+                    isCollapsibleExplanationKey(section.key) && !expandedByKey[section.key] ? "is-collapsed" : "",
                     section.key === "key_takeaway" ? "results-card__detail-card--takeaway" : ""
                   ].filter(Boolean).join(" ")}
                 >
-                  <h4>{section.title}</h4>
-                  <p>{section.body}</p>
+                  <div className="results-card__detail-card-header">
+                    <h4>{section.title}</h4>
+                    {isCollapsibleExplanationKey(section.key) ? (
+                      <button
+                        className="results-card__detail-toggle"
+                        type="button"
+                        aria-expanded={expandedByKey[section.key]}
+                        aria-label={`${expandedByKey[section.key] ? "Collapse" : "Expand"} ${section.title}`}
+                        onClick={() => handleToggleSection(section.key)}
+                      >
+                        {expandedByKey[section.key] ? "-" : "+"}
+                      </button>
+                    ) : null}
+                  </div>
+                  {isCollapsibleExplanationKey(section.key) && !expandedByKey[section.key] ? null : <p>{section.body}</p>}
                 </div>
               ))}
             </div>
