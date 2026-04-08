@@ -194,6 +194,20 @@ export function LegacyPracticeScreen() {
     };
   }, [summary?.caseId, resultsStartProgress, finalLevelProgress.progressPercent]);
 
+  useEffect(() => {
+    if (!summary) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [summary?.caseId]);
+
   async function updateUserState(nextUserState: typeof state.userState) {
     await setUserState(nextUserState);
   }

@@ -21,7 +21,7 @@ const DIAGNOSIS_DISPLAY = {
   uraemia: { main: "HAGMA", sub: "Uraemia" },
   toxic_alcohol: { main: "HAGMA", sub: "Toxic Alcohol Ingestion" },
 
-  simple_nagma: { main: "NAGMA", sub: "" },
+  simple_nagma: { main: "Metabolic Acidosis", sub: "" },
   diarrhoea_nagma: { main: "NAGMA", sub: "Diarrhoea" },
 
   simple_metabolic_alkalosis: { main: "Metabolic Alkalosis", sub: "" },

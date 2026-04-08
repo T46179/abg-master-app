@@ -784,6 +784,7 @@ button:disabled {
   font-size: clamp(1.9rem, 4vw, 2.6rem);
   font-weight: 700;
   letter-spacing: -0.04em;
+  color: #394447;
 }
 
 .stat-card__meta {
@@ -1981,9 +1982,12 @@ button:disabled {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .dashboard-badge-grid,
-  .dashboard-difficulty-grid {
+  .dashboard-badge-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dashboard-difficulty-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .practice-stage {

@@ -199,6 +199,20 @@ export function ProtectedPracticeScreen() {
     };
   }, [summary?.caseId, resultsStartProgress, finalLevelProgress.progressPercent]);
 
+  useEffect(() => {
+    if (!summary) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [summary?.caseId]);
+
   async function persistUserState(nextUserState: typeof state.userState) {
     await setUserState(nextUserState);
   }
