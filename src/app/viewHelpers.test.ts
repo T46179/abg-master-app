@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatElapsed,
   formatLevelProgressText,
   getPracticeDifficultyMismatchAction,
   shouldConfirmDifficultySwitch,
@@ -13,6 +14,14 @@ describe("view helpers", () => {
 
   it("falls back to total xp when no next-level requirement exists", () => {
     expect(formatLevelProgressText({ xpIntoLevel: 0, xpForNextLevel: 0 }, 388)).toBe("388 XP");
+  });
+
+  it("formats short elapsed times in seconds", () => {
+    expect(formatElapsed(42.4)).toBe("42.4s");
+  });
+
+  it("caps long elapsed times at over five minutes", () => {
+    expect(formatElapsed(301)).toBe("> 5 min");
   });
 
   it("only confirms difficulty switching after answered steps on an unfinished case", () => {

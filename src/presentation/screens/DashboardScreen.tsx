@@ -94,9 +94,6 @@ export function DashboardScreen() {
             <Link className="figma-button results-card__button" to={`/practice?difficulty=${defaultDifficulty}`}>
               Next case
             </Link>
-            <button className="figma-button figma-button--secondary results-card__button results-card__button--secondary" type="button" disabled>
-              Performance
-            </button>
           </div>
         </Surface>
 
@@ -109,7 +106,14 @@ export function DashboardScreen() {
             tone="blue"
           />
           <StatCard label="Cases" value={state.userState.casesCompleted} meta="Completed" icon={BookOpen} tone="green" />
-          <StatCard label="Performance" value={`${recentAccuracy}%`} meta="Recent performance" icon={Target} tone="violet" />
+          <StatCard
+            label="Performance"
+            value={`${recentAccuracy}%`}
+            meta="Recent performance"
+            metaTooltip="performance over your last 20 cases"
+            icon={Target}
+            tone="violet"
+          />
           <StatCard label="Streak" value={state.userState.streak} meta={`Longest: ${longestStreak} day${longestStreak === 1 ? "" : "s"}`} icon={Flame} tone="orange" />
         </section>
 

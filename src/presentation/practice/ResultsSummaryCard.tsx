@@ -11,6 +11,8 @@ import type {
 } from "../../core/types";
 import { formatElapsed, splitMetrics } from "../../app/viewHelpers";
 import { MetricInlineText, MetricLabel, MetricReference, MetricValue } from "./MetricText";
+import { useHorizontalOverflowState } from "../useHorizontalOverflowState";
+import { cn } from "../utils";
 
 const DIAGNOSIS_DISPLAY = {
   dka: { main: "HAGMA", sub: "Diabetic Ketoacidosis" },
@@ -173,7 +175,11 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
   const archetype = props.caseItem.archetype ?? "";
   const { main, sub } = getDiagnosisDisplay(archetype);
   const explanationSections = getRenderedExplanationSections(props.summary);
+  const difficultyLevel = Number(props.caseItem.difficulty_level ?? 1);
   const [expandedByKey, setExpandedByKey] = useState<ResultsExplanationPreferences>(() => getExpandedPreferences(props.storage));
+  const secondaryScroll = useHorizontalOverflowState<HTMLDivElement>(
+    `results-${props.caseItem.case_id ?? "unknown-case"}-${difficultyLevel}-${metrics.secondary.map(metric => metric.label).join("|")}-${props.showSummaryReferences ? "refs" : "no-refs"}`
+  );
 
   useEffect(() => {
     setExpandedByKey(getExpandedPreferences(props.storage));
@@ -225,7 +231,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                         type="button"
                         aria-expanded={expandedByKey[section.key]}
                         aria-label={`${expandedByKey[section.key] ? "Collapse" : "Expand"} ${section.title}`}
-                        onClick={() => handleToggleSection(section.key)}
+                        onClick={() => handleToggleSection(section.key as ResultsExplanationPreferenceKey)}
                       >
                         {expandedByKey[section.key] ? "-" : "+"}
                       </button>
@@ -251,9 +257,9 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
       </Surface>
 
       <Surface className="results-review-card">
-        <div className="results-card__metric-section">
+        <div className="results-card__metric-section results-card__metric-section--primary">
           <span className="section-header__eyebrow">ABG values</span>
-          <div className="metric-grid metric-grid--primary">
+          <div className="metric-grid metric-grid--primary results-card__metric-grid-primary">
             {metrics.primary.map(metric => (
               <article
                 key={metric.label}
@@ -272,26 +278,39 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
         </div>
 
         {metrics.secondary.length ? (
-          <div className="results-card__metric-section">
+          <div className="results-card__metric-section results-card__metric-section--secondary">
             <span className="section-header__eyebrow">Electrolytes &amp; other values</span>
-            <div className="metric-grid metric-grid--secondary">
-              {metrics.secondary.map(metric => (
-                <article
-                  key={metric.label}
-                  className={[
-                    "metric-card",
-                    "metric-card--secondary"
-                  ].join(" ")}
-                >
-                  <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
-                  <MetricValue
-                    renderedValue={metric.renderedValue}
-                    unit={metric.unit}
-                    abnormal={props.showAbnormalHighlighting && metric.abnormal}
-                  />
-                  {props.showSummaryReferences ? <MetricReference reference={metric.reference} /> : null}
-                </article>
-              ))}
+            <div
+              className="results-card__secondary-scroll"
+              data-show-scroll-hint={secondaryScroll.overflowing && !secondaryScroll.movedFromStart}
+            >
+              <div
+                ref={secondaryScroll.ref}
+                className={cn("metric-scroll", "scroll-fade", "results-card__metric-scroll")}
+                data-overflowing={secondaryScroll.overflowing}
+                data-at-start={secondaryScroll.atStart}
+                data-at-end={secondaryScroll.atEnd}
+              >
+                <div className="metric-grid metric-grid--secondary results-card__metric-grid-secondary">
+                  {metrics.secondary.map(metric => (
+                    <article
+                      key={metric.label}
+                      className={[
+                        "metric-card",
+                        "metric-card--secondary"
+                      ].join(" ")}
+                    >
+                      <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
+                      <MetricValue
+                        renderedValue={metric.renderedValue}
+                        unit={metric.unit}
+                        abnormal={props.showAbnormalHighlighting && metric.abnormal}
+                      />
+                      {props.showSummaryReferences ? <MetricReference reference={metric.reference} /> : null}
+                    </article>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         ) : null}

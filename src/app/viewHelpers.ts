@@ -11,6 +11,7 @@ export interface LevelProgressState {
 
 export function formatElapsed(seconds: number) {
   if (!Number.isFinite(seconds) || seconds <= 0) return "0.0s";
+  if (seconds > 300) return "> 5 min";
   return `${seconds.toFixed(1)}s`;
 }
 

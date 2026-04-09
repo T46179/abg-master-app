@@ -789,11 +789,82 @@ button:disabled {
 
 .stat-card__meta {
   margin: 0.25rem 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
   font-size: 0.82rem;
   line-height: 1.35;
   letter-spacing: 0.01em;
   color: var(--color-text-muted);
   opacity: 0.78;
+}
+
+.stat-card__meta-info {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.stat-card__meta-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: currentColor;
+  cursor: pointer;
+  opacity: 0.82;
+  transition: opacity 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.stat-card__meta-trigger svg {
+  width: 0.82rem;
+  height: 0.82rem;
+}
+
+.stat-card__meta-trigger:hover,
+.stat-card__meta-info:focus-within .stat-card__meta-trigger {
+  color: #556366;
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.stat-card__meta-trigger:focus-visible {
+  outline: 2px solid rgba(95, 76, 255, 0.22);
+  outline-offset: 2px;
+}
+
+.stat-card__meta-tooltip {
+  position: absolute;
+  left: -0.15rem;
+  top: calc(100% + 0.45rem);
+  z-index: 20;
+  width: max-content;
+  max-width: min(15rem, 65vw);
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(134, 146, 150, 0.22);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 30px rgba(39, 52, 56, 0.14);
+  color: #435054;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  letter-spacing: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-0.2rem);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.stat-card__meta-info:hover .stat-card__meta-tooltip,
+.stat-card__meta-info:focus-within .stat-card__meta-tooltip {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .dashboard-card,
@@ -1178,6 +1249,11 @@ button:disabled {
   background: #f8fafc;
 }
 
+.results-review-card .metric-card {
+  border: 0;
+  background: #f8fafc;
+}
+
 .metric-card--secondary {
   min-width: 9rem;
 }
@@ -1418,6 +1494,17 @@ button:disabled {
   margin-top: 0.75rem;
 }
 
+.results-flow,
+.results-flow .results-review-card,
+.results-card__metric-section--primary,
+.results-card__metric-section--secondary,
+.results-card__metric-grid-primary,
+.results-card__secondary-scroll,
+.results-card__metric-scroll {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .results-card__section-label,
 .results-card__detail-card h4,
 .results-card__takeaway-card h4 {
@@ -1545,6 +1632,35 @@ button:disabled {
 
 .results-card__metric-section + .results-review-card__section {
   margin-top: 1.9rem;
+}
+
+.results-card__secondary-scroll {
+  position: relative;
+}
+
+.results-card__secondary-scroll::after {
+  content: "\2192";
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.92);
+  color: #6f8488;
+  font-size: 0.95rem;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(15, 37, 71, 0.08);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.results-card__secondary-scroll[data-show-scroll-hint="true"]::after {
+  opacity: 1;
 }
 
 .results-review-card__list {
@@ -2040,6 +2156,41 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .results-card__metric-section--primary .results-card__metric-grid-primary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .results-card__metric-section--primary .metric-card {
+    padding: 0.82rem 0.72rem;
+    min-width: 0;
+  }
+
+  .results-card__metric-section--primary .metric-card__label {
+    margin-bottom: 1.05rem;
+    line-height: 1;
+  }
+
+  .results-card__metric-section--primary .metric-card__label sub,
+  .results-card__metric-section--primary .metric-card__label sup {
+    line-height: 0;
+  }
+
+  .results-card__metric-section--primary .metric-card__value {
+    gap: 0.2rem;
+    font-size: clamp(1.5rem, 6vw, 1.84rem);
+  }
+
+  .results-card__metric-section--primary .metric-card__value small {
+    display: none;
+  }
+
+  .results-card__metric-section--primary .metric-card__reference {
+    margin-top: 0.32rem;
+    font-size: 0.73rem;
+    line-height: 1.2;
+  }
+
   .value-panels__card .metric-grid--primary {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -2123,6 +2274,60 @@ button:disabled {
   }
 
   .value-panels > .value-panels__card:last-child .metric-card--secondary .metric-card__reference {
+    margin-top: 0.32rem;
+    line-height: 1.2;
+  }
+
+  .results-card__metric-section--secondary {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .results-card__metric-section--secondary > .results-card__secondary-scroll {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-top: 1rem;
+  }
+
+  .results-card__metric-section--secondary > .results-card__secondary-scroll > .results-card__metric-scroll {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 0;
+  }
+
+  .results-card__metric-section--secondary > .results-card__secondary-scroll > .results-card__metric-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .results-card__metric-section--secondary .results-card__metric-grid-secondary {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    width: max-content;
+    min-width: 100%;
+    align-items: stretch;
+  }
+
+  .results-card__metric-section--secondary .metric-card--secondary {
+    flex: 0 0 auto;
+    min-width: 9.5rem;
+    min-height: 6.95rem;
+    padding: 0.82rem 0.82rem 0.76rem;
+  }
+
+  .results-card__metric-section--secondary .metric-card--secondary .metric-card__label {
+    margin-bottom: 1.05rem;
+    line-height: 1;
+  }
+
+  .results-card__metric-section--secondary .metric-card--secondary .metric-card__reference {
     margin-top: 0.32rem;
     line-height: 1.2;
   }
