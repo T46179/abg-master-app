@@ -80,6 +80,7 @@ export function ProtectedPracticeScreen() {
   const activeStepRef = useRef<HTMLButtonElement | null>(null);
   const introAcceptedRef = useRef(false);
   const difficultyReconciledRef = useRef(false);
+  const latestCaseLoadRequestRef = useRef(0);
 
   const payload = state.payload;
   const progressionInput = {
@@ -375,6 +376,8 @@ export function ProtectedPracticeScreen() {
   async function beginCase(difficultyKey: string, options?: { confirmAbandon?: boolean; preview?: boolean }) {
     const nextDifficulty = normalizeDifficultyKey(progressionInput, difficultyKey);
     const shouldConfirmAbandon = options?.confirmAbandon ?? true;
+    const requestId = latestCaseLoadRequestRef.current + 1;
+    latestCaseLoadRequestRef.current = requestId;
 
     if (shouldConfirmAbandon && currentCase && !summary && hasAnsweredSteps) {
       const confirmed = window.confirm("Start a new case? Your current case progress will be lost.");
@@ -383,6 +386,8 @@ export function ProtectedPracticeScreen() {
     }
 
     const slots = await fetchSlotsForDifficulties([nextDifficulty]);
+    if (requestId !== latestCaseLoadRequestRef.current) return;
+
     const slot = slots[nextDifficulty];
     if (!slot || isExpiredSlot(slot)) {
       patchPracticeState({
