@@ -1494,6 +1494,49 @@ button:disabled {
   margin-top: 0.75rem;
 }
 
+.results-review-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.results-review-card__title {
+  margin: 0;
+  color: #0f2547;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.results-review-card__section-title {
+  margin: 0 0 0.85rem;
+  color: #0f2547;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.results-review-card__section-title--compact {
+  margin-bottom: 0.3rem;
+}
+
+.results-review-card__scenario {
+  margin: 0;
+  color: #24436f;
+  font-size: 0.98rem;
+  line-height: 1.72;
+}
+
+.results-review-card__section--scenario + .results-review-card__section {
+  margin-top: 1.45rem;
+}
+
+.results-review-card.is-collapsed {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
 .results-flow,
 .results-flow .results-review-card,
 .results-card__metric-section--primary,
@@ -1579,7 +1622,8 @@ button:disabled {
   gap: 0.9rem;
 }
 
-.results-card__detail-toggle {
+.results-card__detail-toggle,
+.results-review-card__toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1597,11 +1641,13 @@ button:disabled {
   cursor: pointer;
 }
 
-.results-card__detail-toggle:hover {
+.results-card__detail-toggle:hover,
+.results-review-card__toggle:hover {
   background: rgba(95, 120, 151, 0.1);
 }
 
-.results-card__detail-toggle:focus-visible {
+.results-card__detail-toggle:focus-visible,
+.results-review-card__toggle:focus-visible {
   outline: 2px solid rgba(95, 120, 151, 0.35);
   outline-offset: 2px;
 }
@@ -2339,6 +2385,11 @@ button:disabled {
   .activity-item {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .results-review-card__header {
+    flex-direction: row;
+    align-items: center;
   }
 
   .value-panels > .value-panels__card:first-child > .value-panels__header {

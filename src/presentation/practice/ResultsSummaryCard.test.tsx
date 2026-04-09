@@ -8,11 +8,14 @@ import type { CaseData, CaseSummary, ResultsExplanationPreferences, StorageAdapt
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
+const RESULTS_REVIEW_EXPANDED_STORAGE_KEY = "abgmaster_resultsReviewExpanded";
+
 function buildCaseItem(archetype?: string): CaseData {
   return {
     case_id: "case-1",
     title: "Test case",
     archetype,
+    clinical_stem: "A 54-year-old patient presents with progressive dyspnoea and vomiting.",
     difficulty_level: 3,
     inputs: {
       gas: {
@@ -106,6 +109,7 @@ describe("ResultsSummaryCard", () => {
       root.unmount();
     });
     container.remove();
+    window.localStorage.clear();
     vi.restoreAllMocks();
   });
 
@@ -370,6 +374,68 @@ describe("ResultsSummaryCard", () => {
 
     expect(container.textContent).toContain("Takeaway body.");
     expect(container.querySelector(".results-card__detail-toggle")).toBeNull();
+  });
+
+  it("collapses the review card body and relabels the header", () => {
+    const summary = buildSummary([
+      { key: "clinical_context", title: "Clinical Significance", body: "Clinical significance body.", order: 1 }
+    ]);
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={buildCaseItem("dka")}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          onOpenFeedback={() => {}}
+        />
+      );
+    });
+
+    const reviewToggle = container.querySelector<HTMLButtonElement>(".results-review-card__toggle");
+    expect(container.textContent).toContain("Review case details");
+    expect(container.textContent).not.toContain("Electrolytes & other values");
+    expect(container.textContent).not.toContain("Clinical Scenario");
+    expect(container.textContent).not.toContain("Answer Review");
+
+    act(() => {
+      reviewToggle?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain("ABG values");
+    expect(container.textContent).toContain("Electrolytes & other values");
+    expect(container.textContent).toContain("Clinical Scenario");
+    expect(container.textContent).toContain("A 54-year-old patient presents with progressive dyspnoea and vomiting.");
+    expect(container.textContent).toContain("Answer Review");
+    expect(window.localStorage.getItem(RESULTS_REVIEW_EXPANDED_STORAGE_KEY)).toBe("true");
+  });
+
+  it("restores the saved review card expansion state on mount", () => {
+    window.localStorage.setItem(RESULTS_REVIEW_EXPANDED_STORAGE_KEY, "true");
+
+    const summary = buildSummary([
+      { key: "clinical_context", title: "Clinical Significance", body: "Clinical significance body.", order: 1 }
+    ]);
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={buildCaseItem("dka")}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          onOpenFeedback={() => {}}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("ABG values");
+    expect(container.textContent).toContain("Electrolytes & other values");
+    expect(container.textContent).toContain("Clinical Scenario");
+    expect(container.textContent).toContain("Answer Review");
   });
 
   it("omits the secondary diagnosis line when the mapping sub label is empty", () => {

@@ -108,6 +108,7 @@ const COLLAPSIBLE_EXPLANATION_KEYS = new Set<ResultsExplanationPreferenceKey>([
   "additional_metabolic_process",
   "clinical_context"
 ]);
+const RESULTS_REVIEW_EXPANDED_STORAGE_KEY = "abgmaster_resultsReviewExpanded";
 
 function isCollapsibleExplanationKey(key: ExplanationSection["key"]): key is ResultsExplanationPreferenceKey {
   return COLLAPSIBLE_EXPLANATION_KEYS.has(key as ResultsExplanationPreferenceKey);
@@ -120,6 +121,26 @@ function getExpandedPreferences(storage?: StorageAdapter | null): ResultsExplana
     additional_metabolic_process: true,
     clinical_context: true
   };
+}
+
+function loadResultsReviewExpandedPreference() {
+  if (typeof window === "undefined") return false;
+
+  try {
+    return window.localStorage.getItem(RESULTS_REVIEW_EXPANDED_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function saveResultsReviewExpandedPreference(value: boolean) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(RESULTS_REVIEW_EXPANDED_STORAGE_KEY, String(Boolean(value)));
+  } catch {
+    return;
+  }
 }
 
 interface ResultsSummaryCardProps {
@@ -177,6 +198,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
   const explanationSections = getRenderedExplanationSections(props.summary);
   const difficultyLevel = Number(props.caseItem.difficulty_level ?? 1);
   const [expandedByKey, setExpandedByKey] = useState<ResultsExplanationPreferences>(() => getExpandedPreferences(props.storage));
+  const [isReviewExpanded, setIsReviewExpanded] = useState(() => loadResultsReviewExpandedPreference());
   const secondaryScroll = useHorizontalOverflowState<HTMLDivElement>(
     `results-${props.caseItem.case_id ?? "unknown-case"}-${difficultyLevel}-${metrics.secondary.map(metric => metric.label).join("|")}-${props.showSummaryReferences ? "refs" : "no-refs"}`
   );
@@ -184,6 +206,10 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
   useEffect(() => {
     setExpandedByKey(getExpandedPreferences(props.storage));
   }, [props.storage]);
+
+  useEffect(() => {
+    saveResultsReviewExpandedPreference(isReviewExpanded);
+  }, [isReviewExpanded]);
 
   function handleToggleSection(key: ResultsExplanationPreferenceKey) {
     setExpandedByKey(current => {
@@ -256,83 +282,106 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
         </div>
       </Surface>
 
-      <Surface className="results-review-card">
-        <div className="results-card__metric-section results-card__metric-section--primary">
-          <span className="section-header__eyebrow">ABG values</span>
-          <div className="metric-grid metric-grid--primary results-card__metric-grid-primary">
-            {metrics.primary.map(metric => (
-              <article
-                key={metric.label}
-                className="metric-card"
-              >
-                <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
-                <MetricValue
-                  renderedValue={metric.renderedValue}
-                  unit={metric.unit}
-                  abnormal={props.showAbnormalHighlighting && metric.abnormal}
-                />
-                {props.showSummaryReferences ? <MetricReference reference={metric.reference} /> : null}
-              </article>
-            ))}
-          </div>
+      <Surface className={cn("results-review-card", !isReviewExpanded && "is-collapsed")}>
+        <div className="results-review-card__header">
+          <h3 className="results-review-card__title">{isReviewExpanded ? "ABG values" : "Review case details"}</h3>
+          <button
+            className="results-review-card__toggle"
+            type="button"
+            aria-expanded={isReviewExpanded}
+            aria-label={`${isReviewExpanded ? "Collapse" : "Expand"} review case details`}
+            onClick={() => setIsReviewExpanded(current => !current)}
+          >
+            {isReviewExpanded ? "-" : "+"}
+          </button>
         </div>
 
-        {metrics.secondary.length ? (
-          <div className="results-card__metric-section results-card__metric-section--secondary">
-            <span className="section-header__eyebrow">Electrolytes &amp; other values</span>
-            <div
-              className="results-card__secondary-scroll"
-              data-show-scroll-hint={secondaryScroll.overflowing && !secondaryScroll.movedFromStart}
-            >
-              <div
-                ref={secondaryScroll.ref}
-                className={cn("metric-scroll", "scroll-fade", "results-card__metric-scroll")}
-                data-overflowing={secondaryScroll.overflowing}
-                data-at-start={secondaryScroll.atStart}
-                data-at-end={secondaryScroll.atEnd}
-              >
-                <div className="metric-grid metric-grid--secondary results-card__metric-grid-secondary">
-                  {metrics.secondary.map(metric => (
+        {isReviewExpanded ? (
+          <>
+            <div className="results-card__metric-section results-card__metric-section--primary">
+              <div className="metric-grid metric-grid--primary results-card__metric-grid-primary">
+                {metrics.primary.map(metric => (
+                  <article
+                    key={metric.label}
+                    className="metric-card"
+                  >
+                    <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
+                    <MetricValue
+                      renderedValue={metric.renderedValue}
+                      unit={metric.unit}
+                      abnormal={props.showAbnormalHighlighting && metric.abnormal}
+                    />
+                    {props.showSummaryReferences ? <MetricReference reference={metric.reference} /> : null}
+                  </article>
+                ))}
+              </div>
+            </div>
+
+            {metrics.secondary.length ? (
+              <div className="results-card__metric-section results-card__metric-section--secondary">
+                <h4 className="results-review-card__section-title results-review-card__section-title--compact">Electrolytes &amp; other values</h4>
+                <div
+                  className="results-card__secondary-scroll"
+                  data-show-scroll-hint={secondaryScroll.overflowing && !secondaryScroll.movedFromStart}
+                >
+                  <div
+                    ref={secondaryScroll.ref}
+                    className={cn("metric-scroll", "scroll-fade", "results-card__metric-scroll")}
+                    data-overflowing={secondaryScroll.overflowing}
+                    data-at-start={secondaryScroll.atStart}
+                    data-at-end={secondaryScroll.atEnd}
+                  >
+                    <div className="metric-grid metric-grid--secondary results-card__metric-grid-secondary">
+                      {metrics.secondary.map(metric => (
+                        <article
+                          key={metric.label}
+                          className={[
+                            "metric-card",
+                            "metric-card--secondary"
+                          ].join(" ")}
+                        >
+                          <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
+                          <MetricValue
+                            renderedValue={metric.renderedValue}
+                            unit={metric.unit}
+                            abnormal={props.showAbnormalHighlighting && metric.abnormal}
+                          />
+                          {props.showSummaryReferences ? <MetricReference reference={metric.reference} /> : null}
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="results-review-card__section results-review-card__section--scenario">
+              <h4 className="results-review-card__section-title">Clinical Scenario</h4>
+              <p className="results-review-card__scenario">
+                <MetricInlineText text={props.caseItem.clinical_stem ?? "No clinical scenario was supplied for this case."} />
+              </p>
+            </div>
+
+            {props.summary.stepResults.length ? (
+              <div className="results-review-card__section">
+                <h4 className="results-review-card__section-title">Answer Review</h4>
+                <div className="results-review-card__list">
+                  {props.summary.stepResults.map(stepResult => (
                     <article
-                      key={metric.label}
-                      className={[
-                        "metric-card",
-                        "metric-card--secondary"
-                      ].join(" ")}
+                      key={`${stepResult.key}-${stepResult.label}`}
+                      className={`review-item${stepResult.correct ? " is-correct" : " is-incorrect"}`}
                     >
-                      <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
-                      <MetricValue
-                        renderedValue={metric.renderedValue}
-                        unit={metric.unit}
-                        abnormal={props.showAbnormalHighlighting && metric.abnormal}
-                      />
-                      {props.showSummaryReferences ? <MetricReference reference={metric.reference} /> : null}
+                      <strong>{stepResult.label}</strong>
+                      <p>
+                        You chose <MetricInlineText text={stepResult.chosen} />. Correct answer:{" "}
+                        <MetricInlineText text={stepResult.correctAnswer} />.
+                      </p>
                     </article>
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
-        ) : null}
-
-        {props.summary.stepResults.length ? (
-          <div className="results-review-card__section">
-            <span className="section-header__eyebrow">Answer review</span>
-            <div className="results-review-card__list">
-              {props.summary.stepResults.map(stepResult => (
-                <article
-                  key={`${stepResult.key}-${stepResult.label}`}
-                  className={`review-item${stepResult.correct ? " is-correct" : " is-incorrect"}`}
-                >
-                  <strong>{stepResult.label}</strong>
-                  <p>
-                    You chose <MetricInlineText text={stepResult.chosen} />. Correct answer:{" "}
-                    <MetricInlineText text={stepResult.correctAnswer} />.
-                  </p>
-                </article>
-              ))}
-            </div>
-          </div>
+            ) : null}
+          </>
         ) : null}
       </Surface>
     </div>
