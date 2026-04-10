@@ -767,6 +767,7 @@ describe("storage adapters", () => {
       additional_metabolic_process: true,
       clinical_context: false
     });
+    initialStorage.saveResultsReviewExpandedPreference(true);
 
     const reloadedStorage = createAppStorage({ browserStorage });
     await reloadedStorage.init({ releaseSignature: "sig-1" });
@@ -786,6 +787,7 @@ describe("storage adapters", () => {
       additional_metabolic_process: true,
       clinical_context: false
     });
+    expect(reloadedStorage.loadResultsReviewExpandedPreference()).toBe(true);
     expect(browserStorage.getItem(STORAGE_KEYS.USER_STATE_MODE_STORAGE_KEY)).toBe("sig-1");
   });
 

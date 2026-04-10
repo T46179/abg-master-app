@@ -16,7 +16,7 @@ vi.mock("../../app/AppProvider", () => ({
     state: {
       practiceState: {
         syncState: "pending_retry",
-        syncMessage: "We're retrying your submission.",
+        syncMessage: "Your answers are saved. We'll finish when you're back online.",
         lastCaseSummary: null,
         pendingSubmission: {
           caseToken: "token-1"
@@ -76,8 +76,7 @@ describe("AppShell", () => {
       );
     });
 
-    expect(container.textContent).toContain("Sorry, your case hasn't finished saving yet. Please wait.");
-    expect(container.textContent).toContain("We're retrying your submission.");
+    expect(container.textContent).toContain("Your answers are saved. We'll finish when you're back online.");
     expect(container.textContent).toContain("Retry now");
     expect(container.textContent).toContain("Discard this unsaved case");
   });

@@ -21,6 +21,7 @@ import {
   syncUserStateDerivedFields
 } from "../core/progression";
 import { getPendingRetryDelayMs, getPendingSubmissionInvalidReason } from "./protectedPracticeRecovery";
+import { PROTECTED_PRACTICE_MESSAGES } from "./protectedPracticeMessages";
 import { appReducer, initialAppState, type AppState } from "./state";
 
 interface AppContextValue {
@@ -111,7 +112,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               );
               pendingSubmission = null;
               syncState = "idle";
-              syncMessage = "This unsaved case expired. Please start a new one.";
+              syncMessage = PROTECTED_PRACTICE_MESSAGES.savedCaseExpired;
             } else if (invalidReason === "content_mismatch") {
               clearPendingPracticeSubmission(window.localStorage);
               practiceSlotsByDifficulty = clearPracticeSlotCache(
@@ -122,7 +123,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               );
               pendingSubmission = null;
               syncState = "idle";
-              syncMessage = "This unsaved case no longer matches the current content. Please start a new one.";
+              syncMessage = PROTECTED_PRACTICE_MESSAGES.savedCaseOutOfDate;
             }
           }
 
@@ -312,11 +313,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const invalidReason = getPendingSubmissionInvalidReason(pendingSubmission, state.payload?.contentVersion);
     if (invalidReason === "expired") {
-      clearPendingSubmissionState(pendingSubmission, "This unsaved case expired. Please start a new one.");
+      clearPendingSubmissionState(pendingSubmission, PROTECTED_PRACTICE_MESSAGES.savedCaseExpired);
       return;
     }
     if (invalidReason === "content_mismatch") {
-      clearPendingSubmissionState(pendingSubmission, "This unsaved case no longer matches the current content. Please start a new one.");
+      clearPendingSubmissionState(pendingSubmission, PROTECTED_PRACTICE_MESSAGES.savedCaseOutOfDate);
       return;
     }
 
@@ -325,13 +326,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     patchPracticeState({
       pendingSubmission,
       syncState: "pending_retry",
-      syncMessage: "We're retrying your submission."
+      syncMessage: PROTECTED_PRACTICE_MESSAGES.retrying
     });
 
     void completePendingSubmissionSuccess(pendingSubmission)
       .catch((error) => {
         if (isProtectedPracticeError(error) && error.code === "CASE_TOKEN_EXPIRED") {
-          clearPendingSubmissionState(pendingSubmission, "This case expired before it could be checked. Please start a new one.");
+          clearPendingSubmissionState(pendingSubmission, PROTECTED_PRACTICE_MESSAGES.caseExpiredBeforeCheck);
           return;
         }
 
@@ -339,7 +340,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         patchPracticeState({
           pendingSubmission,
           syncState: "pending_retry",
-          syncMessage: "Your answers are saved. We'll finish submitting when you're back online."
+          syncMessage: PROTECTED_PRACTICE_MESSAGES.savedUntilOnline
         });
       })
       .finally(() => {
@@ -376,11 +377,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const invalidReason = getPendingSubmissionInvalidReason(pendingSubmission, state.payload?.contentVersion);
     if (invalidReason === "expired") {
-      clearPendingSubmissionState(pendingSubmission, "This unsaved case expired. Please start a new one.");
+      clearPendingSubmissionState(pendingSubmission, PROTECTED_PRACTICE_MESSAGES.savedCaseExpired);
       return;
     }
     if (invalidReason === "content_mismatch") {
-      clearPendingSubmissionState(pendingSubmission, "This unsaved case no longer matches the current content. Please start a new one.");
+      clearPendingSubmissionState(pendingSubmission, PROTECTED_PRACTICE_MESSAGES.savedCaseOutOfDate);
     }
   }, [clearPendingSubmissionState, state.payload, state.practiceState.pendingSubmission, state.status]);
 

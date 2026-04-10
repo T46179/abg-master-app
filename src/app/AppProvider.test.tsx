@@ -85,6 +85,8 @@ const storageAdapter = {
     clinical_context: true
   })),
   saveResultsExplanationPreferences: vi.fn(),
+  loadResultsReviewExpandedPreference: vi.fn(() => false),
+  saveResultsReviewExpandedPreference: vi.fn(),
   loadPracticeIntroSeen: vi.fn(() => false),
   savePracticeIntroSeen: vi.fn(),
   loadSeenCaseState: vi.fn(() => ({})),
@@ -174,7 +176,7 @@ describe("AppProvider protected practice recovery", () => {
     await flush();
 
     expect(syncStateText()).toBe("idle");
-    expect(syncMessageText()).toBe("This unsaved case expired. Please start a new one.");
+    expect(syncMessageText()).toBe("Your last case is no longer available. Please start a new case.");
     expect(loadPendingPracticeSubmission(localStorage)).toBeNull();
     expect(submitProtectedPracticeCase).not.toHaveBeenCalled();
   });
@@ -197,7 +199,7 @@ describe("AppProvider protected practice recovery", () => {
     await flush();
 
     expect(syncStateText()).toBe("idle");
-    expect(syncMessageText()).toBe("This unsaved case no longer matches the current content. Please start a new one.");
+    expect(syncMessageText()).toBe("Your saved answers no longer match this case. Please start a new case.");
     expect(loadPendingPracticeSubmission(localStorage)).toBeNull();
     expect(submitProtectedPracticeCase).not.toHaveBeenCalled();
   });

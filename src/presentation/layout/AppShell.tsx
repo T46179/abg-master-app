@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
+import { PROTECTED_PRACTICE_MESSAGES } from "../../app/protectedPracticeMessages";
 import { trackEvent, trackPageView } from "../../core/analytics";
 import { canAccessLearn, getReleaseFlags } from "../../core/progression";
 import { Surface } from "../primitives/Surface";
@@ -110,10 +111,7 @@ export function AppShell() {
         {state.practiceState.syncState === "pending_retry" ? (
           <div className="app-shell__warning app-shell__warning--actionable">
             <div>
-              <span>Sorry, your case hasn't finished saving yet. Please wait.</span>
-              {state.practiceState.syncMessage ? (
-                <div>{state.practiceState.syncMessage}</div>
-              ) : null}
+              <span>{state.practiceState.syncMessage ?? PROTECTED_PRACTICE_MESSAGES.retryBanner}</span>
             </div>
             <div>
               <button

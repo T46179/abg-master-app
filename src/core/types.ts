@@ -367,6 +367,8 @@ export interface StorageAdapter {
   saveAdvancedRangesPreference(value: boolean): void;
   loadResultsExplanationPreferences(): ResultsExplanationPreferences;
   saveResultsExplanationPreferences(value: ResultsExplanationPreferences): void;
+  loadResultsReviewExpandedPreference(): boolean;
+  saveResultsReviewExpandedPreference(value: boolean): void;
 }
 
 export interface SupabaseSyncAdapter {

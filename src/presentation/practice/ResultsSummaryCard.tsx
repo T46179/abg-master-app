@@ -108,7 +108,6 @@ const COLLAPSIBLE_EXPLANATION_KEYS = new Set<ResultsExplanationPreferenceKey>([
   "additional_metabolic_process",
   "clinical_context"
 ]);
-const RESULTS_REVIEW_EXPANDED_STORAGE_KEY = "abgmaster_resultsReviewExpanded";
 
 function isCollapsibleExplanationKey(key: ExplanationSection["key"]): key is ResultsExplanationPreferenceKey {
   return COLLAPSIBLE_EXPLANATION_KEYS.has(key as ResultsExplanationPreferenceKey);
@@ -123,24 +122,8 @@ function getExpandedPreferences(storage?: StorageAdapter | null): ResultsExplana
   };
 }
 
-function loadResultsReviewExpandedPreference() {
-  if (typeof window === "undefined") return false;
-
-  try {
-    return window.localStorage.getItem(RESULTS_REVIEW_EXPANDED_STORAGE_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
-function saveResultsReviewExpandedPreference(value: boolean) {
-  if (typeof window === "undefined") return;
-
-  try {
-    window.localStorage.setItem(RESULTS_REVIEW_EXPANDED_STORAGE_KEY, String(Boolean(value)));
-  } catch {
-    return;
-  }
+function getResultsReviewExpandedPreference(storage?: StorageAdapter | null) {
+  return storage?.loadResultsReviewExpandedPreference() ?? false;
 }
 
 interface ResultsSummaryCardProps {
@@ -198,18 +181,19 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
   const explanationSections = getRenderedExplanationSections(props.summary);
   const difficultyLevel = Number(props.caseItem.difficulty_level ?? 1);
   const [expandedByKey, setExpandedByKey] = useState<ResultsExplanationPreferences>(() => getExpandedPreferences(props.storage));
-  const [isReviewExpanded, setIsReviewExpanded] = useState(() => loadResultsReviewExpandedPreference());
+  const [isReviewExpanded, setIsReviewExpanded] = useState(() => getResultsReviewExpandedPreference(props.storage));
   const secondaryScroll = useHorizontalOverflowState<HTMLDivElement>(
     `results-${props.caseItem.case_id ?? "unknown-case"}-${difficultyLevel}-${metrics.secondary.map(metric => metric.label).join("|")}-${props.showSummaryReferences ? "refs" : "no-refs"}`
   );
 
   useEffect(() => {
     setExpandedByKey(getExpandedPreferences(props.storage));
+    setIsReviewExpanded(getResultsReviewExpandedPreference(props.storage));
   }, [props.storage]);
 
   useEffect(() => {
-    saveResultsReviewExpandedPreference(isReviewExpanded);
-  }, [isReviewExpanded]);
+    props.storage?.saveResultsReviewExpandedPreference(isReviewExpanded);
+  }, [isReviewExpanded, props.storage]);
 
   function handleToggleSection(key: ResultsExplanationPreferenceKey) {
     setExpandedByKey(current => {

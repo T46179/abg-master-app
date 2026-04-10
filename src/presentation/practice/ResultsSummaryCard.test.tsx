@@ -8,8 +8,6 @@ import type { CaseData, CaseSummary, ResultsExplanationPreferences, StorageAdapt
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const RESULTS_REVIEW_EXPANDED_STORAGE_KEY = "abgmaster_resultsReviewExpanded";
-
 function buildCaseItem(archetype?: string): CaseData {
   return {
     case_id: "case-1",
@@ -90,6 +88,8 @@ function createStorageAdapter(overrides: Partial<StorageAdapter> = {}): StorageA
       clinical_context: true
     })),
     saveResultsExplanationPreferences: vi.fn(),
+    loadResultsReviewExpandedPreference: vi.fn(() => false),
+    saveResultsReviewExpandedPreference: vi.fn(),
     ...overrides
   };
 }
@@ -114,6 +114,10 @@ describe("ResultsSummaryCard", () => {
   });
 
   it("renders explanation cards from sorted sections and suppresses diagnosis when clinical context exists", () => {
+    const storage = createStorageAdapter({
+      loadResultsReviewExpandedPreference: vi.fn(() => true)
+    });
+
     const summary = buildSummary([
       { key: "key_takeaway", title: "Key Takeaway", body: "Takeaway body.", order: 999 },
       { key: "diagnosis", title: "Diagnosis", body: "Diagnosis significance.", order: 3 },
@@ -133,13 +137,14 @@ describe("ResultsSummaryCard", () => {
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
           onOpenFeedback={() => {}}
+          storage={storage}
         />
       );
     });
 
     expect(container.textContent).toContain("Mixed Disorder");
     expect(container.textContent).toContain("HAGMA + Metabolic Alkalosis (DKA + Vomiting)");
-    expect(container.textContent).toContain("Detailed Explanations");
+    expect(container.textContent).toContain("Detailed Explanation");
     expect(container.textContent).toContain("Additional Metabolic Process");
     expect(container.textContent).toContain("Additional process body.");
     expect(container.textContent).toContain("Compensation");
@@ -153,7 +158,7 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).not.toContain("Diagnosis significance.");
     expect(container.textContent).not.toContain("Should not render.");
     expect(container.textContent).toContain("62.0s");
-    expect(container.textContent).toContain("Answer review");
+    expect(container.textContent).toContain("Answer Review");
     expect(container.textContent).toContain("pH status");
     expect(container.textContent).toContain("You chose Acidaemia. Correct answer: Acidaemia.");
     expect(container.textContent).toContain("Final diagnosis");
@@ -161,12 +166,16 @@ describe("ResultsSummaryCard", () => {
 
     const headings = Array.from(container.querySelectorAll("h3, h4")).map(node => node.textContent);
     expect(headings).toEqual([
-      "Detailed Explanations",
+      "Detailed Explanation",
       "Compensation",
       "Anion Gap Analysis",
       "Additional Metabolic Process",
       "Clinical Significance",
-      "Key Takeaway"
+      "Key Takeaway",
+      "ABG values",
+      "Electrolytes & other values",
+      "Clinical Scenario",
+      "Answer Review"
     ]);
 
     const toggles = Array.from(container.querySelectorAll(".results-card__detail-toggle")).map(node => node.textContent);
@@ -377,6 +386,13 @@ describe("ResultsSummaryCard", () => {
   });
 
   it("collapses the review card body and relabels the header", () => {
+    const reviewExpanded = { value: false };
+    const storage = createStorageAdapter({
+      loadResultsReviewExpandedPreference: vi.fn(() => reviewExpanded.value),
+      saveResultsReviewExpandedPreference: vi.fn((nextValue: boolean) => {
+        reviewExpanded.value = nextValue;
+      })
+    });
     const summary = buildSummary([
       { key: "clinical_context", title: "Clinical Significance", body: "Clinical significance body.", order: 1 }
     ]);
@@ -390,6 +406,7 @@ describe("ResultsSummaryCard", () => {
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
           onOpenFeedback={() => {}}
+          storage={storage}
         />
       );
     });
@@ -409,11 +426,13 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).toContain("Clinical Scenario");
     expect(container.textContent).toContain("A 54-year-old patient presents with progressive dyspnoea and vomiting.");
     expect(container.textContent).toContain("Answer Review");
-    expect(window.localStorage.getItem(RESULTS_REVIEW_EXPANDED_STORAGE_KEY)).toBe("true");
+    expect(storage.saveResultsReviewExpandedPreference).toHaveBeenCalledWith(true);
   });
 
   it("restores the saved review card expansion state on mount", () => {
-    window.localStorage.setItem(RESULTS_REVIEW_EXPANDED_STORAGE_KEY, "true");
+    const storage = createStorageAdapter({
+      loadResultsReviewExpandedPreference: vi.fn(() => true)
+    });
 
     const summary = buildSummary([
       { key: "clinical_context", title: "Clinical Significance", body: "Clinical significance body.", order: 1 }
@@ -428,6 +447,7 @@ describe("ResultsSummaryCard", () => {
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
           onOpenFeedback={() => {}}
+          storage={storage}
         />
       );
     });
@@ -456,7 +476,7 @@ describe("ResultsSummaryCard", () => {
       );
     });
 
-    expect(container.textContent).toContain("NAGMA");
+    expect(container.textContent).toContain("Metabolic Acidosis");
     expect(container.textContent).not.toContain("Diarrhoea");
   });
 

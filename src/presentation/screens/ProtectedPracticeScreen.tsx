@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
+import { PROTECTED_PRACTICE_MESSAGES, getProtectedPracticeUnavailableMessage } from "../../app/protectedPracticeMessages";
 import {
   getPracticeDifficultyMismatchAction,
   shouldConfirmDifficultySwitch,
@@ -60,14 +61,6 @@ import { ErrorView, LoadingView } from "../shared/StatusViews";
 function isExpiredSlot(slot: IssuedPracticeSlot | null | undefined) {
   if (!slot?.expiresAt) return true;
   return new Date(slot.expiresAt).getTime() <= Date.now();
-}
-
-function getProtectedPracticeUnavailableMessage() {
-  if (typeof navigator !== "undefined" && !navigator.onLine) {
-    return "You're offline. Reconnect to load a new case.";
-  }
-
-  return "Protected practice temporarily unavailable.";
 }
 
 export function ProtectedPracticeScreen() {
@@ -229,7 +222,7 @@ export function ProtectedPracticeScreen() {
     if (!payload?.contentVersion || !state.supabase || !state.runtimeConfig) {
       patchPracticeState({
         syncState: "unavailable",
-        syncMessage: "Protected practice is unavailable until Supabase is configured."
+        syncMessage: PROTECTED_PRACTICE_MESSAGES.unavailableNotReady
       });
       return {};
     }
@@ -283,7 +276,7 @@ export function ProtectedPracticeScreen() {
       patchPracticeState({
         syncState: hasAnyCachedSlot ? "idle" : "unavailable",
         syncMessage: hasAnyCachedSlot
-          ? "Unable to refresh protected case slots right now."
+          ? PROTECTED_PRACTICE_MESSAGES.refreshFailed
           : getProtectedPracticeUnavailableMessage()
       });
       return state.practiceState.practiceSlotsByDifficulty;
@@ -329,7 +322,7 @@ export function ProtectedPracticeScreen() {
         currentCaseToken: null,
         currentCaseExpiresAt: null,
         syncState: "unavailable",
-        syncMessage: "The selected case did not match the requested difficulty. Please try again."
+        syncMessage: PROTECTED_PRACTICE_MESSAGES.caseMismatch
       });
       return;
     }
@@ -564,7 +557,7 @@ export function ProtectedPracticeScreen() {
 
     if (answers.length !== totalSteps) {
       patchPracticeState({
-        syncMessage: "Please answer all steps before submitting."
+        syncMessage: PROTECTED_PRACTICE_MESSAGES.answerAllSteps
       });
       return;
     }
@@ -667,7 +660,7 @@ export function ProtectedPracticeScreen() {
           practiceSlotsByDifficulty: nextSlots,
           pendingSubmission: null,
           syncState: "idle",
-          syncMessage: "This case expired before it could be checked. Please start a new one."
+          syncMessage: PROTECTED_PRACTICE_MESSAGES.caseExpiredBeforeCheck
         });
         patchSessionState({
           currentStepIndex: 0,
@@ -682,7 +675,7 @@ export function ProtectedPracticeScreen() {
       patchPracticeState({
         pendingSubmission,
         syncState: "pending_retry",
-        syncMessage: "Your answers are saved. We’ll complete this case automatically once it reconnects."
+        syncMessage: PROTECTED_PRACTICE_MESSAGES.savedUntilOnline
       });
     }
   }
@@ -796,7 +789,7 @@ export function ProtectedPracticeScreen() {
                   interactionDisabled={interactionLocked}
                   interactionDisabledMessage={
                     interactionLocked && !isSubmittingCase
-                      ? "We're finishing your submission. This case is locked for now."
+                      ? PROTECTED_PRACTICE_MESSAGES.interactionLocked
                       : null
                   }
                   isSubmittingCase={isSubmittingCase}
@@ -805,7 +798,7 @@ export function ProtectedPracticeScreen() {
             </div>
           ) : state.practiceState.syncState === "unavailable" ? (
             <Surface className="practice-alert-card">
-              {getProtectedPracticeUnavailableMessage()}
+              {state.practiceState.syncMessage ?? getProtectedPracticeUnavailableMessage()}
             </Surface>
           ) : (
             <div className="status-screen status-screen--loading">

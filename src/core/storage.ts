@@ -16,6 +16,7 @@ const USER_STATE_MODE_STORAGE_KEY = "abgmaster_userState_mode";
 const PRACTICE_INTRO_SEEN_STORAGE_KEY = "practiceIntroSeen";
 const ADVANCED_RANGES_STORAGE_KEY = "abgmaster_showAdvancedRanges";
 const RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY = "abgmaster_resultsExplanationPreferences";
+const RESULTS_REVIEW_EXPANDED_STORAGE_KEY = "abgmaster_resultsReviewExpanded";
 const SEEN_CASES_STORAGE_KEY = "abgmaster_seenCasesByDifficulty";
 const DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced", "master"];
 const RESULTS_EXPLANATION_PREFERENCE_KEYS: ResultsExplanationPreferenceKey[] = [
@@ -31,6 +32,7 @@ export const STORAGE_KEYS = {
   PRACTICE_INTRO_SEEN_STORAGE_KEY,
   ADVANCED_RANGES_STORAGE_KEY,
   RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY,
+  RESULTS_REVIEW_EXPANDED_STORAGE_KEY,
   SEEN_CASES_STORAGE_KEY
 } as const;
 
@@ -305,6 +307,14 @@ export function createLocalStorageAdapter(browserStorage: BrowserStorageLike): S
         RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY,
         JSON.stringify(sanitizeResultsExplanationPreferences(value))
       );
+    },
+
+    loadResultsReviewExpandedPreference() {
+      return safeGetItem(browserStorage, RESULTS_REVIEW_EXPANDED_STORAGE_KEY) === "true";
+    },
+
+    saveResultsReviewExpandedPreference(value) {
+      safeSetItem(browserStorage, RESULTS_REVIEW_EXPANDED_STORAGE_KEY, String(Boolean(value)));
     }
   };
 }
@@ -480,6 +490,14 @@ export function createSupabaseStorageAdapter(
 
     saveResultsExplanationPreferences(value) {
       localAdapter.saveResultsExplanationPreferences(value);
+    },
+
+    loadResultsReviewExpandedPreference() {
+      return localAdapter.loadResultsReviewExpandedPreference();
+    },
+
+    saveResultsReviewExpandedPreference(value) {
+      localAdapter.saveResultsReviewExpandedPreference(value);
     }
   };
 }
@@ -543,6 +561,12 @@ export function createAppStorage(options?: {
     },
     saveResultsExplanationPreferences(value) {
       activeAdapter.saveResultsExplanationPreferences(value);
+    },
+    loadResultsReviewExpandedPreference() {
+      return activeAdapter.loadResultsReviewExpandedPreference();
+    },
+    saveResultsReviewExpandedPreference(value) {
+      activeAdapter.saveResultsReviewExpandedPreference(value);
     }
   };
 }
