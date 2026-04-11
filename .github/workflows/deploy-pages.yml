@@ -23,7 +23,11 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_ENABLE_PROTECTED_CASE_DELIVERY: ${{ vars.VITE_ENABLE_PROTECTED_CASE_DELIVERY }}
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
