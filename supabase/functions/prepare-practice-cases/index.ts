@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { captureFunctionException, initFunctionMonitoring } from "../_shared/sentry.ts";
 import { ISSUED_CASE_TTL_HOURS, PREPARE_RATE_LIMIT_MAX_REQUESTS } from "../_shared/constants.ts";
 import {
   buildIssuedSlot,
@@ -15,6 +16,10 @@ import {
   windowStartIso
 } from "../_shared/practice.ts";
 import type { IssuedCaseSessionRow, PublishedCaseRow } from "../_shared/types.ts";
+
+const FUNCTION_NAME = "prepare-practice-cases";
+
+initFunctionMonitoring(FUNCTION_NAME);
 
 function createUserClient(req: Request) {
   return createClient(
@@ -195,6 +200,7 @@ Deno.serve(async req => {
     );
   } catch (error) {
     console.error(error);
+    await captureFunctionException(FUNCTION_NAME, error, req);
     return errorResponse("CASE_SLOT_UNAVAILABLE", "Protected practice slots could not be prepared.", {
       recoverable: true,
       status: 500

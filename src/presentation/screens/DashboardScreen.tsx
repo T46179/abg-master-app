@@ -148,7 +148,6 @@ export function DashboardScreen() {
             This application is for educational purposes only and should not be used as a substitute for professional
             medical advice, diagnosis, or treatment.
           </p>
-          <p>Uses Google Analytics and Microsoft Clarity for anonymised usage insights.</p>
           <div className="dashboard-footer__actions">
             <button className="figma-button figma-button--secondary dashboard-footer__reset" type="button" onClick={handleResetProgress}>
               Reset progress

@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { captureFunctionException, initFunctionMonitoring } from "../_shared/sentry.ts";
 import { composeStructuredExplanation } from "../_shared/explanations.ts";
 import {
   buildIssuedSlot,
@@ -14,6 +15,10 @@ import {
   normalizeSeenCaseHints
 } from "../_shared/practice.ts";
 import type { IssuedCaseSessionRow, PublishedCaseRow } from "../_shared/types.ts";
+
+const FUNCTION_NAME = "submit-practice-case";
+
+initFunctionMonitoring(FUNCTION_NAME);
 
 function createUserClient(req: Request) {
   return createClient(
@@ -235,6 +240,7 @@ Deno.serve(async req => {
     });
   } catch (error) {
     console.error(error);
+    await captureFunctionException(FUNCTION_NAME, error, req);
     return errorResponse("CASE_SUBMIT_FAILED", "Protected practice grading failed.", {
       recoverable: true,
       status: 500

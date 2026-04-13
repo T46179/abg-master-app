@@ -16,8 +16,14 @@
 8. Deploy the two Edge Functions from this repo:
    - `prepare-practice-cases`
    - `submit-practice-case`
-9. Verify that protected practice works end-to-end with `VITE_ENABLE_PROTECTED_CASE_DELIVERY=true`.
-10. Only after that verification, run [`002_attempts_hardening_after_cutover.sql`](./002_attempts_hardening_after_cutover.sql).
+9. Add Supabase Edge Function secrets for Sentry if you want backend error logging:
+   - `SENTRY_DSN`
+   - `SENTRY_ENVIRONMENT`
+   - optional: `SENTRY_RELEASE`
+   - optional: `SENTRY_TRACES_SAMPLE_RATE`
+   - optional: `SENTRY_PROFILES_SAMPLE_RATE`
+10. Verify that protected practice works end-to-end with `VITE_ENABLE_PROTECTED_CASE_DELIVERY=true`.
+11. Only after that verification, run [`002_attempts_hardening_after_cutover.sql`](./002_attempts_hardening_after_cutover.sql).
 
 ## Beginner-Friendly Notes
 - Run one SQL file at a time.
@@ -25,3 +31,4 @@
 - If Supabase shows an error, stop there and fix it before moving to the next file.
 - The generated `published_cases_seed.sql` file comes from the private content repo. It is the exact SQL that inserts the protected cases into `published_cases`.
 - Do not run the final attempts hardening script until the protected submit flow is live. Before that point, the current frontend still needs browser write access to `attempts`.
+- The Edge Function Sentry integration stays disabled unless `SENTRY_DSN` is set in Supabase secrets.

@@ -20,9 +20,15 @@ Create a local `.env.local` file if you want Supabase-enabled persistence:
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 VITE_ENABLE_PROTECTED_CASE_DELIVERY=false
+VITE_SENTRY_DSN=https://your-frontend-dsn.ingest.sentry.io/project-id
+VITE_SENTRY_ENVIRONMENT=development
+VITE_SENTRY_TRACES_SAMPLE_RATE=0
+VITE_SENTRY_REPLAY_SESSION_SAMPLE_RATE=0
+VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE=0
 ```
 
 If these values are omitted, the app falls back to local-only behavior.
+If `VITE_SENTRY_DSN` is omitted, the frontend Sentry SDK stays disabled.
 Current recommended beta setting is `VITE_ENABLE_PROTECTED_CASE_DELIVERY=true` once:
 - the protected practice schema has been created in Supabase
 - `published_cases` has been seeded from the generated SQL
@@ -54,6 +60,7 @@ Use [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md) before pushing a public upd
 - `user_progress` still syncs remotely when available
 - final grading and `attempts` inserts now happen through `submit-practice-case`
 - `Exam` and `Leaderboard` remain teaser routes in this pass
+- frontend Sentry bootstraps from Vite env vars and stays off until a DSN is supplied
 
 ## Current Protected Practice State
 
@@ -65,3 +72,9 @@ This repo now supports both a legacy fallback path and the current protected bet
 - current canonical case content is seeded into Supabase from `abg-master-content/generated/published_cases_seed.sql`
 
 Manual Supabase setup scripts live in [`supabase/manual`](./supabase/manual/README.md).
+
+## Sentry Notes
+
+- create one Sentry project for the React frontend and use its DSN as `VITE_SENTRY_DSN`
+- create a second Sentry project for Supabase Edge Functions and store its DSN as the `SENTRY_DSN` secret in Supabase
+- start with all Sentry sampling env vars at `0` and increase them later if you want tracing or session replay

@@ -8,8 +8,7 @@ const PRACTICE_INTRO_COPY = {
   introLead: "Practice structured ABG interpretation through clinical cases.",
   paragraphs: [
     "Difficulty currently scales as you progress, but is still being refined as the case library grows.",
-    "Case explanations and stems are currently a work in progress.",
-    "This app uses anonymised analytics (Google Analytics and Microsoft Clarity) to improve the product during public beta."
+    "Case explanations and stems are currently a work in progress."
   ],
   comingSoonTitle: "Coming soon",
   comingSoonItems: [
