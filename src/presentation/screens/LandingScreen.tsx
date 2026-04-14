@@ -123,6 +123,8 @@ const mobileSlides = [
   }
 ] as const;
 
+const MOBILE_SLIDE_AUTOPLAY_MS = 4000;
+
 const progressHighlights = [
   "Real-time performance tracking",
   "Unlock progressively more difficult questions as you demonstrate mastery",
@@ -249,16 +251,38 @@ function LandingAnalyticsCard() {
 
 export function LandingScreen() {
   const { state } = useAppContext();
-  const [activeSlideIndex, setActiveSlideIndex] = useState(1);
+  const [mobileTrackIndex, setMobileTrackIndex] = useState(1);
+  const [mobileTrackTransitionEnabled, setMobileTrackTransitionEnabled] = useState(true);
   const [casesSolvedCount, setCasesSolvedCount] = useState(DEFAULT_CASES_SOLVED_COUNT);
   const [animatedCasesSolvedCount, setAnimatedCasesSolvedCount] = useState(0);
   const [casesSolvedLoaded, setCasesSolvedLoaded] = useState(false);
   const [featuresRevealProgress, setFeaturesRevealProgress] = useState(0);
+  const [curriculumMotionVisible, setCurriculumMotionVisible] = useState(false);
+  const [mobileSectionVisible, setMobileSectionVisible] = useState(false);
+  const [progressInsightVisible, setProgressInsightVisible] = useState(false);
+  const [explanationInsightVisible, setExplanationInsightVisible] = useState(false);
   const [heroPreviewLoaded, setHeroPreviewLoaded] = useState(false);
   const animatedCasesSolvedCountRef = useRef(animatedCasesSolvedCount);
   const featuresSectionRef = useRef<HTMLElement | null>(null);
-  const activeSlide = mobileSlides[activeSlideIndex];
-  const mobileProgressLabel = useMemo(() => `${activeSlideIndex + 1} / ${mobileSlides.length}`, [activeSlideIndex]);
+  const curriculumSectionRef = useRef<HTMLElement | null>(null);
+  const mobileSectionRef = useRef<HTMLElement | null>(null);
+  const progressInsightRef = useRef<HTMLDivElement | null>(null);
+  const explanationInsightRef = useRef<HTMLDivElement | null>(null);
+  const extendedMobileSlides = useMemo(
+    () => [mobileSlides[mobileSlides.length - 1], ...mobileSlides, mobileSlides[0]],
+    []
+  );
+  const activeSlideIndex = useMemo(() => {
+    if (mobileTrackIndex === 0) {
+      return mobileSlides.length - 1;
+    }
+
+    if (mobileTrackIndex === mobileSlides.length + 1) {
+      return 0;
+    }
+
+    return mobileTrackIndex - 1;
+  }, [mobileTrackIndex]);
   const casesSolvedLabel = useMemo(() => animatedCasesSolvedCount.toLocaleString("en-US"), [animatedCasesSolvedCount]);
 
   useEffect(() => {
@@ -373,8 +397,8 @@ export function LandingScreen() {
 
       const sectionTop = section.offsetTop;
       const viewportHeight = window.innerHeight;
-      const revealStart = sectionTop - viewportHeight * 0.9;
-      const revealEnd = sectionTop - viewportHeight * 0.5;
+      const revealStart = sectionTop - viewportHeight * 0.68;
+      const revealEnd = sectionTop - viewportHeight * 0.32;
       const distance = Math.max(revealEnd - revealStart, 1);
       const nextProgress = Math.min(Math.max((window.scrollY - revealStart) / distance, 0), 1);
 
@@ -403,6 +427,184 @@ export function LandingScreen() {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setCurriculumMotionVisible(true);
+      return;
+    }
+
+    const section = curriculumSectionRef.current;
+    if (!section) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting) {
+          return;
+        }
+
+        setCurriculumMotionVisible(true);
+        observer.disconnect();
+      },
+      {
+        threshold: 0.28,
+        rootMargin: "0px 0px -14% 0px"
+      }
+    );
+
+    observer.observe(section);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setMobileSectionVisible(true);
+      return;
+    }
+
+    const section = mobileSectionRef.current;
+    if (!section) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting) {
+          return;
+        }
+
+        setMobileSectionVisible(true);
+        observer.disconnect();
+      },
+      {
+        threshold: 0.24,
+        rootMargin: "0px 0px -12% 0px"
+      }
+    );
+
+    observer.observe(section);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setProgressInsightVisible(true);
+      return;
+    }
+
+    const section = progressInsightRef.current;
+    if (!section) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting) {
+          return;
+        }
+
+        setProgressInsightVisible(true);
+        observer.disconnect();
+      },
+      {
+        threshold: 0.2,
+        rootMargin: "0px 0px -10% 0px"
+      }
+    );
+
+    observer.observe(section);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setExplanationInsightVisible(true);
+      return;
+    }
+
+    const section = explanationInsightRef.current;
+    if (!section) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting) {
+          return;
+        }
+
+        setExplanationInsightVisible(true);
+        observer.disconnect();
+      },
+      {
+        threshold: 0.32,
+        rootMargin: "0px 0px -16% 0px"
+      }
+    );
+
+    observer.observe(section);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setMobileTrackTransitionEnabled(true);
+      setMobileTrackIndex(currentIndex => currentIndex + 1);
+    }, MOBILE_SLIDE_AUTOPLAY_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    mobileSlides.forEach(slide => {
+      const image = new Image();
+      image.src = slide.imageSrc;
+    });
   }, []);
 
   return (
@@ -495,18 +697,17 @@ export function LandingScreen() {
         </div>
       </section>
 
-      <section className="landing-section landing-section--curriculum">
+      <section ref={curriculumSectionRef} className="landing-section landing-section--curriculum">
         <div className="landing-shell">
-          <div className="landing-section__heading">
-            <span className="landing-pill">Structured Curriculum</span>
+          <div className="landing-section__heading landing-curriculum__heading" data-visible={curriculumMotionVisible}>
             <h2>A Structured Way to Learn</h2>
             <p>
-              Progress through structured, step-by-step lessons that build your ABG interpretation skills from the ground up. Learn to distinguish metabolic vs respiratory acidosis, apply compensation rules, and calculate anion gap with clear explanations and clinical examples.
+              Progress through structured, step-by-step lessons that build your ABG interpretation skills from the ground up.
             </p>
           </div>
 
           <div className="landing-curriculum">
-            <div className="landing-curriculum__copy">
+            <div className="landing-curriculum__copy" data-visible={curriculumMotionVisible}>
               <div className="landing-curriculum__intro">
                 <h3>Four Levels of Mastery</h3>
               </div>
@@ -524,7 +725,7 @@ export function LandingScreen() {
               </div>
             </div>
 
-            <div className="landing-curriculum__gallery" aria-label="Lesson previews">
+            <div className="landing-curriculum__gallery" aria-label="Lesson previews" data-visible={curriculumMotionVisible}>
               <div className="landing-curriculum__column">
                 <img className="landing-curriculum__card is-short" src={CURRICULUM_BEGINNER_IMAGE} alt="Beginner lesson preview" />
                 <img className="landing-curriculum__card is-tall" src={CURRICULUM_ADVANCED_IMAGE} alt="Advanced lesson preview" />
@@ -537,7 +738,7 @@ export function LandingScreen() {
           </div>
 
           <div className="landing-curriculum__action">
-            <Link className="figma-button landing-curriculum__button" to="/practice">
+            <Link className="figma-button landing-curriculum__button" to="/learn">
               <span>Start Learning</span>
               <img className="landing-button__icon" src={CTA_ARROW_IMAGE} alt="" />
             </Link>
@@ -545,27 +746,57 @@ export function LandingScreen() {
         </div>
       </section>
 
-      <section className="landing-section landing-section--mobile">
-        <div className="landing-shell">
+      <section ref={mobileSectionRef} className="landing-section landing-section--mobile">
+        <div className="landing-shell landing-mobile-reveal" data-visible={mobileSectionVisible}>
           <div className="landing-section__heading">
-            <span className="landing-pill landing-pill--icon">
-              <img src={MOBILE_BADGE_IMAGE} alt="" />
-              <span>Practice Anywhere</span>
-            </span>
             <h2>Practice on Mobile</h2>
-            <p>Master blood gas interpretation on the go with our mobile-optimized experience</p>
+            <p>Master blood gas interpretation on the go with our mobile-optimized experience.</p>
           </div>
 
           <div className="landing-mobile-showcase">
-            <div className="landing-mobile-showcase__copy">
-              <span className="landing-mobile-showcase__badge">{activeSlide.step}</span>
-              <h3>{activeSlide.title}</h3>
-              <p>{activeSlide.description}</p>
-              <span className="landing-mobile-showcase__progress">{mobileProgressLabel}</span>
-            </div>
+            <div
+              className="landing-mobile-showcase__track"
+              style={{
+                transform: `translate3d(-${mobileTrackIndex * 100}%, 0, 0)`,
+                transitionDuration: mobileTrackTransitionEnabled ? undefined : "0ms"
+              }}
+              onTransitionEnd={() => {
+                if (mobileTrackIndex === mobileSlides.length + 1) {
+                  setMobileTrackTransitionEnabled(false);
+                  setMobileTrackIndex(1);
+                  window.requestAnimationFrame(() => {
+                    window.requestAnimationFrame(() => {
+                      setMobileTrackTransitionEnabled(true);
+                    });
+                  });
+                  return;
+                }
 
-            <div className="landing-mobile-frame">
-              <img src={activeSlide.imageSrc} alt={`${activeSlide.title} mobile preview`} />
+                if (mobileTrackIndex === 0) {
+                  setMobileTrackTransitionEnabled(false);
+                  setMobileTrackIndex(mobileSlides.length);
+                  window.requestAnimationFrame(() => {
+                    window.requestAnimationFrame(() => {
+                      setMobileTrackTransitionEnabled(true);
+                    });
+                  });
+                }
+              }}
+            >
+              {extendedMobileSlides.map((slide, index) => (
+                <div key={`${slide.title}-${index}`} className="landing-mobile-showcase__stage" aria-hidden={mobileTrackIndex !== index}>
+                  <div className="landing-mobile-showcase__copy">
+                    <span className="landing-mobile-showcase__badge">{slide.step}</span>
+                    <h3>{slide.title}</h3>
+                    <p>{slide.description}</p>
+                    <span className="landing-mobile-showcase__progress">{`${activeSlideIndex + 1} / ${mobileSlides.length}`}</span>
+                  </div>
+
+                  <div className="landing-mobile-frame">
+                    <img src={slide.imageSrc} alt={`${slide.title} mobile preview`} />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -577,7 +808,10 @@ export function LandingScreen() {
                 type="button"
                 aria-label={`Show ${slide.title}`}
                 aria-pressed={activeSlideIndex === index}
-                onClick={() => setActiveSlideIndex(index)}
+                onClick={() => {
+                  setMobileTrackTransitionEnabled(true);
+                  setMobileTrackIndex(index + 1);
+                }}
               />
             ))}
           </div>
@@ -586,9 +820,12 @@ export function LandingScreen() {
 
       <section className="landing-section landing-section--insights">
         <div className="landing-shell landing-insight-grid">
-          <div className="landing-insight-grid__row">
-            <div className="landing-insight-grid__copy">
-              <h2>Track Your Progress (Coming Soon)</h2>
+          <div ref={progressInsightRef} className="landing-insight-grid__row">
+            <div className="landing-insight-grid__copy landing-insight-grid__copy--from-left" data-visible={progressInsightVisible}>
+              <h2>Track Your Progress</h2>
+			  <p>
+				Coming Soon
+			  </p>
               <p>
                 Monitor your progression across all difficulty levels. See exactly where you excel and identify areas for improvement with detailed performance metrics.
               </p>
@@ -598,16 +835,16 @@ export function LandingScreen() {
                 ))}
               </ul>
             </div>
-            <div>
+            <div className="landing-insight-grid__media landing-insight-grid__media--from-right" data-visible={progressInsightVisible}>
               <LandingAnalyticsCard />
             </div>
           </div>
 
-          <div className="landing-insight-grid__row landing-insight-grid__row--reverse">
-            <div className="landing-insight-grid__image-card">
+          <div ref={explanationInsightRef} className="landing-insight-grid__row landing-insight-grid__row--reverse">
+            <div className="landing-insight-grid__image-card landing-insight-grid__media landing-insight-grid__media--from-left" data-visible={explanationInsightVisible}>
               <img src={EXPLANATION_CARD_IMAGE} alt="Detailed case analysis and explanation preview" />
             </div>
-            <div className="landing-insight-grid__copy">
+            <div className="landing-insight-grid__copy landing-insight-grid__copy--from-right" data-visible={explanationInsightVisible}>
               <h2>Learn From Every Case</h2>
               <p>
                 Each case is paired with focused explanations that highlight the underlying physiology - helping you understand why the results looks the way it does.
@@ -625,9 +862,9 @@ export function LandingScreen() {
       <section className="landing-cta-band">
         <div className="landing-cta-band__inner">
           <h2>Ready to Master Blood Gas Interpretation?</h2>
-          <p>Join learners progressing through 200+ ABG practice questions with answers and compensation</p>
+          <p>Join learners working through 150+ ABG cases and build mastery step-by-step</p>
           <Link className="figma-button figma-button--secondary landing-cta-band__button" to="/practice">
-            Start Free ABG Quiz
+            Begin Your First Case
           </Link>
         </div>
       </section>

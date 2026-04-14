@@ -2709,6 +2709,7 @@ button:disabled {
 }
 
 .landing-section__heading h2 {
+  margin-bottom: 1.15rem;
   font-size: clamp(2.2rem, 4vw, 2.7rem);
   line-height: 1.2;
 }
@@ -2797,11 +2798,50 @@ button:disabled {
   line-height: 1.5;
 }
 
+.landing-insight-grid__copy h2 {
+  margin-bottom: 1.15rem;
+}
+
+.landing-insight-grid__copy p + p {
+  margin-top: 1em;
+}
+
 .landing-curriculum {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(18rem, 38.5rem);
   gap: 3rem;
   align-items: start;
+}
+
+.landing-curriculum__heading,
+.landing-curriculum__copy,
+.landing-curriculum__gallery {
+  opacity: 0;
+  will-change: opacity, transform;
+  transition:
+    opacity 1500ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 1500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-curriculum__heading {
+  transform: translate3d(0, 1rem, 0);
+}
+
+.landing-curriculum__copy {
+  transform: translate3d(-1.4rem, 0, 0);
+  transition-delay: 220ms;
+}
+
+.landing-curriculum__gallery {
+  transform: translate3d(1.4rem, 0, 0);
+  transition-delay: 420ms;
+}
+
+.landing-curriculum__heading[data-visible="true"],
+.landing-curriculum__copy[data-visible="true"],
+.landing-curriculum__gallery[data-visible="true"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
 }
 
 .landing-curriculum__intro h3,
@@ -2821,8 +2861,8 @@ button:disabled {
 
 .landing-curriculum__levels {
   display: grid;
-  gap: 1rem;
-  margin-top: 1.5rem;
+  gap: 1.45rem;
+  margin-top: 1.85rem;
 }
 
 .landing-curriculum__level {
@@ -2901,6 +2941,11 @@ button:disabled {
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 0.875rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  transform: translate3d(0, 0, 0);
+  transition:
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .landing-curriculum__card.is-short {
@@ -2913,6 +2958,14 @@ button:disabled {
   object-fit: cover;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .landing-curriculum__card:hover {
+    transform: translate3d(0, -0.35rem, 0) scale(1.025);
+    box-shadow: 0 18px 36px rgba(15, 37, 71, 0.1);
+    border-color: rgba(15, 37, 71, 0.16);
+  }
+}
+
 .landing-curriculum__action {
   display: flex;
   justify-content: center;
@@ -2923,19 +2976,49 @@ button:disabled {
   overflow: hidden;
 }
 
+.landing-mobile-reveal {
+  opacity: 0;
+  transform: translate3d(0, 1.15rem, 0);
+  will-change: opacity, transform;
+  transition:
+    opacity 1180ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 1180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-mobile-reveal[data-visible="true"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
 .landing-mobile-showcase {
+  width: min(100%, 58rem);
+  margin: 0 auto;
+  min-height: 32rem;
+  overflow: hidden;
+}
+
+.landing-mobile-showcase__track {
+  display: flex;
+  width: 100%;
+  transition: transform 760ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.landing-mobile-showcase__stage {
+  flex: 0 0 100%;
   display: grid;
   grid-template-columns: minmax(0, 28rem) minmax(16rem, 22rem);
   align-items: center;
   justify-content: center;
   gap: 3rem;
-  width: min(100%, 58rem);
-  margin: 0 auto;
+  min-height: 32rem;
 }
 
 .landing-mobile-showcase__copy {
   display: grid;
   gap: 1rem;
+  align-content: center;
+  min-height: 18rem;
 }
 
 .landing-mobile-showcase__badge {
@@ -2958,26 +3041,40 @@ button:disabled {
 .landing-mobile-frame {
   width: min(100%, 17.5rem);
   margin-inline: auto;
+  aspect-ratio: 350 / 712;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .landing-mobile-showcase__dots {
   display: flex;
   justify-content: center;
-  gap: 0.65rem;
-  margin-top: 2rem;
+  gap: 0.64rem;
+  margin-top: 0.85rem;
 }
 
 .landing-mobile-showcase__dot {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 0.6175rem;
+  height: 0.6175rem;
   padding: 0;
   border: 0;
   border-radius: 999px;
   background: rgba(15, 37, 71, 0.18);
+  transition:
+    background-color 220ms ease,
+    transform 220ms ease;
 }
 
 .landing-mobile-showcase__dot.is-active {
   background: #0f2547;
+  transform: scale(1.05);
+}
+
+.landing-mobile-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .landing-insight-grid {
@@ -2994,6 +3091,35 @@ button:disabled {
 
 .landing-insight-grid__row--reverse {
   grid-template-columns: minmax(18rem, 38.5rem) minmax(0, 1fr);
+}
+
+.landing-insight-grid__copy,
+.landing-insight-grid__media {
+  opacity: 0;
+  will-change: opacity, transform;
+  transition:
+    opacity 1180ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 1180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-insight-grid__copy--from-left,
+.landing-insight-grid__media--from-left {
+  transform: translate3d(-1.4rem, 0, 0);
+}
+
+.landing-insight-grid__copy--from-right,
+.landing-insight-grid__media--from-right {
+  transform: translate3d(1.4rem, 0, 0);
+}
+
+.landing-insight-grid__media {
+  transition-delay: 280ms;
+}
+
+.landing-insight-grid__copy[data-visible="true"],
+.landing-insight-grid__media[data-visible="true"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
 }
 
 .landing-insight-grid__copy h2 {
@@ -3297,6 +3423,7 @@ button:disabled {
 }
 
 .landing-cta-band__inner h2 {
+  margin-bottom: 1.25rem;
   color: #ffffff;
   font-size: clamp(2.4rem, 5vw, 3rem);
 }
@@ -3344,7 +3471,7 @@ button:disabled {
 
   .landing-hero,
   .landing-curriculum,
-  .landing-mobile-showcase,
+  .landing-mobile-showcase__stage,
   .landing-insight-grid__row,
   .landing-insight-grid__row--reverse {
     grid-template-columns: 1fr;
@@ -3352,7 +3479,7 @@ button:disabled {
 
   .landing-hero,
   .landing-curriculum,
-  .landing-mobile-showcase,
+  .landing-mobile-showcase__stage,
   .landing-insight-grid__row {
     gap: 2rem;
   }
@@ -3480,6 +3607,28 @@ button:disabled {
 
   .landing-feature-card {
     transform: none;
+    transition: none;
+  }
+
+  .landing-curriculum__card {
+    transform: none;
+    transition: none;
+  }
+
+  .landing-curriculum__heading,
+  .landing-curriculum__copy,
+  .landing-curriculum__gallery,
+  .landing-mobile-reveal,
+  .landing-mobile-showcase__stage,
+  .landing-insight-grid__copy,
+  .landing-insight-grid__media {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    animation: none;
+  }
+
+  .landing-mobile-showcase__track {
     transition: none;
   }
 }
