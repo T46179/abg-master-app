@@ -3,19 +3,42 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LandingScreen } from "./LandingScreen";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
+vi.mock("../../app/AppProvider", () => ({
+  useAppContext: () => ({
+    state: {
+      status: "ready",
+      supabase: null,
+      supabaseEnabled: false
+    }
+  })
+}));
+
 describe("LandingScreen", () => {
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
+  let animationTime = 1000;
 
   beforeEach(() => {
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
+    animationTime = 1000;
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      const timeoutId = window.setTimeout(() => {
+        animationTime += 1000;
+        callback(animationTime);
+      }, 0);
+
+      return timeoutId;
+    });
+    vi.stubGlobal("cancelAnimationFrame", (handle: number) => {
+      window.clearTimeout(handle);
+    });
   });
 
   afterEach(() => {
@@ -23,6 +46,7 @@ describe("LandingScreen", () => {
       root.unmount();
     });
     container.remove();
+    vi.unstubAllGlobals();
   });
 
   function renderScreen() {
@@ -38,14 +62,14 @@ describe("LandingScreen", () => {
   it("renders the landing hero and routes primary ctas to practice", () => {
     renderScreen();
 
-    expect(container.textContent).toContain("Master ABG Interpretation Step by Step");
+    expect(container.textContent).toContain("Master Blood Gas Interpretation");
 
     const links = Array.from(container.querySelectorAll("a"));
-    const primaryLink = links.find(link => link.textContent?.includes("Start Free ABG Practice"));
-    const headerLink = links.find(link => link.textContent?.includes("Start ABG Practice"));
+    const primaryLink = links.find(link => link.textContent?.includes("Begin Your First Case"));
+    const headerLink = links.find(link => link.textContent?.includes("Dashboard"));
 
     expect(primaryLink?.getAttribute("href")).toBe("/practice");
-    expect(headerLink?.getAttribute("href")).toBe("/practice");
+    expect(headerLink?.getAttribute("href")).toBe("/dashboard");
   });
 
   it("switches the mobile showcase content when a dot is selected", () => {

@@ -2474,6 +2474,10 @@ button:disabled {
   background: linear-gradient(180deg, rgba(15, 37, 71, 0.05) 0%, #ffffff 100%);
 }
 
+.landing-section--features {
+  background: rgba(236, 238, 242, 0.3);
+}
+
 .landing-pill {
   display: inline-flex;
   align-items: center;
@@ -2537,7 +2541,7 @@ button:disabled {
 }
 
 .landing-hero__actions {
-  margin-top: 1.5rem;
+  margin-top: 3rem;
 }
 
 .landing-hero__primary,
@@ -2555,7 +2559,7 @@ button:disabled {
 .landing-hero__stats {
   display: flex;
   gap: 2rem;
-  margin-top: 2rem;
+  margin-top: 0.1rem;
   padding-top: 2rem;
 }
 
@@ -2616,6 +2620,66 @@ button:disabled {
 .landing-section__heading h2 {
   font-size: clamp(2.2rem, 4vw, 2.7rem);
   line-height: 1.2;
+}
+
+.landing-section__heading--features {
+  max-width: 44rem;
+  margin-bottom: 4rem;
+}
+
+.landing-section__heading--features h2 {
+  margin-top: 0;
+}
+
+.landing-section__heading--features p {
+  max-width: 42rem;
+  margin-inline: auto;
+  font-size: 1.125rem;
+}
+
+.landing-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.landing-feature-card {
+  min-height: 15.1rem;
+  padding: 1.5rem;
+  border: 0.667px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.875rem;
+  background: #ffffff;
+  box-shadow: 0 2px 12px rgba(15, 37, 71, 0.04);
+}
+
+.landing-feature-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.625rem;
+  background: rgba(15, 37, 71, 0.1);
+}
+
+.landing-feature-card__icon img {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.landing-feature-card h3 {
+  margin: 1rem 0 0;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  letter-spacing: -0.02em;
+  color: #0a0a0a;
+}
+
+.landing-feature-card p {
+  margin: 0.5rem 0 0;
+  color: #717182;
+  font-size: 0.9375rem;
+  line-height: 1.5;
 }
 
 .landing-curriculum {
@@ -3187,6 +3251,10 @@ button:disabled {
     align-items: center;
   }
 
+  .landing-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .landing-curriculum__column,
   .landing-curriculum__column--offset {
     width: min(100%, 20rem);
@@ -3239,6 +3307,14 @@ button:disabled {
   .landing-curriculum__button,
   .landing-cta-band__button {
     width: 100%;
+  }
+
+  .landing-feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-feature-card {
+    min-height: auto;
   }
 
   .landing-curriculum__level {

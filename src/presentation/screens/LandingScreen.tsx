@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useAppContext } from "../../app/AppProvider";
 import { Link } from "react-router-dom";
 import { Surface } from "../primitives/Surface";
 import { cn } from "../utils";
@@ -14,6 +15,10 @@ const MOBILE_CASE_IMAGE = "https://www.figma.com/api/mcp/asset/a2ba7eb1-12d4-432
 const MOBILE_ANALYSIS_IMAGE = "https://www.figma.com/api/mcp/asset/8aee487f-1c53-4e7f-92b6-8fb165e13827";
 const MOBILE_PROGRESS_IMAGE = "https://www.figma.com/api/mcp/asset/965634ce-ebb1-4ff8-9cd0-dfeee05c432e";
 const EXPLANATION_CARD_IMAGE = "https://www.figma.com/api/mcp/asset/215f43b5-bb71-4db7-8483-9bedf0fd7b46";
+const FEATURE_GRADED_DIFFICULTY_ICON = "https://www.figma.com/api/mcp/asset/f1d686ba-53a1-4c8e-b15a-0263f021a7d2";
+const FEATURE_PERFORMANCE_ANALYTICS_ICON = "https://www.figma.com/api/mcp/asset/fb8ba411-9625-40ab-82a9-20e567eb8ff7";
+const FEATURE_COMPREHENSIVE_REVIEW_ICON = "https://www.figma.com/api/mcp/asset/6dd632ae-b7d5-473d-9a4e-c28106e78b0e";
+const FEATURE_COMING_SOON_ICON = "https://www.figma.com/api/mcp/asset/45fa6ed2-1871-4a85-a764-9923ee75d71b";
 
 const ANALYTICS_LINE_GRID_IMAGE = "https://www.figma.com/api/mcp/asset/692e27ec-00fd-4295-a5f1-b163a70e95f4";
 const ANALYTICS_LINE_AXIS_IMAGE = "https://www.figma.com/api/mcp/asset/1db32a0e-12c6-4a82-a5ee-7b25b92fdfa1";
@@ -35,31 +40,58 @@ const ANALYTICS_BAR_COLUMN_FOUR_IMAGE = "https://www.figma.com/api/mcp/asset/1b2
 const ANALYTICS_PIE_RING_ONE_IMAGE = "https://www.figma.com/api/mcp/asset/3e56f35d-ac32-4c27-a468-7778e1d934cf";
 const ANALYTICS_PIE_RING_TWO_IMAGE = "https://www.figma.com/api/mcp/asset/121d576e-960d-4115-9151-81098be7d1d6";
 const ANALYTICS_PIE_RING_THREE_IMAGE = "https://www.figma.com/api/mcp/asset/8f3a030c-1f36-4ee3-9109-abe72cd16280";
+const DEFAULT_CASES_SOLVED_COUNT = 0;
+const CASES_SOLVED_METRIC_KEY = "cases_solved";
 
 const curriculumLevels = [
   {
     number: "01",
     title: "Beginner",
-    description: "Learn the fundamentals of ABG interpretation. Understand pH, PaCO2, and HCO3 with ABG interpretation normal values.",
+    description: "Understand how pH, PaCO2, and HCO3- define acid-base status. Identify whether the primary disorder is respiratory or metabolic using a structured approach.",
     tone: "blue"
   },
   {
     number: "02",
     title: "Intermediate",
-    description: "Master ABG compensation rules explained in detail. Learn when compensation is appropriate and complete.",
+    description: "Learn how the body responds to acid-base disturbances. Determine whether compensation is appropriate - and when it isn't.",
     tone: "green"
   },
   {
     number: "03",
     title: "Advanced",
-    description: "Deep dive into anion gap calculations and mixed acid base disorders explained with clinical examples.",
+    description: "Master the anion gap and identify unmeasured acids. Recognise patterns seen in conditions like DKA, lactic acidosis, and toxic ingestions.",
     tone: "violet"
   },
   {
     number: "04",
     title: "Master",
-    description: "Tackle complex multi-system disorders and toxicological presentations with confidence.",
+    description: "Go beyond single diagnoses. Identify when results don't fit expected patterns and detect multiple simultaneous processes in complex clinical scenarios.",
     tone: "red"
+  }
+] as const;
+
+const landingFeatures = [
+  {
+    title: "Graded Difficulty",
+    description:
+      "Progress from basic blood gas interpretation to complex mixed disorders and toxicology cases",
+    iconSrc: FEATURE_GRADED_DIFFICULTY_ICON
+  },
+  {
+    title: "Learning Modules",
+    description: "Step-by-step lessons that build a clear system for interpreting blood gases, from first principles to complex cases",
+    iconSrc: FEATURE_PERFORMANCE_ANALYTICS_ICON
+  },
+  {
+    title: "Comprehensive Review",
+    description:
+      "Detailed explanations covering compensation rules, anion gap calculation, and clinical significance for the most difficult cases",
+    iconSrc: FEATURE_COMPREHENSIVE_REVIEW_ICON
+  },
+  {
+    title: "Coming Soon",
+    description: "Leaderboards, performance analytics and a growing case library to keep your skills sharp and competitive",
+    iconSrc: FEATURE_COMING_SOON_ICON
   }
 ] as const;
 
@@ -68,14 +100,14 @@ const mobileSlides = [
     step: "1",
     title: "Interactive Case Workflow",
     description:
-      "Work through real clinical scenarios with step-by-step ABG interpretation questions. Analyze values, identify primary disorders, and apply compensation rules all optimized for mobile.",
+      "Work through hundreds of clinical scenarios. Analyze values, identify primary disorders, and apply compensation rules, all optimized for mobile.",
     imageSrc: MOBILE_CASE_IMAGE
   },
   {
     step: "2",
     title: "Detailed Explanations",
     description:
-      "Every ABG quiz question includes comprehensive breakdowns of acid base disorders. Learn Winter's formula, anion gap calculations, and mixed disorder identification with clear explanations.",
+      "Cases include comprehensive breakdowns of acid base disorders. Learn Winter's formula, anion gap calculations, and mixed disorder identification with clear explanations.",
     imageSrc: MOBILE_ANALYSIS_IMAGE
   },
   {
@@ -88,15 +120,15 @@ const mobileSlides = [
 ] as const;
 
 const progressHighlights = [
-  "Real-time performance tracking across 8 levels",
-  "Unlock advanced ABG practice questions as you demonstrate mastery",
+  "Real-time performance tracking",
+  "Unlock progressively more difficult questions as you demonstrate mastery",
   "Continuous feedback loop to reinforce blood gas interpretation skills"
 ];
 
 const explanationHighlights = [
-  "ABG compensation rules explained with how to calculate anion gap",
-  "Mixed acid base disorders explained with clinical significance",
-  "ABG analysis step by step reasoning for each diagnosis"
+  "Clear compensation and anion gap breakdowns using real values",
+  "Clinical context explained to support interpretation",
+  "Key takeaways that reinforce high-yield patterns and exam thinking"
 ];
 
 function LandingAnalyticsCard() {
@@ -212,9 +244,93 @@ function LandingAnalyticsCard() {
 }
 
 export function LandingScreen() {
+  const { state } = useAppContext();
   const [activeSlideIndex, setActiveSlideIndex] = useState(1);
+  const [casesSolvedCount, setCasesSolvedCount] = useState(DEFAULT_CASES_SOLVED_COUNT);
+  const [animatedCasesSolvedCount, setAnimatedCasesSolvedCount] = useState(0);
+  const animatedCasesSolvedCountRef = useRef(animatedCasesSolvedCount);
   const activeSlide = mobileSlides[activeSlideIndex];
   const mobileProgressLabel = useMemo(() => `${activeSlideIndex + 1} / ${mobileSlides.length}`, [activeSlideIndex]);
+  const casesSolvedLabel = useMemo(() => animatedCasesSolvedCount.toLocaleString("en-US"), [animatedCasesSolvedCount]);
+
+  useEffect(() => {
+    animatedCasesSolvedCountRef.current = animatedCasesSolvedCount;
+  }, [animatedCasesSolvedCount]);
+
+  useEffect(() => {
+    if (state.status !== "ready" || !state.supabaseEnabled || !state.supabase) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadCasesSolvedCount() {
+      const { data, error } = await state.supabase
+        .from("public_site_metrics")
+        .select("metric_value")
+        .eq("metric_key", CASES_SOLVED_METRIC_KEY)
+        .maybeSingle();
+
+      if (cancelled) {
+        return;
+      }
+
+      const metricCount = Number(data?.metric_value);
+      if (!error && Number.isFinite(metricCount) && metricCount >= 0) {
+        setCasesSolvedCount(metricCount);
+        return;
+      }
+
+      const { count, error: attemptsCountError } = await state.supabase
+        .from("attempts")
+        .select("*", { count: "exact", head: true });
+
+      if (cancelled || attemptsCountError) {
+        return;
+      }
+
+      if (typeof count === "number" && count >= 0) {
+        setCasesSolvedCount(count);
+      }
+    }
+
+    void loadCasesSolvedCount();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.status, state.supabase, state.supabaseEnabled]);
+
+  useEffect(() => {
+    const startCount = animatedCasesSolvedCountRef.current;
+    const endCount = casesSolvedCount;
+
+    if (startCount === endCount) {
+      return;
+    }
+
+    const animationDurationMs = 900;
+    const animationStart = performance.now();
+    let frameId = 0;
+
+    const tick = (timestamp: number) => {
+      const progress = Math.min((timestamp - animationStart) / animationDurationMs, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      const nextValue = Math.round(startCount + ((endCount - startCount) * easedProgress));
+
+      setAnimatedCasesSolvedCount(nextValue);
+
+      if (progress < 1) {
+        frameId = window.requestAnimationFrame(tick);
+      }
+    };
+
+    frameId = window.requestAnimationFrame(tick);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [casesSolvedCount]);
 
   return (
     <main className="landing-page">
@@ -223,8 +339,8 @@ export function LandingScreen() {
           <Link className="landing-header__brand" to="/">
             ABG Master
           </Link>
-          <Link className="figma-button figma-button--compact landing-header__cta" to="/practice">
-            <span>Start ABG Practice</span>
+          <Link className="figma-button figma-button--compact landing-header__cta" to="/dashboard">
+            <span>Dashboard</span>
           </Link>
         </div>
       </header>
@@ -232,23 +348,22 @@ export function LandingScreen() {
       <section className="landing-section landing-section--hero">
         <div className="landing-shell landing-hero">
           <div className="landing-hero__copy">
-            <span className="landing-pill">200+ ABG Practice Questions &amp; Growing</span>
-            <h1>Master ABG Interpretation Step by Step</h1>
+            <h1>Master Blood Gas Interpretation</h1>
             <p>
-              From foundational blood gas analysis to complex mixed acid base disorders. Step-wise learning with compensation rules and physiologically accurate ABG practice questions.
+              From fundamentals to complex mixed acid-base disorders. Built on physiology. Designed for mastery.
             </p>
 
             <div className="landing-hero__actions">
               <Link className="figma-button landing-hero__primary" to="/practice">
-                <span>Start Free ABG Practice</span>
+                <span>Begin Your First Case</span>
                 <img className="landing-button__icon" src={CTA_ARROW_IMAGE} alt="" />
               </Link>
             </div>
 
             <div className="landing-hero__stats" aria-label="ABG platform stats">
               <div className="landing-hero__stat">
-                <strong>200+</strong>
-                <span>ABG Quiz Questions</span>
+                <strong>150+</strong>
+                <span>ABG Cases &amp; Growing</span>
               </div>
               <div className="landing-hero__stat">
                 <strong>4</strong>
@@ -265,8 +380,31 @@ export function LandingScreen() {
 
       <section className="landing-section landing-section--counter">
         <div className="landing-shell landing-counter">
-          <strong>247,856</strong>
+          <strong>{casesSolvedLabel}</strong>
           <span>Cases solved by learners worldwide</span>
+        </div>
+      </section>
+
+      <section className="landing-section landing-section--features">
+        <div className="landing-shell">
+          <div className="landing-section__heading landing-section__heading--features">
+            <h2>Progressive Blood Gas Interpretation Practice</h2>
+            <p>
+              Build expertise through structured ABG cases with instant feedback and comprehensive analysis
+            </p>
+          </div>
+
+          <div className="landing-feature-grid" aria-label="ABG learning features">
+            {landingFeatures.map(feature => (
+              <Surface key={feature.title} className="landing-feature-card" as="article">
+                <div className="landing-feature-card__icon" aria-hidden="true">
+                  <img src={feature.iconSrc} alt="" />
+                </div>
+                <h3>{feature.title}</h3>
+                <p>{feature.description}</p>
+              </Surface>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -274,9 +412,9 @@ export function LandingScreen() {
         <div className="landing-shell">
           <div className="landing-section__heading">
             <span className="landing-pill">Structured Curriculum</span>
-            <h2>Learn How to Read Arterial Blood Gas Results</h2>
+            <h2>A Structured Way to Learn</h2>
             <p>
-              Structured lessons that teach ABG interpretation step by step. Master metabolic acidosis vs respiratory acidosis, Winter&apos;s formula explained, and how to calculate anion gap through interactive modules.
+              Progress through structured, step-by-step lessons that build your ABG interpretation skills from the ground up. Learn to distinguish metabolic vs respiratory acidosis, apply compensation rules, and calculate anion gap with clear explanations and clinical examples.
             </p>
           </div>
 
@@ -284,9 +422,6 @@ export function LandingScreen() {
             <div className="landing-curriculum__copy">
               <div className="landing-curriculum__intro">
                 <h3>Four Levels of Mastery</h3>
-                <p>
-                  Progress through carefully designed lessons that build your ABG interpretation skills from the ground up. Each level introduces new concepts with clear explanations and ABG interpretation examples.
-                </p>
               </div>
 
               <div className="landing-curriculum__levels">
@@ -330,7 +465,7 @@ export function LandingScreen() {
               <img src={MOBILE_BADGE_IMAGE} alt="" />
               <span>Practice Anywhere</span>
             </span>
-            <h2>ABG Practice on Mobile</h2>
+            <h2>Practice on Mobile</h2>
             <p>Master blood gas interpretation on the go with our mobile-optimized experience</p>
           </div>
 
@@ -366,9 +501,9 @@ export function LandingScreen() {
         <div className="landing-shell landing-insight-grid">
           <div className="landing-insight-grid__row">
             <div className="landing-insight-grid__copy">
-              <h2>Track Your ABG Interpretation Progress</h2>
+              <h2>Track Your Progress (Coming Soon)</h2>
               <p>
-                Monitor your progression across all difficulty levels in arterial blood gas analysis. See exactly where you excel and identify areas for improvement with detailed performance metrics.
+                Monitor your progression across all difficulty levels. See exactly where you excel and identify areas for improvement with detailed performance metrics.
               </p>
               <ul className="landing-bullet-list">
                 {progressHighlights.map(item => (
@@ -384,9 +519,9 @@ export function LandingScreen() {
               <img src={EXPLANATION_CARD_IMAGE} alt="Detailed case analysis and explanation preview" />
             </div>
             <div className="landing-insight-grid__copy">
-              <h2>Learn How to Interpret ABG Step by Step</h2>
+              <h2>Learn From Every Case</h2>
               <p>
-                Every ABG interpretation question includes comprehensive explanations of the underlying physiology. Understand metabolic acidosis vs respiratory acidosis, compensation mechanisms, Winter&apos;s formula, and clinical decision-making.
+                Each case is paired with focused explanations that highlight the underlying physiology - helping you understand why the results looks the way it does.
               </p>
               <ul className="landing-bullet-list">
                 {explanationHighlights.map(item => (
