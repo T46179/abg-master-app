@@ -2284,6 +2284,11 @@ button:disabled {
     min-width: 0;
   }
 
+  .value-panels > .value-panels__card:last-child > .value-panels__secondary-scroll::after {
+    background: #EFF6FF;
+    box-shadow: 0 10px 22px rgba(15, 37, 71, 0.12);
+  }
+
   .value-panels > .value-panels__card:last-child > .value-panels__secondary-scroll > .metric-scroll {
     width: 100%;
     max-width: 100%;

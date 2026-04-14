@@ -333,6 +333,9 @@ export function LegacyPracticeScreen() {
     const fromDifficulty = activeCaseDifficulty;
     const hasActiveUnfinishedCase = Boolean(currentCase && !summary);
 
+    // User-initiated switches should bypass the initial route reconciliation flow.
+    difficultyReconciledRef.current = true;
+
     if (shouldConfirmDifficultySwitch(hasActiveUnfinishedCase, hasAnsweredSteps)) {
       const confirmed = window.confirm("Switch difficulty and load a new case? Your current case progress will be lost.");
       trackEvent("practice_difficulty_changed", {
