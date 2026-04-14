@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useAppContext } from "../../app/AppProvider";
 import { Link } from "react-router-dom";
 import { Surface } from "../primitives/Surface";
 import { cn } from "../utils";
 
-const HERO_PREVIEW_IMAGE = "https://www.figma.com/api/mcp/asset/efa08e83-1875-425d-a5c5-d523bafad163";
+const HERO_PREVIEW_IMAGE = {
+  src: "https://www.figma.com/api/mcp/asset/efa08e83-1875-425d-a5c5-d523bafad163",
+  width: 616,
+  height: 723
+} as const;
 const CTA_ARROW_IMAGE = "https://www.figma.com/api/mcp/asset/c5806267-89aa-4b6b-b3f0-28f806b88644";
 const MOBILE_BADGE_IMAGE = "https://www.figma.com/api/mcp/asset/a8d12e8e-cb21-4a95-8f1f-66de8c3f2a80";
 const CURRICULUM_BEGINNER_IMAGE = "https://www.figma.com/api/mcp/asset/85b84fe5-19e5-41ad-9e6c-5bee191da550";
@@ -248,7 +252,11 @@ export function LandingScreen() {
   const [activeSlideIndex, setActiveSlideIndex] = useState(1);
   const [casesSolvedCount, setCasesSolvedCount] = useState(DEFAULT_CASES_SOLVED_COUNT);
   const [animatedCasesSolvedCount, setAnimatedCasesSolvedCount] = useState(0);
+  const [casesSolvedLoaded, setCasesSolvedLoaded] = useState(false);
+  const [featuresRevealProgress, setFeaturesRevealProgress] = useState(0);
+  const [heroPreviewLoaded, setHeroPreviewLoaded] = useState(false);
   const animatedCasesSolvedCountRef = useRef(animatedCasesSolvedCount);
+  const featuresSectionRef = useRef<HTMLElement | null>(null);
   const activeSlide = mobileSlides[activeSlideIndex];
   const mobileProgressLabel = useMemo(() => `${activeSlideIndex + 1} / ${mobileSlides.length}`, [activeSlideIndex]);
   const casesSolvedLabel = useMemo(() => animatedCasesSolvedCount.toLocaleString("en-US"), [animatedCasesSolvedCount]);
@@ -258,7 +266,12 @@ export function LandingScreen() {
   }, [animatedCasesSolvedCount]);
 
   useEffect(() => {
-    if (state.status !== "ready" || !state.supabaseEnabled || !state.supabase) {
+    if (state.status !== "ready") {
+      return;
+    }
+
+    if (!state.supabaseEnabled || !state.supabase) {
+      setCasesSolvedLoaded(true);
       return;
     }
 
@@ -278,6 +291,7 @@ export function LandingScreen() {
       const metricCount = Number(data?.metric_value);
       if (!error && Number.isFinite(metricCount) && metricCount >= 0) {
         setCasesSolvedCount(metricCount);
+        setCasesSolvedLoaded(true);
         return;
       }
 
@@ -286,12 +300,15 @@ export function LandingScreen() {
         .select("*", { count: "exact", head: true });
 
       if (cancelled || attemptsCountError) {
+        setCasesSolvedLoaded(true);
         return;
       }
 
       if (typeof count === "number" && count >= 0) {
         setCasesSolvedCount(count);
       }
+
+      setCasesSolvedLoaded(true);
     }
 
     void loadCasesSolvedCount();
@@ -302,6 +319,10 @@ export function LandingScreen() {
   }, [state.status, state.supabase, state.supabaseEnabled]);
 
   useEffect(() => {
+    if (!casesSolvedLoaded) {
+      return;
+    }
+
     const startCount = animatedCasesSolvedCountRef.current;
     const endCount = casesSolvedCount;
 
@@ -330,7 +351,59 @@ export function LandingScreen() {
     return () => {
       window.cancelAnimationFrame(frameId);
     };
-  }, [casesSolvedCount]);
+  }, [casesSolvedCount, casesSolvedLoaded]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setFeaturesRevealProgress(1);
+      return;
+    }
+
+    let frameId = 0;
+
+    const updateRevealProgress = () => {
+      const section = featuresSectionRef.current;
+      if (!section) {
+        return;
+      }
+
+      const sectionTop = section.offsetTop;
+      const viewportHeight = window.innerHeight;
+      const revealStart = sectionTop - viewportHeight * 0.9;
+      const revealEnd = sectionTop - viewportHeight * 0.5;
+      const distance = Math.max(revealEnd - revealStart, 1);
+      const nextProgress = Math.min(Math.max((window.scrollY - revealStart) / distance, 0), 1);
+
+      setFeaturesRevealProgress(currentProgress => (nextProgress > currentProgress ? nextProgress : currentProgress));
+    };
+
+    const handleScroll = () => {
+      if (frameId !== 0) {
+        return;
+      }
+
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
+        updateRevealProgress();
+      });
+    };
+
+    updateRevealProgress();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+
+    return () => {
+      if (frameId !== 0) {
+        window.cancelAnimationFrame(frameId);
+      }
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, []);
 
   return (
     <main className="landing-page">
@@ -348,49 +421,63 @@ export function LandingScreen() {
       <section className="landing-section landing-section--hero">
         <div className="landing-shell landing-hero">
           <div className="landing-hero__copy">
-            <h1>Master Blood Gas Interpretation</h1>
-            <p>
-              From fundamentals to complex mixed acid-base disorders. Built on physiology. Designed for mastery.
-            </p>
-
-            <div className="landing-hero__actions">
-              <Link className="figma-button landing-hero__primary" to="/practice">
-                <span>Begin Your First Case</span>
-                <img className="landing-button__icon" src={CTA_ARROW_IMAGE} alt="" />
-              </Link>
-            </div>
-
-            <div className="landing-hero__stats" aria-label="ABG platform stats">
-              <div className="landing-hero__stat">
-                <strong>150+</strong>
-                <span>ABG Cases &amp; Growing</span>
+            <div className="landing-hero__copy-frame">
+              <div className="landing-hero__intro">
+                <h1>Master Blood Gas Interpretation</h1>
+                <p>
+                  From fundamentals to complex mixed acid-base disorders. Built on physiology. Designed for mastery.
+                </p>
               </div>
-              <div className="landing-hero__stat">
-                <strong>4</strong>
-                <span>Difficulty Levels</span>
+
+              <div className="landing-hero__actions">
+                <Link className="figma-button landing-hero__primary" to="/practice">
+                  <span>Begin Your First Case</span>
+                  <img className="landing-button__icon" src={CTA_ARROW_IMAGE} alt="" />
+                </Link>
+              </div>
+
+              <div className="landing-hero__stats" aria-label="ABG platform stats">
+                <div className="landing-hero__stat">
+                  <strong>150+</strong>
+                  <span>ABG Cases &amp; Growing</span>
+                </div>
+                <div className="landing-hero__stat">
+                  <strong>4</strong>
+                  <span>Difficulty Levels</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="landing-hero__preview">
-            <img src={HERO_PREVIEW_IMAGE} alt="ABG case example interface preview" />
+          <div className="landing-hero__preview" data-loaded={heroPreviewLoaded}>
+            <img
+              src={HERO_PREVIEW_IMAGE.src}
+              width={HERO_PREVIEW_IMAGE.width}
+              height={HERO_PREVIEW_IMAGE.height}
+              alt="ABG case example interface preview"
+              onLoad={() => setHeroPreviewLoaded(true)}
+            />
           </div>
         </div>
       </section>
 
       <section className="landing-section landing-section--counter">
-        <div className="landing-shell landing-counter">
+        <div className="landing-shell landing-counter" data-loaded={casesSolvedLoaded}>
           <strong>{casesSolvedLabel}</strong>
           <span>Cases solved by learners worldwide</span>
         </div>
       </section>
 
-      <section className="landing-section landing-section--features">
+      <section
+        ref={featuresSectionRef}
+        className="landing-section landing-section--features"
+        style={{ "--landing-features-reveal-progress": featuresRevealProgress } as CSSProperties}
+      >
         <div className="landing-shell">
           <div className="landing-section__heading landing-section__heading--features">
-            <h2>Progressive Blood Gas Interpretation Practice</h2>
+            <h2>A Complete Blood Gas Training Platform</h2>
             <p>
-              Build expertise through structured ABG cases with instant feedback and comprehensive analysis
+              Structured cases, learning modules, and clear explanations designed to build real understanding.
             </p>
           </div>
 
@@ -511,7 +598,9 @@ export function LandingScreen() {
                 ))}
               </ul>
             </div>
-            <LandingAnalyticsCard />
+            <div>
+              <LandingAnalyticsCard />
+            </div>
           </div>
 
           <div className="landing-insight-grid__row landing-insight-grid__row--reverse">

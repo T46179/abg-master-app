@@ -70,3 +70,8 @@
 [    2327ms] [TIMESTAMP] AppProvider @ http://127.0.0.1:4173/node_modules/.vite/deps/react-dom_client.js?v=2ff430a1:3200
 [ 1176346ms] [ERROR] [JavaScript Error: "The connection to ws://127.0.0.1:4173/?token=Ftf1p2eec0ad was interrupted while the page was loading." {file: "http://127.0.0.1:4173/@vite/client" line: 745}] @ http://127.0.0.1:4173/@vite/client:745
 [ 1176346ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:4173/node_modules/.vite/deps/@sentry_react.js?v=2ff430a1:6793
+[19356487ms] [ERROR] [JavaScript Error: "Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at https://fhuapjeydixkfxssuxoe.supabase.co/auth/v1/token?grant_type=refresh_token. (Reason: CORS request did not succeed). Status code: (null)."] @ :0
+[19356492ms] [ERROR] Error @ http://127.0.0.1:4173/node_modules/.vite/deps/@sentry_react.js?v=2ff430a1:6793
+[19356492ms] [ERROR] [JavaScript Error: "Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at https://fhuapjeydixkfxssuxoe.supabase.co/auth/v1/token?grant_type=refresh_token. (Reason: CORS request did not succeed). Status code: (null)."] @ :0
+[19403301ms] [ERROR] Error @ http://127.0.0.1:4173/node_modules/.vite/deps/@sentry_react.js?v=2ff430a1:6793
+[19403302ms] [ERROR] [JavaScript Error: "Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at https://fhuapjeydixkfxssuxoe.supabase.co/auth/v1/token?grant_type=refresh_token. (Reason: CORS request did not succeed). Status code: (null)."] @ :0
