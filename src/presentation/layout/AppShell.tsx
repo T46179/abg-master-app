@@ -26,9 +26,8 @@ export function AppShell() {
   const releaseFlags = getReleaseFlags(state.payload?.progressionConfig ?? null);
 
   useEffect(() => {
-    const baseViewName = location.pathname === "/"
-      ? "dashboard"
-      : location.pathname.split("/")[1] || "dashboard";
+    const pathSegment = location.pathname.split("/")[1] || "landing";
+    const baseViewName = pathSegment === "dashboard" ? "dashboard" : pathSegment;
     const viewName = baseViewName === "practice" && state.practiceState.lastCaseSummary
       ? "results"
       : baseViewName;

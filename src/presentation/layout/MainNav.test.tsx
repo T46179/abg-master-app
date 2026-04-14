@@ -76,4 +76,15 @@ describe("MainNav", () => {
 
     expect(onOpenStayUpdated).toHaveBeenCalledTimes(2);
   });
+
+  it("points the brand and dashboard links to /dashboard", () => {
+    renderNav();
+
+    const links = Array.from(container.querySelectorAll("a"));
+    const brandLink = links.find((link) => link.className.includes("main-nav__brand"));
+    const dashboardLink = links.find((link) => link.textContent?.includes("Dashboard"));
+
+    expect(brandLink?.getAttribute("href")).toBe("/dashboard");
+    expect(dashboardLink?.getAttribute("href")).toBe("/dashboard");
+  });
 });

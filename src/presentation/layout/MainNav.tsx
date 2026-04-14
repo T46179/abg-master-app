@@ -21,7 +21,7 @@ interface NavItem {
 
 export function MainNav(props: MainNavProps) {
   const navItems: NavItem[] = [
-    { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, end: true },
     { to: "/learn", label: "Learn", icon: GraduationCap, disabled: !props.learnEnabled },
     { to: "/practice", label: "Practice", icon: Droplet }
   ];
@@ -29,7 +29,7 @@ export function MainNav(props: MainNavProps) {
   return (
     <header className="main-nav">
       <div className="main-nav__inner">
-        <NavLink className="main-nav__brand" to="/" end>
+        <NavLink className="main-nav__brand" to="/dashboard" end>
           <span className="main-nav__brand-mark" aria-hidden="true">
             <Droplet />
           </span>

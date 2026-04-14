@@ -1,0 +1,25 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "ABG Master" [ref=e6] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e8]
+        - generic [ref=e11]: ABG Master
+      - navigation "Primary" [ref=e12]:
+        - link "Dashboard" [ref=e13] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e14]
+          - generic [ref=e19]: Dashboard
+        - generic [ref=e20]:
+          - img [ref=e21]
+          - generic [ref=e25]: Learn
+        - link "Practice" [ref=e26] [cursor=pointer]:
+          - /url: /practice
+          - img [ref=e27]
+          - generic [ref=e29]: Practice
+      - button "Stay Updated" [ref=e31] [cursor=pointer]:
+        - img [ref=e32]
+        - generic [ref=e35]: Stay Updated
+  - main [ref=e36]:
+    - status [ref=e37]:
+      - generic [ref=e39]: Loading cases
