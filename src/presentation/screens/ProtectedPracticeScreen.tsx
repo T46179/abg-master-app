@@ -74,6 +74,7 @@ export function ProtectedPracticeScreen() {
   const introAcceptedRef = useRef(false);
   const difficultyReconciledRef = useRef(false);
   const latestCaseLoadRequestRef = useRef(0);
+  const slotRequestKeyRef = useRef<string | null>(null);
 
   const payload = state.payload;
   const progressionInput = {
@@ -239,6 +240,13 @@ export function ProtectedPracticeScreen() {
       return state.practiceState.practiceSlotsByDifficulty;
     }
 
+    const requestKey = `${payload.contentVersion}:${[...missingDifficulties].sort().join("|")}`;
+    if (slotRequestKeyRef.current === requestKey) {
+      return state.practiceState.practiceSlotsByDifficulty;
+    }
+
+    slotRequestKeyRef.current = requestKey;
+
     patchPracticeState({
       syncState: "loading_slots",
       syncMessage: null
@@ -280,6 +288,10 @@ export function ProtectedPracticeScreen() {
           : getProtectedPracticeUnavailableMessage()
       });
       return state.practiceState.practiceSlotsByDifficulty;
+    } finally {
+      if (slotRequestKeyRef.current === requestKey) {
+        slotRequestKeyRef.current = null;
+      }
     }
   }
 

@@ -3,6 +3,8 @@ import { useAppContext } from "../../app/AppProvider";
 import { Link } from "react-router-dom";
 import { Surface } from "../primitives/Surface";
 import { cn } from "../utils";
+import iphoneAniongapMobile from "../../assets/iphone_aniongap_mobile.webp";
+
 
 const HERO_PREVIEW_IMAGE = {
   src: "https://www.figma.com/api/mcp/asset/efa08e83-1875-425d-a5c5-d523bafad163",
@@ -12,7 +14,7 @@ const HERO_PREVIEW_IMAGE = {
 const CTA_ARROW_IMAGE = "https://www.figma.com/api/mcp/asset/c5806267-89aa-4b6b-b3f0-28f806b88644";
 const MOBILE_BADGE_IMAGE = "https://www.figma.com/api/mcp/asset/a8d12e8e-cb21-4a95-8f1f-66de8c3f2a80";
 const CURRICULUM_BEGINNER_IMAGE = "https://www.figma.com/api/mcp/asset/85b84fe5-19e5-41ad-9e6c-5bee191da550";
-const CURRICULUM_ADVANCED_IMAGE = "https://www.figma.com/api/mcp/asset/be7b269c-f5df-4f7b-bef6-0badc1a2672a";
+const CURRICULUM_ADVANCED_IMAGE = iphoneAniongapMobile;
 const CURRICULUM_FOUNDATIONS_IMAGE = "https://www.figma.com/api/mcp/asset/17887166-93e5-4bf2-914c-a805df5f8f0f";
 const CURRICULUM_INTERMEDIATE_IMAGE = "https://www.figma.com/api/mcp/asset/2957e94f-bce0-44f8-841e-36162506fcd5";
 const MOBILE_CASE_IMAGE = "https://www.figma.com/api/mcp/asset/a2ba7eb1-12d4-4320-9dfc-49ff9a4bac5c";
@@ -482,26 +484,46 @@ export function LandingScreen() {
       return;
     }
 
-    const observer = new IntersectionObserver(
-      entries => {
-        const [entry] = entries;
-        if (!entry?.isIntersecting) {
-          return;
-        }
+    let frameId = 0;
 
+    const revealIfReady = () => {
+      const top = section.getBoundingClientRect().top;
+      const revealThreshold = window.innerHeight * 0.82;
+      if (top <= revealThreshold) {
         setMobileSectionVisible(true);
-        observer.disconnect();
-      },
-      {
-        threshold: 0.24,
-        rootMargin: "0px 0px -12% 0px"
+        return true;
       }
-    );
 
-    observer.observe(section);
+      return false;
+    };
+
+    const handleScroll = () => {
+      if (frameId !== 0) {
+        return;
+      }
+
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
+        if (revealIfReady()) {
+          window.removeEventListener("scroll", handleScroll);
+          window.removeEventListener("resize", handleScroll);
+        }
+      });
+    };
+
+    if (revealIfReady()) {
+      return;
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
 
     return () => {
-      observer.disconnect();
+      if (frameId !== 0) {
+        window.cancelAnimationFrame(frameId);
+      }
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
     };
   }, []);
 
