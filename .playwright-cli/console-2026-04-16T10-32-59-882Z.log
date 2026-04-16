@@ -1,0 +1,4 @@
+[      74ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:4173/node_modules/.vite/deps/react-dom_client.js?v=2ff430a1:20102
+[  488686ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://127.0.0.1:4173/src/presentation/screens/LandingScreen.tsx?t=1776336068554:0
+[  488686ms] [ERROR] [vite] Failed to reload /src/presentation/screens/LandingScreen.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://127.0.0.1:4173/node_modules/.vite/deps/@sentry_react.js?v=2ff430a1:6793
+[  488687ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:4173/node_modules/.vite/deps/@sentry_react.js?v=2ff430a1:6793

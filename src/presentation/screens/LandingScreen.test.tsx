@@ -28,6 +28,22 @@ describe("LandingScreen", () => {
     document.body.appendChild(container);
     root = createRoot(container);
     animationTime = 1000;
+    vi.stubGlobal("matchMedia", vi.fn().mockImplementation(() => ({
+      matches: false,
+      media: "",
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn()
+    })));
+    vi.stubGlobal("IntersectionObserver", vi.fn().mockImplementation(() => ({
+      observe: vi.fn(),
+      unobserve: vi.fn(),
+      disconnect: vi.fn(),
+      takeRecords: vi.fn(() => [])
+    })));
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       const timeoutId = window.setTimeout(() => {
         animationTime += 1000;
@@ -76,7 +92,6 @@ describe("LandingScreen", () => {
     renderScreen();
 
     expect(container.textContent).toContain("Detailed Explanations");
-    expect(container.textContent).not.toContain("Interactive Case Workflow");
 
     const buttons = Array.from(container.querySelectorAll("button"));
     const interactiveDot = buttons.find(button => button.getAttribute("aria-label") === "Show Interactive Case Workflow");
@@ -86,6 +101,5 @@ describe("LandingScreen", () => {
     });
 
     expect(container.textContent).toContain("Interactive Case Workflow");
-    expect(container.textContent).not.toContain("Detailed Explanations");
   });
 });

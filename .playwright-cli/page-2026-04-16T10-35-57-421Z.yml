@@ -1,0 +1,62 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "ABG Master Beta" [ref=e39] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e8]
+        - generic [ref=e10]:
+          - generic [ref=e11]: ABG Master
+          - generic [ref=e40]: Beta
+      - navigation "Primary" [ref=e12]:
+        - link "Dashboard" [ref=e13] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e14]
+          - generic [ref=e19]: Dashboard
+        - link "Learn" [ref=e20] [cursor=pointer]:
+          - /url: /learn
+          - img [ref=e21]
+          - generic [ref=e24]: Learn
+        - link "Practice" [ref=e25] [cursor=pointer]:
+          - /url: /practice
+          - img [ref=e26]
+          - generic [ref=e28]: Practice
+      - button "Stay Updated" [ref=e30] [cursor=pointer]:
+        - img [ref=e31]
+        - generic [ref=e34]: Stay Updated
+  - main [ref=e41]:
+    - generic [ref=e42]:
+      - link "All modules" [ref=e44] [cursor=pointer]:
+        - /url: /learn
+        - img [ref=e45]
+        - generic [ref=e47]: All modules
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - generic [ref=e51]: Beginner
+            - generic "Lesson progress" [ref=e52]:
+              - generic "Lesson 1 of 6" [ref=e53]
+              - generic "Lesson 2 of 6" [ref=e54]
+              - generic "Lesson 3 of 6" [ref=e55]
+              - generic "Lesson 4 of 6" [ref=e56]
+              - generic "Lesson 5 of 6" [ref=e57]
+              - generic "Lesson 6 of 6" [ref=e58]
+          - 'heading "Step 2: Identify the primary disorder" [level=1] [ref=e82]'
+          - paragraph [ref=e60]: Identify the primary disorder
+        - generic [ref=e62]:
+          - generic [ref=e63]:
+            - article [ref=e64]:
+              - heading "If pH is low" [level=3] [ref=e83]
+              - list [ref=e84]:
+                - listitem [ref=e85]: CO2 high -> respiratory acidosis
+                - listitem [ref=e86]: HCO3 low -> metabolic acidosis
+            - article [ref=e68]:
+              - heading "If pH is high" [level=3] [ref=e87]
+              - list [ref=e88]:
+                - listitem [ref=e89]: CO2 low -> respiratory alkalosis
+                - listitem [ref=e90]: HCO3 high -> metabolic alkalosis
+          - article [ref=e76]:
+            - heading "Use the variable that matches the pH direction" [level=3] [ref=e91]
+            - paragraph [ref=e78]: The primary disorder is the value that best explains the pH. Ignore compensation for a moment and find the main driver first.
+        - generic [ref=e79]:
+          - button "Back" [ref=e92] [cursor=pointer]
+          - button "Next" [active] [ref=e81] [cursor=pointer]

@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useAppContext } from "../../app/AppProvider";
 import { Link } from "react-router-dom";
 import { Surface } from "../primitives/Surface";
 import { cn } from "../utils";
 import heroCaseDesktop from "../../assets/hero_case_desktop.png";
-import iphoneAniongapMobile from "../../assets/iphone_aniongap_mobile.webp";
-
+import iphoneAniongapMobile from "../../assets/iphone_AG_highres.webp";
+import iphoneCaseMobile from "../../assets/iphone_case_highres.webp";
 
 const HERO_PREVIEW_IMAGE = {
   src: heroCaseDesktop,
@@ -16,7 +16,7 @@ const CTA_ARROW_IMAGE = "https://www.figma.com/api/mcp/asset/c5806267-89aa-4b6b-
 const MOBILE_BADGE_IMAGE = "https://www.figma.com/api/mcp/asset/a8d12e8e-cb21-4a95-8f1f-66de8c3f2a80";
 const CURRICULUM_BEGINNER_IMAGE = "https://www.figma.com/api/mcp/asset/85b84fe5-19e5-41ad-9e6c-5bee191da550";
 const CURRICULUM_ADVANCED_IMAGE = iphoneAniongapMobile;
-const CURRICULUM_FOUNDATIONS_IMAGE = "https://www.figma.com/api/mcp/asset/17887166-93e5-4bf2-914c-a805df5f8f0f";
+const CURRICULUM_FOUNDATIONS_IMAGE = iphoneCaseMobile;
 const CURRICULUM_INTERMEDIATE_IMAGE = "https://www.figma.com/api/mcp/asset/2957e94f-bce0-44f8-841e-36162506fcd5";
 const MOBILE_CASE_IMAGE = "https://www.figma.com/api/mcp/asset/a2ba7eb1-12d4-4320-9dfc-49ff9a4bac5c";
 const MOBILE_ANALYSIS_IMAGE = "https://www.figma.com/api/mcp/asset/8aee487f-1c53-4e7f-92b6-8fb165e13827";
@@ -27,26 +27,6 @@ const FEATURE_PERFORMANCE_ANALYTICS_ICON = "https://www.figma.com/api/mcp/asset/
 const FEATURE_COMPREHENSIVE_REVIEW_ICON = "https://www.figma.com/api/mcp/asset/6dd632ae-b7d5-473d-9a4e-c28106e78b0e";
 const FEATURE_COMING_SOON_ICON = "https://www.figma.com/api/mcp/asset/45fa6ed2-1871-4a85-a764-9923ee75d71b";
 
-const ANALYTICS_LINE_GRID_IMAGE = "https://www.figma.com/api/mcp/asset/692e27ec-00fd-4295-a5f1-b163a70e95f4";
-const ANALYTICS_LINE_AXIS_IMAGE = "https://www.figma.com/api/mcp/asset/1db32a0e-12c6-4a82-a5ee-7b25b92fdfa1";
-const ANALYTICS_LINE_BASE_IMAGE = "https://www.figma.com/api/mcp/asset/8569e59b-f614-4ee1-a2c9-b59b30f1cf6d";
-const ANALYTICS_LINE_TICK_IMAGE = "https://www.figma.com/api/mcp/asset/d1a37041-50d4-48b6-88e6-502776725701";
-const ANALYTICS_LINE_Y_AXIS_IMAGE = "https://www.figma.com/api/mcp/asset/27367bb3-9b00-4c29-a1d5-7bbe92860c26";
-const ANALYTICS_LINE_Y_TICK_IMAGE = "https://www.figma.com/api/mcp/asset/ee759ea4-cea4-4abc-822a-79fa703ff46b";
-const ANALYTICS_LINE_SERIES_IMAGE = "https://www.figma.com/api/mcp/asset/27459122-0982-4909-8c77-35bee5868ce6";
-
-const ANALYTICS_BAR_GRID_IMAGE = "https://www.figma.com/api/mcp/asset/c45af51f-a12b-4c15-b341-173f24b1d8a7";
-const ANALYTICS_BAR_AXIS_IMAGE = "https://www.figma.com/api/mcp/asset/140d3c82-ce03-413f-b630-a95fd60d8daa";
-const ANALYTICS_BAR_BASE_IMAGE = "https://www.figma.com/api/mcp/asset/fad2e298-25fe-43f8-bb33-28fd1e6240aa";
-const ANALYTICS_BAR_Y_AXIS_IMAGE = "https://www.figma.com/api/mcp/asset/1758a33d-8d24-42aa-8d1d-d96aab17df3b";
-const ANALYTICS_BAR_COLUMN_ONE_IMAGE = "https://www.figma.com/api/mcp/asset/7de9e58f-a2a5-4ded-b077-54e08da71622";
-const ANALYTICS_BAR_COLUMN_TWO_IMAGE = "https://www.figma.com/api/mcp/asset/da51446f-3155-4b6d-b29c-152b0a926625";
-const ANALYTICS_BAR_COLUMN_THREE_IMAGE = "https://www.figma.com/api/mcp/asset/36753c00-9e56-4d2a-955c-869fca825137";
-const ANALYTICS_BAR_COLUMN_FOUR_IMAGE = "https://www.figma.com/api/mcp/asset/1b262a6f-5536-44c8-bc6c-da46b197b0fd";
-
-const ANALYTICS_PIE_RING_ONE_IMAGE = "https://www.figma.com/api/mcp/asset/3e56f35d-ac32-4c27-a468-7778e1d934cf";
-const ANALYTICS_PIE_RING_TWO_IMAGE = "https://www.figma.com/api/mcp/asset/121d576e-960d-4115-9151-81098be7d1d6";
-const ANALYTICS_PIE_RING_THREE_IMAGE = "https://www.figma.com/api/mcp/asset/8f3a030c-1f36-4ee3-9109-abe72cd16280";
 const DEFAULT_CASES_SOLVED_COUNT = 0;
 const CASES_SOLVED_METRIC_KEY = "cases_solved";
 
@@ -54,7 +34,13 @@ const curriculumLevels = [
   {
     number: "01",
     title: "Beginner",
-    description: "Understand how pH, PaCO2, and HCO3- define acid-base status. Identify whether the primary disorder is respiratory or metabolic using a structured approach.",
+    description: (
+      <>
+        Understand how pH, PaCO<sub>2</sub>, and HCO<sub>3</sub>
+        <sup>-</sup> define acid-base status. Identify whether the primary disorder is respiratory or
+        metabolic using a structured approach.
+      </>
+    ),
     tone: "blue"
   },
   {
@@ -75,7 +61,12 @@ const curriculumLevels = [
     description: "Go beyond single diagnoses. Identify when results don't fit expected patterns and detect multiple simultaneous processes in complex clinical scenarios.",
     tone: "red"
   }
-] as const;
+] as const satisfies ReadonlyArray<{
+  number: string;
+  title: string;
+  description: ReactNode;
+  tone: string;
+}>;
 
 const landingFeatures = [
   {
@@ -128,129 +119,11 @@ const mobileSlides = [
 
 const MOBILE_SLIDE_AUTOPLAY_MS = 4000;
 
-const progressHighlights = [
-  "Real-time performance tracking",
-  "Unlock progressively more difficult questions as you demonstrate mastery",
-  "Continuous feedback loop to reinforce blood gas interpretation skills"
-];
-
 const explanationHighlights = [
   "Clear compensation and anion gap breakdowns using real values",
   "Clinical context explained to support interpretation",
   "Key takeaways that reinforce high-yield patterns and exam thinking"
 ];
-
-function LandingAnalyticsCard() {
-  const weekLabels = ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"];
-  const yLabels = ["50", "65", "80", "100"];
-
-  return (
-    <Surface className="landing-analytics">
-      <div className="landing-analytics__panel landing-analytics__panel--wide">
-        <div className="landing-analytics__panel-header">
-          <h3>Accuracy Over Time</h3>
-          <p>Your improvement trajectory</p>
-        </div>
-        <div className="landing-analytics__line-chart">
-          <img className="landing-analytics__art landing-analytics__art--line-grid" src={ANALYTICS_LINE_GRID_IMAGE} alt="" />
-          <img className="landing-analytics__art landing-analytics__art--line-axis" src={ANALYTICS_LINE_AXIS_IMAGE} alt="" />
-          <img className="landing-analytics__art landing-analytics__art--line-base" src={ANALYTICS_LINE_BASE_IMAGE} alt="" />
-          <img className="landing-analytics__art landing-analytics__art--line-y-axis" src={ANALYTICS_LINE_Y_AXIS_IMAGE} alt="" />
-          <img className="landing-analytics__art landing-analytics__art--line-series" src={ANALYTICS_LINE_SERIES_IMAGE} alt="" />
-
-          <div className="landing-analytics__x-axis">
-            {weekLabels.map((label, index) => (
-              <div key={label} className={cn("landing-analytics__x-label", index === weekLabels.length - 1 && "is-last")}>
-                <img className="landing-analytics__tick" src={ANALYTICS_LINE_TICK_IMAGE} alt="" />
-                <span>{label}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="landing-analytics__y-axis">
-            {yLabels.map((label, index) => (
-              <div key={label} className={cn("landing-analytics__y-label", index === yLabels.length - 1 && "is-top")}>
-                <img className="landing-analytics__tick landing-analytics__tick--y" src={ANALYTICS_LINE_Y_TICK_IMAGE} alt="" />
-                <span>{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="landing-analytics__lower-grid">
-        <div className="landing-analytics__panel">
-          <div className="landing-analytics__panel-header">
-            <h3>Performance by Level</h3>
-            <p>Average scores</p>
-          </div>
-          <div className="landing-analytics__bar-chart">
-            <img className="landing-analytics__art landing-analytics__art--bar-grid" src={ANALYTICS_BAR_GRID_IMAGE} alt="" />
-            <img className="landing-analytics__art landing-analytics__art--bar-axis" src={ANALYTICS_BAR_AXIS_IMAGE} alt="" />
-            <img className="landing-analytics__art landing-analytics__art--bar-base" src={ANALYTICS_BAR_BASE_IMAGE} alt="" />
-            <img className="landing-analytics__art landing-analytics__art--bar-y-axis" src={ANALYTICS_BAR_Y_AXIS_IMAGE} alt="" />
-            <img className="landing-analytics__art landing-analytics__art--bar-one" src={ANALYTICS_BAR_COLUMN_ONE_IMAGE} alt="" />
-            <img className="landing-analytics__art landing-analytics__art--bar-two" src={ANALYTICS_BAR_COLUMN_TWO_IMAGE} alt="" />
-            <img className="landing-analytics__art landing-analytics__art--bar-three" src={ANALYTICS_BAR_COLUMN_THREE_IMAGE} alt="" />
-            <img className="landing-analytics__art landing-analytics__art--bar-four" src={ANALYTICS_BAR_COLUMN_FOUR_IMAGE} alt="" />
-          </div>
-        </div>
-
-        <div className="landing-analytics__panel">
-          <div className="landing-analytics__panel-header">
-            <h3>Cases by Category</h3>
-            <p>Distribution completed</p>
-          </div>
-          <div className="landing-analytics__pie-panel">
-            <div className="landing-analytics__pie-chart" aria-hidden="true">
-              <img className="landing-analytics__art landing-analytics__art--pie-one" src={ANALYTICS_PIE_RING_ONE_IMAGE} alt="" />
-              <img className="landing-analytics__art landing-analytics__art--pie-two" src={ANALYTICS_PIE_RING_TWO_IMAGE} alt="" />
-              <img className="landing-analytics__art landing-analytics__art--pie-three" src={ANALYTICS_PIE_RING_THREE_IMAGE} alt="" />
-            </div>
-            <div className="landing-analytics__legend">
-              <div className="landing-analytics__legend-row">
-                <span className="landing-analytics__legend-dot is-blue" />
-                <div>
-                  <strong>Respiratory</strong>
-                  <span>45%</span>
-                </div>
-              </div>
-              <div className="landing-analytics__legend-row">
-                <span className="landing-analytics__legend-dot is-violet" />
-                <div>
-                  <strong>Metabolic</strong>
-                  <span>38%</span>
-                </div>
-              </div>
-              <div className="landing-analytics__legend-row">
-                <span className="landing-analytics__legend-dot is-pink" />
-                <div>
-                  <strong>Mixed</strong>
-                  <span>17%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="landing-analytics__stats">
-        <div className="landing-analytics__stat-card is-blue">
-          <strong>142</strong>
-          <span>Cases Completed</span>
-        </div>
-        <div className="landing-analytics__stat-card is-green">
-          <strong>87%</strong>
-          <span>Overall Accuracy</span>
-        </div>
-        <div className="landing-analytics__stat-card is-violet">
-          <strong>12</strong>
-          <span>Day Streak</span>
-        </div>
-      </div>
-    </Surface>
-  );
-}
 
 export function LandingScreen() {
   const { state } = useAppContext();
@@ -262,14 +135,12 @@ export function LandingScreen() {
   const [featuresRevealProgress, setFeaturesRevealProgress] = useState(0);
   const [curriculumMotionVisible, setCurriculumMotionVisible] = useState(false);
   const [mobileSectionVisible, setMobileSectionVisible] = useState(false);
-  const [progressInsightVisible, setProgressInsightVisible] = useState(false);
   const [explanationInsightVisible, setExplanationInsightVisible] = useState(false);
   const [heroPreviewLoaded, setHeroPreviewLoaded] = useState(false);
   const animatedCasesSolvedCountRef = useRef(animatedCasesSolvedCount);
   const featuresSectionRef = useRef<HTMLElement | null>(null);
   const curriculumSectionRef = useRef<HTMLElement | null>(null);
   const mobileSectionRef = useRef<HTMLElement | null>(null);
-  const progressInsightRef = useRef<HTMLDivElement | null>(null);
   const explanationInsightRef = useRef<HTMLDivElement | null>(null);
   const extendedMobileSlides = useMemo(
     () => [mobileSlides[mobileSlides.length - 1], ...mobileSlides, mobileSlides[0]],
@@ -525,44 +396,6 @@ export function LandingScreen() {
       }
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setProgressInsightVisible(true);
-      return;
-    }
-
-    const section = progressInsightRef.current;
-    if (!section) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      entries => {
-        const [entry] = entries;
-        if (!entry?.isIntersecting) {
-          return;
-        }
-
-        setProgressInsightVisible(true);
-        observer.disconnect();
-      },
-      {
-        threshold: 0.2,
-        rootMargin: "0px 0px -10% 0px"
-      }
-    );
-
-    observer.observe(section);
-
-    return () => {
-      observer.disconnect();
     };
   }, []);
 
@@ -843,26 +676,6 @@ export function LandingScreen() {
 
       <section className="landing-section landing-section--insights">
         <div className="landing-shell landing-insight-grid">
-          <div ref={progressInsightRef} className="landing-insight-grid__row">
-            <div className="landing-insight-grid__copy landing-insight-grid__copy--from-left" data-visible={progressInsightVisible}>
-              <h2>Track Your Progress</h2>
-			  <p>
-				Coming Soon
-			  </p>
-              <p>
-                Monitor your progression across all difficulty levels. See exactly where you excel and identify areas for improvement with detailed performance metrics.
-              </p>
-              <ul className="landing-bullet-list">
-                {progressHighlights.map(item => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="landing-insight-grid__media landing-insight-grid__media--from-right" data-visible={progressInsightVisible}>
-              <LandingAnalyticsCard />
-            </div>
-          </div>
-
           <div ref={explanationInsightRef} className="landing-insight-grid__row landing-insight-grid__row--reverse">
             <div className="landing-insight-grid__image-card landing-insight-grid__media landing-insight-grid__media--from-left" data-visible={explanationInsightVisible}>
               <img src={EXPLANATION_CARD_IMAGE} alt="Detailed case analysis and explanation preview" />

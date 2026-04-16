@@ -3,7 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import { PROTECTED_PRACTICE_MESSAGES } from "../../app/protectedPracticeMessages";
 import { trackEvent, trackPageView } from "../../core/analytics";
-import { canAccessLearn, getReleaseFlags } from "../../core/progression";
+import { getReleaseFlags } from "../../core/progression";
 import { Surface } from "../primitives/Surface";
 import { LaunchNotifyModal } from "./LaunchNotifyModal";
 import { MainNav } from "./MainNav";
@@ -16,13 +16,6 @@ export function AppShell() {
   const [launchNotifySubmitting, setLaunchNotifySubmitting] = useState(false);
   const [launchNotifySubmitted, setLaunchNotifySubmitted] = useState(false);
   const [launchNotifyError, setLaunchNotifyError] = useState("");
-  const learnEnabled = canAccessLearn({
-    progressionConfig: state.payload?.progressionConfig ?? null,
-    dashboardState: state.payload?.dashboardState ?? null,
-    defaultUserState: state.payload?.defaultUserState ?? null,
-    userState: state.userState,
-    cases: state.payload?.cases ?? []
-  });
   const releaseFlags = getReleaseFlags(state.payload?.progressionConfig ?? null);
 
   useEffect(() => {
@@ -93,7 +86,7 @@ export function AppShell() {
         onToggleMobile={() => setMobileOpen(value => !value)}
         onCloseMobile={() => setMobileOpen(false)}
         onOpenStayUpdated={handleOpenStayUpdated}
-        learnEnabled={learnEnabled}
+        learnEnabled
         showBetaBadge={releaseFlags.enable_beta_badge}
       />
 

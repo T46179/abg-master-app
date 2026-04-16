@@ -24,7 +24,11 @@ vi.mock("../presentation/screens/PracticeScreen", () => ({
 }));
 
 vi.mock("../presentation/screens/LearnScreen", () => ({
-  LearnScreen: () => <div>LEARN SCREEN</div>
+  LearnScreen: () => <div>LEARN OVERVIEW SCREEN</div>
+}));
+
+vi.mock("../presentation/screens/LearnLessonScreen", () => ({
+  LearnLessonScreen: () => <div>LEARN LESSON SCREEN</div>
 }));
 
 vi.mock("../presentation/screens/ExamScreen", () => ({
@@ -75,5 +79,19 @@ describe("app routes", () => {
 
     expect(container.textContent).toContain("APP SHELL");
     expect(container.textContent).toContain("DASHBOARD SCREEN");
+  });
+
+  it("renders the learn overview at /learn", () => {
+    renderPath("/learn");
+
+    expect(container.textContent).toContain("APP SHELL");
+    expect(container.textContent).toContain("LEARN OVERVIEW SCREEN");
+  });
+
+  it("renders a nested learn lesson route at /learn/beginner", () => {
+    renderPath("/learn/beginner");
+
+    expect(container.textContent).toContain("APP SHELL");
+    expect(container.textContent).toContain("LEARN LESSON SCREEN");
   });
 });
