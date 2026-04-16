@@ -3,13 +3,14 @@ import { useAppContext } from "../../app/AppProvider";
 import { Link } from "react-router-dom";
 import { Surface } from "../primitives/Surface";
 import { cn } from "../utils";
+import heroCaseDesktop from "../../assets/hero_case_desktop.png";
 import iphoneAniongapMobile from "../../assets/iphone_aniongap_mobile.webp";
 
 
 const HERO_PREVIEW_IMAGE = {
-  src: "https://www.figma.com/api/mcp/asset/efa08e83-1875-425d-a5c5-d523bafad163",
-  width: 616,
-  height: 723
+  src: heroCaseDesktop,
+  width: 561,
+  height: 591
 } as const;
 const CTA_ARROW_IMAGE = "https://www.figma.com/api/mcp/asset/c5806267-89aa-4b6b-b3f0-28f806b88644";
 const MOBILE_BADGE_IMAGE = "https://www.figma.com/api/mcp/asset/a8d12e8e-cb21-4a95-8f1f-66de8c3f2a80";
