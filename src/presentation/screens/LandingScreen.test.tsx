@@ -88,18 +88,15 @@ describe("LandingScreen", () => {
     expect(headerLink?.getAttribute("href")).toBe("/dashboard");
   });
 
-  it("switches the mobile showcase content when a dot is selected", () => {
+  it("shows learn as disabled in navigation while keeping launch content visible", () => {
     renderScreen();
 
-    expect(container.textContent).toContain("Detailed Explanations");
+    expect(container.textContent).toContain("Four Levels of Mastery");
 
-    const buttons = Array.from(container.querySelectorAll("button"));
-    const interactiveDot = buttons.find(button => button.getAttribute("aria-label") === "Show Interactive Case Workflow");
+    const learnLink = Array.from(container.querySelectorAll("a")).find(link => link.getAttribute("href") === "/learn");
+    const disabledLearnItem = Array.from(container.querySelectorAll("span")).find(item => item.textContent?.includes("Learn"));
 
-    act(() => {
-      interactiveDot?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(container.textContent).toContain("Interactive Case Workflow");
+    expect(learnLink).toBeUndefined();
+    expect(disabledLearnItem?.className).toContain("is-disabled");
   });
 });

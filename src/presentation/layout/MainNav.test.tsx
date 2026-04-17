@@ -48,6 +48,23 @@ describe("MainNav", () => {
     });
   }
 
+  function renderNavWithLearnDisabled() {
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <MainNav
+            mobileOpen={false}
+            onToggleMobile={onToggleMobile}
+            onCloseMobile={onCloseMobile}
+            onOpenStayUpdated={onOpenStayUpdated}
+            learnEnabled={false}
+            showBetaBadge={false}
+          />
+        </MemoryRouter>
+      );
+    });
+  }
+
   it("renders desktop and mobile stay updated triggers", () => {
     renderNav();
 
@@ -86,5 +103,16 @@ describe("MainNav", () => {
 
     expect(brandLink?.getAttribute("href")).toBe("/dashboard");
     expect(dashboardLink?.getAttribute("href")).toBe("/dashboard");
+  });
+
+  it("shows learn as a disabled item when learn is disabled", () => {
+    renderNavWithLearnDisabled();
+
+    expect(container.textContent).toContain("Learn");
+    const learnLink = Array.from(container.querySelectorAll("a")).find((link) => link.getAttribute("href") === "/learn");
+    const disabledLearnItem = Array.from(container.querySelectorAll("span")).find((item) => item.textContent?.includes("Learn"));
+
+    expect(learnLink).toBeUndefined();
+    expect(disabledLearnItem?.className).toContain("is-disabled");
   });
 });

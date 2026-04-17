@@ -4,8 +4,6 @@ import { AppShell } from "../presentation/layout/AppShell";
 import { LandingScreen } from "../presentation/screens/LandingScreen";
 import { DashboardScreen } from "../presentation/screens/DashboardScreen";
 import { PracticeScreen } from "../presentation/screens/PracticeScreen";
-import { LearnScreen } from "../presentation/screens/LearnScreen";
-import { LearnLessonScreen } from "../presentation/screens/LearnLessonScreen";
 import { ExamScreen } from "../presentation/screens/ExamScreen";
 import { LeaderboardScreen } from "../presentation/screens/LeaderboardScreen";
 
@@ -23,8 +21,8 @@ export const appRoutes: RouteObject[] = [
       {
         path: "learn",
         children: [
-          { index: true, element: <LearnScreen /> },
-          { path: ":difficulty", element: <LearnLessonScreen /> }
+          { index: true, element: <Navigate to="/practice" replace /> },
+          { path: "*", element: <Navigate to="/practice" replace /> }
         ]
       },
       { path: "exam", element: <ExamScreen /> },

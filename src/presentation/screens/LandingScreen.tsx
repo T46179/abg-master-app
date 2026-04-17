@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useAppContext } from "../../app/AppProvider";
 import { Link } from "react-router-dom";
+import { getReleaseFlags } from "../../core/progression";
+import { LaunchNotifyModal } from "../layout/LaunchNotifyModal";
+import { MainNav } from "../layout/MainNav";
 import { Surface } from "../primitives/Surface";
 import { cn } from "../utils";
 import heroCaseDesktop from "../../assets/hero_case_desktop.png";
@@ -13,14 +16,8 @@ const HERO_PREVIEW_IMAGE = {
   height: 591
 } as const;
 const CTA_ARROW_IMAGE = "https://www.figma.com/api/mcp/asset/c5806267-89aa-4b6b-b3f0-28f806b88644";
-const MOBILE_BADGE_IMAGE = "https://www.figma.com/api/mcp/asset/a8d12e8e-cb21-4a95-8f1f-66de8c3f2a80";
-const CURRICULUM_BEGINNER_IMAGE = "https://www.figma.com/api/mcp/asset/85b84fe5-19e5-41ad-9e6c-5bee191da550";
 const CURRICULUM_ADVANCED_IMAGE = iphoneAniongapMobile;
 const CURRICULUM_FOUNDATIONS_IMAGE = iphoneCaseMobile;
-const CURRICULUM_INTERMEDIATE_IMAGE = "https://www.figma.com/api/mcp/asset/2957e94f-bce0-44f8-841e-36162506fcd5";
-const MOBILE_CASE_IMAGE = "https://www.figma.com/api/mcp/asset/a2ba7eb1-12d4-4320-9dfc-49ff9a4bac5c";
-const MOBILE_ANALYSIS_IMAGE = "https://www.figma.com/api/mcp/asset/8aee487f-1c53-4e7f-92b6-8fb165e13827";
-const MOBILE_PROGRESS_IMAGE = "https://www.figma.com/api/mcp/asset/965634ce-ebb1-4ff8-9cd0-dfeee05c432e";
 const EXPLANATION_CARD_IMAGE = "https://www.figma.com/api/mcp/asset/215f43b5-bb71-4db7-8483-9bedf0fd7b46";
 const FEATURE_GRADED_DIFFICULTY_ICON = "https://www.figma.com/api/mcp/asset/f1d686ba-53a1-4c8e-b15a-0263f021a7d2";
 const FEATURE_PERFORMANCE_ANALYTICS_ICON = "https://www.figma.com/api/mcp/asset/fb8ba411-9625-40ab-82a9-20e567eb8ff7";
@@ -93,32 +90,6 @@ const landingFeatures = [
   }
 ] as const;
 
-const mobileSlides = [
-  {
-    step: "1",
-    title: "Interactive Case Workflow",
-    description:
-      "Work through hundreds of clinical scenarios. Analyze values, identify primary disorders, and apply compensation rules, all optimized for mobile.",
-    imageSrc: MOBILE_CASE_IMAGE
-  },
-  {
-    step: "2",
-    title: "Detailed Explanations",
-    description:
-      "Cases include comprehensive breakdowns of acid base disorders. Learn Winter's formula, anion gap calculations, and mixed disorder identification with clear explanations.",
-    imageSrc: MOBILE_ANALYSIS_IMAGE
-  },
-  {
-    step: "3",
-    title: "Track Your Progress",
-    description:
-      "Monitor your ABG interpretation practice across all difficulty levels. View performance metrics, unlock advanced cases, and see your mastery grow in real time.",
-    imageSrc: MOBILE_PROGRESS_IMAGE
-  }
-] as const;
-
-const MOBILE_SLIDE_AUTOPLAY_MS = 4000;
-
 const explanationHighlights = [
   "Clear compensation and anion gap breakdowns using real values",
   "Clinical context explained to support interpretation",
@@ -127,37 +98,65 @@ const explanationHighlights = [
 
 export function LandingScreen() {
   const { state } = useAppContext();
-  const [mobileTrackIndex, setMobileTrackIndex] = useState(1);
-  const [mobileTrackTransitionEnabled, setMobileTrackTransitionEnabled] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [launchNotifyOpen, setLaunchNotifyOpen] = useState(false);
+  const [launchNotifySubmitting, setLaunchNotifySubmitting] = useState(false);
+  const [launchNotifySubmitted, setLaunchNotifySubmitted] = useState(false);
+  const [launchNotifyError, setLaunchNotifyError] = useState("");
   const [casesSolvedCount, setCasesSolvedCount] = useState(DEFAULT_CASES_SOLVED_COUNT);
   const [animatedCasesSolvedCount, setAnimatedCasesSolvedCount] = useState(0);
   const [casesSolvedLoaded, setCasesSolvedLoaded] = useState(false);
   const [featuresRevealProgress, setFeaturesRevealProgress] = useState(0);
   const [curriculumMotionVisible, setCurriculumMotionVisible] = useState(false);
-  const [mobileSectionVisible, setMobileSectionVisible] = useState(false);
   const [explanationInsightVisible, setExplanationInsightVisible] = useState(false);
   const [heroPreviewLoaded, setHeroPreviewLoaded] = useState(false);
   const animatedCasesSolvedCountRef = useRef(animatedCasesSolvedCount);
   const featuresSectionRef = useRef<HTMLElement | null>(null);
   const curriculumSectionRef = useRef<HTMLElement | null>(null);
-  const mobileSectionRef = useRef<HTMLElement | null>(null);
   const explanationInsightRef = useRef<HTMLDivElement | null>(null);
-  const extendedMobileSlides = useMemo(
-    () => [mobileSlides[mobileSlides.length - 1], ...mobileSlides, mobileSlides[0]],
-    []
-  );
-  const activeSlideIndex = useMemo(() => {
-    if (mobileTrackIndex === 0) {
-      return mobileSlides.length - 1;
-    }
-
-    if (mobileTrackIndex === mobileSlides.length + 1) {
-      return 0;
-    }
-
-    return mobileTrackIndex - 1;
-  }, [mobileTrackIndex]);
   const casesSolvedLabel = useMemo(() => animatedCasesSolvedCount.toLocaleString("en-US"), [animatedCasesSolvedCount]);
+  const releaseFlags = useMemo(() => getReleaseFlags(state.payload?.progressionConfig ?? null), [state.payload?.progressionConfig]);
+
+  function handleOpenStayUpdated() {
+    setMobileOpen(false);
+    setLaunchNotifyError("");
+    setLaunchNotifySubmitted(false);
+    setLaunchNotifyOpen(true);
+  }
+
+  function handleCloseStayUpdated() {
+    setLaunchNotifyOpen(false);
+    setLaunchNotifySubmitting(false);
+    setLaunchNotifyError("");
+    setLaunchNotifySubmitted(false);
+  }
+
+  async function handleLaunchNotifySubmit(email: string) {
+    setLaunchNotifySubmitting(true);
+    setLaunchNotifyError("");
+
+    try {
+      const response = await fetch("https://submit-form.com/8T8RZZaL6", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ email })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Launch notify submit failed: ${response.status}`);
+      }
+
+      setLaunchNotifySubmitted(true);
+    } catch (error) {
+      console.warn("Launch notify signup failed.", error);
+      setLaunchNotifyError("That didn't work. Please try again.");
+    } finally {
+      setLaunchNotifySubmitting(false);
+    }
+  }
 
   useEffect(() => {
     animatedCasesSolvedCountRef.current = animatedCasesSolvedCount;
@@ -347,64 +346,6 @@ export function LandingScreen() {
     }
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setMobileSectionVisible(true);
-      return;
-    }
-
-    const section = mobileSectionRef.current;
-    if (!section) {
-      return;
-    }
-
-    let frameId = 0;
-
-    const revealIfReady = () => {
-      const top = section.getBoundingClientRect().top;
-      const revealThreshold = window.innerHeight * 0.82;
-      if (top <= revealThreshold) {
-        setMobileSectionVisible(true);
-        return true;
-      }
-
-      return false;
-    };
-
-    const handleScroll = () => {
-      if (frameId !== 0) {
-        return;
-      }
-
-      frameId = window.requestAnimationFrame(() => {
-        frameId = 0;
-        if (revealIfReady()) {
-          window.removeEventListener("scroll", handleScroll);
-          window.removeEventListener("resize", handleScroll);
-        }
-      });
-    };
-
-    if (revealIfReady()) {
-      return;
-    }
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll);
-
-    return () => {
-      if (frameId !== 0) {
-        window.cancelAnimationFrame(frameId);
-      }
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setExplanationInsightVisible(true);
       return;
     }
@@ -437,44 +378,25 @@ export function LandingScreen() {
     };
   }, []);
 
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      return;
-    }
-
-    const intervalId = window.setInterval(() => {
-      setMobileTrackTransitionEnabled(true);
-      setMobileTrackIndex(currentIndex => currentIndex + 1);
-    }, MOBILE_SLIDE_AUTOPLAY_MS);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    mobileSlides.forEach(slide => {
-      const image = new Image();
-      image.src = slide.imageSrc;
-    });
-  }, []);
-
   return (
     <main className="landing-page">
-      <header className="landing-header">
-        <div className="landing-header__inner">
-          <Link className="landing-header__brand" to="/">
-            ABG Master
-          </Link>
-          <Link className="figma-button figma-button--compact landing-header__cta" to="/dashboard">
-            <span>Dashboard</span>
-          </Link>
-        </div>
-      </header>
+      <MainNav
+        mobileOpen={mobileOpen}
+        onToggleMobile={() => setMobileOpen(value => !value)}
+        onCloseMobile={() => setMobileOpen(false)}
+        onOpenStayUpdated={handleOpenStayUpdated}
+        learnEnabled={false}
+        showBetaBadge={releaseFlags.enable_beta_badge}
+      />
+
+      <LaunchNotifyModal
+        open={launchNotifyOpen}
+        onClose={handleCloseStayUpdated}
+        onSubmit={handleLaunchNotifySubmit}
+        isSubmitting={launchNotifySubmitting}
+        isSubmitted={launchNotifySubmitted}
+        error={launchNotifyError}
+      />
 
       <section className="landing-section landing-section--hero">
         <div className="landing-shell landing-hero">
@@ -583,94 +505,22 @@ export function LandingScreen() {
 
             <div className="landing-curriculum__gallery" aria-label="Lesson previews" data-visible={curriculumMotionVisible}>
               <div className="landing-curriculum__column">
-                <img className="landing-curriculum__card is-short" src={CURRICULUM_BEGINNER_IMAGE} alt="Beginner lesson preview" />
-                <img className="landing-curriculum__card is-tall" src={CURRICULUM_ADVANCED_IMAGE} alt="Advanced lesson preview" />
+                <img
+                  className="landing-curriculum__card landing-curriculum__card--phone is-tall"
+                  src={CURRICULUM_ADVANCED_IMAGE}
+                  alt="Advanced lesson preview"
+                />
               </div>
               <div className="landing-curriculum__column landing-curriculum__column--offset">
-                <img className="landing-curriculum__card is-tall" src={CURRICULUM_FOUNDATIONS_IMAGE} alt="Foundations lesson preview" />
-                <img className="landing-curriculum__card is-short" src={CURRICULUM_INTERMEDIATE_IMAGE} alt="Intermediate lesson preview" />
+                <img
+                  className="landing-curriculum__card landing-curriculum__card--phone is-tall"
+                  src={CURRICULUM_FOUNDATIONS_IMAGE}
+                  alt="Foundations lesson preview"
+                />
               </div>
             </div>
           </div>
 
-          <div className="landing-curriculum__action">
-            <Link className="figma-button landing-curriculum__button" to="/learn">
-              <span>Start Learning</span>
-              <img className="landing-button__icon" src={CTA_ARROW_IMAGE} alt="" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section ref={mobileSectionRef} className="landing-section landing-section--mobile">
-        <div className="landing-shell landing-mobile-reveal" data-visible={mobileSectionVisible}>
-          <div className="landing-section__heading">
-            <h2>Practice on Mobile</h2>
-            <p>Master blood gas interpretation on the go with our mobile-optimized experience.</p>
-          </div>
-
-          <div className="landing-mobile-showcase">
-            <div
-              className="landing-mobile-showcase__track"
-              style={{
-                transform: `translate3d(-${mobileTrackIndex * 100}%, 0, 0)`,
-                transitionDuration: mobileTrackTransitionEnabled ? undefined : "0ms"
-              }}
-              onTransitionEnd={() => {
-                if (mobileTrackIndex === mobileSlides.length + 1) {
-                  setMobileTrackTransitionEnabled(false);
-                  setMobileTrackIndex(1);
-                  window.requestAnimationFrame(() => {
-                    window.requestAnimationFrame(() => {
-                      setMobileTrackTransitionEnabled(true);
-                    });
-                  });
-                  return;
-                }
-
-                if (mobileTrackIndex === 0) {
-                  setMobileTrackTransitionEnabled(false);
-                  setMobileTrackIndex(mobileSlides.length);
-                  window.requestAnimationFrame(() => {
-                    window.requestAnimationFrame(() => {
-                      setMobileTrackTransitionEnabled(true);
-                    });
-                  });
-                }
-              }}
-            >
-              {extendedMobileSlides.map((slide, index) => (
-                <div key={`${slide.title}-${index}`} className="landing-mobile-showcase__stage" aria-hidden={mobileTrackIndex !== index}>
-                  <div className="landing-mobile-showcase__copy">
-                    <span className="landing-mobile-showcase__badge">{slide.step}</span>
-                    <h3>{slide.title}</h3>
-                    <p>{slide.description}</p>
-                    <span className="landing-mobile-showcase__progress">{`${activeSlideIndex + 1} / ${mobileSlides.length}`}</span>
-                  </div>
-
-                  <div className="landing-mobile-frame">
-                    <img src={slide.imageSrc} alt={`${slide.title} mobile preview`} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="landing-mobile-showcase__dots" role="tablist" aria-label="Mobile experience slides">
-            {mobileSlides.map((slide, index) => (
-              <button
-                key={slide.title}
-                className={cn("landing-mobile-showcase__dot", activeSlideIndex === index && "is-active")}
-                type="button"
-                aria-label={`Show ${slide.title}`}
-                aria-pressed={activeSlideIndex === index}
-                onClick={() => {
-                  setMobileTrackTransitionEnabled(true);
-                  setMobileTrackIndex(index + 1);
-                }}
-              />
-            ))}
-          </div>
         </div>
       </section>
 
@@ -683,7 +533,7 @@ export function LandingScreen() {
             <div className="landing-insight-grid__copy landing-insight-grid__copy--from-right" data-visible={explanationInsightVisible}>
               <h2>Learn From Every Case</h2>
               <p>
-                Each case is paired with focused explanations that highlight the underlying physiology - helping you understand why the results looks the way it does.
+                Each case is paired with focused explanations that highlight the underlying physiology - helping you understand why the results looks the way they do.
               </p>
               <ul className="landing-bullet-list">
                 {explanationHighlights.map(item => (
@@ -705,11 +555,12 @@ export function LandingScreen() {
         </div>
       </section>
 
-      <footer className="landing-footer">
-        <div className="landing-footer__inner">
-          <strong>ABG Master</strong>
-          <span>&copy; 2026 ABG Master. Progressive learning for clinical excellence.</span>
-        </div>
+      <footer className="landing-footer dashboard-footer">
+        <p>&copy; 2026 ABG Master. All rights reserved.</p>
+        <p>
+          This application is for educational purposes only and should not be used as a substitute for professional
+          medical advice, diagnosis, or treatment.
+        </p>
       </footer>
     </main>
   );

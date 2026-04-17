@@ -86,7 +86,7 @@ export function AppShell() {
         onToggleMobile={() => setMobileOpen(value => !value)}
         onCloseMobile={() => setMobileOpen(false)}
         onOpenStayUpdated={handleOpenStayUpdated}
-        learnEnabled
+        learnEnabled={false}
         showBetaBadge={releaseFlags.enable_beta_badge}
       />
 
