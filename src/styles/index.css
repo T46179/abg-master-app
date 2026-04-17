@@ -3509,6 +3509,14 @@ button:disabled {
     padding-top: 0;
   }
 
+  .landing-insight-grid__row--reverse .landing-insight-grid__copy {
+    order: 1;
+  }
+
+  .landing-insight-grid__row--reverse .landing-insight-grid__media {
+    order: 2;
+  }
+
   .landing-section__heading {
     margin-bottom: 2.75rem;
   }

@@ -307,7 +307,7 @@ export function LandingScreen() {
       return;
     }
 
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || window.matchMedia("(max-width: 759px)").matches) {
       setCurriculumMotionVisible(true);
       return;
     }
@@ -478,7 +478,7 @@ export function LandingScreen() {
       <section ref={curriculumSectionRef} className="landing-section landing-section--curriculum">
         <div className="landing-shell">
           <div className="landing-section__heading landing-curriculum__heading" data-visible={curriculumMotionVisible}>
-            <h2>A Structured Way to Learn</h2>
+            <h2>A Structured Way to Learn (Coming Soon)</h2>
             <p>
               Progress through structured, step-by-step lessons that build your ABG interpretation skills from the ground up.
             </p>
