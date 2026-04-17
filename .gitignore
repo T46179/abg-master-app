@@ -1,6 +1,7 @@
 node_modules/
 dist/
 staged-docs/
+.playwright-cli/
 .env.local
 nppBackup/
 *.bak

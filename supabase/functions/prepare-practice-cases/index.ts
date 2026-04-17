@@ -177,16 +177,43 @@ Deno.serve(async req => {
         expires_at: expiresAtIso()
       };
 
-      const { data: insertedRows, error: insertError } = await adminClient
-        .from("issued_case_sessions")
-        .insert(insertPayload)
-        .select("*")
-        .limit(1);
-      if (insertError) throw insertError;
+const { data: insertedRows, error: insertError } = await adminClient
+  .from("issued_case_sessions")
+  .insert(insertPayload)
+  .select("*")
+  .limit(1);
 
-      const insertedSession = (insertedRows?.[0] ?? null) as IssuedCaseSessionRow | null;
-      if (!insertedSession) continue;
-      slots[difficultyKey] = buildIssuedSlot(insertedSession, publishedCase.public_payload);
+if (insertError) {
+  const isDuplicateActiveSlot = String((insertError as { code?: string }).code ?? "") === "23505";
+
+  if (!isDuplicateActiveSlot) {
+    throw insertError;
+  }
+
+  const { data: existingRows, error: existingError } = await adminClient
+    .from("issued_case_sessions")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("content_version", contentVersion)
+    .eq("difficulty_label", difficultyKey)
+    .eq("status", "issued")
+    .gt("expires_at", new Date().toISOString())
+    .order("issued_at", { ascending: false })
+    .limit(1);
+
+  if (existingError) throw existingError;
+
+  const existingSession = (existingRows?.[0] ?? null) as IssuedCaseSessionRow | null;
+  if (!existingSession) throw insertError;
+
+  slots[difficultyKey] = buildIssuedSlot(existingSession, publishedCase.public_payload);
+  continue;
+}
+
+const insertedSession = (insertedRows?.[0] ?? null) as IssuedCaseSessionRow | null;
+if (!insertedSession) continue;
+slots[difficultyKey] = buildIssuedSlot(insertedSession, publishedCase.public_payload);
+
     }
 
     return jsonResponse(

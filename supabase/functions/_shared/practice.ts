@@ -1,15 +1,18 @@
 import { PREPARE_RATE_LIMIT_MAX_REQUESTS, PREPARE_RATE_LIMIT_WINDOW_SECONDS, ISSUED_CASE_TTL_HOURS } from "./constants.ts";
+import { corsHeaders } from "./cors.ts";
 import type { IssuedCaseSessionRow, PublicCasePayload, PublishedCaseRow, StructuredExplanation } from "./types.ts";
 
 export function jsonResponse(body: Record<string, unknown>, init?: ResponseInit) {
   return new Response(JSON.stringify(body), {
     ...init,
     headers: {
+      ...corsHeaders,
       "Content-Type": "application/json",
       ...(init?.headers ?? {})
     }
   });
 }
+
 
 export function errorResponse(code: string, message: string, options?: { recoverable?: boolean; status?: number }) {
   return jsonResponse(
