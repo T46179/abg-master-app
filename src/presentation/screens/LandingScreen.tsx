@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useAppContext } from "../../app/AppProvider";
 import { Link } from "react-router-dom";
+import { trackEvent, trackPageView } from "../../core/analytics";
 import { getReleaseFlags } from "../../core/progression";
 import { LaunchNotifyModal } from "../layout/LaunchNotifyModal";
 import { MainNav } from "../layout/MainNav";
@@ -150,6 +151,7 @@ export function LandingScreen() {
       }
 
       setLaunchNotifySubmitted(true);
+      trackEvent("launch_notify_submitted");
     } catch (error) {
       console.warn("Launch notify signup failed.", error);
       setLaunchNotifyError("That didn't work. Please try again.");
@@ -157,6 +159,10 @@ export function LandingScreen() {
       setLaunchNotifySubmitting(false);
     }
   }
+
+  useEffect(() => {
+    trackPageView("landing");
+  }, []);
 
   useEffect(() => {
     animatedCasesSolvedCountRef.current = animatedCasesSolvedCount;
