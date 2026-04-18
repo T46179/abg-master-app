@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAttemptRecord, getFinalDiagnosisCorrect, mapStepResultsToAttemptStepResults } from "./attempts";
 import { composeCaseStructuredExplanation } from "./explanations";
 import { getCaseFeedbackFormUrl } from "./feedback";
@@ -28,7 +28,7 @@ import {
   mapDefaultUserState
 } from "./progression";
 import { createMemoryStorage } from "./storage";
-import { getRuntimeAssetPath, normalizeCasesPayload } from "./runtime";
+import { getRuntimeAssetPath, loadCasesPayload, normalizeCasesPayload } from "./runtime";
 import { getEligibleCasesForDifficulty } from "./selection";
 import {
   createAppStorage,
@@ -129,6 +129,11 @@ const beginnerCase: CaseData = {
   }
 };
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+});
+
 function createUserState(overrides: Partial<UserState> = {}): UserState {
   return {
     xp: 0,
@@ -219,6 +224,17 @@ describe("runtime normalization", () => {
   it("builds runtime asset paths from BASE_URL-compatible bases", () => {
     expect(getRuntimeAssetPath("abg_cases.json", "/abg-master-app/")).toBe("/abg-master-app/abg_cases.json");
     expect(getRuntimeAssetPath("/abg_cases.json", "/")).toBe("/abg_cases.json");
+  });
+
+  it("fails closed when protected delivery is enabled but the bootstrap is unavailable", async () => {
+    vi.stubEnv("VITE_ENABLE_PROTECTED_CASE_DELIVERY", "true");
+    const fetchMock = vi.fn(async () => new Response(null, { status: 404 }));
+
+    await expect(loadCasesPayload(fetchMock as typeof fetch)).rejects.toThrow(
+      "Failed to load protected runtime bootstrap: 404"
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith("/runtime_bootstrap.json", { cache: "no-store" });
   });
 });
 

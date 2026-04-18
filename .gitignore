@@ -3,6 +3,8 @@ dist/
 staged-docs/
 .playwright-cli/
 .env.local
+supabase/
+public/abg_cases.json
 nppBackup/
 *.bak
 README.md

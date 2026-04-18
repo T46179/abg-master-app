@@ -80,9 +80,11 @@ export function normalizeCasesPayload(payload: unknown): CasesPayload {
 export async function loadCasesPayload(fetchImpl: typeof fetch = fetch): Promise<CasesPayload> {
   if (String(import.meta.env.VITE_ENABLE_PROTECTED_CASE_DELIVERY ?? "").toLowerCase() === "true") {
     const bootstrapResponse = await fetchImpl(getRuntimeAssetPath("runtime_bootstrap.json"), { cache: "no-store" });
-    if (bootstrapResponse.ok) {
-      return normalizeCasesPayload(await bootstrapResponse.json());
+    if (!bootstrapResponse.ok) {
+      throw new Error(`Failed to load protected runtime bootstrap: ${bootstrapResponse.status}`);
     }
+
+    return normalizeCasesPayload(await bootstrapResponse.json());
   }
 
   const response = await fetchImpl(getRuntimeAssetPath("abg_cases.json"), { cache: "no-store" });
