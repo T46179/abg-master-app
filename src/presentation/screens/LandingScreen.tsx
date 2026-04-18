@@ -393,6 +393,7 @@ export function LandingScreen() {
         onOpenStayUpdated={handleOpenStayUpdated}
         learnEnabled={false}
         showBetaBadge={releaseFlags.enable_beta_badge}
+        wideShell
       />
 
       <LaunchNotifyModal

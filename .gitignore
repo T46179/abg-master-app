@@ -5,3 +5,5 @@ staged-docs/
 .env.local
 nppBackup/
 *.bak
+README.md
+RELEASE_CHECKLIST.md

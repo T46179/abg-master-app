@@ -121,6 +121,11 @@ button:disabled {
   padding: 0.75rem 1rem;
 }
 
+.main-nav--wide-shell .main-nav__inner {
+  width: min(100%, 82rem);
+  padding-inline: 1.25rem;
+}
+
 .main-nav__brand {
   display: flex;
   align-items: center;
@@ -2116,7 +2121,7 @@ button:disabled {
 
 @media (min-width: 760px) {
   .main-nav__inner {
-    grid-template-columns: 1fr auto 1fr;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
 
   .main-nav__brand {
@@ -2128,6 +2133,12 @@ button:disabled {
     justify-self: center;
     justify-content: center;
     gap: 0.25rem;
+  }
+
+  .main-nav__controls {
+    width: 100%;
+    justify-self: stretch;
+    justify-content: flex-end;
   }
 
   .main-nav__stay-updated {

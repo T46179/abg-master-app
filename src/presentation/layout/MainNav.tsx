@@ -9,6 +9,7 @@ interface MainNavProps {
   onOpenStayUpdated: () => void;
   learnEnabled: boolean;
   showBetaBadge: boolean;
+  wideShell?: boolean;
 }
 
 interface NavItem {
@@ -27,7 +28,7 @@ export function MainNav(props: MainNavProps) {
   ];
 
   return (
-    <header className="main-nav">
+    <header className={cn("main-nav", props.wideShell && "main-nav--wide-shell")}>
       <div className="main-nav__inner">
         <NavLink className="main-nav__brand" to="/dashboard" end>
           <span className="main-nav__brand-mark" aria-hidden="true">
