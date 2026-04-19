@@ -100,16 +100,14 @@ describe("LandingScreen", () => {
     expect(headerLink?.getAttribute("href")).toBe("/dashboard");
   });
 
-  it("shows learn as disabled in navigation while keeping launch content visible", () => {
+  it("shows learn in navigation while keeping launch content visible", () => {
     renderScreen();
 
     expect(container.textContent).toContain("Four Levels of Mastery");
 
     const learnLink = Array.from(container.querySelectorAll("a")).find(link => link.getAttribute("href") === "/learn");
-    const disabledLearnItem = Array.from(container.querySelectorAll("span")).find(item => item.textContent?.includes("Learn"));
 
-    expect(learnLink).toBeUndefined();
-    expect(disabledLearnItem?.className).toContain("is-disabled");
+    expect(learnLink).toBeTruthy();
   });
 
   it("tracks stay updated submits from the landing page", async () => {

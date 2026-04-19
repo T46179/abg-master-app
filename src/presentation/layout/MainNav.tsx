@@ -1,4 +1,4 @@
-import { Bell, Droplet, GraduationCap, LayoutDashboard, Menu, X } from "lucide-react";
+import { Bell, Menu, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "../utils";
 
@@ -15,25 +15,21 @@ interface MainNavProps {
 interface NavItem {
   to: string;
   label: string;
-  icon: typeof LayoutDashboard;
   end?: boolean;
   disabled?: boolean;
 }
 
 export function MainNav(props: MainNavProps) {
   const navItems: NavItem[] = [
-    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, end: true },
-    { to: "/learn", label: "Learn", icon: GraduationCap, disabled: !props.learnEnabled },
-    { to: "/practice", label: "Practice", icon: Droplet }
+    { to: "/dashboard", label: "Dashboard", end: true },
+    { to: "/learn", label: "Learn", disabled: !props.learnEnabled },
+    { to: "/practice", label: "Practice" }
   ];
 
   return (
     <header className={cn("main-nav", props.wideShell && "main-nav--wide-shell")}>
       <div className="main-nav__inner">
         <NavLink className="main-nav__brand" to="/dashboard" end>
-          <span className="main-nav__brand-mark" aria-hidden="true">
-            <Droplet />
-          </span>
           <div className="main-nav__brand-copy">
             <div className="main-nav__brand-title">ABG Master</div>
             {props.showBetaBadge ? <span className="main-nav__beta-badge">Beta</span> : null}
@@ -42,11 +38,8 @@ export function MainNav(props: MainNavProps) {
 
         <nav className="main-nav__desktop" aria-label="Primary">
           {navItems.map(item => {
-            const Icon = item.icon;
-
             return item.disabled ? (
               <span key={item.to} className="main-nav__link is-disabled" aria-disabled="true">
-                <Icon className="main-nav__link-icon" />
                 <span>{item.label}</span>
               </span>
             ) : (
@@ -56,7 +49,6 @@ export function MainNav(props: MainNavProps) {
                 end={item.end}
                 className={({ isActive }) => cn("main-nav__link", isActive && "is-active")}
               >
-                <Icon className="main-nav__link-icon" />
                 <span>{item.label}</span>
               </NavLink>
             );
@@ -91,11 +83,8 @@ export function MainNav(props: MainNavProps) {
 
         <nav className={cn("main-nav__mobile", props.mobileOpen && "is-open")} aria-label="Mobile navigation">
           {navItems.map(item => {
-            const Icon = item.icon;
-
             return item.disabled ? (
               <span key={item.to} className="main-nav__mobile-link is-disabled" aria-disabled="true">
-                <Icon className="main-nav__link-icon" />
                 <span>{item.label}</span>
               </span>
             ) : (
@@ -106,7 +95,6 @@ export function MainNav(props: MainNavProps) {
                 className={({ isActive }) => cn("main-nav__mobile-link", isActive && "is-active")}
                 onClick={props.onCloseMobile}
               >
-                <Icon className="main-nav__link-icon" />
                 <span>{item.label}</span>
               </NavLink>
             );

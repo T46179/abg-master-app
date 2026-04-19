@@ -54,14 +54,44 @@ describe("Learn screens", () => {
   it("renders all learn modules on the overview screen", () => {
     renderPath("/learn");
 
-    expect(container.textContent).toContain("Learn ABG Interpretation");
     expect(container.textContent).toContain("Foundations");
+    expect(container.textContent).toContain("Master the basics");
     expect(container.textContent).toContain("Beginner");
+    expect(container.textContent).toContain("Identify the primary disorder");
     expect(container.textContent).toContain("Intermediate");
+    expect(container.textContent).toContain("Understand compensation");
     expect(container.textContent).toContain("Advanced");
+    expect(container.textContent).toContain("Use the anion gap");
     expect(container.textContent).toContain("Master");
+    expect(container.textContent).toContain("Detect mixed disorders");
     expect(container.textContent).toContain("Hidden");
-    expect(container.textContent).toContain("Locked at Level 25");
+    expect(container.textContent).toContain("Stewart analysis");
+    expect(container.textContent).not.toContain("Build intuition about acid-base balance before you interpret full blood gases.");
+    expect(container.textContent).not.toContain("Recognize pH status and name the main acid-base pattern fast.");
+    expect(container.textContent).toContain("4 modules");
+    expect(container.textContent).toContain("0% Complete");
+    expect(container.textContent).not.toContain("Pre-beginner");
+    expect(container.textContent).not.toContain("Module 1");
+    expect(container.textContent).not.toContain("Secret");
+    expect(container.textContent).not.toContain("Locked at Level 25");
+
+    const moduleCards = container.querySelectorAll(".learn-level-card");
+    const unlockedLinks = Array.from(container.querySelectorAll<HTMLAnchorElement>("a.learn-level-card__cta"));
+    const lockedButton = container.querySelector<HTMLButtonElement>(".learn-level-card.is-locked .learn-level-card__cta");
+
+    expect(moduleCards).toHaveLength(6);
+    expect(unlockedLinks).toHaveLength(5);
+    expect(unlockedLinks.map(link => link.getAttribute("href"))).toEqual([
+      "/learn/foundations",
+      "/learn/beginner",
+      "/learn/intermediate",
+      "/learn/advanced",
+      "/learn/master"
+    ]);
+    expect(unlockedLinks.every(link => link.textContent?.includes("Start Learning"))).toBe(true);
+    expect(lockedButton?.disabled).toBe(true);
+    expect(lockedButton?.textContent).toContain("Locked");
+    expect(container.querySelectorAll(".learn-level-card__progress .progress-bar__fill")).toHaveLength(6);
   });
 
   it("advances lesson content and updates progress dot states", () => {

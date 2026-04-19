@@ -1,10 +1,12 @@
-import { Lock } from "lucide-react";
+import { ArrowRight, BookOpen, Lock, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import { learnLevels } from "../learn/content";
+import { ProgressBar } from "../primitives/ProgressBar";
 import { Surface } from "../primitives/Surface";
-import { SectionHeader } from "../primitives/SectionHeader";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
+
+const LEARN_CARD_PROGRESS = 0;
 
 export function LearnScreen() {
   const { state } = useAppContext();
@@ -14,51 +16,50 @@ export function LearnScreen() {
   return (
     <main className="app-shell__page learn-overview">
       <div className="learn-overview__container">
-        <Surface className="learn-overview__hero" tone="hero">
-          <SectionHeader
-            eyebrow="Learn"
-            title="Learn ABG Interpretation"
-            subtitle="Move from foundations to mixed disorders through short, visual modules built for fast pattern recognition."
-          />
-          <div className="learn-overview__hero-note">
-            Start anywhere for now. Later, these modules can be gated behind level-based unlocks.
-          </div>
-        </Surface>
-
         <div className="learn-overview__grid">
-          {learnLevels.map(level => (
-            level.locked ? (
-                <Surface key={level.slug} as="article" className="learn-level-card is-locked" aria-disabled="true">
-                  <div className="learn-level-card__topline">
-                    <span className="learn-level-card__lock">
-                      <Lock />
-                      {level.lockedLabel ?? "Locked"}
+          {learnLevels.map(level => {
+            const lessonCountLabel = `${level.lessons.length} module${level.lessons.length === 1 ? "" : "s"}`;
+
+            return (
+              <Surface
+                key={level.slug}
+                as="article"
+                className={`learn-level-card${level.locked ? " is-locked" : ""}`}
+                aria-disabled={level.locked ? "true" : undefined}
+              >
+                <div className="learn-level-card__copy">
+                  <h2>{level.title}</h2>
+                  <strong>{level.subtitle}</strong>
+                </div>
+
+                <div className="learn-level-card__pills" aria-label={`${level.title} details`}>
+                  <span className="learn-level-card__pill">
+                    <BookOpen />
+                    {lessonCountLabel}
+                  </span>
+                  <span className="learn-level-card__pill">
+                    <TrendingUp />
+                    {LEARN_CARD_PROGRESS}% Complete
                   </span>
                 </div>
-                <div className="learn-level-card__copy">
-                  <h2>{level.title}</h2>
-                  <strong>{level.subtitle}</strong>
-                  <p>{level.description}</p>
-                </div>
-                <div className="learn-level-card__meta">
-                  <span>{level.lessons.length} lesson{level.lessons.length === 1 ? "" : "s"}</span>
-                </div>
-              </Surface>
-            ) : (
-              <Surface key={level.slug} as={Link} to={`/learn/${level.slug}`} className="learn-level-card">
-                <div className="learn-level-card__topline">
-                </div>
-                <div className="learn-level-card__copy">
-                  <h2>{level.title}</h2>
-                  <strong>{level.subtitle}</strong>
-                  <p>{level.description}</p>
-                </div>
-                <div className="learn-level-card__meta">
-                  <span>{level.lessons.length} lesson{level.lessons.length === 1 ? "" : "s"}</span>
+
+                <div className="learn-level-card__footer">
+                  {level.locked ? (
+                    <button className="figma-button learn-level-card__cta" type="button" disabled>
+                      Locked
+                      <Lock />
+                    </button>
+                  ) : (
+                    <Link className="figma-button learn-level-card__cta" to={`/learn/${level.slug}`}>
+                      Start Learning
+                      <ArrowRight />
+                    </Link>
+                  )}
+                  <ProgressBar value={LEARN_CARD_PROGRESS} className="learn-level-card__progress" />
                 </div>
               </Surface>
-            )
-          ))}
+            );
+          })}
         </div>
 
       </div>

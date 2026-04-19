@@ -391,7 +391,7 @@ export function LandingScreen() {
         onToggleMobile={() => setMobileOpen(value => !value)}
         onCloseMobile={() => setMobileOpen(false)}
         onOpenStayUpdated={handleOpenStayUpdated}
-        learnEnabled={false}
+        learnEnabled
         showBetaBadge={releaseFlags.enable_beta_badge}
         wideShell
       />
