@@ -49,6 +49,8 @@ import {
   rememberRecentArchetype
 } from "../../core/selection";
 import type { AnswerSelection, IssuedPracticeSlot, StepResult } from "../../core/types";
+import { getLearnUnlockMilestoneForLevelTransition } from "../learn/content";
+import { LearnUnlockModal } from "../learn/LearnUnlockModal";
 import { Surface } from "../primitives/Surface";
 import { PracticeDifficultyRail } from "../practice/PracticeDifficultyRail";
 import { PracticeIntroModal } from "../practice/PracticeIntroModal";
@@ -70,6 +72,7 @@ export function ProtectedPracticeScreen() {
   const [introOpen, setIntroOpen] = useState(false);
   const [pendingDifficulty, setPendingDifficulty] = useState<string | null>(null);
   const [displayedResultsProgress, setDisplayedResultsProgress] = useState<number | null>(null);
+  const [dismissedLearnUnlockKey, setDismissedLearnUnlockKey] = useState<string | null>(null);
   const activeStepRef = useRef<HTMLButtonElement | null>(null);
   const introAcceptedRef = useRef(false);
   const difficultyReconciledRef = useRef(false);
@@ -134,6 +137,12 @@ export function ProtectedPracticeScreen() {
     : state.userState;
   const startingLevelProgress = getLevelProgress(payload?.progressionConfig ?? null, preAwardUserState);
   const resultsStartProgress = summary && preAwardUserState.level !== state.userState.level ? 0 : startingLevelProgress.progressPercent;
+  const learnUnlockMilestone = summary
+    ? getLearnUnlockMilestoneForLevelTransition(preAwardUserState.level, state.userState.level)
+    : null;
+  const learnUnlockKey = summary && learnUnlockMilestone
+    ? `${summary.caseToken ?? summary.caseId}-${learnUnlockMilestone.unlockLevel}`
+    : null;
   const interactionLocked = Boolean(
     state.practiceState.pendingSubmission &&
     state.practiceState.pendingSubmission.caseToken === state.practiceState.currentCaseToken
@@ -730,6 +739,13 @@ export function ProtectedPracticeScreen() {
 
   return (
     <>
+      <LearnUnlockModal
+        level={learnUnlockKey !== dismissedLearnUnlockKey ? learnUnlockMilestone : null}
+        onClose={() => {
+          if (learnUnlockKey) setDismissedLearnUnlockKey(learnUnlockKey);
+        }}
+      />
+
       <PracticeIntroModal
         open={introOpen}
         onContinue={handleContinueFromIntro}

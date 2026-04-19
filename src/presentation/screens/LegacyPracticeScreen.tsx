@@ -37,6 +37,8 @@ import {
   syncUserStateDerivedFields
 } from "../../core/progression";
 import type { StepResult } from "../../core/types";
+import { getLearnUnlockMilestoneForLevelTransition } from "../learn/content";
+import { LearnUnlockModal } from "../learn/LearnUnlockModal";
 import { Surface } from "../primitives/Surface";
 import { PracticeDifficultyRail } from "../practice/PracticeDifficultyRail";
 import { PracticeIntroModal } from "../practice/PracticeIntroModal";
@@ -53,6 +55,7 @@ export function LegacyPracticeScreen() {
   const [introOpen, setIntroOpen] = useState(false);
   const [pendingDifficulty, setPendingDifficulty] = useState<string | null>(null);
   const [displayedResultsProgress, setDisplayedResultsProgress] = useState<number | null>(null);
+  const [dismissedLearnUnlockKey, setDismissedLearnUnlockKey] = useState<string | null>(null);
   const activeStepRef = useRef<HTMLButtonElement | null>(null);
   const introAcceptedRef = useRef(false);
   const difficultyReconciledRef = useRef(false);
@@ -120,6 +123,12 @@ export function LegacyPracticeScreen() {
   const resultsStartProgress = summary && preAwardUserState.level !== state.userState.level
     ? 0
     : startingLevelProgress.progressPercent;
+  const learnUnlockMilestone = summary
+    ? getLearnUnlockMilestoneForLevelTransition(preAwardUserState.level, state.userState.level)
+    : null;
+  const learnUnlockKey = summary && learnUnlockMilestone
+    ? `${summary.caseToken ?? summary.caseId}-${learnUnlockMilestone.unlockLevel}`
+    : null;
 
   useEffect(() => {
     if (requestedDifficulty !== normalizedDifficulty) {
@@ -552,6 +561,13 @@ export function LegacyPracticeScreen() {
 
   return (
     <>
+      <LearnUnlockModal
+        level={learnUnlockKey !== dismissedLearnUnlockKey ? learnUnlockMilestone : null}
+        onClose={() => {
+          if (learnUnlockKey) setDismissedLearnUnlockKey(learnUnlockKey);
+        }}
+      />
+
       <PracticeIntroModal
         open={introOpen}
         onContinue={handleContinueFromIntro}

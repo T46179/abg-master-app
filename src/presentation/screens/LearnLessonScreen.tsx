@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
-import { getLearnLevel } from "../learn/content";
+import { getLearnLevel, isLearnLevelUnlocked, shouldShowLearnLevel } from "../learn/content";
 import type { SpeedCheckPhase } from "../learn/SpeedCheckGame";
 import { SpeedCheckGame } from "../learn/SpeedCheckGame";
 import { cn } from "../utils";
@@ -25,6 +25,9 @@ export function LearnLessonScreen() {
   if (state.status === "loading" || state.status === "idle") return <LoadingView />;
   if (state.status === "error") return <ErrorView message={state.errorMessage} />;
   if (!level) return <Navigate to="/learn" replace />;
+  if (!shouldShowLearnLevel(level, state.userState.level) || !isLearnLevelUnlocked(level, state.userState.level)) {
+    return <Navigate to="/learn" replace />;
+  }
 
   const lesson = level.lessons[lessonIndex];
   const isLastLesson = lessonIndex === level.lessons.length - 1;
@@ -57,7 +60,6 @@ export function LearnLessonScreen() {
             <ArrowLeft />
             <span>All modules</span>
           </Link>
-          {level.locked ? <span className="learn-deck__lock-chip">{level.lockedLabel ?? "Locked"}</span> : null}
         </div>
 
         <Surface className="learn-deck__surface">

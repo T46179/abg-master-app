@@ -23,8 +23,19 @@ export interface LearnLevelConfig {
   subtitle: string;
   description: string;
   badge: string;
-  locked: boolean;
-  lockedLabel?: string;
+  unlockLevel: number;
+  hideUntilUnlocked?: boolean;
+  unlockCopy?: {
+    intro: string;
+    practiceChanges: string[];
+    extraInfo?: string;
+  };
+  palette: {
+    backgroundStart: string;
+    backgroundEnd: string;
+    accentLight: string;
+    accentDark: string;
+  };
   lessons: LearnLesson[];
 }
 
@@ -618,7 +629,13 @@ export const learnLevels: LearnLevelConfig[] = [
     subtitle: "Master the basics",
     description: "Build intuition about acid-base balance before you interpret full blood gases.",
     badge: "Pre-beginner",
-    locked: false,
+    unlockLevel: 1,
+    palette: {
+      backgroundStart: "#FFF9ED",
+      backgroundEnd: "#FFEFD6",
+      accentLight: "#FFEFD6",
+      accentDark: "#FFE0B2"
+    },
     lessons: foundationsLessons
   },
   {
@@ -628,7 +645,13 @@ export const learnLevels: LearnLevelConfig[] = [
     subtitle: "Identify the primary disorder",
     description: "Recognize pH status and name the main acid-base pattern fast.",
     badge: "Module 1",
-    locked: false,
+    unlockLevel: 1,
+    palette: {
+      backgroundStart: "#EFF8FF",
+      backgroundEnd: "#DBEEFF",
+      accentLight: "#DBEEFF",
+      accentDark: "#B8DEFF"
+    },
     lessons: beginnerLessons
   },
   {
@@ -638,7 +661,21 @@ export const learnLevels: LearnLevelConfig[] = [
     subtitle: "Understand compensation",
     description: "Learn expected compensation and spot when a second disorder is hiding.",
     badge: "Module 2",
-    locked: false,
+    unlockLevel: 5,
+    unlockCopy: {
+      intro: "Intermediate learning is now available.",
+      practiceChanges: [
+        "Compensation becomes a bigger part of interpretation.",
+        "Cases ask you to connect the primary disorder with the expected physiological response.",
+        "The reasoning flow becomes more layered than simple pattern recognition."
+      ]
+    },
+    palette: {
+      backgroundStart: "#F0F9F4",
+      backgroundEnd: "#DDF3E4",
+      accentLight: "#DDF3E4",
+      accentDark: "#B8E6CC"
+    },
     lessons: intermediateLessons
   },
   {
@@ -648,7 +685,21 @@ export const learnLevels: LearnLevelConfig[] = [
     subtitle: "Use the anion gap",
     description: "Find hidden metabolic processes and make sense of extra acids.",
     badge: "Module 3",
-    locked: false,
+    unlockLevel: 10,
+    unlockCopy: {
+      intro: "Advanced learning is now available.",
+      practiceChanges: [
+        "Anion gap reasoning becomes central.",
+        "Cases lean harder on diagnostic pattern recognition.",
+        "Normal range help becomes more limited and optional."
+      ]
+    },
+    palette: {
+      backgroundStart: "#FFF5F0",
+      backgroundEnd: "#FFE8DC",
+      accentLight: "#FFE8DC",
+      accentDark: "#FFCDB0"
+    },
     lessons: advancedLessons
   },
   {
@@ -658,22 +709,73 @@ export const learnLevels: LearnLevelConfig[] = [
     subtitle: "Detect mixed disorders",
     description: "Interpret ABGs that do not fit a single clean explanation.",
     badge: "Module 4",
-    locked: false,
+    unlockLevel: 20,
+    unlockCopy: {
+      intro: "Master learning is now available.",
+      practiceChanges: [
+        "Mixed disorders become the focus.",
+        "Normal range references are removed.",
+        "Abnormal colour highlights are removed so you interpret values independently."
+      ]
+    },
+    palette: {
+      backgroundStart: "#F5F0FF",
+      backgroundEnd: "#EBE0FF",
+      accentLight: "#EBE0FF",
+      accentDark: "#D6C2FF"
+    },
     lessons: masterLessons
   },
   {
     key: "hidden",
     slug: "hidden",
-    title: "Hidden",
+    title: "Master +",
     subtitle: "Stewart analysis",
     description: "A deeper mechanistic module reserved for high-level learners.",
     badge: "Secret",
-    locked: true,
-    lockedLabel: "Locked at Level 25",
+    unlockLevel: 25,
+    hideUntilUnlocked: true,
+    unlockCopy: {
+      intro: "Master + learning is now available.",
+      practiceChanges: [
+        "An extra advanced learning track has appeared.",
+        "This is a deeper theory module rather than a new practice difficulty.",
+        "Practice stays at Master difficulty while Master + expands the learning path."
+      ],
+      extraInfo: "You have reached the current max-level learning reward."
+    },
+    palette: {
+      backgroundStart: "#F8F0FF",
+      backgroundEnd: "#F0E0FF",
+      accentLight: "#F0E0FF",
+      accentDark: "#D8B4FF"
+    },
     lessons: hiddenLessons
   }
 ];
 
 export function getLearnLevel(slug: string | undefined) {
   return learnLevels.find(level => level.slug === slug);
+}
+
+export function isLearnLevelUnlocked(level: LearnLevelConfig, userLevel: number) {
+  return Math.max(1, Number(userLevel) || 1) >= level.unlockLevel;
+}
+
+export function shouldShowLearnLevel(level: LearnLevelConfig, userLevel: number) {
+  return !level.hideUntilUnlocked || isLearnLevelUnlocked(level, userLevel);
+}
+
+export function getVisibleLearnLevels(userLevel: number) {
+  return learnLevels.filter(level => shouldShowLearnLevel(level, userLevel));
+}
+
+export function getLearnUnlockMilestoneForLevelTransition(previousLevel: number, currentLevel: number) {
+  const normalizedPreviousLevel = Math.max(1, Number(previousLevel) || 1);
+  const normalizedCurrentLevel = Math.max(1, Number(currentLevel) || 1);
+
+  return learnLevels
+    .filter(level => level.unlockLevel > 1)
+    .filter(level => normalizedPreviousLevel < level.unlockLevel && normalizedCurrentLevel >= level.unlockLevel)
+    .sort((left, right) => right.unlockLevel - left.unlockLevel)[0] ?? null;
 }
