@@ -78,8 +78,8 @@ describe("Learn screens", () => {
     expect(container.textContent).not.toContain("Stewart analysis");
     expect(container.textContent).not.toContain("Build intuition about acid-base balance before you interpret full blood gases.");
     expect(container.textContent).not.toContain("Recognize pH status and name the main acid-base pattern fast.");
-    expect(container.textContent).toContain("4 modules");
-    expect(container.textContent).not.toContain("0% Complete");
+    expect(container.textContent).toContain("5 modules");
+    expect(container.textContent).not.toMatch(/\b0% Complete/);
     expect(container.textContent).not.toContain("Pre-beginner");
     expect(container.textContent).not.toContain("Module 1");
     expect(container.textContent).not.toContain("Secret");
@@ -115,10 +115,10 @@ describe("Learn screens", () => {
 
     renderPath("/learn");
 
-    expect(container.textContent).toContain("4 modules");
-    expect(container.textContent).toContain("25% Complete");
+    expect(container.textContent).toContain("5 modules");
+    expect(container.textContent).toContain("20% Complete");
     expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations"]')?.textContent).toContain("Continue");
-    expect(container.textContent).not.toContain("0% Complete");
+    expect(container.textContent).not.toMatch(/\b0% Complete/);
     expect(container.querySelectorAll(".learn-level-card__pill")).toHaveLength(6);
   });
 
@@ -133,13 +133,13 @@ describe("Learn screens", () => {
     renderPath("/learn");
 
     expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations"]')?.textContent).toContain("Continue");
-    expect(container.textContent).not.toContain("0% Complete");
+    expect(container.textContent).not.toMatch(/\b0% Complete/);
   });
 
   it("shows full completion when a learn module is completed", () => {
     mockLearnProgress.value = {
       foundations: {
-        completedLessonCount: 4,
+        completedLessonCount: 5,
         completed: true
       }
     };
@@ -245,6 +245,16 @@ describe("Learn screens", () => {
         }
       }
     });
+    expect(container.querySelector(".learn-scale-card")).toBeNull();
+    expect(container.querySelector(".learn-deck__body")?.textContent).not.toContain("Why this matters");
+    expect(container.querySelector(".ph-scale-visualiser")).not.toBeNull();
+    expect(container.querySelector(".learn-deck__body")?.textContent).toContain("Normal");
+    expect(container.querySelector(".learn-deck__body")?.textContent).toContain("pH");
+    expect(container.querySelector(".learn-deck__body")?.textContent).toContain("Hydrogen ion concentration");
+    expect(container.querySelector(".learn-deck__body")?.textContent).toContain("7.35");
+    expect(container.querySelector(".learn-deck__body")?.textContent).toContain("7.45");
+    expect(container.querySelector(".learn-deck__body")?.textContent).toContain("pH");
+    expect(container.querySelector(".ph-scale-visualiser__key-idea")?.textContent).toContain("normal pH");
     expect(container.querySelector(".learn-deck__header")?.textContent).not.toContain("Master the basics");
     expect(container.textContent).toContain("All modules");
     expect(container.textContent).not.toContain("Back to modules");
@@ -255,7 +265,15 @@ describe("Learn screens", () => {
       nextButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(container.textContent).toContain("CO2 and HCO3 are the two levers");
+    expect(container.textContent).toContain("The two levers");
+    expect(container.querySelector(".learn-card-intro")?.textContent).toContain("pH is controlled by two systems");
+    expect(container.querySelectorAll(".learn-two-levers-images img")).toHaveLength(2);
+    expect(container.textContent).toContain("CO₂");
+    expect(container.textContent).toContain("Produced by metabolism");
+    expect(container.textContent).toContain("HCO₃⁻");
+    expect(container.textContent).toContain("Regulated by the kidneys");
+    expect(container.textContent).not.toContain("Think in systems");
+    expect(container.querySelector(".learn-carbonic-equation")).toBeNull();
     expect(setUserState).toHaveBeenCalledWith({
       level: 1,
       learnProgress: {
@@ -268,15 +286,15 @@ describe("Learn screens", () => {
     expect(Array.from(container.querySelectorAll("button")).some(button => button.textContent === "Back")).toBe(true);
 
     const dots = Array.from(container.querySelectorAll("[data-state]"));
-    expect(dots).toHaveLength(4);
+    expect(dots).toHaveLength(5);
     expect(dots[0]?.getAttribute("data-state")).toBe("complete");
     expect(dots[1]?.getAttribute("data-state")).toBe("current");
   });
 
-  it("renders the speed check lesson inside the beginner deck", () => {
-    renderPath("/learn/beginner");
+  it("renders the speed check lesson inside the foundations deck", () => {
+    renderPath("/learn/foundations");
 
-    for (let index = 0; index < 4; index += 1) {
+    for (let index = 0; index < 3; index += 1) {
       const nextButton = Array.from(container.querySelectorAll("button")).find(button => button.textContent?.includes("Next"));
       act(() => {
         nextButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -285,6 +303,23 @@ describe("Learn screens", () => {
 
     expect(container.textContent).toContain("Ready for a speed check?");
     expect(container.textContent).toContain("Finish the speed check to continue.");
+  });
+
+  it("renders the carbonic acid equation before the compensation panel in the intermediate deck", () => {
+    mockUserLevel.value = 5;
+
+    renderPath("/learn/intermediate");
+
+    const bodyText = container.querySelector(".learn-deck__body")?.textContent ?? "";
+    const equationIndex = bodyText.indexOf("CO2 + H2O");
+    const panelIndex = bodyText.indexOf("The body fights back");
+
+    expect(container.textContent).toContain("What is compensation?");
+    expect(container.querySelector(".learn-carbonic-equation")?.textContent).toContain("CO2 + H2O");
+    expect(container.querySelector(".learn-carbonic-equation")?.textContent).toContain("H2CO3");
+    expect(container.querySelector(".learn-carbonic-equation")?.textContent).toContain("HCO3-");
+    expect(equationIndex).toBeGreaterThanOrEqual(0);
+    expect(panelIndex).toBeGreaterThan(equationIndex);
   });
 });
 

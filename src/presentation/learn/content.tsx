@@ -1,4 +1,7 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { Lightbulb } from "lucide-react";
+import kidneysImage from "../../assets/kidneys.webp";
+import lungsImage from "../../assets/lungs.webp";
 
 export type LearnDifficultyKey =
   | "foundations"
@@ -71,61 +74,118 @@ function CompletionCard(props: { title: string; body: string; items: string[] })
   );
 }
 
+function PHScaleVisualiser() {
+  const ticks = [
+    { value: "6.8", position: "0%", align: "start" },
+    { value: "7.0", position: "20%" },
+    { value: "7.2", position: "40%" },
+    { value: "7.35", position: "55%", isBoundary: true },
+    { value: "7.45", position: "65%", isBoundary: true },
+    { value: "7.6", position: "80%" },
+    { value: "7.8", position: "100%", align: "end" }
+  ];
+
+  const legend = [
+    { label: "Acidosis", tone: "acid" },
+    { label: "Normal", tone: "normal" },
+    { label: "Alkalosis", tone: "alkaline" }
+  ];
+
+  return (
+    <section className="ph-scale-visualiser" aria-label="pH scale visualiser">
+      <div className="ph-scale-visualiser__chart">
+        <div className="ph-scale-visualiser__scale" aria-hidden="true">
+          <div className="ph-scale-visualiser__track">
+            <span className="ph-scale-visualiser__segment ph-scale-visualiser__segment--acid" />
+            <span className="ph-scale-visualiser__segment ph-scale-visualiser__segment--normal" />
+            <span className="ph-scale-visualiser__segment ph-scale-visualiser__segment--alkaline" />
+          </div>
+          <span className="ph-scale-visualiser__marker ph-scale-visualiser__marker--low" />
+          <span className="ph-scale-visualiser__marker ph-scale-visualiser__marker--high" />
+        </div>
+
+        <div className="ph-scale-visualiser__ticks" aria-hidden="true">
+          {ticks.map(tick => (
+            <span
+              key={tick.value}
+              className={`${tick.isBoundary ? "is-boundary" : ""}${tick.align ? ` is-${tick.align}` : ""}`}
+              style={{ "--tick-position": tick.position } as CSSProperties}
+            >
+              {tick.value}
+            </span>
+          ))}
+        </div>
+
+        <div className="ph-scale-visualiser__legend">
+          {legend.map(item => (
+            <span key={item.label} className="ph-scale-visualiser__legend-item">
+              <span className={`ph-scale-visualiser__swatch ph-scale-visualiser__swatch--${item.tone}`} />
+              {item.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <ul className="ph-scale-visualiser__notes">
+        <li>pH reflects Hydrogen ion concentration, and is used to describe the acidity or alkalinity of a solution</li>
+        <li>The body tightly regulates blood pH so that it stays between 7.35 &ndash; 7.45</li>
+        <li>The pH scale is logarithmic - even small changes can have large affects on cellular function</li>
+      </ul>
+
+      <div className="ph-scale-visualiser__key-idea">
+        <Lightbulb aria-hidden="true" />
+        <p>A normal pH may mean no acid-base disturbance, or multiple processes occuring at the same time</p>
+      </div>
+    </section>
+  );
+}
+
 const foundationsLessons: LearnLesson[] = [
   {
     kind: "content",
     title: "What is pH?",
-    content: (
-      <div className="learn-content-stack">
-        <section className="learn-scale-card">
-          <div className="learn-scale-card__legend">
-            <div>
-              <strong>Acidic</strong>
-              <span>pH below 7.35</span>
-            </div>
-            <div>
-              <strong>Normal</strong>
-              <span>7.35 to 7.45</span>
-            </div>
-            <div>
-              <strong>Alkaline</strong>
-              <span>pH above 7.45</span>
-            </div>
-          </div>
-          <div className="learn-scale-card__bar" aria-hidden="true" />
-        </section>
-
-        <Panel title="Why this matters">
-          <p>
-            pH is the first read on every ABG. It tells you whether the blood is acidic,
-            normal, or alkalemic before you decide why.
-          </p>
-        </Panel>
-      </div>
-    )
+    content: <PHScaleVisualiser />
   },
   {
     kind: "content",
-    title: "CO2 and HCO3 are the two levers",
+    title: "The two levers",
     content: (
-      <div className="learn-content-stack">
-        <div className="learn-content-grid learn-content-grid--two">
-          <Panel title="CO2 = acid" tone="red">
-            <p>The lungs control CO2.</p>
-            <BulletList items={["Moves quickly", "More CO2 lowers pH", "Less CO2 raises pH"]} />
-          </Panel>
-          <Panel title="HCO3 = base" tone="blue">
-            <p>The kidneys control HCO3.</p>
-            <BulletList items={["Moves slowly", "More HCO3 raises pH", "Less HCO3 lowers pH"]} />
-          </Panel>
+      <div className="learn-content-stack learn-content-stack--borderless-panels">
+        <p className="learn-card-intro">
+		  pH is controlled by two systems: the lungs (CO₂) and the kidneys (HCO₃⁻), working together to maintain acid-base balance
+        </p>
+
+        <div className="learn-two-levers-images" aria-hidden="true">
+          <div className="learn-two-levers-image-card">
+            <img src={lungsImage} alt="" />
+          </div>
+          <div className="learn-two-levers-image-card">
+            <img src={kidneysImage} alt="" />
+          </div>
         </div>
 
-        <Panel title="Think in systems">
-          <p>
-            Respiratory problems show up through CO2. Metabolic problems show up through HCO3.
-            The body uses one system to compensate for the other.
-          </p>
-        </Panel>
+        <div className="learn-content-grid learn-content-grid--two">
+          <Panel title="CO₂" tone="red">
+            <BulletList
+              items={[
+                "Produced by metabolism and removed by ventilation",
+                "Changes rapidly (minutes)",
+                "Not an acid itself, but acts as one in the body",
+                "Transported in the blood mainly as bicarbonate"
+              ]}
+            />
+          </Panel>
+          <Panel title="HCO₃⁻" tone="blue">
+            <BulletList
+              items={[
+                "Regulated by the kidneys",
+                "Changes slowly (hours – days)",
+                "Main buffer in the blood",
+                "Consumed when buffering excess acid"
+              ]}
+            />
+          </Panel>
+        </div>
       </div>
     )
   },
@@ -134,6 +194,10 @@ const foundationsLessons: LearnLesson[] = [
     title: "Directional thinking",
     content: (
       <div className="learn-content-stack">
+        <p className="learn-card-intro">
+          Understanding how CO₂ and HCO₃⁻ affect pH is the foundation of ABG interpretation.
+        </p>
+
         <div className="learn-direction-list">
           <div className="learn-direction-row is-red">
             <span>CO2 up</span>
@@ -165,6 +229,10 @@ const foundationsLessons: LearnLesson[] = [
         </Panel>
       </div>
     )
+  },
+  {
+    kind: "speed-check",
+    title: "Speed check"
   },
   {
     kind: "content",
@@ -289,10 +357,6 @@ const beginnerLessons: LearnLesson[] = [
     )
   },
   {
-    kind: "speed-check",
-    title: "Speed check"
-  },
-  {
     kind: "content",
     title: "Ready to identify disorders?",
     content: (
@@ -317,10 +381,14 @@ const intermediateLessons: LearnLesson[] = [
     title: "What is compensation?",
     content: (
       <div className="learn-content-stack">
+        <div className="learn-carbonic-equation" aria-label="Carbonic acid buffer equation">
+          CO<sub>2</sub> + H<sub>2</sub>O ⇌ H<sub>2</sub>CO<sub>3</sub> ⇌ H<sup>+</sup> + HCO<sub>3</sub><sup>-</sup>
+        </div>
+
         <Panel title="The body fights back" tone="violet">
           <p>
             Compensation is the secondary system trying to pull pH back toward normal. It helps, but
-            it never fully fixes the original problem.
+            it never fully fixes the original problem. The body defends itself in 3 main ways: buffering (immediate), respiratory regulation (quick), and renal regulation (slow)
           </p>
         </Panel>
         <div className="learn-content-grid learn-content-grid--two">
