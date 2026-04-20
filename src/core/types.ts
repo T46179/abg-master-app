@@ -192,7 +192,13 @@ export interface UserState {
   badges: string[];
   recentResults: boolean[];
   appliedProtectedCaseTokens: string[];
+  learnProgress?: Record<string, LearnModuleProgress>;
   longestStreak?: number;
+}
+
+export interface LearnModuleProgress {
+  completedLessonCount: number;
+  completed: boolean;
 }
 
 export interface StepResult {

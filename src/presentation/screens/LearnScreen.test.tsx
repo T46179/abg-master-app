@@ -11,6 +11,8 @@ import { getLearnUnlockMilestoneForLevelTransition } from "../learn/content";
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const mockUserLevel = vi.hoisted(() => ({ value: 1 }));
+const mockLearnProgress = vi.hoisted(() => ({ value: {} as Record<string, { completedLessonCount: number; completed: boolean }> }));
+const setUserState = vi.hoisted(() => vi.fn(async () => undefined));
 
 vi.mock("../../app/AppProvider", () => ({
   useAppContext: () => ({
@@ -18,9 +20,11 @@ vi.mock("../../app/AppProvider", () => ({
       status: "ready",
       errorMessage: null,
       userState: {
-        level: mockUserLevel.value
+        level: mockUserLevel.value,
+        learnProgress: mockLearnProgress.value
       }
-    }
+    },
+    setUserState
   })
 }));
 
@@ -30,6 +34,8 @@ describe("Learn screens", () => {
 
   beforeEach(() => {
     mockUserLevel.value = 1;
+    mockLearnProgress.value = {};
+    setUserState.mockClear();
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -99,6 +105,51 @@ describe("Learn screens", () => {
     expect(container.querySelectorAll(".learn-level-card__progress .progress-bar__fill")).toHaveLength(0);
   });
 
+  it("shows learn module progress pills only after a module has started", () => {
+    mockLearnProgress.value = {
+      foundations: {
+        completedLessonCount: 1,
+        completed: false
+      }
+    };
+
+    renderPath("/learn");
+
+    expect(container.textContent).toContain("4 modules");
+    expect(container.textContent).toContain("25% Complete");
+    expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations"]')?.textContent).toContain("Continue");
+    expect(container.textContent).not.toContain("0% Complete");
+    expect(container.querySelectorAll(".learn-level-card__pill")).toHaveLength(6);
+  });
+
+  it("changes the module CTA to Continue after the first module page has been seen", () => {
+    mockLearnProgress.value = {
+      foundations: {
+        completedLessonCount: 0,
+        completed: false
+      }
+    };
+
+    renderPath("/learn");
+
+    expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations"]')?.textContent).toContain("Continue");
+    expect(container.textContent).not.toContain("0% Complete");
+  });
+
+  it("shows full completion when a learn module is completed", () => {
+    mockLearnProgress.value = {
+      foundations: {
+        completedLessonCount: 4,
+        completed: true
+      }
+    };
+
+    renderPath("/learn");
+
+    expect(container.textContent).toContain("100% Complete");
+    expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations"]')?.textContent).toContain("Review");
+  });
+
   it("unlocks learn cards at their configured levels and reveals Master + at level 25", () => {
     const expectations = [
       { level: 5, links: ["/learn/foundations", "/learn/beginner", "/learn/intermediate"], hiddenVisible: false },
@@ -140,6 +191,25 @@ describe("Learn screens", () => {
     ])).toEqual(expectedPalettes);
   });
 
+  it("applies each module accent color to the lesson progress indicator", () => {
+    mockUserLevel.value = 25;
+
+    const expectedAccents = [
+      ["/learn/foundations", "#FFE0B2"],
+      ["/learn/beginner", "#B8DEFF"],
+      ["/learn/intermediate", "#B8E6CC"],
+      ["/learn/advanced", "#FFCDB0"],
+      ["/learn/master", "#D6C2FF"],
+      ["/learn/hidden", "#D8B4FF"]
+    ];
+
+    expectedAccents.forEach(([path, accentDark]) => {
+      renderPath(path);
+
+      expect(container.querySelector<HTMLElement>(".learn-deck__surface")?.style.getPropertyValue("--learn-card-accent-dark")).toBe(accentDark);
+    });
+  });
+
   it("redirects direct lesson routes when the module is locked or hidden", () => {
     mockUserLevel.value = 1;
     renderPath("/learn/intermediate");
@@ -166,6 +236,19 @@ describe("Learn screens", () => {
     renderPath("/learn/foundations");
 
     expect(container.textContent).toContain("What is pH?");
+    expect(setUserState).toHaveBeenCalledWith({
+      level: 1,
+      learnProgress: {
+        foundations: {
+          completedLessonCount: 0,
+          completed: false
+        }
+      }
+    });
+    expect(container.querySelector(".learn-deck__header")?.textContent).not.toContain("Master the basics");
+    expect(container.textContent).toContain("All modules");
+    expect(container.textContent).not.toContain("Back to modules");
+    expect(Array.from(container.querySelectorAll("button")).some(button => button.textContent === "Back")).toBe(false);
 
     const nextButton = Array.from(container.querySelectorAll("button")).find(button => button.textContent?.includes("Next"));
     act(() => {
@@ -173,6 +256,16 @@ describe("Learn screens", () => {
     });
 
     expect(container.textContent).toContain("CO2 and HCO3 are the two levers");
+    expect(setUserState).toHaveBeenCalledWith({
+      level: 1,
+      learnProgress: {
+        foundations: {
+          completedLessonCount: 1,
+          completed: false
+        }
+      }
+    });
+    expect(Array.from(container.querySelectorAll("button")).some(button => button.textContent === "Back")).toBe(true);
 
     const dots = Array.from(container.querySelectorAll("[data-state]"));
     expect(dots).toHaveLength(4);

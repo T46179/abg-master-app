@@ -337,7 +337,8 @@ export function mapDefaultUserState(
         ? [...source.badges]
         : [],
     recentResults: [],
-    appliedProtectedCaseTokens: []
+    appliedProtectedCaseTokens: [],
+    learnProgress: {}
   }, input.progressionConfig);
 }
 
@@ -370,7 +371,8 @@ export function createEmptyUserState(): UserState {
     isPremium: false,
     badges: [],
     recentResults: [],
-    appliedProtectedCaseTokens: []
+    appliedProtectedCaseTokens: [],
+    learnProgress: {}
   };
 }
 

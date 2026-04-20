@@ -3746,7 +3746,7 @@ button:disabled {
   align-items: flex-start;
   gap: 0;
   min-height: 15rem;
-  padding: 1.45rem 1.5rem 1.35rem;
+  padding: 1.85rem 1.5rem 1.35rem;
   border: 0;
   position: relative;
   overflow: hidden;
@@ -3936,6 +3936,8 @@ button:disabled {
 .learn-deck__surface {
   display: grid;
   gap: 1.4rem;
+  border: 0;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.06), 0 12px 26px rgba(15, 23, 42, 0.1);
 }
 
 .learn-deck__header {
@@ -3953,7 +3955,7 @@ button:disabled {
 .learn-deck__eyebrow {
   display: inline-flex;
   font-size: 0.76rem;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-text-muted);
@@ -3977,12 +3979,12 @@ button:disabled {
 
 .learn-progress-dots__dot.is-current {
   width: var(--learn-dot-long);
-  background: #2563eb;
+  background: var(--learn-card-accent-dark);
 }
 
 .learn-progress-dots__dot.is-complete {
   width: var(--learn-dot-short);
-  background: #93c5fd;
+  background: var(--learn-card-accent-dark);
 }
 
 .learn-progress-dots__dot.is-upcoming {
@@ -4010,6 +4012,10 @@ button:disabled {
 
 .learn-deck__footer.is-compact {
   justify-content: space-between;
+}
+
+.learn-deck__footer .figma-button:last-child {
+  margin-left: auto;
 }
 
 .learn-deck__footer-hint {

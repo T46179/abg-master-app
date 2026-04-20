@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
@@ -10,7 +11,7 @@ import { Surface } from "../primitives/Surface";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
 
 export function LearnLessonScreen() {
-  const { state } = useAppContext();
+  const { state, setUserState } = useAppContext();
   const navigate = useNavigate();
   const { difficulty } = useParams<{ difficulty: string }>();
   const level = getLearnLevel(difficulty);
@@ -21,6 +22,23 @@ export function LearnLessonScreen() {
     setLessonIndex(0);
     setSpeedCheckPhase("ready");
   }, [difficulty]);
+
+  useEffect(() => {
+    if (state.status !== "ready" || !level) return;
+    if (!shouldShowLearnLevel(level, state.userState.level) || !isLearnLevelUnlocked(level, state.userState.level)) return;
+    if (state.userState.learnProgress?.[level.slug]) return;
+
+    void setUserState({
+      ...state.userState,
+      learnProgress: {
+        ...state.userState.learnProgress,
+        [level.slug]: {
+          completedLessonCount: 0,
+          completed: false
+        }
+      }
+    });
+  }, [level, setUserState, state.status, state.userState]);
 
   if (state.status === "loading" || state.status === "idle") return <LoadingView />;
   if (state.status === "error") return <ErrorView message={state.errorMessage} />;
@@ -33,8 +51,34 @@ export function LearnLessonScreen() {
   const isLastLesson = lessonIndex === level.lessons.length - 1;
   const isSpeedCheck = lesson.kind === "speed-check";
   const disableBack = isSpeedCheck && speedCheckPhase === "playing";
+  const lessonStyle = {
+    "--learn-card-accent-dark": level.palette.accentDark
+  } as CSSProperties;
 
   function handleNextLesson() {
+    const completedLessonCount = lessonIndex + 1;
+    const currentProgress = state.userState.learnProgress?.[level.slug];
+    const nextCompleted = isLastLesson || Boolean(currentProgress?.completed);
+    const nextCompletedLessonCount = nextCompleted
+      ? level.lessons.length
+      : Math.max(currentProgress?.completedLessonCount ?? 0, completedLessonCount);
+
+    if (
+      currentProgress?.completed !== nextCompleted ||
+      currentProgress?.completedLessonCount !== nextCompletedLessonCount
+    ) {
+      void setUserState({
+        ...state.userState,
+        learnProgress: {
+          ...state.userState.learnProgress,
+          [level.slug]: {
+            completedLessonCount: nextCompletedLessonCount,
+            completed: nextCompleted
+          }
+        }
+      });
+    }
+
     if (isLastLesson) {
       navigate("/learn");
       return;
@@ -62,7 +106,7 @@ export function LearnLessonScreen() {
           </Link>
         </div>
 
-        <Surface className="learn-deck__surface">
+        <Surface className="learn-deck__surface" style={lessonStyle}>
           <header className="learn-deck__header">
             <div className="learn-deck__header-top">
               <span className="learn-deck__eyebrow">{level.title}</span>
@@ -81,7 +125,6 @@ export function LearnLessonScreen() {
               </div>
             </div>
             <h1>{lesson.title}</h1>
-            <p>{level.subtitle}</p>
           </header>
 
           <div className="learn-deck__body">
@@ -104,14 +147,16 @@ export function LearnLessonScreen() {
           ) : null}
 
           <footer className={cn("learn-deck__footer", isSpeedCheck && "is-compact")}>
-            <button
-              className="figma-button figma-button--secondary"
-              type="button"
-              onClick={handlePreviousLesson}
-              disabled={disableBack}
-            >
-              {lessonIndex === 0 ? "Back to modules" : "Back"}
-            </button>
+            {lessonIndex > 0 ? (
+              <button
+                className="figma-button figma-button--secondary"
+                type="button"
+                onClick={handlePreviousLesson}
+                disabled={disableBack}
+              >
+                Back
+              </button>
+            ) : null}
 
             {!isSpeedCheck ? (
               <button className="figma-button" type="button" onClick={handleNextLesson}>

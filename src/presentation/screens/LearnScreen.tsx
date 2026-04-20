@@ -5,8 +5,21 @@ import { useAppContext } from "../../app/AppProvider";
 import { getVisibleLearnLevels, isLearnLevelUnlocked } from "../learn/content";
 import { Surface } from "../primitives/Surface";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
+import type { LearnModuleProgress } from "../../core/types";
 
-const LEARN_CARD_PROGRESS: number = 0;
+function getLearnModuleProgressPercent(progress: LearnModuleProgress | undefined, lessonCount: number): number {
+  if (!progress || lessonCount <= 0) return 0;
+  if (progress.completed) return 100;
+
+  const completedLessonCount = Math.min(lessonCount, Math.max(0, progress.completedLessonCount));
+  return Math.min(99, Math.round((completedLessonCount / lessonCount) * 100));
+}
+
+function getLearnModuleCtaLabel(progress: LearnModuleProgress | undefined): string {
+  if (progress?.completed) return "Review";
+  if (progress) return "Continue";
+  return "Start Learning";
+}
 
 export function LearnScreen() {
   const { state } = useAppContext();
@@ -21,7 +34,10 @@ export function LearnScreen() {
         <div className="learn-overview__grid">
           {visibleLearnLevels.map(level => {
             const lessonCountLabel = `${level.lessons.length} module${level.lessons.length === 1 ? "" : "s"}`;
-            const hasStartedModule = LEARN_CARD_PROGRESS > 0;
+            const moduleProgress = state.userState.learnProgress?.[level.slug];
+            const progressPercent = getLearnModuleProgressPercent(moduleProgress, level.lessons.length);
+            const hasStartedModule = progressPercent > 0;
+            const ctaLabel = getLearnModuleCtaLabel(moduleProgress);
             const isUnlocked = isLearnLevelUnlocked(level, state.userState.level);
             const cardStyle = {
               "--learn-card-bg-start": level.palette.backgroundStart,
@@ -51,7 +67,7 @@ export function LearnScreen() {
                   {hasStartedModule ? (
                     <span className="learn-level-card__pill">
                       <TrendingUp />
-                      {LEARN_CARD_PROGRESS}% Complete
+                      {progressPercent}% Complete
                     </span>
                   ) : null}
                 </div>
@@ -59,7 +75,7 @@ export function LearnScreen() {
                 <div className="learn-level-card__footer">
                   {isUnlocked ? (
                     <Link className="figma-button learn-level-card__cta" to={`/learn/${level.slug}`}>
-                      Start Learning
+                      {ctaLabel}
                       <ArrowRight />
                     </Link>
                   ) : (
