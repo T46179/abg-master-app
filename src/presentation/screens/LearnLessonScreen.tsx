@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
+import { getAwardableXp, getLevelProgress, syncUserStateDerivedFields } from "../../core/progression";
 import { getLearnLevel, isLearnLevelUnlocked, shouldShowLearnLevel } from "../learn/content";
 import type { SpeedCheckPhase } from "../learn/SpeedCheckGame";
 import { SpeedCheckGame } from "../learn/SpeedCheckGame";
@@ -10,18 +11,50 @@ import { cn } from "../utils";
 import { Surface } from "../primitives/Surface";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
 
+function getLearnLessonStorageKey(slug: string) {
+  return `abg-master:learn:${slug}:lesson-index`;
+}
+
+function getLastLearnModuleStorageKey() {
+  return "abg-master:learn:last-module";
+}
+
+function readStoredLessonIndex(slug: string, lessonCount: number) {
+  if (typeof window === "undefined") return 0;
+
+  const rawIndex = window.localStorage.getItem(getLearnLessonStorageKey(slug));
+  const parsedIndex = Number(rawIndex);
+  if (!Number.isInteger(parsedIndex)) return 0;
+
+  return Math.max(0, Math.min(lessonCount - 1, parsedIndex));
+}
+
 export function LearnLessonScreen() {
   const { state, setUserState } = useAppContext();
   const navigate = useNavigate();
   const { difficulty } = useParams<{ difficulty: string }>();
   const level = getLearnLevel(difficulty);
-  const [lessonIndex, setLessonIndex] = useState(0);
+  const [lessonIndex, setLessonIndex] = useState(() => level ? readStoredLessonIndex(level.slug, level.lessons.length) : 0);
   const [speedCheckPhase, setSpeedCheckPhase] = useState<SpeedCheckPhase>("ready");
+  const [speedCheckResetKey, setSpeedCheckResetKey] = useState(0);
 
   useEffect(() => {
-    setLessonIndex(0);
+    if (!level) {
+      setLessonIndex(0);
+      return;
+    }
+
+    setLessonIndex(readStoredLessonIndex(level.slug, level.lessons.length));
     setSpeedCheckPhase("ready");
-  }, [difficulty]);
+    setSpeedCheckResetKey(0);
+  }, [difficulty, level]);
+
+  useEffect(() => {
+    if (!level || typeof window === "undefined") return;
+
+    window.localStorage.setItem(getLastLearnModuleStorageKey(), level.slug);
+    window.localStorage.setItem(getLearnLessonStorageKey(level.slug), String(lessonIndex));
+  }, [lessonIndex, level]);
 
   useEffect(() => {
     if (state.status !== "ready" || !level) return;
@@ -50,8 +83,13 @@ export function LearnLessonScreen() {
   const lesson = level.lessons[lessonIndex];
   const isLastLesson = lessonIndex === level.lessons.length - 1;
   const isSpeedCheck = lesson.kind === "speed-check";
-  const disableBack = isSpeedCheck && speedCheckPhase === "playing";
+  const levelProgress = getLevelProgress(state.payload?.progressionConfig ?? null, state.userState);
+  const moduleProgress = state.userState.learnProgress?.[level.slug];
+  const highestSelectableLessonIndex = moduleProgress?.completed
+    ? level.lessons.length - 1
+    : Math.max(lessonIndex, moduleProgress?.completedLessonCount ?? 0);
   const lessonStyle = {
+    "--learn-card-accent-light": level.palette.accentLight,
     "--learn-card-accent-dark": level.palette.accentDark
   } as CSSProperties;
 
@@ -80,7 +118,7 @@ export function LearnLessonScreen() {
     }
 
     if (isLastLesson) {
-      navigate("/learn");
+      navigate("/learn?all=1");
       return;
     }
 
@@ -88,6 +126,12 @@ export function LearnLessonScreen() {
   }
 
   function handlePreviousLesson() {
+    if (isSpeedCheck && speedCheckPhase !== "ready") {
+      setSpeedCheckResetKey(key => key + 1);
+      setSpeedCheckPhase("ready");
+      return;
+    }
+
     if (lessonIndex === 0) {
       navigate("/learn");
       return;
@@ -96,11 +140,27 @@ export function LearnLessonScreen() {
     setLessonIndex(index => Math.max(0, index - 1));
   }
 
+  function handleSelectLesson(nextLessonIndex: number) {
+    setLessonIndex(nextLessonIndex);
+    setSpeedCheckPhase("ready");
+    setSpeedCheckResetKey(key => key + 1);
+  }
+
+  function handleSpeedCheckXpAwarded(amount: number) {
+    const awardedXp = getAwardableXp(state.payload?.progressionConfig ?? null, state.userState.xp, amount);
+    if (!awardedXp) return;
+
+    void setUserState(syncUserStateDerivedFields({
+      ...state.userState,
+      xp: state.userState.xp + awardedXp
+    }, state.payload?.progressionConfig ?? null));
+  }
+
   return (
     <main className="app-shell__page learn-deck-screen">
       <div className="learn-deck">
         <div className="learn-deck__header-bar">
-          <Link className="learn-deck__back-link" to="/learn">
+          <Link className="learn-deck__back-link" to="/learn?all=1">
             <ArrowLeft />
             <span>All modules</span>
           </Link>
@@ -113,10 +173,28 @@ export function LearnLessonScreen() {
               <div className="learn-progress-dots" aria-label="Lesson progress">
                 {level.lessons.map((item, index) => {
                   const stateName = index === lessonIndex ? "current" : index < lessonIndex ? "complete" : "upcoming";
+                  const canSelectLesson = index <= highestSelectableLessonIndex;
+                  const dotClassName = cn("learn-progress-dots__dot", `is-${stateName}`, canSelectLesson && "is-selectable");
+                  const dotLabel = `Go to lesson ${index + 1} of ${level.lessons.length}: ${item.title}`;
+
+                  if (canSelectLesson) {
+                    return (
+                      <button
+                        key={`${item.title}-${index}`}
+                        className={dotClassName}
+                        type="button"
+                        data-state={stateName}
+                        aria-label={dotLabel}
+                        aria-current={index === lessonIndex ? "step" : undefined}
+                        onClick={() => handleSelectLesson(index)}
+                      />
+                    );
+                  }
+
                   return (
                     <span
                       key={`${item.title}-${index}`}
-                      className={cn("learn-progress-dots__dot", `is-${stateName}`)}
+                      className={dotClassName}
                       data-state={stateName}
                       aria-label={`Lesson ${index + 1} of ${level.lessons.length}`}
                     />
@@ -130,8 +208,15 @@ export function LearnLessonScreen() {
           <div className="learn-deck__body">
             {isSpeedCheck ? (
               <SpeedCheckGame
+                level={state.userState.level}
                 onComplete={handleNextLesson}
                 onPhaseChange={setSpeedCheckPhase}
+                onXpAwarded={handleSpeedCheckXpAwarded}
+                xpForNextLevel={levelProgress.xpForNextLevel}
+                xpIntoLevel={levelProgress.xpIntoLevel}
+                xpProgressLabel={`${levelProgress.xpIntoLevel} / ${levelProgress.xpForNextLevel || levelProgress.xpIntoLevel} XP`}
+                xpProgressValue={levelProgress.progressPercent}
+                resetKey={speedCheckResetKey}
               />
             ) : (
               lesson.content
@@ -152,7 +237,6 @@ export function LearnLessonScreen() {
                 className="figma-button figma-button--secondary"
                 type="button"
                 onClick={handlePreviousLesson}
-                disabled={disableBack}
               >
                 Back
               </button>
@@ -162,11 +246,7 @@ export function LearnLessonScreen() {
               <button className="figma-button" type="button" onClick={handleNextLesson}>
                 {isLastLesson ? "Finish lesson" : "Next"}
               </button>
-            ) : (
-              <span className="learn-deck__footer-hint">
-                Finish the speed check to continue.
-              </span>
-            )}
+            ) : null}
           </footer>
         </Surface>
       </div>

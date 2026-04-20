@@ -1,5 +1,6 @@
-import type { CSSProperties, ReactNode } from "react";
-import { Lightbulb } from "lucide-react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { Check, Lightbulb, Star } from "lucide-react";
+import { useAppContext } from "../../app/AppProvider";
 import kidneysImage from "../../assets/kidneys.webp";
 import lungsImage from "../../assets/lungs.webp";
 
@@ -59,9 +60,9 @@ function BulletList(props: { items: string[] }) {
   );
 }
 
-function CompletionCard(props: { title: string; body: string; items: string[] }) {
+function CompletionCard(props: { title: string; body: string; items: string[]; className?: string }) {
   return (
-    <div className="learn-completion">
+    <div className={`learn-completion${props.className ? ` ${props.className}` : ""}`}>
       <div className="learn-completion__hero">
         <div className="learn-completion__badge">Complete</div>
         <h3>{props.title}</h3>
@@ -70,6 +71,51 @@ function CompletionCard(props: { title: string; body: string; items: string[] })
       <Panel title="What you can do now">
         <BulletList items={props.items} />
       </Panel>
+    </div>
+  );
+}
+
+function FoundationsCompletionCard() {
+  const { state } = useAppContext();
+  const items = [
+    "Spot whether a value pattern should push pH up or down",
+    "Separate respiratory from metabolic variables",
+    "Move into beginner pattern recognition"
+  ];
+  const completedModuleCount = learnLevels.filter(level => state.userState.learnProgress?.[level.slug]?.completed).length;
+  const masteryProgress = Math.round((completedModuleCount / learnLevels.length) * 100);
+
+  return (
+    <div className="learn-completion learn-completion--foundations">
+      <div className="learn-completion__hero">
+        <p>You have the basic mental model for acid, base, lungs, kidneys, and pH direction.</p>
+      </div>
+
+      <section className="learn-foundations-achievement">
+        <div className="learn-foundations-achievement__title">
+          <span aria-hidden="true"><Star /></span>
+          <h3>What you can do now</h3>
+        </div>
+
+        <ul className="learn-foundations-achievement__list">
+          {items.map(item => (
+            <li key={item}>
+              <span aria-hidden="true"><Check /></span>
+              {item}
+            </li>
+          ))}
+        </ul>
+
+        <div className="learn-foundations-achievement__footer">
+          <div>
+            <span>Mastery Level</span>
+            <strong>Foundation Tier</strong>
+          </div>
+          <div className="learn-foundations-achievement__track" aria-hidden="true">
+            <span style={{ width: `${masteryProgress}%` }} />
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -140,6 +186,75 @@ function PHScaleVisualiser() {
   );
 }
 
+function TwoLeversLesson() {
+  const [imagesReady, setImagesReady] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const sources = [lungsImage, kidneysImage];
+
+    Promise.all(
+      sources.map(
+        src =>
+          new Promise<void>(resolve => {
+            const image = new Image();
+            image.onload = () => resolve();
+            image.onerror = () => resolve();
+            image.src = src;
+          })
+      )
+    ).then(() => {
+      if (isMounted) {
+        setImagesReady(true);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return (
+    <div className={`learn-content-stack learn-content-stack--borderless-panels learn-two-levers${imagesReady ? " is-ready" : ""}`}>
+      <p className="learn-card-intro">
+        pH is controlled by two systems: the lungs (CO₂) and the kidneys (HCO₃⁻), working together to maintain acid-base balance
+      </p>
+
+      <div className="learn-two-levers-images" aria-hidden="true">
+        <div className="learn-two-levers-image-card">
+          <img src={lungsImage} alt="" />
+        </div>
+        <div className="learn-two-levers-image-card">
+          <img src={kidneysImage} alt="" />
+        </div>
+      </div>
+
+      <div className="learn-content-grid learn-content-grid--two">
+        <Panel title="CO₂" tone="red">
+          <BulletList
+            items={[
+              "Produced by metabolism and removed by ventilation",
+              "Changes rapidly (minutes)",
+              "Not an acid itself, but acts as one in the body",
+              "Transported in the blood mainly as bicarbonate"
+            ]}
+          />
+        </Panel>
+        <Panel title="HCO₃⁻" tone="blue">
+          <BulletList
+            items={[
+              "Regulated by the kidneys",
+              "Changes slowly (hours – days)",
+              "Main buffer in the blood",
+              "Consumed when buffering excess acid"
+            ]}
+          />
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
 const foundationsLessons: LearnLesson[] = [
   {
     kind: "content",
@@ -149,45 +264,7 @@ const foundationsLessons: LearnLesson[] = [
   {
     kind: "content",
     title: "The two levers",
-    content: (
-      <div className="learn-content-stack learn-content-stack--borderless-panels">
-        <p className="learn-card-intro">
-		  pH is controlled by two systems: the lungs (CO₂) and the kidneys (HCO₃⁻), working together to maintain acid-base balance
-        </p>
-
-        <div className="learn-two-levers-images" aria-hidden="true">
-          <div className="learn-two-levers-image-card">
-            <img src={lungsImage} alt="" />
-          </div>
-          <div className="learn-two-levers-image-card">
-            <img src={kidneysImage} alt="" />
-          </div>
-        </div>
-
-        <div className="learn-content-grid learn-content-grid--two">
-          <Panel title="CO₂" tone="red">
-            <BulletList
-              items={[
-                "Produced by metabolism and removed by ventilation",
-                "Changes rapidly (minutes)",
-                "Not an acid itself, but acts as one in the body",
-                "Transported in the blood mainly as bicarbonate"
-              ]}
-            />
-          </Panel>
-          <Panel title="HCO₃⁻" tone="blue">
-            <BulletList
-              items={[
-                "Regulated by the kidneys",
-                "Changes slowly (hours – days)",
-                "Main buffer in the blood",
-                "Consumed when buffering excess acid"
-              ]}
-            />
-          </Panel>
-        </div>
-      </div>
-    )
+    content: <TwoLeversLesson />
   },
   {
     kind: "content",
@@ -195,38 +272,74 @@ const foundationsLessons: LearnLesson[] = [
     content: (
       <div className="learn-content-stack">
         <p className="learn-card-intro">
-          Understanding how CO₂ and HCO₃⁻ affect pH is the foundation of ABG interpretation.
+          Understanding how CO₂ and HCO₃⁻ affect pH is the foundation of blood gas interpretation
         </p>
 
         <div className="learn-direction-list">
           <div className="learn-direction-row is-red">
-            <span>CO2 up</span>
-            <span className="learn-direction-row__arrow">-&gt;</span>
-            <span>pH down</span>
+            <span className="learn-direction-row__system">Respiratory</span>
+            <div className="learn-direction-row__pair">
+              <span className="learn-direction-row__metric">
+                <strong>CO<sub>2</sub></strong>
+                <span className="learn-direction-row__arrow-glyph is-up">↑</span>
+              </span>
+              <span className="learn-direction-row__divider" />
+              <span className="learn-direction-row__metric">
+                <strong>pH</strong>
+                <span className="learn-direction-row__arrow-glyph is-down">↓</span>
+              </span>
+            </div>
           </div>
           <div className="learn-direction-row is-blue">
-            <span>CO2 down</span>
-            <span className="learn-direction-row__arrow">-&gt;</span>
-            <span>pH up</span>
+            <span className="learn-direction-row__system">Respiratory</span>
+            <div className="learn-direction-row__pair">
+              <span className="learn-direction-row__metric">
+                <strong>CO<sub>2</sub></strong>
+                <span className="learn-direction-row__arrow-glyph is-down">↓</span>
+              </span>
+              <span className="learn-direction-row__divider" />
+              <span className="learn-direction-row__metric">
+                <strong>pH</strong>
+                <span className="learn-direction-row__arrow-glyph is-up">↑</span>
+              </span>
+            </div>
           </div>
           <div className="learn-direction-row is-blue">
-            <span>HCO3 up</span>
-            <span className="learn-direction-row__arrow">-&gt;</span>
-            <span>pH up</span>
+            <span className="learn-direction-row__system">Metabolic</span>
+            <div className="learn-direction-row__pair">
+              <span className="learn-direction-row__metric">
+                <strong>HCO<sub>3</sub><sup>-</sup></strong>
+                <span className="learn-direction-row__arrow-glyph is-up">↑</span>
+              </span>
+              <span className="learn-direction-row__divider" />
+              <span className="learn-direction-row__metric">
+                <strong>pH</strong>
+                <span className="learn-direction-row__arrow-glyph is-up">↑</span>
+              </span>
+            </div>
           </div>
           <div className="learn-direction-row is-red">
-            <span>HCO3 down</span>
-            <span className="learn-direction-row__arrow">-&gt;</span>
-            <span>pH down</span>
+            <span className="learn-direction-row__system">Metabolic</span>
+            <div className="learn-direction-row__pair">
+              <span className="learn-direction-row__metric">
+                <strong>HCO<sub>3</sub><sup>-</sup></strong>
+                <span className="learn-direction-row__arrow-glyph is-down">↓</span>
+              </span>
+              <span className="learn-direction-row__divider" />
+              <span className="learn-direction-row__metric">
+                <strong>pH</strong>
+                <span className="learn-direction-row__arrow-glyph is-down">↓</span>
+              </span>
+            </div>
           </div>
         </div>
 
-        <Panel title="Memory shortcut">
+        <div className="learn-key-message">
+          <Lightbulb aria-hidden="true" />
           <p>
-            CO2 moves opposite to pH. HCO3 moves with pH. If you can spot direction fast,
-            the rest of interpretation becomes easier.
+            CO₂ moves <strong>opposite</strong> to pH. HCO₃⁻ moves in the <strong>same direction</strong> as pH
           </p>
-        </Panel>
+        </div>
       </div>
     )
   },
@@ -236,20 +349,8 @@ const foundationsLessons: LearnLesson[] = [
   },
   {
     kind: "content",
-    title: "Ready to practice?",
-    content: (
-      <CompletionCard
-        title="Foundations complete"
-        body="You have the basic mental model for acid, base, lungs, kidneys, and pH direction."
-        items={[
-          "Spot whether a value pattern should push pH up or down",
-          "Separate respiratory from metabolic variables",
-          "Move into beginner pattern recognition"
-        ]}
-      />
-    ),
-    ctaLabel: "Try a beginner case",
-    ctaHref: "/practice?difficulty=beginner"
+    title: "Completed!",
+    content: <FoundationsCompletionCard />
   }
 ];
 

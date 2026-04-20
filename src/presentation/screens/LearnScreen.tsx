@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { ArrowRight, BookOpen, Lock, TrendingUp } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import { getVisibleLearnLevels, isLearnLevelUnlocked } from "../learn/content";
 import { Surface } from "../primitives/Surface";
@@ -21,19 +21,33 @@ function getLearnModuleCtaLabel(progress: LearnModuleProgress | undefined): stri
   return "Start Learning";
 }
 
+function readLastLearnModuleSlug() {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem("abg-master:learn:last-module");
+}
+
 export function LearnScreen() {
   const { state } = useAppContext();
+  const [searchParams] = useSearchParams();
   if (state.status === "loading" || state.status === "idle") return <LoadingView />;
   if (state.status === "error") return <ErrorView message={state.errorMessage} />;
 
   const visibleLearnLevels = getVisibleLearnLevels(state.userState.level);
+  const lastLearnModuleSlug = searchParams.get("all") === "1" ? null : readLastLearnModuleSlug();
+  const lastLearnModule = visibleLearnLevels.find(level =>
+    level.slug === lastLearnModuleSlug && isLearnLevelUnlocked(level, state.userState.level)
+  );
+
+  if (lastLearnModule) {
+    return <Navigate to={`/learn/${lastLearnModule.slug}`} replace />;
+  }
 
   return (
     <main className="app-shell__page learn-overview">
       <div className="learn-overview__container">
         <div className="learn-overview__grid">
           {visibleLearnLevels.map(level => {
-            const lessonCountLabel = `${level.lessons.length} module${level.lessons.length === 1 ? "" : "s"}`;
+            const lessonCountLabel = `${level.lessons.length} lesson${level.lessons.length === 1 ? "" : "s"}`;
             const moduleProgress = state.userState.learnProgress?.[level.slug];
             const progressPercent = getLearnModuleProgressPercent(moduleProgress, level.lessons.length);
             const hasStartedModule = progressPercent > 0;
