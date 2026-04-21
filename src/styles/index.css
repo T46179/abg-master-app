@@ -2594,6 +2594,11 @@ button:disabled {
 .landing-button__icon {
   width: 1.25rem;
   height: 1.25rem;
+  transition: transform 160ms ease;
+}
+
+.landing-hero__primary:hover .landing-button__icon {
+  transform: translateX(0.18rem);
 }
 
 .landing-hero__stats {
@@ -2791,7 +2796,7 @@ button:disabled {
   width: 3rem;
   height: 3rem;
   border-radius: 0.625rem;
-  background: rgba(15, 37, 71, 0.1);
+  background: transparent;
 }
 
 .landing-feature-card__icon img {
