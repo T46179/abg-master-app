@@ -182,32 +182,58 @@ button:disabled {
 
 .main-nav__link,
 .main-nav__mobile-link {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.595rem 0.765rem;
-  border-radius: 999px;
+  border-radius: 0;
   color: var(--color-text-soft);
-  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+  transition: color 160ms ease;
 }
 
 .main-nav__link:hover,
 .main-nav__mobile-link:hover {
-  background: var(--color-surface-muted);
   color: var(--color-text);
 }
 
 .main-nav__link.is-active,
 .main-nav__mobile-link.is-active {
-  background: #0f2547;
-  color: var(--color-primary-foreground);
-  box-shadow: var(--shadow-soft);
+  color: #0f2547;
+  font-weight: 700;
 }
 
 .main-nav__link.is-disabled,
 .main-nav__mobile-link.is-disabled {
   color: var(--color-text-faint);
   background: transparent;
+}
+
+.main-nav__active-indicator {
+  position: absolute;
+  left: 0;
+  bottom: 0.18rem;
+  height: 3px;
+  border-radius: 999px;
+  background: #0f2547;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 260ms ease, width 260ms ease, opacity 160ms ease;
+}
+
+.main-nav__active-indicator.is-ready {
+  opacity: 1;
+}
+
+.main-nav__mobile-link.is-active::after {
+  position: absolute;
+  left: 0.765rem;
+  right: 0.765rem;
+  bottom: 0.18rem;
+  height: 3px;
+  border-radius: 999px;
+  background: #0f2547;
+  content: "";
 }
 
 .main-nav__link-icon {
@@ -2197,6 +2223,7 @@ button:disabled {
   }
 
   .main-nav__desktop {
+    position: relative;
     display: flex;
     justify-self: center;
     justify-content: center;
@@ -3895,7 +3922,7 @@ button:disabled {
   padding: 0.5rem 0.85rem;
   border: 0;
   border-radius: 999px;
-  background: var(--learn-card-accent-light);
+  background: var(--learn-card-accent-dark);
   color: #ffffff;
   font-size: 0.86rem;
   font-weight: 600;
@@ -3912,6 +3939,13 @@ button:disabled {
   width: 0.92rem;
   height: 0.92rem;
   transition: transform 180ms ease;
+}
+
+.learn-level-card__cta-icon {
+  width: 0.92rem;
+  height: 0.92rem;
+  flex: 0 0 auto;
+  filter: brightness(0) invert(1);
 }
 
 .learn-level-card__cta:hover:not(:disabled) svg {
@@ -4262,6 +4296,13 @@ button.learn-progress-dots__dot:focus-visible {
   font-size: 1rem;
 }
 
+.learn-section-heading {
+  margin: 0 0 0.8rem;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
 .learn-panel.is-red {
   background: #fef2f2;
   border-color: rgba(220, 38, 38, 0.12);
@@ -4366,6 +4407,13 @@ button.learn-progress-dots__dot:focus-visible {
   border-radius: 14px;
   background: transparent;
   box-shadow: none;
+}
+
+.ph-scale-visualiser:has(.ph-scale-visualiser__key-idea) {
+  display: flex;
+  flex-direction: column;
+  min-height: 22rem;
+  padding-bottom: 0;
 }
 
 .ph-scale-visualiser__chart {
@@ -4502,15 +4550,21 @@ button.learn-progress-dots__dot:focus-visible {
 .ph-scale-visualiser__notes {
   display: grid;
   gap: 0.9rem;
-  margin-top: 4rem;
+  margin-top: 0;
+  margin-bottom: 2.4rem;
   padding-left: 1.25rem;
   color: var(--color-text-soft);
   font-size: 0.95rem;
+  font-weight: 350;
   line-height: 1.5;
 }
 
 .ph-scale-visualiser__notes li::marker {
   color: #5f7897;
+}
+
+.ph-scale-visualiser__heading {
+  margin-top: 4rem;
 }
 
 .ph-scale-visualiser__key-idea p,
@@ -4811,8 +4865,26 @@ button.learn-progress-dots__dot:focus-visible {
 }
 
 .learn-completion--foundations .learn-completion__hero {
+  position: relative;
+  display: grid;
+  gap: 1rem;
+  overflow: hidden;
+  padding: 0;
   border: 0;
-  background: #ffffff;
+  background: transparent;
+}
+
+.ph-scale-visualiser:has(.ph-scale-visualiser__key-idea) .ph-scale-visualiser__key-idea {
+  margin-top: auto;
+}
+
+.learn-completion--foundations .learn-completion__hero::after {
+  content: none;
+}
+
+.learn-completion--foundations .learn-completion__hero > * {
+  position: relative;
+  z-index: 1;
 }
 
 .learn-completion--foundations .learn-completion__badge {
@@ -4835,22 +4907,9 @@ button.learn-progress-dots__dot:focus-visible {
   box-shadow: 0 0.55rem 1.4rem rgba(92, 59, 0, 0.08);
 }
 
-.learn-foundations-achievement::after {
-  content: "";
-  position: absolute;
-  top: -4.5rem;
-  right: -4.5rem;
-  width: 10rem;
-  height: 10rem;
-  border-radius: 999px;
-  background: rgba(255, 224, 178, 0.34);
-  pointer-events: none;
-}
-
 .learn-foundations-achievement__title {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
   color: #2f3133;
 }
 
@@ -4893,10 +4952,7 @@ button.learn-progress-dots__dot:focus-visible {
 }
 
 .learn-foundations-achievement__list li {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: start;
-  gap: 0.8rem;
+  display: list-item;
 }
 
 .learn-foundations-achievement__list span {

@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
-import { ArrowRight, BookOpen, Lock, TrendingUp } from "lucide-react";
+import { ArrowRight, BookOpen, TrendingUp } from "lucide-react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
+import lockIcon from "../../assets/icons/lock.svg";
 import { getVisibleLearnLevels, isLearnLevelUnlocked } from "../learn/content";
 import { Surface } from "../primitives/Surface";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
@@ -95,7 +96,7 @@ export function LearnScreen() {
                   ) : (
                     <button className="figma-button learn-level-card__cta" type="button" disabled>
                       Unlocks at Level {level.unlockLevel}
-                      <Lock />
+                      <img className="learn-level-card__cta-icon" src={lockIcon} alt="" aria-hidden="true" />
                     </button>
                   )}
                 </div>

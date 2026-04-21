@@ -1,5 +1,6 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import { Bell, Menu, X } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "../utils";
 
 interface MainNavProps {
@@ -20,11 +21,44 @@ interface NavItem {
 }
 
 export function MainNav(props: MainNavProps) {
+  const location = useLocation();
+  const desktopNavRef = useRef<HTMLElement | null>(null);
+  const desktopLinkRefs = useRef<Record<string, HTMLSpanElement | null>>({});
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, ready: false });
   const navItems: NavItem[] = [
     { to: "/dashboard", label: "Dashboard", end: true },
     { to: "/learn", label: "Learn", disabled: !props.learnEnabled },
     { to: "/practice", label: "Practice" }
   ];
+  const activeItem = navItems.find(item => {
+    if (item.disabled) return false;
+    if (item.end) return location.pathname === item.to;
+    return location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+  });
+
+  useLayoutEffect(() => {
+    function updateIndicator() {
+      const nav = desktopNavRef.current;
+      const activeLabel = activeItem ? desktopLinkRefs.current[activeItem.to] : null;
+
+      if (!nav || !activeLabel) {
+        setIndicatorStyle(style => ({ ...style, ready: false }));
+        return;
+      }
+
+      const navRect = nav.getBoundingClientRect();
+      const labelRect = activeLabel.getBoundingClientRect();
+      setIndicatorStyle({
+        left: labelRect.left - navRect.left,
+        width: labelRect.width,
+        ready: true
+      });
+    }
+
+    updateIndicator();
+    window.addEventListener("resize", updateIndicator);
+    return () => window.removeEventListener("resize", updateIndicator);
+  }, [activeItem?.to, props.learnEnabled]);
 
   return (
     <header className={cn("main-nav", props.wideShell && "main-nav--wide-shell")}>
@@ -36,7 +70,7 @@ export function MainNav(props: MainNavProps) {
           </div>
         </NavLink>
 
-        <nav className="main-nav__desktop" aria-label="Primary">
+        <nav className="main-nav__desktop" aria-label="Primary" ref={desktopNavRef}>
           {navItems.map(item => {
             return item.disabled ? (
               <span key={item.to} className="main-nav__link is-disabled" aria-disabled="true">
@@ -49,10 +83,18 @@ export function MainNav(props: MainNavProps) {
                 end={item.end}
                 className={({ isActive }) => cn("main-nav__link", isActive && "is-active")}
               >
-                <span>{item.label}</span>
+                <span ref={node => { desktopLinkRefs.current[item.to] = node; }}>{item.label}</span>
               </NavLink>
             );
           })}
+          <span
+            className={cn("main-nav__active-indicator", indicatorStyle.ready && "is-ready")}
+            aria-hidden="true"
+            style={{
+              transform: `translateX(${indicatorStyle.left}px)`,
+              width: `${indicatorStyle.width}px`
+            }}
+          />
         </nav>
 
         <div className="main-nav__controls">

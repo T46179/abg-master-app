@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { Check, Lightbulb, Star } from "lucide-react";
+import { Lightbulb } from "lucide-react";
 import { useAppContext } from "../../app/AppProvider";
 import kidneysImage from "../../assets/kidneys.webp";
 import lungsImage from "../../assets/lungs.webp";
@@ -89,18 +89,14 @@ function FoundationsCompletionCard() {
     <div className="learn-completion learn-completion--foundations">
       <div className="learn-completion__hero">
         <p>You have the basic mental model for acid, base, lungs, kidneys, and pH direction.</p>
-      </div>
 
-      <section className="learn-foundations-achievement">
         <div className="learn-foundations-achievement__title">
-          <span aria-hidden="true"><Star /></span>
           <h3>What you can do now</h3>
         </div>
 
         <ul className="learn-foundations-achievement__list">
           {items.map(item => (
             <li key={item}>
-              <span aria-hidden="true"><Check /></span>
               {item}
             </li>
           ))}
@@ -115,7 +111,7 @@ function FoundationsCompletionCard() {
             <span style={{ width: `${masteryProgress}%` }} />
           </div>
         </div>
-      </section>
+      </div>
     </div>
   );
 }
@@ -174,6 +170,7 @@ function PHScaleVisualiser(props: { showDetails?: boolean }) {
 
       {props.showDetails !== false ? (
         <>
+          <h3 className="learn-section-heading ph-scale-visualiser__heading">pH</h3>
           <ul className="ph-scale-visualiser__notes">
             <li>pH reflects Hydrogen ion concentration, and is used to describe the acidity or alkalinity of a solution</li>
             <li>The body tightly regulates blood pH so that it stays between 7.35 &ndash; 7.45</li>
@@ -289,7 +286,7 @@ const beginnerLessons: LearnLesson[] = [
       <div className="learn-content-stack learn-content-stack--borderless-panels">
         <PHScaleVisualiser showDetails={false} />
         <div>
-          <h3>What is the pH status?</h3>
+          <h3 className="learn-section-heading">What is the pH status?</h3>
           <BulletList
             items={[
               "a pH < 7.35 indicates that an acidaemia is present",
