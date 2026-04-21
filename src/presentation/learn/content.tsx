@@ -1,5 +1,5 @@
-import { useEffect, useId, useState, type CSSProperties, type ReactNode } from "react";
-import { Check, Info, Lightbulb, Star } from "lucide-react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { Check, Lightbulb, Star } from "lucide-react";
 import { useAppContext } from "../../app/AppProvider";
 import kidneysImage from "../../assets/kidneys.webp";
 import lungsImage from "../../assets/lungs.webp";
@@ -41,31 +41,6 @@ export interface LearnLevelConfig {
     accentDark: string;
   };
   lessons: LearnLesson[];
-}
-
-interface DirectionInfoMarkerProps {
-  ariaLabel: string;
-  body: string;
-}
-
-function DirectionInfoMarker(props: DirectionInfoMarkerProps) {
-  const tooltipId = useId();
-
-  return (
-    <span className="learn-direction-info">
-      <button
-        className="learn-direction-info__trigger"
-        type="button"
-        aria-label={props.ariaLabel}
-        aria-describedby={tooltipId}
-      >
-        <Info strokeWidth={2.15} />
-      </button>
-      <span className="learn-direction-info__tooltip" id={tooltipId} role="tooltip">
-        <span>{props.body}</span>
-      </span>
-    </span>
-  );
 }
 
 function Panel(props: { title?: string; tone?: "default" | "red" | "blue" | "green" | "amber" | "violet"; children: ReactNode }) {
@@ -296,99 +271,6 @@ const foundationsLessons: LearnLesson[] = [
     content: <TwoLeversLesson />
   },
   {
-    kind: "content",
-    title: "Directional thinking",
-    content: (
-      <div className="learn-content-stack learn-content-stack--borderless-panels">
-        <p className="learn-card-intro">
-          Understanding how CO₂ and HCO₃⁻ affect pH is the foundation of blood gas interpretation
-        </p>
-
-        <div className="learn-direction-list">
-          <div className="learn-direction-row is-red">
-            <span className="learn-direction-row__system">Respiratory</span>
-            <DirectionInfoMarker
-              ariaLabel="More information about respiratory CO2 rising and pH falling"
-              body="When CO₂ rises, more carbonic acid is formed in the blood. This releases hydrogen ions, which lowers the pH. It reflects inadequate ventilation or impaired gas exchange."
-            />
-            <div className="learn-direction-row__pair">
-              <span className="learn-direction-row__metric">
-                <strong>CO<sub>2</sub></strong>
-                <span className="learn-direction-row__arrow-glyph is-up">↑</span>
-              </span>
-              <span className="learn-direction-row__divider" />
-              <span className="learn-direction-row__metric">
-                <strong>pH</strong>
-                <span className="learn-direction-row__arrow-glyph is-down">↓</span>
-              </span>
-            </div>
-          </div>
-          <div className="learn-direction-row is-blue">
-            <span className="learn-direction-row__system">Respiratory</span>
-            <DirectionInfoMarker
-              ariaLabel="More information about respiratory CO2 falling and pH rising"
-              body="When CO₂ falls, less carbonic acid is produced. Fewer hydrogen ions are released, so the pH rises. This typically happens when breathing becomes faster or deeper."
-            />
-            <div className="learn-direction-row__pair">
-              <span className="learn-direction-row__metric">
-                <strong>CO<sub>2</sub></strong>
-                <span className="learn-direction-row__arrow-glyph is-down">↓</span>
-              </span>
-              <span className="learn-direction-row__divider" />
-              <span className="learn-direction-row__metric">
-                <strong>pH</strong>
-                <span className="learn-direction-row__arrow-glyph is-up">↑</span>
-              </span>
-            </div>
-          </div>
-          <div className="learn-direction-row is-blue">
-            <span className="learn-direction-row__system">Metabolic</span>
-            <DirectionInfoMarker
-              ariaLabel="More information about metabolic bicarbonate rising and pH rising"
-              body="Higher bicarbonate levels allow more acid to be buffered. With fewer free hydrogen ions, the pH increases. This can occur when the kidneys retain or generate extra bicarbonate."
-            />
-            <div className="learn-direction-row__pair">
-              <span className="learn-direction-row__metric">
-                <strong>HCO<sub>3</sub><sup>-</sup></strong>
-                <span className="learn-direction-row__arrow-glyph is-up">↑</span>
-              </span>
-              <span className="learn-direction-row__divider" />
-              <span className="learn-direction-row__metric">
-                <strong>pH</strong>
-                <span className="learn-direction-row__arrow-glyph is-up">↑</span>
-              </span>
-            </div>
-          </div>
-          <div className="learn-direction-row is-red">
-            <span className="learn-direction-row__system">Metabolic</span>
-            <DirectionInfoMarker
-              ariaLabel="More information about metabolic bicarbonate falling and pH falling"
-              body="Low bicarbonate means less buffering capacity. More hydrogen ions remain unneutralized, lowering the pH. This happens when bicarbonate is lost or consumed by excess acid."
-            />
-            <div className="learn-direction-row__pair">
-              <span className="learn-direction-row__metric">
-                <strong>HCO<sub>3</sub><sup>-</sup></strong>
-                <span className="learn-direction-row__arrow-glyph is-down">↓</span>
-              </span>
-              <span className="learn-direction-row__divider" />
-              <span className="learn-direction-row__metric">
-                <strong>pH</strong>
-                <span className="learn-direction-row__arrow-glyph is-down">↓</span>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="learn-key-message">
-          <Lightbulb aria-hidden="true" />
-          <p>
-            CO₂ moves <strong>opposite</strong> to pH. HCO₃⁻ moves in the <strong>same direction</strong> as pH
-          </p>
-        </div>
-      </div>
-    )
-  },
-  {
     kind: "speed-check",
     title: "Speed check"
   },
@@ -447,13 +329,6 @@ const beginnerLessons: LearnLesson[] = [
             <p>HCO<sub>3</sub><sup>-</sup> high &rarr; kidneys are the problem</p>
             <BulletList items={["kidneys are retaining too much bicarbonate, raising the pH"]} />
           </Panel>
-        </div>
-
-        <div className="learn-key-message">
-          <Lightbulb aria-hidden="true" />
-          <p>
-           Use the ROME mnemonic (Respiratory Opposite, Metabolic Equal) to identify acid–base disturbances: if pH and CO₂ move opposite each other it’s respiratory, and if pH and HCO₃⁻ move together it’s metabolic.
-          </p>
         </div>
       </div>
     )
@@ -556,6 +431,13 @@ const beginnerLessons: LearnLesson[] = [
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="learn-key-message">
+          <Lightbulb aria-hidden="true" />
+          <p>
+            Use the ROME mnemonic (Respiratory Opposite, Metabolic Equal) to identify acid&ndash;base disturbances: if pH and CO<sub>2</sub> move opposite each other it&rsquo;s respiratory, and if pH and HCO<sub>3</sub><sup>-</sup> move together it&rsquo;s metabolic.
+          </p>
         </div>
       </div>
     )
