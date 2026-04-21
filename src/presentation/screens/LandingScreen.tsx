@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { ArrowRight } from "lucide-react";
 import { useAppContext } from "../../app/AppProvider";
 import { Link } from "react-router-dom";
 import { trackEvent, trackPageView } from "../../core/analytics";
@@ -7,6 +8,10 @@ import { LaunchNotifyModal } from "../layout/LaunchNotifyModal";
 import { MainNav } from "../layout/MainNav";
 import { Surface } from "../primitives/Surface";
 import { cn } from "../utils";
+import gradedDifficultyIcon from "../../assets/icons/layer-group.svg";
+import openBookIcon from "../../assets/icons/book-open.svg";
+import comprehensiveReviewIcon from "../../assets/icons/projector-screen.svg";
+import lockIcon from "../../assets/icons/lock.svg";
 import heroCaseDesktop from "../../assets/hero_case_desktop.png";
 import iphoneAniongapMobile from "../../assets/iphone_AG_highres.webp";
 import iphoneCaseMobile from "../../assets/iphone_case_highres.webp";
@@ -16,14 +21,13 @@ const HERO_PREVIEW_IMAGE = {
   width: 561,
   height: 591
 } as const;
-const CTA_ARROW_IMAGE = "https://www.figma.com/api/mcp/asset/c5806267-89aa-4b6b-b3f0-28f806b88644";
 const CURRICULUM_ADVANCED_IMAGE = iphoneAniongapMobile;
 const CURRICULUM_FOUNDATIONS_IMAGE = iphoneCaseMobile;
 const EXPLANATION_CARD_IMAGE = "https://www.figma.com/api/mcp/asset/215f43b5-bb71-4db7-8483-9bedf0fd7b46";
-const FEATURE_GRADED_DIFFICULTY_ICON = "https://www.figma.com/api/mcp/asset/f1d686ba-53a1-4c8e-b15a-0263f021a7d2";
-const FEATURE_PERFORMANCE_ANALYTICS_ICON = "https://www.figma.com/api/mcp/asset/fb8ba411-9625-40ab-82a9-20e567eb8ff7";
-const FEATURE_COMPREHENSIVE_REVIEW_ICON = "https://www.figma.com/api/mcp/asset/6dd632ae-b7d5-473d-9a4e-c28106e78b0e";
-const FEATURE_COMING_SOON_ICON = "https://www.figma.com/api/mcp/asset/45fa6ed2-1871-4a85-a764-9923ee75d71b";
+const FEATURE_GRADED_DIFFICULTY_ICON = gradedDifficultyIcon;
+const FEATURE_PERFORMANCE_ANALYTICS_ICON = openBookIcon;
+const FEATURE_COMPREHENSIVE_REVIEW_ICON = comprehensiveReviewIcon;
+const FEATURE_COMING_SOON_ICON = lockIcon;
 
 const DEFAULT_CASES_SOLVED_COUNT = 0;
 const CASES_SOLVED_METRIC_KEY = "cases_solved";
@@ -419,7 +423,7 @@ export function LandingScreen() {
               <div className="landing-hero__actions">
                 <Link className="figma-button landing-hero__primary" to="/practice">
                   <span>Begin Your First Case</span>
-                  <img className="landing-button__icon" src={CTA_ARROW_IMAGE} alt="" />
+                  <ArrowRight className="landing-button__icon" aria-hidden="true" />
                 </Link>
               </div>
 
@@ -564,6 +568,12 @@ export function LandingScreen() {
 
       <footer className="landing-footer dashboard-footer">
         <p>&copy; 2026 ABG Master. All rights reserved.</p>
+        <p>
+          Icons by Jos Pham, licensed under{" "}
+          <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+            CC BY 4.0
+          </a>
+        </p>
         <p>
           This application is for educational purposes only and should not be used as a substitute for professional
           medical advice, diagnosis, or treatment.
