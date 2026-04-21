@@ -1,5 +1,5 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { Check, Lightbulb, Star } from "lucide-react";
+import { useEffect, useId, useState, type CSSProperties, type ReactNode } from "react";
+import { Check, Info, Lightbulb, Star } from "lucide-react";
 import { useAppContext } from "../../app/AppProvider";
 import kidneysImage from "../../assets/kidneys.webp";
 import lungsImage from "../../assets/lungs.webp";
@@ -43,6 +43,31 @@ export interface LearnLevelConfig {
   lessons: LearnLesson[];
 }
 
+interface DirectionInfoMarkerProps {
+  ariaLabel: string;
+  body: string;
+}
+
+function DirectionInfoMarker(props: DirectionInfoMarkerProps) {
+  const tooltipId = useId();
+
+  return (
+    <span className="learn-direction-info">
+      <button
+        className="learn-direction-info__trigger"
+        type="button"
+        aria-label={props.ariaLabel}
+        aria-describedby={tooltipId}
+      >
+        <Info strokeWidth={2.15} />
+      </button>
+      <span className="learn-direction-info__tooltip" id={tooltipId} role="tooltip">
+        <span>{props.body}</span>
+      </span>
+    </span>
+  );
+}
+
 function Panel(props: { title?: string; tone?: "default" | "red" | "blue" | "green" | "amber" | "violet"; children: ReactNode }) {
   return (
     <article className={`learn-panel${props.tone ? ` is-${props.tone}` : ""}`}>
@@ -52,10 +77,10 @@ function Panel(props: { title?: string; tone?: "default" | "red" | "blue" | "gre
   );
 }
 
-function BulletList(props: { items: string[] }) {
+function BulletList(props: { items: ReactNode[] }) {
   return (
     <ul className="learn-bullet-list">
-      {props.items.map(item => <li key={item}>{item}</li>)}
+      {props.items.map((item, index) => <li key={index}>{item}</li>)}
     </ul>
   );
 }
@@ -120,7 +145,7 @@ function FoundationsCompletionCard() {
   );
 }
 
-function PHScaleVisualiser() {
+function PHScaleVisualiser(props: { showDetails?: boolean }) {
   const ticks = [
     { value: "6.8", position: "0%", align: "start" },
     { value: "7.0", position: "20%" },
@@ -172,16 +197,20 @@ function PHScaleVisualiser() {
         </div>
       </div>
 
-      <ul className="ph-scale-visualiser__notes">
-        <li>pH reflects Hydrogen ion concentration, and is used to describe the acidity or alkalinity of a solution</li>
-        <li>The body tightly regulates blood pH so that it stays between 7.35 &ndash; 7.45</li>
-        <li>The pH scale is logarithmic - even small changes can have large affects on cellular function</li>
-      </ul>
+      {props.showDetails !== false ? (
+        <>
+          <ul className="ph-scale-visualiser__notes">
+            <li>pH reflects Hydrogen ion concentration, and is used to describe the acidity or alkalinity of a solution</li>
+            <li>The body tightly regulates blood pH so that it stays between 7.35 &ndash; 7.45</li>
+            <li>The pH scale is logarithmic - even small changes can have large effects on cellular function</li>
+          </ul>
 
-      <div className="ph-scale-visualiser__key-idea">
-        <Lightbulb aria-hidden="true" />
-        <p>A normal pH may mean no acid-base disturbance, or multiple processes occuring at the same time</p>
-      </div>
+          <div className="ph-scale-visualiser__key-idea">
+            <Lightbulb aria-hidden="true" />
+            <p>A normal pH may mean no acid-base disturbance, or multiple processes occuring at the same time</p>
+          </div>
+        </>
+      ) : null}
     </section>
   );
 }
@@ -235,8 +264,8 @@ function TwoLeversLesson() {
             items={[
               "Produced by metabolism and removed by ventilation",
               "Changes rapidly (minutes)",
-              "Not an acid itself, but acts as one in the body",
-              "Transported in the blood mainly as bicarbonate"
+              "Not an acid itself, but forms carbonic acid in the blood",
+              "Transported in the blood in the form of bicarbonate"
             ]}
           />
         </Panel>
@@ -246,7 +275,7 @@ function TwoLeversLesson() {
               "Regulated by the kidneys",
               "Changes slowly (hours – days)",
               "Main buffer in the blood",
-              "Consumed when buffering excess acid"
+              "Used up when buffering acid and must be replaced"
             ]}
           />
         </Panel>
@@ -270,7 +299,7 @@ const foundationsLessons: LearnLesson[] = [
     kind: "content",
     title: "Directional thinking",
     content: (
-      <div className="learn-content-stack">
+      <div className="learn-content-stack learn-content-stack--borderless-panels">
         <p className="learn-card-intro">
           Understanding how CO₂ and HCO₃⁻ affect pH is the foundation of blood gas interpretation
         </p>
@@ -278,6 +307,10 @@ const foundationsLessons: LearnLesson[] = [
         <div className="learn-direction-list">
           <div className="learn-direction-row is-red">
             <span className="learn-direction-row__system">Respiratory</span>
+            <DirectionInfoMarker
+              ariaLabel="More information about respiratory CO2 rising and pH falling"
+              body="When CO₂ rises, more carbonic acid is formed in the blood. This releases hydrogen ions, which lowers the pH. It reflects inadequate ventilation or impaired gas exchange."
+            />
             <div className="learn-direction-row__pair">
               <span className="learn-direction-row__metric">
                 <strong>CO<sub>2</sub></strong>
@@ -292,6 +325,10 @@ const foundationsLessons: LearnLesson[] = [
           </div>
           <div className="learn-direction-row is-blue">
             <span className="learn-direction-row__system">Respiratory</span>
+            <DirectionInfoMarker
+              ariaLabel="More information about respiratory CO2 falling and pH rising"
+              body="When CO₂ falls, less carbonic acid is produced. Fewer hydrogen ions are released, so the pH rises. This typically happens when breathing becomes faster or deeper."
+            />
             <div className="learn-direction-row__pair">
               <span className="learn-direction-row__metric">
                 <strong>CO<sub>2</sub></strong>
@@ -306,6 +343,10 @@ const foundationsLessons: LearnLesson[] = [
           </div>
           <div className="learn-direction-row is-blue">
             <span className="learn-direction-row__system">Metabolic</span>
+            <DirectionInfoMarker
+              ariaLabel="More information about metabolic bicarbonate rising and pH rising"
+              body="Higher bicarbonate levels allow more acid to be buffered. With fewer free hydrogen ions, the pH increases. This can occur when the kidneys retain or generate extra bicarbonate."
+            />
             <div className="learn-direction-row__pair">
               <span className="learn-direction-row__metric">
                 <strong>HCO<sub>3</sub><sup>-</sup></strong>
@@ -320,6 +361,10 @@ const foundationsLessons: LearnLesson[] = [
           </div>
           <div className="learn-direction-row is-red">
             <span className="learn-direction-row__system">Metabolic</span>
+            <DirectionInfoMarker
+              ariaLabel="More information about metabolic bicarbonate falling and pH falling"
+              body="Low bicarbonate means less buffering capacity. More hydrogen ions remain unneutralized, lowering the pH. This happens when bicarbonate is lost or consumed by excess acid."
+            />
             <div className="learn-direction-row__pair">
               <span className="learn-direction-row__metric">
                 <strong>HCO<sub>3</sub><sup>-</sup></strong>
@@ -359,28 +404,24 @@ const beginnerLessons: LearnLesson[] = [
     kind: "content",
     title: "Step 1: Identify pH",
     content: (
-      <div className="learn-content-stack">
-        <div className="learn-content-grid learn-content-grid--three">
-          <Panel title="pH < 7.35" tone="red">
-            <p className="learn-emphasis">Acidaemia</p>
-            <p>Blood is too acidic.</p>
-          </Panel>
-          <Panel title="7.35 - 7.45" tone="green">
-            <p className="learn-emphasis">Normal</p>
-            <p>The pH is in range.</p>
-          </Panel>
-          <Panel title="pH > 7.45" tone="blue">
-            <p className="learn-emphasis">Alkalaemia</p>
-            <p>Blood is too alkaline.</p>
-          </Panel>
+      <div className="learn-content-stack learn-content-stack--borderless-panels">
+        <PHScaleVisualiser showDetails={false} />
+        <div>
+          <h3>What is the pH status?</h3>
+          <BulletList
+            items={[
+              "a pH < 7.35 indicates that an acidaemia is present",
+              "a pH > 7.45 indicates that an alkalaemia is present",
+              <>a pH between 7.35 and 7.45 indicates either there is no acid-base disturbance <strong>or</strong> multiple processes are occuring at the same time to balance each other out</>
+            ]}
+          />
         </div>
-
-        <Panel title="First question, every time">
+        <div className="learn-key-message">
+          <Lightbulb aria-hidden="true" />
           <p>
-            Before naming a disorder, decide whether the blood is acidemic, normal, or alkalemic.
-            That gives the rest of the interpretation a direction.
+            The body has an enormous buffering capacity. Even small shifts in pH reflect a significant physiological disturbance as most of the acid load is buffered and unseen
           </p>
-        </Panel>
+        </div>
       </div>
     )
   },
@@ -388,52 +429,134 @@ const beginnerLessons: LearnLesson[] = [
     kind: "content",
     title: "Step 2: Identify the primary disorder",
     content: (
-      <div className="learn-content-stack">
-        <div className="learn-content-grid learn-content-grid--two">
-          <Panel title="If pH is low" tone="red">
-            <BulletList
-              items={[
-                "CO2 high -> respiratory acidosis",
-                "HCO3 low -> metabolic acidosis"
-              ]}
-            />
+      <div className="learn-content-stack learn-content-stack--borderless-panels">
+        <p className="learn-card-intro">
+          When pH is abnormal, identify which system is primarily responsible - the lungs (CO<sub>2</sub>) or the Kidneys (HCO<sub>3</sub><sup>-</sup>)
+        </p>
+
+        <div className="learn-content-grid learn-content-grid--two learn-primary-disorder-grid">
+          <Panel title="Acidaemia" tone="red">
+            <p>CO<sub>2</sub> high &rarr; lungs are the problem</p>
+            <BulletList items={[<>lungs are not clearing CO<sub>2</sub> fast enough, lowering the pH</>]} />
+            <p>HCO<sub>3</sub><sup>-</sup> low &rarr; kidneys are the problem</p>
+            <BulletList items={["kidneys are not maintaining bicarbonate, so buffering is lost"]} />
           </Panel>
-          <Panel title="If pH is high" tone="blue">
-            <BulletList
-              items={[
-                "CO2 low -> respiratory alkalosis",
-                "HCO3 high -> metabolic alkalosis"
-              ]}
-            />
+          <Panel title="Alkalaemia" tone="blue">
+            <p>CO<sub>2</sub> low &rarr; lungs are the problem</p>
+            <BulletList items={[<>lungs are clearing too much CO<sub>2</sub>, so pH rises</>]} />
+            <p>HCO<sub>3</sub><sup>-</sup> high &rarr; kidneys are the problem</p>
+            <BulletList items={["kidneys are retaining too much bicarbonate, raising the pH"]} />
           </Panel>
         </div>
 
-        <Panel title="Use the variable that matches the pH direction">
+        <div className="learn-key-message">
+          <Lightbulb aria-hidden="true" />
           <p>
-            The primary disorder is the value that best explains the pH. Ignore compensation for a
-            moment and find the main driver first.
+           Use the ROME mnemonic (Respiratory Opposite, Metabolic Equal) to identify acid–base disturbances: if pH and CO₂ move opposite each other it’s respiratory, and if pH and HCO₃⁻ move together it’s metabolic.
           </p>
-        </Panel>
+        </div>
       </div>
     )
   },
   {
     kind: "content",
-    title: "The four primary disorders",
+    title: "The four pillars",
     content: (
-      <div className="learn-content-grid learn-content-grid--two">
-        <Panel title="Respiratory acidosis" tone="red">
-          <BulletList items={["pH down", "CO2 up", "Think hypoventilation"]} />
-        </Panel>
-        <Panel title="Metabolic acidosis" tone="red">
-          <BulletList items={["pH down", "HCO3 down", "Think DKA, lactate, renal failure"]} />
-        </Panel>
-        <Panel title="Respiratory alkalosis" tone="blue">
-          <BulletList items={["pH up", "CO2 down", "Think hyperventilation"]} />
-        </Panel>
-        <Panel title="Metabolic alkalosis" tone="blue">
-          <BulletList items={["pH up", "HCO3 up", "Think vomiting or diuretics"]} />
-        </Panel>
+      <div className="learn-content-stack learn-content-stack--borderless-panels">
+        <p className="learn-card-intro">
+          Every blood gas reflects one or more of these four primary disorders. Flip the cards below to learn more
+        </p>
+
+        <div className="learn-direction-list learn-four-pillars-list">
+          <div className="learn-direction-flip-card">
+            <div className="learn-direction-flip-card__inner">
+              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--front is-red">
+                <span className="learn-direction-row__system">Respiratory Acidosis</span>
+                <div className="learn-direction-row__pair">
+                  <span className="learn-direction-row__metric">
+                    <strong>CO<sub>2</sub></strong>
+                    <span className="learn-direction-row__arrow-glyph is-up">&uarr;</span>
+                  </span>
+                  <span className="learn-direction-row__divider" />
+                  <span className="learn-direction-row__metric">
+                    <strong>pH</strong>
+                    <span className="learn-direction-row__arrow-glyph is-down">&darr;</span>
+                  </span>
+                </div>
+              </div>
+              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--back is-red">
+                <span className="learn-direction-row__system">Respiratory Acidosis</span>
+                <p>When CO<sub>2</sub> rises, more carbonic acid is formed in the blood. This releases hydrogen ions, which lowers the pH. It reflects inadequate ventilation or impaired gas exchange.</p>
+              </div>
+            </div>
+          </div>
+          <div className="learn-direction-flip-card">
+            <div className="learn-direction-flip-card__inner">
+              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--front is-blue">
+                <span className="learn-direction-row__system">Respiratory Alkalosis</span>
+                <div className="learn-direction-row__pair">
+                  <span className="learn-direction-row__metric">
+                    <strong>CO<sub>2</sub></strong>
+                    <span className="learn-direction-row__arrow-glyph is-down">&darr;</span>
+                  </span>
+                  <span className="learn-direction-row__divider" />
+                  <span className="learn-direction-row__metric">
+                    <strong>pH</strong>
+                    <span className="learn-direction-row__arrow-glyph is-up">&uarr;</span>
+                  </span>
+                </div>
+              </div>
+              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--back is-blue">
+                <span className="learn-direction-row__system">Respiratory Alkalosis</span>
+                <p>When CO<sub>2</sub> falls, less carbonic acid is produced. Fewer hydrogen ions are released, so the pH rises. This typically happens when breathing becomes faster or deeper.</p>
+              </div>
+            </div>
+          </div>
+          <div className="learn-direction-flip-card">
+            <div className="learn-direction-flip-card__inner">
+              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--front is-blue">
+                <span className="learn-direction-row__system">Metabolic Acidosis</span>
+                <div className="learn-direction-row__pair">
+                  <span className="learn-direction-row__metric">
+                    <strong>HCO<sub>3</sub><sup>-</sup></strong>
+                    <span className="learn-direction-row__arrow-glyph is-up">&uarr;</span>
+                  </span>
+                  <span className="learn-direction-row__divider" />
+                  <span className="learn-direction-row__metric">
+                    <strong>pH</strong>
+                    <span className="learn-direction-row__arrow-glyph is-up">&uarr;</span>
+                  </span>
+                </div>
+              </div>
+              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--back is-blue">
+                <span className="learn-direction-row__system">Metabolic Acidosis</span>
+                <p>Higher bicarbonate levels allow more acid to be buffered. With fewer free hydrogen ions, the pH increases. This can occur when the kidneys retain or generate extra bicarbonate.</p>
+              </div>
+            </div>
+          </div>
+          <div className="learn-direction-flip-card">
+            <div className="learn-direction-flip-card__inner">
+              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--front is-red">
+                <span className="learn-direction-row__system">Metabolic Alkalosis</span>
+                <div className="learn-direction-row__pair">
+                  <span className="learn-direction-row__metric">
+                    <strong>HCO<sub>3</sub><sup>-</sup></strong>
+                    <span className="learn-direction-row__arrow-glyph is-down">&darr;</span>
+                  </span>
+                  <span className="learn-direction-row__divider" />
+                  <span className="learn-direction-row__metric">
+                    <strong>pH</strong>
+                    <span className="learn-direction-row__arrow-glyph is-down">&darr;</span>
+                  </span>
+                </div>
+              </div>
+              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--back is-red">
+                <span className="learn-direction-row__system">Metabolic Alkalosis</span>
+                <p>Low bicarbonate means less buffering capacity. More hydrogen ions remain unneutralized, lowering the pH. This happens when bicarbonate is lost or consumed by excess acid.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   },
@@ -441,19 +564,29 @@ const beginnerLessons: LearnLesson[] = [
     kind: "content",
     title: "Clinical recognition",
     content: (
-      <div className="learn-content-grid learn-content-grid--two">
-        <Panel title="Respiratory acidosis" tone="red">
-          <BulletList items={["COPD flare", "Opioids", "Fatigue, confusion, headache"]} />
-        </Panel>
-        <Panel title="Metabolic acidosis" tone="red">
-          <BulletList items={["DKA", "Sepsis", "Deep rapid breathing"]} />
-        </Panel>
-        <Panel title="Respiratory alkalosis" tone="blue">
-          <BulletList items={["Anxiety", "PE", "Pain or pregnancy"]} />
-        </Panel>
-        <Panel title="Metabolic alkalosis" tone="blue">
-          <BulletList items={["Vomiting", "NG losses", "Diuretics or low chloride"]} />
-        </Panel>
+      <div className="learn-content-stack">
+        <p className="learn-card-intro">
+          Each primary disorder has typical clinical patterns and triggers. Recognising these help you connect the blood gas to the patient in front of you
+        </p>
+
+        <div className="learn-direction-list learn-cause-list">
+          <div className="learn-direction-row is-red">
+            <span className="learn-direction-row__system">Respiratory Acidosis</span>
+            <BulletList items={["Drugs (opiates, sedatives, anaesthetics)", "Neuromuscular disoders (myasthenia gravis, toxins)", "Lung defects (trauma, COPD, pulmonary oedema)"]} />
+          </div>
+          <div className="learn-direction-row is-red">
+            <span className="learn-direction-row__system">Metabolic Acidosis</span>
+            <BulletList items={["Ketoacidosis (DKA, alcholic)", "Toxins (ethylene glycol)", "Renal (uraemia, acute renal failure)"]} />
+          </div>
+          <div className="learn-direction-row is-blue">
+            <span className="learn-direction-row__system">Respiratory Alkalosis</span>
+            <BulletList items={["Central causes (head injury, stroke, anxiety)", "Lung (PE, asthma, pulmonary oedema)", "Pain"]} />
+          </div>
+          <div className="learn-direction-row is-blue">
+            <span className="learn-direction-row__system">Metabolic Alkalosis</span>
+            <BulletList items={["Vomiting", "Post-hypercapnia", "Diuretics"]} />
+          </div>
+        </div>
       </div>
     )
   },

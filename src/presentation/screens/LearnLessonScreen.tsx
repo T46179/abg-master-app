@@ -166,7 +166,7 @@ export function LearnLessonScreen() {
           </Link>
         </div>
 
-        <Surface className="learn-deck__surface" style={lessonStyle}>
+        <Surface className={cn("learn-deck__surface", `learn-deck__surface--${level.slug}`)} style={lessonStyle}>
           <header className="learn-deck__header">
             <div className="learn-deck__header-top">
               <span className="learn-deck__eyebrow">{level.title}</span>

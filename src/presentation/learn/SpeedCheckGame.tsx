@@ -245,12 +245,11 @@ export function SpeedCheckGame({
           <div className="speed-check__intro-card">
             <h2>Test your reflexes</h2>
             <p>
-              You will see 10 pH values. Classify each one as Normal, Acidaemia, or Alkalaemia as fast as you can.
+              Select the correct option as fast as you can to score bonus XP. 
             </p>
             <ul className="speed-check__rules">
               <li>Each correct answer earns 3 XP.</li>
               <li>The timer stays live while you play.</li>
-              <li>Normal pH range is 7.35 to 7.45.</li>
             </ul>
             <button className="figma-button speed-check__start" type="button" onClick={handleStart}>
               Start speed check
