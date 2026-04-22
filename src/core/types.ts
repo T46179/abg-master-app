@@ -199,6 +199,11 @@ export interface UserState {
 export interface LearnModuleProgress {
   completedLessonCount: number;
   completed: boolean;
+  bestSpeedCheckResult?: {
+    correctCount: number;
+    totalQuestions: number;
+    elapsedMs: number;
+  };
 }
 
 export interface StepResult {

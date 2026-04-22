@@ -6,6 +6,7 @@ export type SpeedCheckPhase = "ready" | "countdown" | "playing" | "results";
 interface SpeedCheckGameProps {
   onComplete: () => void;
   onPhaseChange?: (phase: SpeedCheckPhase) => void;
+  onResult?: (result: { correctCount: number; totalQuestions: number; elapsedMs: number }) => void;
   onXpAwarded?: (amount: number) => void;
   resetKey?: number;
   level?: number;
@@ -73,6 +74,7 @@ export function SpeedCheckGame({
   level = 1,
   onComplete,
   onPhaseChange,
+  onResult,
   onXpAwarded,
   resetKey = 0,
   xpForNextLevel = 0,
@@ -212,6 +214,11 @@ export function SpeedCheckGame({
 
     window.setTimeout(() => {
       if (currentQuestionIndex >= questions.length - 1) {
+        onResult?.({
+          correctCount: answers.filter(Boolean).length + (isCorrect ? 1 : 0),
+          totalQuestions: questions.length,
+          elapsedMs: Date.now() - startTime
+        });
         setPhase("results");
         setShowFeedback(false);
         return;
@@ -245,11 +252,11 @@ export function SpeedCheckGame({
           <div className="speed-check__intro-card">
             <h2>Test your reflexes</h2>
             <p>
-              Select the correct option as fast as you can to score bonus XP. 
+              Select the correct option as fast as you can to score bonus XP 
             </p>
             <ul className="speed-check__rules">
-              <li>Each correct answer earns 3 XP.</li>
-              <li>The timer stays live while you play.</li>
+              <li>Each correct answer earns XP</li>
+              <li>See how you compare against others</li>
             </ul>
             <button className="figma-button speed-check__start" type="button" onClick={handleStart}>
               Start speed check
@@ -266,7 +273,6 @@ export function SpeedCheckGame({
         <div className="speed-check__results">
           <div className="speed-check__result-hero">
             <h2>Great Work!</h2>
-            <p>Here is how you performed</p>
           </div>
 
           <div className="speed-check__stats">

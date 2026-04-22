@@ -3,6 +3,7 @@ import { ArrowRight, BookOpen, TrendingUp } from "lucide-react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import lockIcon from "../../assets/icons/lock.svg";
+import timerIcon from "../../assets/icons/timer.svg";
 import { getVisibleLearnLevels, isLearnLevelUnlocked } from "../learn/content";
 import { Surface } from "../primitives/Surface";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
@@ -20,6 +21,10 @@ function getLearnModuleCtaLabel(progress: LearnModuleProgress | undefined): stri
   if (progress?.completed) return "Review";
   if (progress) return "Continue";
   return "Start Learning";
+}
+
+function formatSpeedCheckTime(elapsedMs: number): string {
+  return `${Math.max(0, Math.round(elapsedMs / 1000))}s`;
 }
 
 function readLastLearnModuleSlug() {
@@ -52,6 +57,7 @@ export function LearnScreen() {
             const moduleProgress = state.userState.learnProgress?.[level.slug];
             const progressPercent = getLearnModuleProgressPercent(moduleProgress, level.lessons.length);
             const hasStartedModule = progressPercent > 0;
+            const bestSpeedCheckResult = level.slug === "foundations" ? moduleProgress?.bestSpeedCheckResult : undefined;
             const ctaLabel = getLearnModuleCtaLabel(moduleProgress);
             const isUnlocked = isLearnLevelUnlocked(level, state.userState.level);
             const cardStyle = {
@@ -83,6 +89,12 @@ export function LearnScreen() {
                     <span className="learn-level-card__pill">
                       <TrendingUp />
                       {progressPercent}% Complete
+                    </span>
+                  ) : null}
+                  {bestSpeedCheckResult ? (
+                    <span className="learn-level-card__pill learn-level-card__pill--speed-check">
+                      <img src={timerIcon} alt="" aria-hidden="true" />
+                      {formatSpeedCheckTime(bestSpeedCheckResult.elapsedMs)}
                     </span>
                   ) : null}
                 </div>

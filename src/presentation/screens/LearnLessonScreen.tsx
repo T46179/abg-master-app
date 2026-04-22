@@ -11,6 +11,12 @@ import { cn } from "../utils";
 import { Surface } from "../primitives/Surface";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
 
+interface SpeedCheckResult {
+  correctCount: number;
+  totalQuestions: number;
+  elapsedMs: number;
+}
+
 function getLearnLessonStorageKey(slug: string) {
   return `abg-master:learn:${slug}:lesson-index`;
 }
@@ -85,6 +91,10 @@ export function LearnLessonScreen() {
   const isSpeedCheck = lesson.kind === "speed-check";
   const levelProgress = getLevelProgress(state.payload?.progressionConfig ?? null, state.userState);
   const moduleProgress = state.userState.learnProgress?.[level.slug];
+  const canSkipSpeedCheck = isSpeedCheck && Boolean(
+    moduleProgress?.bestSpeedCheckResult ||
+    (moduleProgress?.completedLessonCount ?? 0) > lessonIndex
+  );
   const highestSelectableLessonIndex = moduleProgress?.completed
     ? level.lessons.length - 1
     : Math.max(lessonIndex, moduleProgress?.completedLessonCount ?? 0);
@@ -110,6 +120,7 @@ export function LearnLessonScreen() {
         learnProgress: {
           ...state.userState.learnProgress,
           [level.slug]: {
+            ...currentProgress,
             completedLessonCount: nextCompletedLessonCount,
             completed: nextCompleted
           }
@@ -154,6 +165,30 @@ export function LearnLessonScreen() {
       ...state.userState,
       xp: state.userState.xp + awardedXp
     }, state.payload?.progressionConfig ?? null));
+  }
+
+  function handleSpeedCheckResult(result: SpeedCheckResult) {
+    const currentProgress = state.userState.learnProgress?.[level.slug];
+    const currentBest = currentProgress?.bestSpeedCheckResult;
+    const isBetterResult =
+      !currentBest ||
+      result.correctCount > currentBest.correctCount ||
+      (result.correctCount === currentBest.correctCount && result.elapsedMs < currentBest.elapsedMs);
+
+    if (!isBetterResult) return;
+
+    void setUserState({
+      ...state.userState,
+      learnProgress: {
+        ...state.userState.learnProgress,
+        [level.slug]: {
+          ...currentProgress,
+          completedLessonCount: currentProgress?.completedLessonCount ?? 0,
+          completed: currentProgress?.completed ?? false,
+          bestSpeedCheckResult: result
+        }
+      }
+    });
   }
 
   return (
@@ -211,6 +246,7 @@ export function LearnLessonScreen() {
                 level={state.userState.level}
                 onComplete={handleNextLesson}
                 onPhaseChange={setSpeedCheckPhase}
+                onResult={handleSpeedCheckResult}
                 onXpAwarded={handleSpeedCheckXpAwarded}
                 xpForNextLevel={levelProgress.xpForNextLevel}
                 xpIntoLevel={levelProgress.xpIntoLevel}
@@ -245,6 +281,10 @@ export function LearnLessonScreen() {
             {!isSpeedCheck ? (
               <button className="figma-button" type="button" onClick={handleNextLesson}>
                 {isLastLesson ? "Finish lesson" : "Next"}
+              </button>
+            ) : canSkipSpeedCheck ? (
+              <button className="figma-button" type="button" onClick={handleNextLesson}>
+                Skip
               </button>
             ) : null}
           </footer>

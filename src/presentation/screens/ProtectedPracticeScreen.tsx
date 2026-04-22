@@ -307,11 +307,17 @@ export function ProtectedPracticeScreen() {
   useEffect(() => {
     if (!payload?.contentVersion || !state.runtimeConfig?.ENABLE_PROTECTED_CASE_DELIVERY) return;
     if (!accessibleDifficulties.length) return;
-    void fetchSlotsForDifficulties(accessibleDifficulties);
+    const preloadDifficulties = shouldAutoLoadPracticeCase
+      ? accessibleDifficulties.filter(difficultyKey => difficultyKey !== normalizedDifficulty)
+      : accessibleDifficulties;
+    if (!preloadDifficulties.length) return;
+    void fetchSlotsForDifficulties(preloadDifficulties);
   }, [
     accessibleDifficulties.join("|"),
+    normalizedDifficulty,
     payload?.contentVersion,
     recentArchetypes.join("|"),
+    shouldAutoLoadPracticeCase,
     state.runtimeConfig?.ENABLE_PROTECTED_CASE_DELIVERY
   ]);
 

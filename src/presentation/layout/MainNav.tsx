@@ -37,7 +37,11 @@ export function MainNav(props: MainNavProps) {
   });
 
   useLayoutEffect(() => {
+    let isCancelled = false;
+
     function updateIndicator() {
+      if (isCancelled) return;
+
       const nav = desktopNavRef.current;
       const activeLabel = activeItem ? desktopLinkRefs.current[activeItem.to] : null;
 
@@ -55,9 +59,25 @@ export function MainNav(props: MainNavProps) {
       });
     }
 
-    updateIndicator();
+    const animationFrame = window.requestAnimationFrame(updateIndicator);
     window.addEventListener("resize", updateIndicator);
-    return () => window.removeEventListener("resize", updateIndicator);
+
+    const resizeObserver = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(updateIndicator)
+      : null;
+    const nav = desktopNavRef.current;
+    const activeLabel = activeItem ? desktopLinkRefs.current[activeItem.to] : null;
+    if (resizeObserver && nav) resizeObserver.observe(nav);
+    if (resizeObserver && activeLabel) resizeObserver.observe(activeLabel);
+
+    (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready.then(updateIndicator);
+
+    return () => {
+      isCancelled = true;
+      window.cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", updateIndicator);
+      resizeObserver?.disconnect();
+    };
   }, [activeItem?.to, props.learnEnabled]);
 
   return (

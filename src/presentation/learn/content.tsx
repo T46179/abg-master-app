@@ -1,6 +1,5 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Lightbulb } from "lucide-react";
-import { useAppContext } from "../../app/AppProvider";
 import kidneysImage from "../../assets/kidneys.webp";
 import lungsImage from "../../assets/lungs.webp";
 
@@ -76,19 +75,16 @@ function CompletionCard(props: { title: string; body: string; items: string[]; c
 }
 
 function FoundationsCompletionCard() {
-  const { state } = useAppContext();
   const items = [
-    "Spot whether a value pattern should push pH up or down",
-    "Separate respiratory from metabolic variables",
-    "Move into beginner pattern recognition"
+    "Recognise whether a pattern will push pH up or down",
+    "Distinguish respiratory from metabolic changes",
+    "Move on to identifying primary disorders"
   ];
-  const completedModuleCount = learnLevels.filter(level => state.userState.learnProgress?.[level.slug]?.completed).length;
-  const masteryProgress = Math.round((completedModuleCount / learnLevels.length) * 100);
 
   return (
     <div className="learn-completion learn-completion--foundations">
       <div className="learn-completion__hero">
-        <p>You have the basic mental model for acid, base, lungs, kidneys, and pH direction.</p>
+        <p className="learn-card-intro">You now have the core mental model for acid–base: pH direction, and the roles of the lungs (CO₂) and kidneys (HCO₃⁻)</p>
 
         <div className="learn-foundations-achievement__title">
           <h3>What you can do now</h3>
@@ -101,16 +97,6 @@ function FoundationsCompletionCard() {
             </li>
           ))}
         </ul>
-
-        <div className="learn-foundations-achievement__footer">
-          <div>
-            <span>Mastery Level</span>
-            <strong>Foundation Tier</strong>
-          </div>
-          <div className="learn-foundations-achievement__track" aria-hidden="true">
-            <span style={{ width: `${masteryProgress}%` }} />
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -256,6 +242,106 @@ function TwoLeversLesson() {
   );
 }
 
+interface FourPillarCardProps {
+  title: string;
+  tone: "red" | "blue";
+  firstMetric: ReactNode;
+  firstDirection: "up" | "down";
+  secondMetric: ReactNode;
+  secondDirection: "up" | "down";
+  description: ReactNode;
+}
+
+function FourPillarCard(props: FourPillarCardProps) {
+  const [flipped, setFlipped] = useState(false);
+
+  return (
+    <button
+      className={`learn-direction-flip-card${flipped ? " is-flipped" : ""}`}
+      type="button"
+      aria-pressed={flipped}
+      onClick={() => setFlipped(current => !current)}
+    >
+      <span className="learn-direction-flip-card__inner">
+        <span className={`learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--front is-${props.tone}`}>
+          <span className="learn-direction-row__system">{props.title}</span>
+          <span className="learn-direction-row__pair">
+            <span className="learn-direction-row__metric">
+              <strong>{props.firstMetric}</strong>
+              <span className={`learn-direction-row__arrow-glyph is-${props.firstDirection}`}>{props.firstDirection === "up" ? "\u2191" : "\u2193"}</span>
+            </span>
+            <span className="learn-direction-row__divider" />
+            <span className="learn-direction-row__metric">
+              <strong>{props.secondMetric}</strong>
+              <span className={`learn-direction-row__arrow-glyph is-${props.secondDirection}`}>{props.secondDirection === "up" ? "\u2191" : "\u2193"}</span>
+            </span>
+          </span>
+        </span>
+        <span className={`learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--back is-${props.tone}`}>
+          <span className="learn-direction-row__system">{props.title}</span>
+          <span className="learn-direction-flip-card__description">{props.description}</span>
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function FourPillarsLesson() {
+  return (
+    <div className="learn-content-stack learn-content-stack--borderless-panels">
+      <p className="learn-card-intro">
+        Every blood gas reflects one or more of these four primary disorders. Flip the cards below to learn more
+      </p>
+
+      <div className="learn-direction-list learn-four-pillars-list">
+        <FourPillarCard
+          title="Respiratory Acidosis"
+          tone="red"
+          firstMetric={<>CO<sub>2</sub></>}
+          firstDirection="up"
+          secondMetric="pH"
+          secondDirection="down"
+          description={<>When CO<sub>2</sub> rises, more carbonic acid is formed in the blood. This releases hydrogen ions, which lowers the pH. It reflects inadequate ventilation or impaired gas exchange.</>}
+        />
+        <FourPillarCard
+          title="Respiratory Alkalosis"
+          tone="blue"
+          firstMetric={<>CO<sub>2</sub></>}
+          firstDirection="down"
+          secondMetric="pH"
+          secondDirection="up"
+          description={<>When CO<sub>2</sub> falls, less carbonic acid is produced. Fewer hydrogen ions are released, so the pH rises. This typically happens when breathing becomes faster or deeper.</>}
+        />
+        <FourPillarCard
+          title="Metabolic Acidosis"
+          tone="blue"
+          firstMetric={<>HCO<sub>3</sub><sup>-</sup></>}
+          firstDirection="up"
+          secondMetric="pH"
+          secondDirection="up"
+          description={<>Higher bicarbonate levels allow more acid to be buffered. With fewer free hydrogen ions, the pH increases. This can occur when the kidneys retain or generate extra bicarbonate.</>}
+        />
+        <FourPillarCard
+          title="Metabolic Alkalosis"
+          tone="red"
+          firstMetric={<>HCO<sub>3</sub><sup>-</sup></>}
+          firstDirection="down"
+          secondMetric="pH"
+          secondDirection="down"
+          description={<>Low bicarbonate means less buffering capacity. More hydrogen ions remain unneutralized, lowering the pH. This happens when bicarbonate is lost or consumed by excess acid.</>}
+        />
+      </div>
+
+      <div className="learn-key-message">
+        <Lightbulb aria-hidden="true" />
+        <p>
+          Use the ROME mnemonic (Respiratory Opposite, Metabolic Equal) to identify acid&ndash;base disturbances: if pH and CO<sub>2</sub> move opposite each other it&rsquo;s respiratory, and if pH and HCO<sub>3</sub><sup>-</sup> move together it&rsquo;s metabolic.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 const foundationsLessons: LearnLesson[] = [
   {
     kind: "content",
@@ -333,111 +419,7 @@ const beginnerLessons: LearnLesson[] = [
   {
     kind: "content",
     title: "The four pillars",
-    content: (
-      <div className="learn-content-stack learn-content-stack--borderless-panels">
-        <p className="learn-card-intro">
-          Every blood gas reflects one or more of these four primary disorders. Flip the cards below to learn more
-        </p>
-
-        <div className="learn-direction-list learn-four-pillars-list">
-          <div className="learn-direction-flip-card">
-            <div className="learn-direction-flip-card__inner">
-              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--front is-red">
-                <span className="learn-direction-row__system">Respiratory Acidosis</span>
-                <div className="learn-direction-row__pair">
-                  <span className="learn-direction-row__metric">
-                    <strong>CO<sub>2</sub></strong>
-                    <span className="learn-direction-row__arrow-glyph is-up">&uarr;</span>
-                  </span>
-                  <span className="learn-direction-row__divider" />
-                  <span className="learn-direction-row__metric">
-                    <strong>pH</strong>
-                    <span className="learn-direction-row__arrow-glyph is-down">&darr;</span>
-                  </span>
-                </div>
-              </div>
-              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--back is-red">
-                <span className="learn-direction-row__system">Respiratory Acidosis</span>
-                <p>When CO<sub>2</sub> rises, more carbonic acid is formed in the blood. This releases hydrogen ions, which lowers the pH. It reflects inadequate ventilation or impaired gas exchange.</p>
-              </div>
-            </div>
-          </div>
-          <div className="learn-direction-flip-card">
-            <div className="learn-direction-flip-card__inner">
-              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--front is-blue">
-                <span className="learn-direction-row__system">Respiratory Alkalosis</span>
-                <div className="learn-direction-row__pair">
-                  <span className="learn-direction-row__metric">
-                    <strong>CO<sub>2</sub></strong>
-                    <span className="learn-direction-row__arrow-glyph is-down">&darr;</span>
-                  </span>
-                  <span className="learn-direction-row__divider" />
-                  <span className="learn-direction-row__metric">
-                    <strong>pH</strong>
-                    <span className="learn-direction-row__arrow-glyph is-up">&uarr;</span>
-                  </span>
-                </div>
-              </div>
-              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--back is-blue">
-                <span className="learn-direction-row__system">Respiratory Alkalosis</span>
-                <p>When CO<sub>2</sub> falls, less carbonic acid is produced. Fewer hydrogen ions are released, so the pH rises. This typically happens when breathing becomes faster or deeper.</p>
-              </div>
-            </div>
-          </div>
-          <div className="learn-direction-flip-card">
-            <div className="learn-direction-flip-card__inner">
-              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--front is-blue">
-                <span className="learn-direction-row__system">Metabolic Acidosis</span>
-                <div className="learn-direction-row__pair">
-                  <span className="learn-direction-row__metric">
-                    <strong>HCO<sub>3</sub><sup>-</sup></strong>
-                    <span className="learn-direction-row__arrow-glyph is-up">&uarr;</span>
-                  </span>
-                  <span className="learn-direction-row__divider" />
-                  <span className="learn-direction-row__metric">
-                    <strong>pH</strong>
-                    <span className="learn-direction-row__arrow-glyph is-up">&uarr;</span>
-                  </span>
-                </div>
-              </div>
-              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--back is-blue">
-                <span className="learn-direction-row__system">Metabolic Acidosis</span>
-                <p>Higher bicarbonate levels allow more acid to be buffered. With fewer free hydrogen ions, the pH increases. This can occur when the kidneys retain or generate extra bicarbonate.</p>
-              </div>
-            </div>
-          </div>
-          <div className="learn-direction-flip-card">
-            <div className="learn-direction-flip-card__inner">
-              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--front is-red">
-                <span className="learn-direction-row__system">Metabolic Alkalosis</span>
-                <div className="learn-direction-row__pair">
-                  <span className="learn-direction-row__metric">
-                    <strong>HCO<sub>3</sub><sup>-</sup></strong>
-                    <span className="learn-direction-row__arrow-glyph is-down">&darr;</span>
-                  </span>
-                  <span className="learn-direction-row__divider" />
-                  <span className="learn-direction-row__metric">
-                    <strong>pH</strong>
-                    <span className="learn-direction-row__arrow-glyph is-down">&darr;</span>
-                  </span>
-                </div>
-              </div>
-              <div className="learn-direction-row learn-direction-flip-card__face learn-direction-flip-card__face--back is-red">
-                <span className="learn-direction-row__system">Metabolic Alkalosis</span>
-                <p>Low bicarbonate means less buffering capacity. More hydrogen ions remain unneutralized, lowering the pH. This happens when bicarbonate is lost or consumed by excess acid.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="learn-key-message">
-          <Lightbulb aria-hidden="true" />
-          <p>
-            Use the ROME mnemonic (Respiratory Opposite, Metabolic Equal) to identify acid&ndash;base disturbances: if pH and CO<sub>2</sub> move opposite each other it&rsquo;s respiratory, and if pH and HCO<sub>3</sub><sup>-</sup> move together it&rsquo;s metabolic.
-          </p>
-        </div>
-      </div>
-    )
+    content: <FourPillarsLesson />
   },
   {
     kind: "content",
