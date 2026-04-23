@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, MouseEvent } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
@@ -89,6 +89,7 @@ export function LearnLessonScreen() {
   const lesson = level.lessons[lessonIndex];
   const isLastLesson = lessonIndex === level.lessons.length - 1;
   const isSpeedCheck = lesson.kind === "speed-check";
+  const showFooterPracticeCta = !isSpeedCheck && isLastLesson && level.slug === "beginner" && Boolean(lesson.ctaHref && lesson.ctaLabel);
   const levelProgress = getLevelProgress(state.payload?.progressionConfig ?? null, state.userState);
   const moduleProgress = state.userState.learnProgress?.[level.slug];
   const canSkipSpeedCheck = isSpeedCheck && Boolean(
@@ -103,7 +104,7 @@ export function LearnLessonScreen() {
     "--learn-card-accent-dark": level.palette.accentDark
   } as CSSProperties;
 
-  function handleNextLesson() {
+  function getNextLessonUserState() {
     const completedLessonCount = lessonIndex + 1;
     const currentProgress = state.userState.learnProgress?.[level.slug];
     const nextCompleted = isLastLesson || Boolean(currentProgress?.completed);
@@ -112,21 +113,28 @@ export function LearnLessonScreen() {
       : Math.max(currentProgress?.completedLessonCount ?? 0, completedLessonCount);
 
     if (
-      currentProgress?.completed !== nextCompleted ||
-      currentProgress?.completedLessonCount !== nextCompletedLessonCount
+      currentProgress?.completed === nextCompleted &&
+      currentProgress?.completedLessonCount === nextCompletedLessonCount
     ) {
-      void setUserState({
-        ...state.userState,
-        learnProgress: {
-          ...state.userState.learnProgress,
-          [level.slug]: {
-            ...currentProgress,
-            completedLessonCount: nextCompletedLessonCount,
-            completed: nextCompleted
-          }
-        }
-      });
+      return null;
     }
+
+    return {
+      ...state.userState,
+      learnProgress: {
+        ...state.userState.learnProgress,
+        [level.slug]: {
+          ...currentProgress,
+          completedLessonCount: nextCompletedLessonCount,
+          completed: nextCompleted
+        }
+      }
+    };
+  }
+
+  function handleNextLesson() {
+    const nextUserState = getNextLessonUserState();
+    if (nextUserState) void setUserState(nextUserState);
 
     if (isLastLesson) {
       navigate("/learn?all=1");
@@ -134,6 +142,17 @@ export function LearnLessonScreen() {
     }
 
     setLessonIndex(index => index + 1);
+  }
+
+  async function handleFooterPracticeCtaClick(event: MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault();
+
+    const nextUserState = getNextLessonUserState();
+    if (nextUserState) {
+      await setUserState(nextUserState);
+    }
+
+    navigate(lesson.ctaHref ?? "/practice?difficulty=beginner");
   }
 
   function handlePreviousLesson() {
@@ -259,7 +278,7 @@ export function LearnLessonScreen() {
             )}
           </div>
 
-          {!isSpeedCheck && lesson.ctaHref && lesson.ctaLabel ? (
+          {!isSpeedCheck && lesson.ctaHref && lesson.ctaLabel && !showFooterPracticeCta ? (
             <div className="learn-deck__cta-row">
               <Link className="figma-button figma-button--secondary learn-deck__cta" to={lesson.ctaHref}>
                 {lesson.ctaLabel}
@@ -278,15 +297,23 @@ export function LearnLessonScreen() {
               </button>
             ) : null}
 
-            {!isSpeedCheck ? (
-              <button className="figma-button" type="button" onClick={handleNextLesson}>
-                {isLastLesson ? "Finish lesson" : "Next"}
-              </button>
-            ) : canSkipSpeedCheck ? (
-              <button className="figma-button" type="button" onClick={handleNextLesson}>
-                Skip
-              </button>
-            ) : null}
+            <div className="learn-deck__footer-actions">
+              {showFooterPracticeCta && lesson.ctaHref ? (
+                <Link className="figma-button figma-button--secondary" to={lesson.ctaHref} onClick={handleFooterPracticeCtaClick}>
+                  {lesson.ctaLabel}
+                </Link>
+              ) : null}
+
+              {!isSpeedCheck ? (
+                <button className="figma-button" type="button" onClick={handleNextLesson}>
+                  {isLastLesson ? "Finish lesson" : "Next"}
+                </button>
+              ) : canSkipSpeedCheck ? (
+                <button className="figma-button" type="button" onClick={handleNextLesson}>
+                  Skip
+                </button>
+              ) : null}
+            </div>
           </footer>
         </Surface>
       </div>

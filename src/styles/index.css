@@ -4143,6 +4143,17 @@ button.learn-progress-dots__dot:focus-visible {
   margin-left: auto;
 }
 
+.learn-deck__footer-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.learn-deck__footer-actions .figma-button:last-child {
+  margin-left: 0;
+}
+
 .learn-deck__surface .learn-deck__footer .figma-button:not(.figma-button--secondary) {
   width: fit-content;
   min-width: 0;
@@ -4304,11 +4315,15 @@ button.learn-progress-dots__dot:focus-visible {
 }
 
 .learn-abg-panel-tour__primary-grid {
+  width: min(100%, 44rem);
+  margin-inline: auto;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .learn-abg-panel-tour__supporting-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  width: min(100%, 44rem);
+  margin-inline: auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .learn-abg-panel-tour__metric-card {
@@ -5041,7 +5056,8 @@ button.learn-progress-dots__dot:focus-visible {
   letter-spacing: 0.08em;
 }
 
-.learn-completion--foundations .learn-completion__hero {
+.learn-completion--foundations .learn-completion__hero,
+.learn-completion--summary .learn-completion__hero {
   position: relative;
   display: grid;
   gap: 1rem;
@@ -5051,7 +5067,8 @@ button.learn-progress-dots__dot:focus-visible {
   background: transparent;
 }
 
-.learn-completion--foundations .learn-card-intro {
+.learn-completion--foundations .learn-card-intro,
+.learn-completion--summary .learn-card-intro {
   max-width: 44rem;
   margin: 0 auto 2rem;
   color: #24436f;
@@ -5065,11 +5082,13 @@ button.learn-progress-dots__dot:focus-visible {
   margin-top: auto;
 }
 
-.learn-completion--foundations .learn-completion__hero::after {
+.learn-completion--foundations .learn-completion__hero::after,
+.learn-completion--summary .learn-completion__hero::after {
   content: none;
 }
 
-.learn-completion--foundations .learn-completion__hero > * {
+.learn-completion--foundations .learn-completion__hero > *,
+.learn-completion--summary .learn-completion__hero > * {
   position: relative;
   z-index: 1;
 }
@@ -5079,7 +5098,8 @@ button.learn-progress-dots__dot:focus-visible {
   color: #5c3b00;
 }
 
-.learn-completion--foundations .learn-panel {
+.learn-completion--foundations .learn-panel,
+.learn-completion--summary .learn-panel {
   border: 0;
 }
 
@@ -5656,10 +5676,12 @@ button.learn-progress-dots__dot:focus-visible {
   }
 
   .learn-abg-panel-tour__primary-grid {
+    width: 100%;
     grid-template-columns: 1fr;
   }
 
   .learn-abg-panel-tour__supporting-grid {
+    width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -5746,6 +5768,10 @@ button.learn-progress-dots__dot:focus-visible {
 
   .learn-deck__footer {
     align-items: stretch;
+  }
+
+  .learn-deck__footer-actions {
+    width: 100%;
   }
 
   .learn-deck__footer .figma-button {

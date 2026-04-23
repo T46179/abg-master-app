@@ -103,6 +103,43 @@ function FoundationsCompletionCard() {
   );
 }
 
+function LearnSummaryCompletionCard(props: { intro: ReactNode; items: ReactNode[] }) {
+  return (
+    <div className="learn-completion learn-completion--summary">
+      <div className="learn-completion__hero">
+        <p className="learn-card-intro">{props.intro}</p>
+
+        <div className="learn-foundations-achievement__title">
+          <h3>What you can do now</h3>
+        </div>
+
+        <ul className="learn-foundations-achievement__list">
+          {props.items.map((item, index) => (
+            <li key={index}>
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function BeginnerCompletionCard() {
+  const items: ReactNode[] = [
+    "Read the pH first and decide whether the blood is acidotic, alkalotic, or normal",
+    <>Use CO<sub>2</sub> and HCO<sub>3</sub><sup>-</sup> to identify whether the primary process is respiratory or metabolic</>,
+    "Recognise the four primary acid-base disorders and the clinical patterns that commonly cause them"
+  ];
+
+  return (
+    <LearnSummaryCompletionCard
+      intro="You now have the core workflow for blood gas interpretation: read the pH, identify the main driver, and connect the pattern to the clinical story."
+      items={items}
+    />
+  );
+}
+
 function PHScaleVisualiser(props: { showDetails?: boolean }) {
   const ticks = [
     { value: "6.8", position: "0%", align: "start" },
@@ -166,7 +203,7 @@ function PHScaleVisualiser(props: { showDetails?: boolean }) {
 
           <div className="ph-scale-visualiser__key-idea">
             <Lightbulb aria-hidden="true" />
-            <p>A normal pH may mean no acid-base disturbance, or multiple processes occuring at the same time</p>
+            <p>A normal pH may mean no acid-base disturbance, or multiple processes occurring at the same time</p>
           </div>
         </>
       ) : null}
@@ -251,8 +288,6 @@ function ABGPanelTourLesson() {
   ];
 
   const supportingMetrics = [
-    { label: <>PaO<sub>2</sub></>, value: "82", unit: "mmHg" },
-    { label: "Base excess", value: "-1", unit: "mEq/L" },
     { label: <>Na<sup>+</sup></>, value: "140", unit: "mmol/L" },
     { label: <>K<sup>+</sup></>, value: "4.2", unit: "mmol/L" },
     { label: <>Cl<sup>-</sup></>, value: "103", unit: "mmol/L" },
@@ -452,7 +487,7 @@ const beginnerLessons: LearnLesson[] = [
             items={[
               "a pH < 7.35 indicates that an acidaemia is present",
               "a pH > 7.45 indicates that an alkalaemia is present",
-              <>a pH between 7.35 and 7.45 indicates either there is no acid-base disturbance <strong>or</strong> multiple processes are occuring at the same time to balance each other out</>
+              <>a pH between 7.35 and 7.45 indicates either there is no acid-base disturbance <strong>or</strong> multiple processes are occurring at the same time to balance each other out</>
             ]}
           />
         </div>
@@ -502,17 +537,17 @@ const beginnerLessons: LearnLesson[] = [
     content: (
       <div className="learn-content-stack">
         <p className="learn-card-intro">
-          Each primary disorder has typical clinical patterns and triggers. Recognising these help you connect the blood gas to the patient in front of you
+          Each primary disorder has typical clinical patterns and triggers. Recognising these helps you connect the blood gas to the patient in front of you
         </p>
 
         <div className="learn-direction-list learn-cause-list">
           <div className="learn-direction-row is-red">
             <span className="learn-direction-row__system">Respiratory Acidosis</span>
-            <BulletList items={["Drugs (opiates, sedatives, anaesthetics)", "Neuromuscular disoders (myasthenia gravis, toxins)", "Lung defects (trauma, COPD, pulmonary oedema)"]} />
+            <BulletList items={["Drugs (opiates, sedatives, anaesthetics)", "Neuromuscular disorders (myasthenia gravis, toxins)", "Lung defects (trauma, COPD, pulmonary oedema)"]} />
           </div>
           <div className="learn-direction-row is-red">
             <span className="learn-direction-row__system">Metabolic Acidosis</span>
-            <BulletList items={["Ketoacidosis (DKA, alcholic)", "Toxins (ethylene glycol)", "Renal (uraemia, acute renal failure)"]} />
+            <BulletList items={["Ketoacidosis (DKA, alcoholic)", "Toxins (ethylene glycol)", "Renal (uraemia, acute renal failure)"]} />
           </div>
           <div className="learn-direction-row is-blue">
             <span className="learn-direction-row__system">Respiratory Alkalosis</span>
@@ -528,19 +563,9 @@ const beginnerLessons: LearnLesson[] = [
   },
   {
     kind: "content",
-    title: "Ready to identify disorders?",
-    content: (
-      <CompletionCard
-        title="Beginner complete"
-        body="You can now name pH status and identify the primary acid-base disorder with confidence."
-        items={[
-          "Read pH first",
-          "Match the main driver to CO2 or HCO3",
-          "Recognize the four primary patterns quickly"
-        ]}
-      />
-    ),
-    ctaLabel: "Open beginner practice",
+    title: "Completed!",
+    content: <BeginnerCompletionCard />,
+    ctaLabel: "Practice",
     ctaHref: "/practice?difficulty=beginner"
   }
 ];
