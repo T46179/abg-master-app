@@ -4264,6 +4264,108 @@ button.learn-progress-dots__dot:focus-visible {
   object-fit: contain;
 }
 
+.learn-abg-panel-tour {
+  gap: 1.35rem;
+}
+
+.learn-abg-panel-tour__section {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.learn-abg-panel-tour__section + .learn-abg-panel-tour__section {
+  margin-top: 0.75rem;
+}
+
+.learn-abg-panel-tour__heading {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.learn-abg-panel-tour__heading span {
+  color: #0f2547;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.learn-abg-panel-tour__heading p {
+  max-width: 64rem;
+  margin: 0;
+  color: var(--color-text-soft);
+  font-size: 0.93rem;
+  font-weight: 350;
+  line-height: 1.55;
+}
+
+.learn-abg-panel-tour__primary-grid,
+.learn-abg-panel-tour__supporting-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.learn-abg-panel-tour__primary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.learn-abg-panel-tour__supporting-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.learn-abg-panel-tour__metric-card {
+  display: grid;
+  align-content: space-between;
+  min-height: 8.25rem;
+  padding: 0.9rem;
+  border-radius: var(--radius-md);
+  background: #f8fafc;
+  box-shadow: 0 0.35rem 0.75rem rgba(15, 23, 42, 0.07);
+  transition: box-shadow 180ms ease, transform 180ms ease;
+}
+
+.learn-abg-panel-tour__metric-card:hover {
+  box-shadow: 0 0.55rem 0.95rem rgba(15, 23, 42, 0.1);
+  transform: translateY(-0.1rem);
+}
+
+.learn-abg-panel-tour__metric-card--small {
+  min-height: 6.5rem;
+}
+
+.learn-abg-panel-tour__metric-label {
+  color: #67787c;
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.learn-abg-panel-tour__metric-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  margin-top: 1.15rem;
+  color: #394447;
+  font-size: clamp(1.45rem, 2.2vw, 2rem);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.learn-abg-panel-tour__metric-value.is-abnormal {
+  color: #d06262;
+}
+
+.learn-abg-panel-tour__metric-value small {
+  color: #8a989c;
+  font-size: 0.68rem;
+  font-weight: 400;
+}
+
+.learn-abg-panel-tour__metric-reference {
+  display: block;
+  margin-top: 0.45rem;
+  color: #67787c;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
 .learn-carbonic-equation {
   justify-self: center;
   padding: 0.45rem 0.75rem;
@@ -5551,6 +5653,19 @@ button.learn-progress-dots__dot:focus-visible {
   .learn-two-levers-image-card img {
     width: min(100%, 9.25rem);
     max-height: 7.75rem;
+  }
+
+  .learn-abg-panel-tour__primary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .learn-abg-panel-tour__supporting-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .learn-abg-panel-tour__metric-card,
+  .learn-abg-panel-tour__metric-card--small {
+    min-height: 6.4rem;
   }
 
   .learn-direction-list {

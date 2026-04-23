@@ -75,16 +75,17 @@ function CompletionCard(props: { title: string; body: string; items: string[]; c
 }
 
 function FoundationsCompletionCard() {
-  const items = [
-    "Recognise whether a pattern will push pH up or down",
-    "Distinguish respiratory from metabolic changes",
-    "Move on to identifying primary disorders"
+  const items: ReactNode[] = [
+    "Use pH to decide whether the blood is acidotic, alkalotic, or within the normal range",
+    <>Recognise CO<sub>2</sub> and HCO<sub>3</sub><sup>-</sup> as the two main values that explain why pH has moved</>,
+    "Understand how ABG Master presents the case values, and which cards matter most early on",
+    "Move into Beginner ready to identify the primary acid-base disorder"
   ];
 
   return (
     <div className="learn-completion learn-completion--foundations">
       <div className="learn-completion__hero">
-        <p className="learn-card-intro">You now have the core mental model for acid–base: pH direction, and the roles of the lungs (CO₂) and kidneys (HCO₃⁻)</p>
+        <p className="learn-card-intro">You now have the foundation for interpreting ABGs in ABG Master: pH direction, the two main levers, and how the case values are presented.</p>
 
         <div className="learn-foundations-achievement__title">
           <h3>What you can do now</h3>
@@ -242,6 +243,75 @@ function TwoLeversLesson() {
   );
 }
 
+function ABGPanelTourLesson() {
+  const primaryMetrics = [
+    { label: "pH", value: "7.28", reference: "Normal: 7.35 - 7.45", abnormal: true },
+    { label: <>PaCO<sub>2</sub></>, value: "58", unit: "mmHg", reference: "Normal: 35 - 45", abnormal: true },
+    { label: <>HCO<sub>3</sub><sup>-</sup></>, value: "25", unit: "mmol/L", reference: "Normal: 22 - 26" }
+  ];
+
+  const supportingMetrics = [
+    { label: <>PaO<sub>2</sub></>, value: "82", unit: "mmHg" },
+    { label: "Base excess", value: "-1", unit: "mEq/L" },
+    { label: <>Na<sup>+</sup></>, value: "140", unit: "mmol/L" },
+    { label: <>K<sup>+</sup></>, value: "4.2", unit: "mmol/L" },
+    { label: <>Cl<sup>-</sup></>, value: "103", unit: "mmol/L" },
+    { label: "Lactate", value: "1.4", unit: "mmol/L" }
+  ];
+
+  return (
+    <div className="learn-content-stack learn-content-stack--borderless-panels learn-abg-panel-tour">
+      <p className="learn-card-intro">
+        ABG Master presents blood gas values as a panel of cards
+      </p>
+
+      <section className="learn-abg-panel-tour__section" aria-label="Example blood gas panel">
+        <div className="learn-abg-panel-tour__heading">
+          <span>ABG Values</span>
+          <p>Shows the most important values for interpretation</p>
+        </div>
+
+        <div className="learn-abg-panel-tour__primary-grid">
+          {primaryMetrics.map(metric => (
+            <article key={String(metric.value)} className="learn-abg-panel-tour__metric-card">
+              <span className="learn-abg-panel-tour__metric-label">{metric.label}</span>
+              <span className={`learn-abg-panel-tour__metric-value${metric.abnormal ? " is-abnormal" : ""}`}>
+                {metric.value}
+                {metric.unit ? <small>{metric.unit}</small> : null}
+              </span>
+              <span className="learn-abg-panel-tour__metric-reference">{metric.reference}</span>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="learn-abg-panel-tour__section" aria-label="Example supporting values">
+        <div className="learn-abg-panel-tour__heading">
+          <span>Electrolytes & Other Values</span>
+          <p>These add context. Early difficulties show you only relevant values, while harder difficulties require you to decide what is important</p>
+        </div>
+
+        <div className="learn-abg-panel-tour__supporting-grid">
+          {supportingMetrics.map(metric => (
+            <article key={String(metric.value)} className="learn-abg-panel-tour__metric-card learn-abg-panel-tour__metric-card--small">
+              <span className="learn-abg-panel-tour__metric-label">{metric.label}</span>
+              <span className="learn-abg-panel-tour__metric-value">
+                {metric.value}
+                <small>{metric.unit}</small>
+              </span>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <div className="learn-key-message">
+        <Lightbulb aria-hidden="true" />
+        <p>As difficulties increase, ABG Master gradually removes clues like colour highlights and normal ranges, then adds values that may not matter. The goal is to build your judgement about what deserves attention.</p>
+      </div>
+    </div>
+  );
+}
+
 interface FourPillarCardProps {
   title: string;
   tone: "red" | "blue";
@@ -314,21 +384,21 @@ function FourPillarsLesson() {
         />
         <FourPillarCard
           title="Metabolic Acidosis"
-          tone="blue"
-          firstMetric={<>HCO<sub>3</sub><sup>-</sup></>}
-          firstDirection="up"
-          secondMetric="pH"
-          secondDirection="up"
-          description={<>Higher bicarbonate levels allow more acid to be buffered. With fewer free hydrogen ions, the pH increases. This can occur when the kidneys retain or generate extra bicarbonate.</>}
-        />
-        <FourPillarCard
-          title="Metabolic Alkalosis"
           tone="red"
           firstMetric={<>HCO<sub>3</sub><sup>-</sup></>}
           firstDirection="down"
           secondMetric="pH"
           secondDirection="down"
           description={<>Low bicarbonate means less buffering capacity. More hydrogen ions remain unneutralized, lowering the pH. This happens when bicarbonate is lost or consumed by excess acid.</>}
+        />
+        <FourPillarCard
+          title="Metabolic Alkalosis"
+          tone="blue"
+          firstMetric={<>HCO<sub>3</sub><sup>-</sup></>}
+          firstDirection="up"
+          secondMetric="pH"
+          secondDirection="up"
+          description={<>Higher bicarbonate levels allow more acid to be buffered. With fewer free hydrogen ions, the pH increases. This can occur when the kidneys retain or generate extra bicarbonate.</>}
         />
       </div>
 
@@ -356,6 +426,11 @@ const foundationsLessons: LearnLesson[] = [
   {
     kind: "speed-check",
     title: "Speed check"
+  },
+  {
+    kind: "content",
+    title: "The ABG panel",
+    content: <ABGPanelTourLesson />
   },
   {
     kind: "content",
