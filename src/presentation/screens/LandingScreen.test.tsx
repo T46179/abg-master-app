@@ -10,15 +10,19 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const trackEvent = vi.fn();
 const trackPageView = vi.fn();
+const patchPracticeState = vi.fn();
+const preloadProtectedPracticeSlots = vi.fn();
+let currentState: Record<string, unknown>;
 
 vi.mock("../../app/AppProvider", () => ({
   useAppContext: () => ({
-    state: {
-      status: "ready",
-      supabase: null,
-      supabaseEnabled: false
-    }
+    state: currentState,
+    patchPracticeState
   })
+}));
+
+vi.mock("../../app/protectedPracticeSlots", () => ({
+  preloadProtectedPracticeSlots: (...args: unknown[]) => preloadProtectedPracticeSlots(...args)
 }));
 
 vi.mock("../../core/analytics", () => ({
@@ -38,6 +42,37 @@ describe("LandingScreen", () => {
     animationTime = 1000;
     trackEvent.mockReset();
     trackPageView.mockReset();
+    patchPracticeState.mockReset();
+    preloadProtectedPracticeSlots.mockReset();
+    preloadProtectedPracticeSlots.mockResolvedValue({});
+    currentState = {
+      status: "ready",
+      supabase: null,
+      supabaseEnabled: false,
+      runtimeConfig: null,
+      payload: null,
+      storage: null,
+      userId: null,
+      userState: {
+        xp: 0,
+        level: 1,
+        abandonedCases: 0,
+        recentResults: [],
+        casesCompleted: 0,
+        correctAnswers: 0,
+        totalAnswers: 0,
+        streak: 0,
+        dailyCasesUsed: 0,
+        lastCaseDate: null,
+        unlockedDifficulties: ["beginner"],
+        isPremium: false,
+        badges: [],
+        appliedProtectedCaseTokens: []
+      },
+      practiceState: {
+        practiceSlotsByDifficulty: {}
+      }
+    };
     vi.stubGlobal("matchMedia", vi.fn().mockImplementation(() => ({
       matches: false,
       media: "",
@@ -86,6 +121,13 @@ describe("LandingScreen", () => {
     });
   }
 
+  async function flushEffects() {
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  }
+
   it("renders the landing hero and routes primary ctas to practice", () => {
     renderScreen();
 
@@ -108,6 +150,66 @@ describe("LandingScreen", () => {
     const learnLink = Array.from(container.querySelectorAll("a")).find(link => link.getAttribute("href") === "/learn");
 
     expect(learnLink).toBeTruthy();
+  });
+
+  it("preloads the highest accessible practice difficulty before background slots", async () => {
+    const storage = {
+      loadSeenCaseState: vi.fn(() => ({ advanced: ["seen-case"] }))
+    };
+    const primarySlots = { advanced: { caseToken: "advanced-token" } };
+    const backgroundSlots = {
+      ...primarySlots,
+      beginner: { caseToken: "beginner-token" },
+      intermediate: { caseToken: "intermediate-token" }
+    };
+    preloadProtectedPracticeSlots
+      .mockResolvedValueOnce(primarySlots)
+      .mockResolvedValueOnce(backgroundSlots);
+    currentState = {
+      ...currentState,
+      supabase: {},
+      runtimeConfig: {
+        SUPABASE_URL: "https://example.supabase.co",
+        SUPABASE_ANON_KEY: "anon",
+        ENABLE_PROTECTED_CASE_DELIVERY: true
+      },
+      payload: {
+        deliveryMode: "protected_runtime",
+        contentVersion: "beta-1",
+        progressionConfig: {
+          difficulty_unlock_levels: { 1: 1, 2: 5, 3: 10, 4: 20 },
+          release_flags: {}
+        },
+        dashboardState: null,
+        defaultUserState: null
+      },
+      storage,
+      userId: "user-1",
+      userState: {
+        ...(currentState.userState as Record<string, unknown>),
+        isPremium: true,
+        level: 10
+      }
+    };
+
+    renderScreen();
+    await flushEffects();
+
+    expect(preloadProtectedPracticeSlots).toHaveBeenCalledTimes(2);
+    expect(preloadProtectedPracticeSlots.mock.calls[0]?.[0]).toMatchObject({
+      contentVersion: "beta-1",
+      userId: "user-1",
+      difficulties: ["advanced"],
+      selectionHints: {
+        seenCaseIdsByDifficulty: { advanced: ["seen-case"] }
+      }
+    });
+    expect(preloadProtectedPracticeSlots.mock.calls[1]?.[0]).toMatchObject({
+      difficulties: ["beginner", "intermediate"]
+    });
+    expect(patchPracticeState).toHaveBeenLastCalledWith({
+      practiceSlotsByDifficulty: backgroundSlots
+    });
   });
 
   it("tracks stay updated submits from the landing page", async () => {

@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 interface PracticeIntroModalProps {
   open: boolean;
   onContinue: () => void;
@@ -31,8 +33,7 @@ export function PracticeIntroModal(props: PracticeIntroModalProps) {
           {PRACTICE_INTRO_COPY.paragraphs.map(paragraph => (
             <p key={paragraph}>{paragraph}</p>
           ))}
-          <hr />
-          <p><strong>{PRACTICE_INTRO_COPY.comingSoonTitle}</strong></p>
+          <p className="practice-intro-copy__subheading"><strong>{PRACTICE_INTRO_COPY.comingSoonTitle}</strong></p>
           <ul className="practice-intro-list">
             {PRACTICE_INTRO_COPY.comingSoonItems.map(item => (
               <li key={item}>{item}</li>
@@ -40,7 +41,11 @@ export function PracticeIntroModal(props: PracticeIntroModalProps) {
           </ul>
           <p>{PRACTICE_INTRO_COPY.closing}</p>
         </div>
-        <div className="modal-card__actions">
+        <p className="practice-intro-modal__cta-prompt">Where would you like to start?</p>
+        <div className="modal-card__actions practice-intro-modal__actions">
+          <Link className="figma-button figma-button--secondary results-card__button results-card__button--secondary practice-intro-modal__button" to="/learn/foundations">
+            Learn
+          </Link>
           <button className="figma-button results-card__button practice-intro-modal__button" type="button" onClick={props.onContinue}>
             {PRACTICE_INTRO_COPY.cta}
           </button>

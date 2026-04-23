@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
+import {
+  getMissingPracticeSlotDifficulties,
+  isExpiredPracticeSlot,
+  preloadProtectedPracticeSlots
+} from "../../app/protectedPracticeSlots";
 import { PROTECTED_PRACTICE_MESSAGES, getProtectedPracticeUnavailableMessage } from "../../app/protectedPracticeMessages";
 import {
   getPracticeDifficultyMismatchAction,
@@ -15,12 +20,10 @@ import {
   applyProtectedCaseCompletion,
   buildPendingPracticeSubmission,
   isProtectedPracticeError,
-  prepareProtectedPracticeCases,
   submitProtectedPracticeCase
 } from "../../core/protectedPractice";
 import {
   clearPendingPracticeSubmission,
-  loadPracticeSlotsCache,
   slotMatchesDifficultyKey,
   savePendingPracticeSubmission,
   savePracticeSlotsCache
@@ -60,11 +63,6 @@ import { ScenarioCard } from "../practice/ScenarioCard";
 import { ValuePanels } from "../practice/ValuePanels";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
 
-function isExpiredSlot(slot: IssuedPracticeSlot | null | undefined) {
-  if (!slot?.expiresAt) return true;
-  return new Date(slot.expiresAt).getTime() <= Date.now();
-}
-
 export function ProtectedPracticeScreen() {
   const { state, setUserState, patchPracticeState, patchSessionState } = useAppContext();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -77,7 +75,6 @@ export function ProtectedPracticeScreen() {
   const introAcceptedRef = useRef(false);
   const difficultyReconciledRef = useRef(false);
   const latestCaseLoadRequestRef = useRef(0);
-  const slotRequestKeyRef = useRef<string | null>(null);
 
   const payload = state.payload;
   const progressionInput = {
@@ -237,24 +234,17 @@ export function ProtectedPracticeScreen() {
       return {};
     }
 
-    const missingDifficulties = difficulties.filter(difficultyKey => {
-      const cachedSlot = state.practiceState.practiceSlotsByDifficulty[difficultyKey];
-      return !cachedSlot ||
-        !slotMatchesDifficultyKey(cachedSlot, difficultyKey) ||
-        cachedSlot.contentVersion !== payload.contentVersion ||
-        isExpiredSlot(cachedSlot);
+    const { slots, missingDifficulties } = getMissingPracticeSlotDifficulties({
+      storage: window.localStorage,
+      contentVersion: payload.contentVersion,
+      userId: state.userId,
+      currentSlots: state.practiceState.practiceSlotsByDifficulty,
+      difficulties
     });
 
     if (!missingDifficulties.length) {
-      return state.practiceState.practiceSlotsByDifficulty;
+      return slots;
     }
-
-    const requestKey = `${payload.contentVersion}:${[...missingDifficulties].sort().join("|")}`;
-    if (slotRequestKeyRef.current === requestKey) {
-      return state.practiceState.practiceSlotsByDifficulty;
-    }
-
-    slotRequestKeyRef.current = requestKey;
 
     patchPracticeState({
       syncState: "loading_slots",
@@ -262,26 +252,19 @@ export function ProtectedPracticeScreen() {
     });
 
     try {
-      const response = await prepareProtectedPracticeCases(state.runtimeConfig, state.supabase, {
+      const nextSlots = await preloadProtectedPracticeSlots({
+        config: state.runtimeConfig,
+        supabase: state.supabase,
+        storage: window.localStorage,
         contentVersion: payload.contentVersion,
+        userId: state.userId,
+        currentSlots: state.practiceState.practiceSlotsByDifficulty,
         difficulties: missingDifficulties,
         selectionHints: {
           seenCaseIdsByDifficulty: state.storage?.loadSeenCaseState() ?? createEmptySeenCasesState(),
           recentArchetypes
         }
       });
-
-      const nextSlots = {
-        ...loadPracticeSlotsCache(window.localStorage, response.contentVersion),
-        ...state.practiceState.practiceSlotsByDifficulty,
-        ...response.slots
-      };
-      for (const difficultyKey of Object.keys(nextSlots)) {
-        if (!slotMatchesDifficultyKey(nextSlots[difficultyKey], difficultyKey)) {
-          nextSlots[difficultyKey] = null;
-        }
-      }
-      savePracticeSlotsCache(window.localStorage, nextSlots);
       patchPracticeState({
         practiceSlotsByDifficulty: nextSlots,
         syncState: "idle",
@@ -289,18 +272,14 @@ export function ProtectedPracticeScreen() {
       });
       return nextSlots;
     } catch (error) {
-      const hasAnyCachedSlot = difficulties.some(difficultyKey => Boolean(state.practiceState.practiceSlotsByDifficulty[difficultyKey]));
+      const hasAnyCachedSlot = difficulties.some(difficultyKey => Boolean(slots[difficultyKey]));
       patchPracticeState({
         syncState: hasAnyCachedSlot ? "idle" : "unavailable",
         syncMessage: hasAnyCachedSlot
           ? PROTECTED_PRACTICE_MESSAGES.refreshFailed
           : getProtectedPracticeUnavailableMessage()
       });
-      return state.practiceState.practiceSlotsByDifficulty;
-    } finally {
-      if (slotRequestKeyRef.current === requestKey) {
-        slotRequestKeyRef.current = null;
-      }
+      return slots;
     }
   }
 
@@ -409,7 +388,7 @@ export function ProtectedPracticeScreen() {
     if (requestId !== latestCaseLoadRequestRef.current) return;
 
     const slot = slots[nextDifficulty];
-    if (!slot || isExpiredSlot(slot)) {
+    if (!slot || isExpiredPracticeSlot(slot)) {
       patchPracticeState({
         syncState: "unavailable",
         syncMessage: getProtectedPracticeUnavailableMessage()
@@ -647,7 +626,7 @@ export function ProtectedPracticeScreen() {
           difficultyKey: normalizedDifficulty
         }
       };
-      savePracticeSlotsCache(window.localStorage, nextSlots);
+      savePracticeSlotsCache(window.localStorage, nextSlots, state.userId);
       clearPendingPracticeSubmission(window.localStorage);
 
       patchPracticeState({
@@ -681,7 +660,7 @@ export function ProtectedPracticeScreen() {
           ...state.practiceState.practiceSlotsByDifficulty,
           [normalizedDifficulty]: null
         };
-        savePracticeSlotsCache(window.localStorage, nextSlots);
+        savePracticeSlotsCache(window.localStorage, nextSlots, state.userId);
         clearPendingPracticeSubmission(window.localStorage);
         patchPracticeState({
           currentCase: null,

@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { useAppContext } from "../../app/AppProvider";
+import { preloadProtectedPracticeSlots } from "../../app/protectedPracticeSlots";
 import { Link } from "react-router-dom";
 import { trackEvent, trackPageView } from "../../core/analytics";
-import { getReleaseFlags } from "../../core/progression";
+import {
+  canStartNewCase,
+  getAccessibleDifficultyKeys,
+  getHighestAccessibleDifficultyKey,
+  getReleaseFlags
+} from "../../core/progression";
+import { createEmptySeenCasesState } from "../../core/selection";
 import { LaunchNotifyModal } from "../layout/LaunchNotifyModal";
 import { MainNav } from "../layout/MainNav";
 import { Surface } from "../primitives/Surface";
@@ -102,7 +109,7 @@ const explanationHighlights = [
 ];
 
 export function LandingScreen() {
-  const { state } = useAppContext();
+  const { state, patchPracticeState } = useAppContext();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [launchNotifyOpen, setLaunchNotifyOpen] = useState(false);
   const [launchNotifySubmitting, setLaunchNotifySubmitting] = useState(false);
@@ -119,6 +126,7 @@ export function LandingScreen() {
   const featuresSectionRef = useRef<HTMLElement | null>(null);
   const curriculumSectionRef = useRef<HTMLElement | null>(null);
   const explanationInsightRef = useRef<HTMLDivElement | null>(null);
+  const practicePreloadKeyRef = useRef<string | null>(null);
   const casesSolvedLabel = useMemo(() => animatedCasesSolvedCount.toLocaleString("en-US"), [animatedCasesSolvedCount]);
   const releaseFlags = useMemo(() => getReleaseFlags(state.payload?.progressionConfig ?? null), [state.payload?.progressionConfig]);
 
@@ -169,6 +177,105 @@ export function LandingScreen() {
   }, []);
 
   useEffect(() => {
+    if (state.status !== "ready") return;
+    const payload = state.payload;
+    const runtimeConfig = state.runtimeConfig;
+    const supabase = state.supabase;
+    const storage = state.storage;
+    if (payload?.deliveryMode !== "protected_runtime") return;
+    if (!payload.contentVersion || !runtimeConfig || !runtimeConfig.ENABLE_PROTECTED_CASE_DELIVERY) return;
+    if (!supabase || !storage || typeof window === "undefined") return;
+    const activeRuntimeConfig = runtimeConfig;
+    const activeSupabase = supabase;
+    const contentVersion = payload.contentVersion;
+
+    const progressionInput = {
+      progressionConfig: payload.progressionConfig ?? null,
+      dashboardState: payload.dashboardState ?? null,
+      defaultUserState: payload.defaultUserState ?? null,
+      userState: state.userState,
+      cases: []
+    };
+    if (!canStartNewCase(progressionInput)) return;
+
+    const accessibleDifficulties = getAccessibleDifficultyKeys(progressionInput);
+    const highestDifficulty = getHighestAccessibleDifficultyKey(progressionInput);
+    if (!accessibleDifficulties.includes(highestDifficulty)) return;
+
+    const preloadKey = [
+      state.userId ?? "anonymous",
+      contentVersion,
+      highestDifficulty,
+      accessibleDifficulties.join("|")
+    ].join(":");
+    if (practicePreloadKeyRef.current === preloadKey) return;
+    practicePreloadKeyRef.current = preloadKey;
+
+    let cancelled = false;
+    const selectionHints = {
+      seenCaseIdsByDifficulty: storage.loadSeenCaseState() ?? createEmptySeenCasesState(),
+      recentArchetypes: []
+    };
+
+    async function preloadPracticeSlots() {
+      try {
+        const primarySlots = await preloadProtectedPracticeSlots({
+          config: activeRuntimeConfig,
+          supabase: activeSupabase,
+          storage: window.localStorage,
+          contentVersion,
+          userId: state.userId,
+          currentSlots: state.practiceState.practiceSlotsByDifficulty,
+          difficulties: [highestDifficulty],
+          selectionHints
+        });
+        if (cancelled) return;
+
+        patchPracticeState({
+          practiceSlotsByDifficulty: primarySlots
+        });
+
+        const remainingDifficulties = accessibleDifficulties.filter(difficultyKey => difficultyKey !== highestDifficulty);
+        if (!remainingDifficulties.length) return;
+
+        const nextSlots = await preloadProtectedPracticeSlots({
+          config: activeRuntimeConfig,
+          supabase: activeSupabase,
+          storage: window.localStorage,
+          contentVersion,
+          userId: state.userId,
+          currentSlots: primarySlots,
+          difficulties: remainingDifficulties,
+          selectionHints
+        });
+        if (cancelled) return;
+
+        patchPracticeState({
+          practiceSlotsByDifficulty: nextSlots
+        });
+      } catch {
+        // Practice remains responsible for showing any slot-loading error if the user enters the flow.
+      }
+    }
+
+    void preloadPracticeSlots();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    patchPracticeState,
+    state.payload?.contentVersion,
+    state.payload?.deliveryMode,
+    state.runtimeConfig,
+    state.status,
+    state.storage,
+    state.supabase,
+    state.userId,
+    state.userState
+  ]);
+
+  useEffect(() => {
     animatedCasesSolvedCountRef.current = animatedCasesSolvedCount;
   }, [animatedCasesSolvedCount]);
 
@@ -181,11 +288,12 @@ export function LandingScreen() {
       setCasesSolvedLoaded(true);
       return;
     }
+    const activeSupabase = state.supabase;
 
     let cancelled = false;
 
     async function loadCasesSolvedCount() {
-      const { data, error } = await state.supabase
+      const { data, error } = await activeSupabase
         .from("public_site_metrics")
         .select("metric_value")
         .eq("metric_key", CASES_SOLVED_METRIC_KEY)
@@ -202,7 +310,7 @@ export function LandingScreen() {
         return;
       }
 
-      const { count, error: attemptsCountError } = await state.supabase
+      const { count, error: attemptsCountError } = await activeSupabase
         .from("attempts")
         .select("*", { count: "exact", head: true });
 

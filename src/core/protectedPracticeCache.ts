@@ -4,6 +4,7 @@ import type { IssuedPracticeSlot, PendingPracticeSubmission } from "./types";
 const PRACTICE_SLOTS_STORAGE_KEY = "abgmaster_practiceSlotsByDifficulty";
 const PENDING_SUBMISSION_STORAGE_KEY = "abgmaster_pendingPracticeSubmission";
 const DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced", "master"] as const;
+const PRACTICE_SLOTS_CACHE_VERSION = 2;
 
 function safeGetItem(storage: BrowserStorageLike, key: string): string | null {
   try {
@@ -33,6 +34,11 @@ function safeRemoveItem(storage: BrowserStorageLike, key: string): boolean {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeCacheUserId(userId?: string | null): string | null {
+  const normalized = String(userId ?? "").trim();
+  return normalized || null;
 }
 
 export function slotMatchesDifficultyKey(slot: IssuedPracticeSlot | null | undefined, difficultyKey: string): boolean {
@@ -77,7 +83,25 @@ function sanitizePracticeSlot(source: unknown, difficultyKey: string): IssuedPra
   return slotMatchesDifficultyKey(slot, difficultyKey) ? slot : null;
 }
 
-export function loadPracticeSlotsCache(storage: BrowserStorageLike, contentVersion?: string | null): Record<string, IssuedPracticeSlot | null> {
+function sanitizePracticeSlotsRecord(
+  source: Record<string, unknown>,
+  contentVersion?: string | null
+): Record<string, IssuedPracticeSlot | null> {
+  return Object.fromEntries(
+    Object.entries(source).map(([difficultyKey, slotValue]) => {
+      const slot = sanitizePracticeSlot(slotValue, difficultyKey);
+      if (!slot) return [difficultyKey, null];
+      if (contentVersion && slot.contentVersion !== contentVersion) return [difficultyKey, null];
+      return [difficultyKey, slot];
+    })
+  );
+}
+
+export function loadPracticeSlotsCache(
+  storage: BrowserStorageLike,
+  contentVersion?: string | null,
+  userId?: string | null
+): Record<string, IssuedPracticeSlot | null> {
   const raw = safeGetItem(storage, PRACTICE_SLOTS_STORAGE_KEY);
   if (!raw) return {};
 
@@ -85,43 +109,57 @@ export function loadPracticeSlotsCache(storage: BrowserStorageLike, contentVersi
     const parsed = JSON.parse(raw);
     if (!isRecord(parsed)) return {};
 
-    return Object.fromEntries(
-      Object.entries(parsed).map(([difficultyKey, slotValue]) => {
-        const slot = sanitizePracticeSlot(slotValue, difficultyKey);
-        if (!slot) return [difficultyKey, null];
-        if (contentVersion && slot.contentVersion !== contentVersion) return [difficultyKey, null];
-        return [difficultyKey, slot];
-      })
-    );
+    if (parsed.version === PRACTICE_SLOTS_CACHE_VERSION && isRecord(parsed.slots)) {
+      const cachedUserId = normalizeCacheUserId(parsed.userId as string | null);
+      const activeUserId = normalizeCacheUserId(userId);
+      if (activeUserId && cachedUserId !== activeUserId) return {};
+      return sanitizePracticeSlotsRecord(parsed.slots, contentVersion);
+    }
+
+    return sanitizePracticeSlotsRecord(parsed, contentVersion);
   } catch {
     return {};
   }
 }
 
-export function savePracticeSlotsCache(storage: BrowserStorageLike, slots: Record<string, IssuedPracticeSlot | null>) {
-  safeSetItem(storage, PRACTICE_SLOTS_STORAGE_KEY, JSON.stringify(slots ?? {}));
+export function savePracticeSlotsCache(
+  storage: BrowserStorageLike,
+  slots: Record<string, IssuedPracticeSlot | null>,
+  userId?: string | null
+) {
+  const activeUserId = normalizeCacheUserId(userId);
+  const payload = activeUserId
+    ? {
+        version: PRACTICE_SLOTS_CACHE_VERSION,
+        userId: activeUserId,
+        slots: slots ?? {}
+      }
+    : slots ?? {};
+
+  safeSetItem(storage, PRACTICE_SLOTS_STORAGE_KEY, JSON.stringify(payload));
 }
 
 export function clearPracticeSlotCache(
   storage: BrowserStorageLike,
   slots: Record<string, IssuedPracticeSlot | null>,
   difficultyKey: string,
-  caseToken?: string | null
+  caseToken?: string | null,
+  userId?: string | null
 ) {
   const nextSlots = { ...(slots ?? {}) };
   const existingSlot = nextSlots[difficultyKey] ?? null;
   if (!existingSlot) {
-    savePracticeSlotsCache(storage, nextSlots);
+    savePracticeSlotsCache(storage, nextSlots, userId);
     return nextSlots;
   }
 
   if (caseToken && existingSlot.caseToken !== caseToken) {
-    savePracticeSlotsCache(storage, nextSlots);
+    savePracticeSlotsCache(storage, nextSlots, userId);
     return nextSlots;
   }
 
   nextSlots[difficultyKey] = null;
-  savePracticeSlotsCache(storage, nextSlots);
+  savePracticeSlotsCache(storage, nextSlots, userId);
   return nextSlots;
 }
 

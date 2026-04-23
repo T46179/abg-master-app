@@ -95,7 +95,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
 
         startTransition(() => {
-          let practiceSlotsByDifficulty = loadPracticeSlotsCache(window.localStorage, payload.contentVersion);
+          let practiceSlotsByDifficulty = loadPracticeSlotsCache(window.localStorage, payload.contentVersion, userId);
           let pendingSubmission = loadPendingPracticeSubmission(window.localStorage);
           let syncState: PracticeFlowState["syncState"] = pendingSubmission ? "pending_retry" : "idle";
           let syncMessage: string | null = null;
@@ -108,7 +108,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 window.localStorage,
                 practiceSlotsByDifficulty,
                 pendingSubmission.difficultyKey,
-                pendingSubmission.caseToken
+                pendingSubmission.caseToken,
+                userId
               );
               pendingSubmission = null;
               syncState = "idle";
@@ -119,7 +120,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 window.localStorage,
                 practiceSlotsByDifficulty,
                 pendingSubmission.difficultyKey,
-                pendingSubmission.caseToken
+                pendingSubmission.caseToken,
+                userId
               );
               pendingSubmission = null;
               syncState = "idle";
@@ -208,7 +210,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       window.localStorage,
       state.practiceState.practiceSlotsByDifficulty,
       pendingSubmission.difficultyKey,
-      pendingSubmission.caseToken
+      pendingSubmission.caseToken,
+      state.userId
     );
 
     retryAttemptCountRef.current = 0;
@@ -261,7 +264,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const nextSlots = {
-      ...loadPracticeSlotsCache(window.localStorage, state.payload.contentVersion),
+      ...loadPracticeSlotsCache(window.localStorage, state.payload.contentVersion, state.userId),
       [pendingSubmission.difficultyKey]: {
         ...result.replacementSlot,
         contentVersion: state.payload.contentVersion ?? pendingSubmission.contentVersion,
@@ -271,7 +274,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!slotMatchesDifficultyKey(nextSlots[pendingSubmission.difficultyKey], pendingSubmission.difficultyKey)) {
       nextSlots[pendingSubmission.difficultyKey] = null;
     }
-    savePracticeSlotsCache(window.localStorage, nextSlots);
+    savePracticeSlotsCache(window.localStorage, nextSlots, state.userId);
     clearPendingPracticeSubmission(window.localStorage);
     retryAttemptCountRef.current = 0;
     clearRetryTimer();

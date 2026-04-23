@@ -972,6 +972,24 @@ describe("protected practice cache", () => {
     expect(slotMatchesDifficultyKey(loadedSlots.master, "master")).toBe(false);
   });
 
+  it("scopes cached slots to the active user when a user id is provided", () => {
+    const storage = createMemoryStorage();
+
+    savePracticeSlotsCache(storage, {
+      advanced: {
+        caseToken: "token-1",
+        issuedAt: "2026-03-26T00:00:00Z",
+        expiresAt: "2026-03-27T00:00:00Z",
+        contentVersion: "beta-1",
+        difficultyKey: "advanced",
+        caseData: sampleCase
+      }
+    }, "user-1");
+
+    expect(loadPracticeSlotsCache(storage, "beta-1", "user-1").advanced?.caseToken).toBe("token-1");
+    expect(loadPracticeSlotsCache(storage, "beta-1", "user-2").advanced).toBeUndefined();
+  });
+
   it("clears only the matching cached slot for a pending submission", () => {
     const storage = createMemoryStorage();
 
