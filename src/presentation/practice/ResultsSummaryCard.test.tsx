@@ -74,7 +74,6 @@ function createStorageAdapter(overrides: Partial<StorageAdapter> = {}): StorageA
     loadUserState: vi.fn(async () => null),
     saveUserState: vi.fn(async () => undefined),
     resetUserState: vi.fn(async () => undefined),
-    saveAttempt: vi.fn(async () => undefined),
     loadSeenCaseState: vi.fn(() => ({})),
     saveSeenCaseState: vi.fn(),
     loadPracticeIntroSeen: vi.fn(() => false),

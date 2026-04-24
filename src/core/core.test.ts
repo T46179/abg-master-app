@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createAttemptRecord, getFinalDiagnosisCorrect, mapStepResultsToAttemptStepResults } from "./attempts";
 import { composeCaseStructuredExplanation } from "./explanations";
 import { getCaseFeedbackFormUrl } from "./feedback";
 import { getVisibleCaseMetrics } from "./metrics";
@@ -32,7 +31,6 @@ import { getRuntimeAssetPath, loadCasesPayload, normalizeCasesPayload } from "./
 import { getEligibleCasesForDifficulty } from "./selection";
 import {
   createAppStorage,
-  mapAttemptToAttemptRow,
   mapProgressRowToUserState,
   mapUserStateToProgressRow,
   STORAGE_KEYS
@@ -207,34 +205,55 @@ describe("runtime normalization", () => {
     expect(payload.contentVersion).toBe("beta-1_2026-04-03");
   });
 
-  it("normalizes wrapped payloads", () => {
-    const payload = normalizeCasesPayload({
+  it("rejects wrapped public catalog payloads", () => {
+    expect(() => normalizeCasesPayload({
       cases: [sampleCase],
       progression_config: { difficulty_labels: { 1: "beginner" } },
       default_user_state: { total_xp: 0, level: 1 },
       dashboard_state: { user: { level: 1 } },
       content_version: "beta-1_2026-04-03"
-    });
+    })).toThrow("Protected runtime bootstrap format not recognized.");
+  });
 
-    expect(payload.cases).toHaveLength(1);
-    expect(payload.progressionConfig?.difficulty_labels?.[1]).toBe("beginner");
-    expect(payload.contentVersion).toBe("beta-1_2026-04-03");
+  it("rejects array public catalog payloads", () => {
+    expect(() => normalizeCasesPayload([sampleCase])).toThrow("Protected runtime bootstrap format not recognized.");
   });
 
   it("builds runtime asset paths from BASE_URL-compatible bases", () => {
-    expect(getRuntimeAssetPath("abg_cases.json", "/abg-master-app/")).toBe("/abg-master-app/abg_cases.json");
-    expect(getRuntimeAssetPath("/abg_cases.json", "/")).toBe("/abg_cases.json");
+    expect(getRuntimeAssetPath("runtime_bootstrap.json", "/abg-master-app/")).toBe("/abg-master-app/runtime_bootstrap.json");
+    expect(getRuntimeAssetPath("/runtime_bootstrap.json", "/")).toBe("/runtime_bootstrap.json");
   });
 
-  it("fails closed when protected delivery is enabled but the bootstrap is unavailable", async () => {
-    vi.stubEnv("VITE_ENABLE_PROTECTED_CASE_DELIVERY", "true");
+  it("fails closed when the bootstrap is unavailable and no cache exists", async () => {
     const fetchMock = vi.fn(async () => new Response(null, { status: 404 }));
+    const storage = createMemoryStorage();
 
-    await expect(loadCasesPayload(fetchMock as typeof fetch)).rejects.toThrow(
+    await expect(loadCasesPayload(fetchMock as typeof fetch, storage)).rejects.toThrow(
       "Failed to load protected runtime bootstrap: 404"
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith("/runtime_bootstrap.json", { cache: "no-store" });
+  });
+
+  it("caches valid protected bootstraps and reuses them when bootstrap fetch fails", async () => {
+    const storage = createMemoryStorage();
+    const bootstrap = {
+      delivery_mode: "protected_runtime",
+      progression_config: { difficulty_labels: { 1: "beginner" } },
+      default_user_state: { total_xp: 0, level: 1 },
+      dashboard_state: { user: { level: 1 } },
+      content_version: "beta-1_2026-04-03"
+    };
+    const fetchSuccess = vi.fn(async () => Response.json(bootstrap));
+
+    const freshPayload = await loadCasesPayload(fetchSuccess as typeof fetch, storage);
+    expect(freshPayload.contentVersion).toBe("beta-1_2026-04-03");
+
+    const fetchFailure = vi.fn(async () => new Response(null, { status: 503 }));
+    const cachedPayload = await loadCasesPayload(fetchFailure as typeof fetch, storage);
+
+    expect(cachedPayload).toEqual(freshPayload);
+    expect(fetchFailure).toHaveBeenCalledWith("/runtime_bootstrap.json", { cache: "no-store" });
   });
 });
 
@@ -675,53 +694,8 @@ describe("locked advanced/master step handling", () => {
   });
 });
 
-describe("attempt helpers", () => {
-  it("stores balanced step result detail for analytics", () => {
-    const stepResults = mapStepResultsToAttemptStepResults([
-      { key: "ph_status", label: "pH status", chosen: "Acidaemia", correctAnswer: "Acidaemia", correct: true },
-      { key: "final_diagnosis", label: "Diagnosis", chosen: "COPD", correctAnswer: "Sepsis", correct: false }
-    ]);
-
-    expect(stepResults).toEqual([
-      { key: "ph_status", correct: true },
-      { key: "final_diagnosis", correct: false, chosen: "COPD", correct_answer: "Sepsis" }
-    ]);
-  });
-
-  it("derives final diagnosis correctness from the final diagnosis step when present", () => {
-    expect(getFinalDiagnosisCorrect([
-      { key: "ph_status", label: "pH status", chosen: "Acidaemia", correctAnswer: "Acidaemia", correct: true },
-      { key: "final_diagnosis", label: "Diagnosis", chosen: "Sepsis", correctAnswer: "Sepsis", correct: true }
-    ])).toBe(true);
-  });
-
-  it("warns when content_version is missing before building an attempt record", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-
-    const attempt = createAttemptRecord({
-      userId: "user-1",
-      caseItem: sampleCase,
-      difficultyLabel: "advanced",
-      elapsedSeconds: 20,
-      correctSteps: 1,
-      totalSteps: 2,
-      totalXpAward: 30,
-      completedAt: "2026-03-26T00:00:00Z",
-      stepResults: [
-        { key: "ph_status", label: "pH status", chosen: "Acidaemia", correctAnswer: "Acidaemia", correct: true },
-        { key: "final_diagnosis", label: "Diagnosis", chosen: "COPD", correctAnswer: "Sepsis", correct: false }
-      ],
-      contentVersion: null
-    });
-
-    expect(warnSpy).toHaveBeenCalledWith("Missing content_version");
-    expect(attempt.content_version).toBeNull();
-    warnSpy.mockRestore();
-  });
-});
-
 describe("storage mappers", () => {
-  it("maps progress and attempt rows", () => {
+  it("maps progress rows", () => {
     const progressRow = mapUserStateToProgressRow(createUserState({
       xp: 20,
       level: 2,
@@ -734,29 +708,9 @@ describe("storage mappers", () => {
     }), "user-1");
 
     const mappedBack = mapProgressRowToUserState(progressRow);
-    const attemptRow = mapAttemptToAttemptRow({
-      user_id: "user-1",
-      case_id: "case-1",
-      archetype: "sepsis_respiratory_alkalosis",
-      difficulty_label: "advanced",
-      difficulty_level: 3,
-      xp_total_awarded: 30,
-      correct_steps: 2,
-      total_steps: 2,
-      elapsed_seconds: 20,
-      completed_at: "2026-03-26T00:00:00Z",
-      final_diagnosis_correct: true,
-      accuracy_percent: 100,
-      step_results_json: [{ key: "ph_status", correct: true }],
-      app_version: "0.1.0",
-      content_version: "beta-1_2026-04-03",
-      mode: "practice"
-    });
 
     expect(mappedBack?.casesCompleted).toBe(3);
-    expect(attemptRow.elapsed_seconds).toBe(20);
-    expect(attemptRow.final_diagnosis_correct).toBe(true);
-    expect(attemptRow.content_version).toBe("beta-1_2026-04-03");
+    expect(mappedBack?.lastCaseDate).toBe("2026-03-26");
   });
 });
 
@@ -868,7 +822,7 @@ describe("storage adapters", () => {
     expect(calls.upserts[0]?.table).toBe("user_progress");
   });
 
-  it("writes attempts remotely only when saveAttempt is called", async () => {
+  it("does not expose browser-side attempt writes", async () => {
     const browserStorage = createMemoryStorage();
     const { supabase, calls } = createFakeSupabase(null);
     const storage = createAppStorage({
@@ -879,35 +833,7 @@ describe("storage adapters", () => {
 
     await storage.init({ userId: "user-1", releaseSignature: "sig-1" });
     expect(calls.inserts).toHaveLength(0);
-
-    await storage.saveAttempt({
-      user_id: "user-1",
-      case_id: "case-1",
-      archetype: "sepsis_respiratory_alkalosis",
-      difficulty_label: "advanced",
-      difficulty_level: 3,
-      xp_total_awarded: 30,
-      correct_steps: 2,
-      total_steps: 2,
-      elapsed_seconds: 20,
-      completed_at: "2026-03-26T00:00:00Z",
-      final_diagnosis_correct: true,
-      accuracy_percent: 100,
-      step_results_json: [{ key: "ph_status", correct: true }],
-      app_version: "0.1.0",
-      content_version: "beta-1_2026-04-03",
-      mode: "practice"
-    });
-
-    expect(calls.inserts).toHaveLength(1);
-    expect(calls.inserts[0]).toMatchObject({
-      table: "attempts",
-      payload: expect.objectContaining({
-        archetype: "sepsis_respiratory_alkalosis",
-        content_version: "beta-1_2026-04-03",
-        mode: "practice"
-      })
-    });
+    expect("saveAttempt" in storage).toBe(false);
   });
 });
 

@@ -170,8 +170,7 @@ describe("LandingScreen", () => {
       supabase: {},
       runtimeConfig: {
         SUPABASE_URL: "https://example.supabase.co",
-        SUPABASE_ANON_KEY: "anon",
-        ENABLE_PROTECTED_CASE_DELIVERY: true
+        SUPABASE_ANON_KEY: "anon"
       },
       payload: {
         deliveryMode: "protected_runtime",

@@ -1,7 +1,6 @@
 export interface RuntimeConfig {
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
-  ENABLE_PROTECTED_CASE_DELIVERY?: boolean;
 }
 
 export interface ReleaseFlags {
@@ -174,7 +173,7 @@ export interface CasesPayload {
   defaultUserState: DefaultUserStateSnapshot | null;
   dashboardState: DashboardState | null;
   contentVersion: string | null;
-  deliveryMode: "public_catalog" | "protected_runtime";
+  deliveryMode: "protected_runtime";
 }
 
 export interface UserState {
@@ -301,38 +300,7 @@ export interface StorageInitOptions {
   onSaveFailure?: (kind: SaveFailureKind, error?: unknown) => void;
 }
 
-export type SaveFailureKind = "save" | "progress" | "attempt";
-
-export interface AttemptStepResult {
-  key: string;
-  correct: boolean;
-  chosen?: string;
-  correct_answer?: string;
-}
-
-export interface AttemptRecord {
-  user_id?: string | null;
-  case_id?: string | null;
-  archetype?: string | null;
-  difficulty?: string;
-  difficulty_label?: string;
-  difficulty_level?: number | null;
-  xp_earned?: number;
-  xp_total_awarded?: number;
-  correct?: number;
-  correct_steps?: number;
-  total_questions?: number;
-  total_steps?: number;
-  time_taken_ms?: number;
-  elapsed_seconds?: number | null;
-  completed_at?: string | null;
-  final_diagnosis_correct?: boolean;
-  accuracy_percent?: number;
-  step_results_json?: AttemptStepResult[];
-  app_version?: string | null;
-  content_version?: string | null;
-  mode?: string | null;
-}
+export type SaveFailureKind = "save" | "progress";
 
 export interface ProgressRow {
   user_id: string;
@@ -345,31 +313,11 @@ export interface ProgressRow {
   last_case_date: string | null;
 }
 
-export interface AttemptRow {
-  user_id: string | null;
-  case_id: string | null;
-  archetype: string | null;
-  difficulty_label: string;
-  difficulty_level: number | null;
-  xp_total_awarded: number;
-  correct_steps: number;
-  total_steps: number;
-  elapsed_seconds: number;
-  completed_at: string | null;
-  final_diagnosis_correct: boolean;
-  accuracy_percent: number;
-  step_results_json: AttemptStepResult[];
-  app_version: string | null;
-  content_version: string | null;
-  mode: string;
-}
-
 export interface StorageAdapter {
   init(options?: StorageInitOptions): Promise<void>;
   loadUserState(): Promise<UserState | null>;
   saveUserState(userState: UserState): Promise<void>;
   resetUserState(): Promise<void>;
-  saveAttempt(attempt: AttemptRecord): Promise<void>;
   loadSeenCaseState(): Record<string, string[]>;
   saveSeenCaseState(seenState: Record<string, string[]>): void;
   loadPracticeIntroSeen(): boolean;

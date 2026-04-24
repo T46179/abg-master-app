@@ -303,7 +303,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (
       retryInFlightRef.current ||
       state.status !== "ready" ||
-      state.payload?.deliveryMode !== "protected_runtime" ||
       !state.supabase ||
       !state.runtimeConfig ||
       typeof window === "undefined"
@@ -369,7 +368,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (
       state.status !== "ready" ||
-      state.payload?.deliveryMode !== "protected_runtime" ||
       typeof window === "undefined"
     ) {
       return;
@@ -391,7 +389,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (
       state.status !== "ready" ||
-      state.payload?.deliveryMode !== "protected_runtime" ||
       !state.practiceState.pendingSubmission ||
       state.practiceState.syncState !== "pending_retry" ||
       typeof window === "undefined"

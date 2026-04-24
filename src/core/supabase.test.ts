@@ -43,13 +43,11 @@ describe("ensureAnonymousSession", () => {
 
     const runtimeA = createRuntimeSupabaseClient({
       SUPABASE_URL: "https://example.supabase.co",
-      SUPABASE_ANON_KEY: "anon",
-      ENABLE_PROTECTED_CASE_DELIVERY: true
+      SUPABASE_ANON_KEY: "anon"
     });
     const runtimeB = createRuntimeSupabaseClient({
       SUPABASE_URL: "https://example.supabase.co",
-      SUPABASE_ANON_KEY: "anon",
-      ENABLE_PROTECTED_CASE_DELIVERY: true
+      SUPABASE_ANON_KEY: "anon"
     });
 
     expect(createClientMock).toHaveBeenCalledTimes(1);

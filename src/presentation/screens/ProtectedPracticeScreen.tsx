@@ -284,7 +284,7 @@ export function ProtectedPracticeScreen() {
   }
 
   useEffect(() => {
-    if (!payload?.contentVersion || !state.runtimeConfig?.ENABLE_PROTECTED_CASE_DELIVERY) return;
+    if (!payload?.contentVersion) return;
     if (!accessibleDifficulties.length) return;
     const preloadDifficulties = shouldAutoLoadPracticeCase
       ? accessibleDifficulties.filter(difficultyKey => difficultyKey !== normalizedDifficulty)
@@ -297,7 +297,7 @@ export function ProtectedPracticeScreen() {
     payload?.contentVersion,
     recentArchetypes.join("|"),
     shouldAutoLoadPracticeCase,
-    state.runtimeConfig?.ENABLE_PROTECTED_CASE_DELIVERY
+    state.runtimeConfig
   ]);
 
   useEffect(() => {

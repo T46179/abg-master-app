@@ -183,8 +183,7 @@ export function LandingScreen() {
     const runtimeConfig = state.runtimeConfig;
     const supabase = state.supabase;
     const storage = state.storage;
-    if (payload?.deliveryMode !== "protected_runtime") return;
-    if (!payload.contentVersion || !runtimeConfig || !runtimeConfig.ENABLE_PROTECTED_CASE_DELIVERY) return;
+    if (!payload?.contentVersion || !runtimeConfig) return;
     if (!supabase || !storage || typeof window === "undefined") return;
     const activeRuntimeConfig = runtimeConfig;
     const activeSupabase = supabase;
@@ -267,7 +266,6 @@ export function LandingScreen() {
   }, [
     patchPracticeState,
     state.payload?.contentVersion,
-    state.payload?.deliveryMode,
     state.runtimeConfig,
     state.status,
     state.storage,
