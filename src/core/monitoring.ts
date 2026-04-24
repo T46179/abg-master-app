@@ -39,3 +39,15 @@ export function initMonitoring() {
     replaysOnErrorSampleRate: replayOnErrorSampleRate
   });
 }
+
+export function captureAppException(error: unknown, context?: { name?: string; extra?: Record<string, unknown> }) {
+  Sentry.withScope(scope => {
+    if (context?.name) {
+      scope.setTag("app_error_context", context.name);
+    }
+    if (context?.extra) {
+      scope.setContext("app_error_details", context.extra);
+    }
+    Sentry.captureException(error);
+  });
+}

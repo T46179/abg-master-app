@@ -15,9 +15,9 @@ export function ErrorView({ message }: { message: string | null }) {
   return (
     <main className="app-shell__page status-screen">
       <Surface className="status-panel">
-        <span className="status-panel__eyebrow">Frontend error</span>
-        <h1>Unable to initialize the frontend</h1>
-        <p>{message ?? "The frontend failed to initialize."}</p>
+        <span className="status-panel__eyebrow">App unavailable</span>
+        <h1>Unable to start ABG Master</h1>
+        <p>{message ?? "Something went wrong while starting ABG Master. Please refresh and try again."}</p>
       </Surface>
     </main>
   );

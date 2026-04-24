@@ -6,6 +6,25 @@ interface RuntimeStorageLike {
 }
 
 const RUNTIME_BOOTSTRAP_CACHE_KEY = "abgmaster_runtimeBootstrap";
+const RUNTIME_BOOTSTRAP_USER_MESSAGE =
+  "We could not load the app data needed to start ABG Master. Please check your connection and refresh.";
+
+export class RuntimeBootstrapError extends Error {
+  readonly userMessage = RUNTIME_BOOTSTRAP_USER_MESSAGE;
+
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "RuntimeBootstrapError";
+  }
+}
+
+export function isRuntimeBootstrapError(error: unknown): error is RuntimeBootstrapError {
+  return error instanceof RuntimeBootstrapError;
+}
+
+export function getRuntimeBootstrapUserMessage() {
+  return RUNTIME_BOOTSTRAP_USER_MESSAGE;
+}
 
 function normalizeBaseUrl(baseUrl: string) {
   if (!baseUrl) return "/";
@@ -88,8 +107,10 @@ export async function loadCasesPayload(
   fetchImpl: typeof fetch = fetch,
   storage: RuntimeStorageLike | null = getDefaultRuntimeStorage()
 ): Promise<CasesPayload> {
+  const bootstrapPath = getRuntimeAssetPath("runtime_bootstrap.json");
+
   try {
-    const bootstrapResponse = await fetchImpl(getRuntimeAssetPath("runtime_bootstrap.json"), { cache: "no-store" });
+    const bootstrapResponse = await fetchImpl(bootstrapPath, { cache: "no-store" });
     if (!bootstrapResponse.ok) {
       throw new Error(`Failed to load protected runtime bootstrap: ${bootstrapResponse.status}`);
     }
@@ -100,7 +121,9 @@ export async function loadCasesPayload(
   } catch (error) {
     const cachedPayload = loadCachedRuntimeBootstrap(storage);
     if (cachedPayload) return cachedPayload;
-    if (error instanceof Error) throw error;
-    throw new Error("Unable to load protected runtime bootstrap.");
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new RuntimeBootstrapError(`Unable to load protected runtime bootstrap from ${bootstrapPath}: ${detail}`, {
+      cause: error
+    });
   }
 }

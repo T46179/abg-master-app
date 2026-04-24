@@ -16,10 +16,14 @@ const createAppStorage = vi.fn();
 const submitProtectedPracticeCase = vi.fn();
 const applyProtectedCaseCompletion = vi.fn();
 const isProtectedPracticeError = vi.fn();
+const captureAppException = vi.fn();
 
 vi.mock("../core/runtime", () => ({
   loadRuntimeConfig: (...args: unknown[]) => loadRuntimeConfig(...args),
-  loadCasesPayload: (...args: unknown[]) => loadCasesPayload(...args)
+  loadCasesPayload: (...args: unknown[]) => loadCasesPayload(...args),
+  isRuntimeBootstrapError: (error: { name?: string }) => error?.name === "RuntimeBootstrapError",
+  getRuntimeBootstrapUserMessage: () =>
+    "We could not load the app data needed to start ABG Master. Please check your connection and refresh."
 }));
 
 vi.mock("../core/supabase", () => ({
@@ -29,6 +33,10 @@ vi.mock("../core/supabase", () => ({
 
 vi.mock("../core/storage", () => ({
   createAppStorage: (...args: unknown[]) => createAppStorage(...args)
+}));
+
+vi.mock("../core/monitoring", () => ({
+  captureAppException: (...args: unknown[]) => captureAppException(...args)
 }));
 
 vi.mock("../core/protectedPractice", () => ({
@@ -53,6 +61,7 @@ function Probe() {
     <div>
       <div data-testid="sync-state">{state.practiceState.syncState}</div>
       <div data-testid="sync-message">{state.practiceState.syncMessage ?? ""}</div>
+      <div data-testid="error-message">{state.errorMessage ?? ""}</div>
       <button type="button" onClick={retryPendingSubmissionNow}>retry</button>
     </div>
   );
@@ -125,6 +134,7 @@ describe("AppProvider protected practice recovery", () => {
     ensureAnonymousSession.mockResolvedValue({ userId: "user-1", syncUnavailable: false });
     createAppStorage.mockReturnValue(storageAdapter);
     submitProtectedPracticeCase.mockReset();
+    captureAppException.mockReset();
     applyProtectedCaseCompletion.mockImplementation(({ userState }: { userState: unknown }) => userState);
     isProtectedPracticeError.mockImplementation((error: { __protectedError?: boolean }) => Boolean(error?.__protectedError));
   });
@@ -156,6 +166,30 @@ describe("AppProvider protected practice recovery", () => {
     await flush();
 
     expect(syncStateText()).toBe("pending_retry");
+  });
+
+  it("shows a friendly runtime bootstrap error while reporting the detailed failure", async () => {
+    const bootstrapError = new Error("Unable to load protected runtime bootstrap from /runtime_bootstrap.json: Failed to fetch");
+    bootstrapError.name = "RuntimeBootstrapError";
+    Object.defineProperty(bootstrapError, "userMessage", {
+      value: "We could not load the app data needed to start ABG Master. Please check your connection and refresh."
+    });
+    loadCasesPayload.mockRejectedValue(bootstrapError);
+
+    act(() => {
+      root.render(<AppProvider><Probe /></AppProvider>);
+    });
+    await flush();
+
+    expect(container.querySelector("[data-testid='error-message']")?.textContent).toBe(
+      "We could not load the app data needed to start ABG Master. Please check your connection and refresh."
+    );
+    expect(captureAppException).toHaveBeenCalledWith(bootstrapError, {
+      name: "app_initialization",
+      extra: {
+        phase: "bootstrap"
+      }
+    });
   });
 
   it("clears stale pending submissions without attempting a retry", async () => {

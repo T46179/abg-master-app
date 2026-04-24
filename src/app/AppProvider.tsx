@@ -1,5 +1,6 @@
 import { createContext, startTransition, useCallback, useContext, useEffect, useReducer, useRef, type ReactNode } from "react";
-import { loadCasesPayload, loadRuntimeConfig } from "../core/runtime";
+import { captureAppException } from "../core/monitoring";
+import { getRuntimeBootstrapUserMessage, isRuntimeBootstrapError, loadCasesPayload, loadRuntimeConfig } from "../core/runtime";
 import { createAppStorage } from "../core/storage";
 import { createRuntimeSupabaseClient, ensureAnonymousSession } from "../core/supabase";
 import { applyProtectedCaseCompletion, isProtectedPracticeError, submitProtectedPracticeCase } from "../core/protectedPractice";
@@ -156,9 +157,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       } catch (error) {
         if (cancelled) return;
+        captureAppException(error, {
+          name: "app_initialization",
+          extra: {
+            phase: "bootstrap"
+          }
+        });
         dispatch({
           type: "error",
-          message: error instanceof Error ? error.message : "Unknown frontend initialization failure."
+          message: isRuntimeBootstrapError(error)
+            ? getRuntimeBootstrapUserMessage()
+            : "Something went wrong while starting ABG Master. Please refresh and try again."
         });
       }
     }

@@ -27,7 +27,7 @@ import {
   mapDefaultUserState
 } from "./progression";
 import { createMemoryStorage } from "./storage";
-import { getRuntimeAssetPath, loadCasesPayload, normalizeCasesPayload } from "./runtime";
+import { getRuntimeAssetPath, isRuntimeBootstrapError, loadCasesPayload, normalizeCasesPayload } from "./runtime";
 import { getEligibleCasesForDifficulty } from "./selection";
 import {
   createAppStorage,
@@ -228,9 +228,18 @@ describe("runtime normalization", () => {
     const fetchMock = vi.fn(async () => new Response(null, { status: 404 }));
     const storage = createMemoryStorage();
 
-    await expect(loadCasesPayload(fetchMock as typeof fetch, storage)).rejects.toThrow(
-      "Failed to load protected runtime bootstrap: 404"
+    let caughtError: unknown;
+    try {
+      await loadCasesPayload(fetchMock as typeof fetch, storage);
+    } catch (error) {
+      caughtError = error;
+    }
+
+    expect(caughtError).toBeInstanceOf(Error);
+    expect((caughtError as Error).message).toBe(
+      "Unable to load protected runtime bootstrap from /runtime_bootstrap.json: Failed to load protected runtime bootstrap: 404"
     );
+    expect(isRuntimeBootstrapError(caughtError)).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith("/runtime_bootstrap.json", { cache: "no-store" });
   });
