@@ -93,8 +93,8 @@ function FoundationsCompletionCard() {
         </div>
 
         <ul className="learn-foundations-achievement__list">
-          {items.map(item => (
-            <li key={item}>
+          {items.map((item, index) => (
+            <li key={index}>
               {item}
             </li>
           ))}

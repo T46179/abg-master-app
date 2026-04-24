@@ -1,7 +1,18 @@
 // @vitest-environment jsdom
 
+import { isValidElement } from "react";
 import { describe, expect, it } from "vitest";
 import { appRoutes } from "./routes";
+
+function getElementName(element: unknown) {
+  return isValidElement(element) && typeof element.type === "function"
+    ? element.type.name
+    : null;
+}
+
+function getElementProps(element: unknown) {
+  return isValidElement(element) ? element.props as { to?: string; replace?: boolean } : {};
+}
 
 describe("app routes", () => {
   it("renders the landing screen at /", () => {
@@ -24,7 +35,7 @@ describe("app routes", () => {
     const learnIndexRoute = learnRoute?.children?.find((route) => route.index);
 
     expect(learnIndexRoute?.element).toBeTruthy();
-    expect(learnIndexRoute?.element?.type?.name).toBe("LearnScreen");
+    expect(getElementName(learnIndexRoute?.element)).toBe("LearnScreen");
   });
 
   it("renders nested learn lesson routes", () => {
@@ -33,15 +44,16 @@ describe("app routes", () => {
     const learnLessonRoute = learnRoute?.children?.find((route) => route.path === ":difficulty");
 
     expect(learnLessonRoute?.element).toBeTruthy();
-    expect(learnLessonRoute?.element?.type?.name).toBe("LearnLessonScreen");
+    expect(getElementName(learnLessonRoute?.element)).toBe("LearnLessonScreen");
   });
 
   it("redirects unknown nested learn lesson routes back to /learn", () => {
     const shellRoute = appRoutes.find((route) => route.children != null);
     const learnRoute = shellRoute?.children?.find((route) => route.path === "learn");
     const learnWildcardRoute = learnRoute?.children?.find((route) => route.path === "*");
+    const wildcardProps = getElementProps(learnWildcardRoute?.element);
 
-    expect(learnWildcardRoute?.element?.props.to).toBe("/learn");
-    expect(learnWildcardRoute?.element?.props.replace).toBe(true);
+    expect(wildcardProps.to).toBe("/learn");
+    expect(wildcardProps.replace).toBe(true);
   });
 });

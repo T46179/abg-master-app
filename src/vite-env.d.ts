@@ -19,6 +19,7 @@ interface ImportMeta {
 
 declare global {
   const __APP_VERSION__: string;
+  var IS_REACT_ACT_ENVIRONMENT: boolean;
 }
 
 export {};

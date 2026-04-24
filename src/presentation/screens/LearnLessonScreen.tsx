@@ -86,30 +86,31 @@ export function LearnLessonScreen() {
     return <Navigate to="/learn" replace />;
   }
 
-  const lesson = level.lessons[lessonIndex];
-  const isLastLesson = lessonIndex === level.lessons.length - 1;
+  const activeLevel = level;
+  const lesson = activeLevel.lessons[lessonIndex];
+  const isLastLesson = lessonIndex === activeLevel.lessons.length - 1;
   const isSpeedCheck = lesson.kind === "speed-check";
-  const showFooterPracticeCta = !isSpeedCheck && isLastLesson && level.slug === "beginner" && Boolean(lesson.ctaHref && lesson.ctaLabel);
+  const showFooterPracticeCta = !isSpeedCheck && isLastLesson && activeLevel.slug === "beginner" && Boolean(lesson.ctaHref && lesson.ctaLabel);
   const levelProgress = getLevelProgress(state.payload?.progressionConfig ?? null, state.userState);
-  const moduleProgress = state.userState.learnProgress?.[level.slug];
+  const moduleProgress = state.userState.learnProgress?.[activeLevel.slug];
   const canSkipSpeedCheck = isSpeedCheck && Boolean(
     moduleProgress?.bestSpeedCheckResult ||
     (moduleProgress?.completedLessonCount ?? 0) > lessonIndex
   );
   const highestSelectableLessonIndex = moduleProgress?.completed
-    ? level.lessons.length - 1
+    ? activeLevel.lessons.length - 1
     : Math.max(lessonIndex, moduleProgress?.completedLessonCount ?? 0);
   const lessonStyle = {
-    "--learn-card-accent-light": level.palette.accentLight,
-    "--learn-card-accent-dark": level.palette.accentDark
+    "--learn-card-accent-light": activeLevel.palette.accentLight,
+    "--learn-card-accent-dark": activeLevel.palette.accentDark
   } as CSSProperties;
 
   function getNextLessonUserState() {
     const completedLessonCount = lessonIndex + 1;
-    const currentProgress = state.userState.learnProgress?.[level.slug];
+    const currentProgress = state.userState.learnProgress?.[activeLevel.slug];
     const nextCompleted = isLastLesson || Boolean(currentProgress?.completed);
     const nextCompletedLessonCount = nextCompleted
-      ? level.lessons.length
+      ? activeLevel.lessons.length
       : Math.max(currentProgress?.completedLessonCount ?? 0, completedLessonCount);
 
     if (
@@ -123,7 +124,7 @@ export function LearnLessonScreen() {
       ...state.userState,
       learnProgress: {
         ...state.userState.learnProgress,
-        [level.slug]: {
+        [activeLevel.slug]: {
           ...currentProgress,
           completedLessonCount: nextCompletedLessonCount,
           completed: nextCompleted
@@ -187,7 +188,7 @@ export function LearnLessonScreen() {
   }
 
   function handleSpeedCheckResult(result: SpeedCheckResult) {
-    const currentProgress = state.userState.learnProgress?.[level.slug];
+    const currentProgress = state.userState.learnProgress?.[activeLevel.slug];
     const currentBest = currentProgress?.bestSpeedCheckResult;
     const isBetterResult =
       !currentBest ||
@@ -200,7 +201,7 @@ export function LearnLessonScreen() {
       ...state.userState,
       learnProgress: {
         ...state.userState.learnProgress,
-        [level.slug]: {
+        [activeLevel.slug]: {
           ...currentProgress,
           completedLessonCount: currentProgress?.completedLessonCount ?? 0,
           completed: currentProgress?.completed ?? false,
@@ -220,16 +221,16 @@ export function LearnLessonScreen() {
           </Link>
         </div>
 
-        <Surface className={cn("learn-deck__surface", `learn-deck__surface--${level.slug}`)} style={lessonStyle}>
+        <Surface className={cn("learn-deck__surface", `learn-deck__surface--${activeLevel.slug}`)} style={lessonStyle}>
           <header className="learn-deck__header">
             <div className="learn-deck__header-top">
-              <span className="learn-deck__eyebrow">{level.title}</span>
+              <span className="learn-deck__eyebrow">{activeLevel.title}</span>
               <div className="learn-progress-dots" aria-label="Lesson progress">
-                {level.lessons.map((item, index) => {
+                {activeLevel.lessons.map((item, index) => {
                   const stateName = index === lessonIndex ? "current" : index < lessonIndex ? "complete" : "upcoming";
                   const canSelectLesson = index <= highestSelectableLessonIndex;
                   const dotClassName = cn("learn-progress-dots__dot", `is-${stateName}`, canSelectLesson && "is-selectable");
-                  const dotLabel = `Go to lesson ${index + 1} of ${level.lessons.length}: ${item.title}`;
+                  const dotLabel = `Go to lesson ${index + 1} of ${activeLevel.lessons.length}: ${item.title}`;
 
                   if (canSelectLesson) {
                     return (
@@ -250,7 +251,7 @@ export function LearnLessonScreen() {
                       key={`${item.title}-${index}`}
                       className={dotClassName}
                       data-state={stateName}
-                      aria-label={`Lesson ${index + 1} of ${level.lessons.length}`}
+                      aria-label={`Lesson ${index + 1} of ${activeLevel.lessons.length}`}
                     />
                   );
                 })}
