@@ -49,7 +49,7 @@ export function DashboardScreen() {
     state.storage.saveSeenCaseState({});
     state.storage.savePracticeIntroSeen(false);
     state.storage.saveAdvancedRangesPreference(false);
-    window.location.reload();
+    window.location.assign("/practice");
   }
 
   return (

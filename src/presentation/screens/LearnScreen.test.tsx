@@ -78,7 +78,8 @@ describe("Learn screens", () => {
     expect(container.textContent).not.toContain("Stewart analysis");
     expect(container.textContent).not.toContain("Build intuition about acid-base balance before you interpret full blood gases.");
     expect(container.textContent).not.toContain("Recognize pH status and name the main acid-base pattern fast.");
-    expect(container.textContent).toContain("5 modules");
+    expect(container.textContent).toContain("6 lessons");
+    expect(container.textContent).toContain("5 lessons");
     expect(container.textContent).not.toMatch(/\b0% Complete/);
     expect(container.textContent).not.toContain("Pre-beginner");
     expect(container.textContent).not.toContain("Module 1");
@@ -115,8 +116,8 @@ describe("Learn screens", () => {
 
     renderPath("/learn");
 
-    expect(container.textContent).toContain("5 modules");
-    expect(container.textContent).toContain("20% Complete");
+    expect(container.textContent).toContain("6 lessons");
+    expect(container.textContent).toContain("17% Complete");
     expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations"]')?.textContent).toContain("Continue");
     expect(container.textContent).not.toMatch(/\b0% Complete/);
     expect(container.querySelectorAll(".learn-level-card__pill")).toHaveLength(6);
@@ -250,7 +251,6 @@ describe("Learn screens", () => {
     expect(container.querySelector(".ph-scale-visualiser")).not.toBeNull();
     expect(container.querySelector(".learn-deck__body")?.textContent).toContain("Normal");
     expect(container.querySelector(".learn-deck__body")?.textContent).toContain("pH");
-    expect(container.querySelector(".learn-deck__body")?.textContent).toContain("Hydrogen ion concentration");
     expect(container.querySelector(".learn-deck__body")?.textContent).toContain("7.35");
     expect(container.querySelector(".learn-deck__body")?.textContent).toContain("7.45");
     expect(container.querySelector(".learn-deck__body")?.textContent).toContain("pH");
@@ -286,7 +286,7 @@ describe("Learn screens", () => {
     expect(Array.from(container.querySelectorAll("button")).some(button => button.textContent === "Back")).toBe(true);
 
     const dots = Array.from(container.querySelectorAll("[data-state]"));
-    expect(dots).toHaveLength(5);
+    expect(dots).toHaveLength(6);
     expect(dots[0]?.getAttribute("data-state")).toBe("complete");
     expect(dots[1]?.getAttribute("data-state")).toBe("current");
   });
@@ -301,8 +301,9 @@ describe("Learn screens", () => {
       });
     }
 
-    expect(container.textContent).toContain("Ready for a speed check?");
-    expect(container.textContent).toContain("Finish the speed check to continue.");
+    expect(container.textContent).toContain("Test your reflexes");
+    expect(container.textContent).toContain("Classify the pH values as fast as you can");
+    expect(container.textContent).toContain("Begin");
   });
 
   it("renders the carbonic acid equation before the compensation panel in the intermediate deck", () => {

@@ -30,6 +30,7 @@ export interface LearnLevelConfig {
   hideUntilUnlocked?: boolean;
   unlockCopy?: {
     intro: string;
+    subtitle?: string;
     practiceChanges: string[];
     extraInfo?: string;
   };
@@ -1103,11 +1104,13 @@ export const learnLevels: LearnLevelConfig[] = [
     badge: "Module 2",
     unlockLevel: 5,
     unlockCopy: {
-      intro: "Intermediate learning is now available.",
+      intro: "Intermediate learning is now available",
+      subtitle: "Compensation is now part of your blood gas interpretation pathway",
       practiceChanges: [
-        "Compensation becomes a bigger part of interpretation.",
-        "Cases ask you to connect the primary disorder with the expected physiological response.",
-        "The reasoning flow becomes more layered than simple pattern recognition."
+		"Access intermediate cases from the Practice Library",
+        "Learn expected compensation rules",
+        "See expanded explanations after each case",
+        "Intermediate learning module coming soon"
       ]
     },
     palette: {
@@ -1128,10 +1131,14 @@ export const learnLevels: LearnLevelConfig[] = [
     unlockLevel: 10,
     unlockCopy: {
       intro: "Advanced learning is now available.",
+	  subtitle: "Anion gap analysis is now a part of your interpretation pathway",
       practiceChanges: [
-        "Anion gap reasoning becomes central.",
-        "Cases lean harder on diagnostic pattern recognition.",
-        "Normal range help becomes more limited and optional."
+		"Access advanced cases from the Practice Library",
+        "Use anion gap reasoning to separate normal-gap from raised-gap acidosis",
+        "Work through cases with stronger diagnostic pattern recognition",
+        "Interpret cases without normal range hints by default",
+		"More detailed explanations in the case summary",
+		"Advanced learning module coming soon"
       ]
     },
     palette: {

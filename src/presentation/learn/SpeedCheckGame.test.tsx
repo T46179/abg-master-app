@@ -3,7 +3,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SPEED_CHECK_QUESTIONS, SpeedCheckGame } from "./SpeedCheckGame";
+import { SpeedCheckGame } from "./SpeedCheckGame";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -30,59 +30,82 @@ describe("SpeedCheckGame", () => {
     vi.useRealTimers();
   });
 
-  function renderGame(onComplete = vi.fn()) {
+  function renderGame(onComplete = vi.fn(), onXpAwarded = vi.fn()) {
     act(() => {
-      root.render(<SpeedCheckGame onComplete={onComplete} />);
+      root.render(
+        <SpeedCheckGame
+          onComplete={onComplete}
+          onXpAwarded={onXpAwarded}
+          xpProgressLabel="0 / 200 XP"
+        />
+      );
     });
 
-    return onComplete;
+    return { onComplete, onXpAwarded };
+  }
+
+  function clickButton(label: string) {
+    const button = Array.from(container.querySelectorAll("button")).find(item => item.textContent?.includes(label));
+    expect(button).toBeTruthy();
+
+    act(() => {
+      button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+  }
+
+  function startGame() {
+    clickButton("Begin");
+
+    act(() => {
+      now += 3000;
+      vi.advanceTimersByTime(3000);
+    });
+  }
+
+  function getVisibleQuestionAnswer() {
+    const ph = Number(container.querySelector(".speed-check__question strong")?.textContent);
+    expect(Number.isFinite(ph)).toBe(true);
+
+    if (ph < 7.35) return "Acidaemia";
+    if (ph > 7.45) return "Alkalaemia";
+    return "Normal";
   }
 
   it("starts the game, awards xp, and shows answer feedback", () => {
-    renderGame();
+    const { onXpAwarded } = renderGame();
 
-    const startButton = Array.from(container.querySelectorAll("button")).find(button => button.textContent?.includes("Start speed check"));
-    act(() => {
-      startButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
+    startGame();
 
-    expect(container.textContent).toContain("Question 1 / 10");
+    expect(container.textContent).toContain("Classify the pH");
+    expect(container.textContent).toContain("Normal range: 7.35 to 7.45");
+    expect(container.querySelectorAll(".speed-check__progress-dot")).toHaveLength(10);
 
-    const acidButton = Array.from(container.querySelectorAll("button")).find(button => button.textContent?.includes("Acidaemia"));
-    act(() => {
-      acidButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
+    clickButton(getVisibleQuestionAnswer());
 
-    expect(container.textContent).toContain("+20 XP");
-    expect(container.textContent).toContain("20 / 200 XP");
+    expect(container.textContent).toContain("+3 XP");
+    expect(container.textContent).toContain("0 / 200 XP");
+    expect(onXpAwarded).toHaveBeenCalledWith(3);
   });
 
   it("completes all questions and calls continue on the results screen", () => {
-    const onComplete = renderGame();
+    const { onComplete } = renderGame();
 
-    const startButton = Array.from(container.querySelectorAll("button")).find(button => button.textContent?.includes("Start speed check"));
-    act(() => {
-      startButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
+    startGame();
 
-    for (const question of SPEED_CHECK_QUESTIONS) {
-      const answerButton = Array.from(container.querySelectorAll("button")).find(button => button.textContent?.includes(question.correct));
+    for (let index = 0; index < 10; index += 1) {
+      clickButton(getVisibleQuestionAnswer());
       act(() => {
-        answerButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      });
-      act(() => {
-        now += 500;
-        vi.advanceTimersByTime(500);
+        const delay = index === 9 ? 960 : 560;
+        now += delay;
+        vi.advanceTimersByTime(delay);
       });
     }
 
-    expect(container.textContent).toContain("Speed check complete");
-    expect(container.textContent).toContain("200 / 200 XP");
+    expect(container.textContent).toContain("Perfect!");
+    expect(container.textContent).toContain("10/10");
+    expect(container.textContent).toContain("Correct answers");
 
-    const continueButton = Array.from(container.querySelectorAll("button")).find(button => button.textContent?.includes("Continue learning"));
-    act(() => {
-      continueButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
+    clickButton("Continue");
 
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
