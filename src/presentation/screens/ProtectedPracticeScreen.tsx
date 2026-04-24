@@ -422,6 +422,12 @@ export function ProtectedPracticeScreen() {
     void beginCase(nextDifficulty);
   }
 
+  function handleLearnFirstFromIntro() {
+    state.storage?.savePracticeIntroSeen(true);
+    setIntroOpen(false);
+    setPendingDifficulty(null);
+  }
+
   async function handleDifficultyChange(nextDifficulty: string) {
     const nextNormalizedDifficulty = normalizeDifficultyKey(progressionInput, nextDifficulty);
     const hasActiveUnfinishedCase = Boolean(currentCase && !summary);
@@ -734,6 +740,7 @@ export function ProtectedPracticeScreen() {
       <PracticeIntroModal
         open={introOpen}
         onContinue={handleContinueFromIntro}
+        onLearnFirst={handleLearnFirstFromIntro}
       />
 
       <main className="app-shell__page practice-screen">

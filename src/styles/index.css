@@ -4320,6 +4320,12 @@ button.learn-progress-dots__dot:focus-visible {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.learn-abg-panel-tour__primary-grid--compact {
+  width: 100%;
+  margin-inline: 0;
+  gap: 0.55rem;
+}
+
 .learn-abg-panel-tour__supporting-grid {
   width: min(100%, 44rem);
   margin-inline: auto;
@@ -4344,6 +4350,11 @@ button.learn-progress-dots__dot:focus-visible {
 
 .learn-abg-panel-tour__metric-card--small {
   min-height: 6.5rem;
+}
+
+.learn-abg-panel-tour__metric-card--compact {
+  min-height: 6.7rem;
+  padding: 0.75rem;
 }
 
 .learn-abg-panel-tour__metric-label {
@@ -4379,6 +4390,73 @@ button.learn-progress-dots__dot:focus-visible {
   color: #67787c;
   font-size: 0.72rem;
   line-height: 1.35;
+}
+
+.learn-worked-examples-lesson {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+  min-height: 22rem;
+}
+
+.learn-worked-examples-grid {
+  width: 100%;
+}
+
+.learn-worked-examples-lesson .learn-key-message {
+  margin-top: auto;
+}
+
+.learn-worked-example-card {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.learn-worked-example-card__intro {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.learn-worked-example-card__eyebrow {
+  color: rgba(15, 23, 42, 0.58);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: none;
+}
+
+.learn-worked-example-card__separator {
+  color: rgba(15, 23, 42, 0.58);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+}
+
+.learn-worked-example-card__label {
+  color: rgba(15, 23, 42, 0.58);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: none;
+}
+
+.learn-worked-example-card__section {
+  gap: 0.65rem;
+}
+
+.learn-worked-example-card__heading span {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.learn-worked-example-card .learn-bullet-list {
+  font-size: 0.88rem;
+  line-height: 1.45;
 }
 
 .learn-carbonic-equation {
@@ -4498,6 +4576,53 @@ button.learn-progress-dots__dot:focus-visible {
 
 .learn-primary-disorder-grid .learn-panel .learn-bullet-list + p {
   margin-top: 1.05rem;
+}
+
+.learn-language-check-card {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.learn-language-check-lesson {
+  display: flex;
+  flex-direction: column;
+  gap: 1.55rem;
+  min-height: 22rem;
+}
+
+.learn-language-check-lesson .learn-card-intro {
+  margin-bottom: 1.15rem;
+}
+
+.learn-language-check-grid {
+  width: min(100%, 39rem);
+  margin-inline: auto;
+}
+
+.learn-language-check-lesson .learn-key-message {
+  margin-top: auto;
+}
+
+.learn-language-check-card__primary,
+.learn-language-check-card__secondary {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.learn-language-check-card__primary strong,
+.learn-language-check-card__secondary strong {
+  color: #0f2547;
+  font-size: 1.15rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.learn-language-check-card__primary span,
+.learn-language-check-card__secondary span {
+  color: var(--color-text-soft);
+  font-size: 0.92rem;
+  font-weight: 350;
+  line-height: 1.5;
 }
 
 .learn-bullet-list,
@@ -4985,6 +5110,7 @@ button.learn-progress-dots__dot:focus-visible {
 }
 
 .learn-cause-list .learn-direction-row {
+  align-content: start;
   min-height: 9.25rem;
   padding: 1.08rem 1.26rem;
   border: 0;
@@ -5229,14 +5355,13 @@ button.learn-progress-dots__dot:focus-visible {
   width: 100%;
   height: 34rem;
   padding: clamp(1.1rem, 3vw, 1.6rem);
-  overflow: hidden auto;
+  overflow: hidden;
   border-radius: var(--radius-lg);
   background: linear-gradient(135deg, var(--learn-card-accent-light) 0%, var(--learn-card-accent-dark) 100%);
 }
 
 .speed-check.is-playing {
   align-content: start;
-  padding-top: 5rem;
 }
 
 .speed-check__hero,
@@ -5342,26 +5467,30 @@ button.learn-progress-dots__dot:focus-visible {
   gap: 0.75rem;
 }
 
-.speed-check__toolbar {
-  position: absolute;
-  top: clamp(1.1rem, 3vw, 1.6rem);
-  right: clamp(1.1rem, 3vw, 1.6rem);
-  left: clamp(1.1rem, 3vw, 1.6rem);
-  align-self: start;
-  color: var(--color-text-muted);
-  font-size: 0.92rem;
-  font-weight: 400;
-}
-
 .speed-check__timer {
-  display: inline-flex;
+  display: inline-grid;
+  grid-template-columns: 1.08rem 1fr;
   align-items: center;
-  justify-content: center;
-  min-width: 5rem;
+  justify-items: center;
+  gap: 0.4rem;
+  width: 6.4rem;
   min-height: 2.2rem;
   padding: 0.5rem 0.8rem;
   border-radius: 999px;
   font-weight: 700;
+  box-sizing: border-box;
+}
+
+.speed-check__timer img {
+  width: 1.08rem;
+  height: 1.08rem;
+  flex: 0 0 auto;
+}
+
+.speed-check__timer-value {
+  width: 100%;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .speed-check__timer.is-cool {
@@ -5412,7 +5541,8 @@ button.learn-progress-dots__dot:focus-visible {
   position: absolute;
   z-index: 60;
   transform: translate(-50%, -50%);
-  min-width: 4.2rem;
+  min-width: 5.2rem;
+  max-width: min(14rem, calc(100% - 2rem));
   padding: 0.45rem 0.7rem;
   border-radius: 999px;
   background: #B8E6CC;
@@ -5426,13 +5556,98 @@ button.learn-progress-dots__dot:focus-visible {
 }
 
 .speed-check__question {
+  position: relative;
   display: grid;
   gap: 0.75rem;
   padding: 1.4rem;
+  padding-top: 4.95rem;
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.68);
   border: 1px solid rgba(255, 255, 255, 0.62);
   text-align: center;
+}
+
+.speed-check__question-topbar {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.speed-check__progress-dots {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 0.5rem));
+  gap: 0.32rem;
+  align-content: start;
+}
+
+.speed-check__progress-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 37, 71, 0.14);
+  background: rgba(255, 255, 255, 0.46);
+}
+
+.speed-check__progress-dot.is-current {
+  background: rgba(15, 37, 71, 0.24);
+  border-color: rgba(15, 37, 71, 0.24);
+  animation: speed-check-dot-pulse 1s ease-in-out infinite;
+}
+
+.speed-check__progress-dot.is-correct {
+  background: #6dcf98;
+  border-color: #6dcf98;
+}
+
+.speed-check__progress-dot.is-incorrect {
+  background: rgba(254, 226, 226, 0.45);
+  border-color: rgba(185, 28, 28, 0.3);
+}
+
+.speed-check__status-pills {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.speed-check__streak-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.2rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #0f2547;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.speed-check__streak-pill.is-active {
+  background: rgba(255, 255, 255, 0.82);
+  color: #6b3f00;
+}
+
+.speed-check__streak-pill.is-broken {
+  background: rgba(254, 242, 242, 0.92);
+  color: #991b1b;
+}
+
+.speed-check__streak-pill.is-pulse {
+  animation: speed-check-streak-pulse 0.38s ease-out;
+}
+
+.speed-check__streak-pill.is-fizzle {
+  animation: speed-check-streak-fizzle 0.5s ease-out;
 }
 
 .speed-check__question.is-shaking {
@@ -5454,6 +5669,31 @@ button.learn-progress-dots__dot:focus-visible {
   margin: 0;
   color: var(--color-text-muted);
   font-weight: 400;
+}
+
+.speed-check__feedback-copy {
+  min-height: 1.1rem;
+  color: transparent;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition: opacity 140ms ease, transform 140ms ease, color 140ms ease;
+  opacity: 0;
+  transform: translateY(0.18rem);
+}
+
+.speed-check__feedback-copy.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  animation: speed-check-feedback-fade var(--speed-check-feedback-duration, 560ms) ease-out forwards;
+}
+
+.speed-check__feedback-copy.is-correct {
+  color: #0f3d29;
+}
+
+.speed-check__feedback-copy.is-incorrect {
+  color: #991b1b;
 }
 
 .speed-check__answers {
@@ -5632,6 +5872,71 @@ button.learn-progress-dots__dot:focus-visible {
   }
 }
 
+@keyframes speed-check-streak-pulse {
+  0% {
+    transform: scale(0.96);
+  }
+
+  45% {
+    transform: scale(1.04);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes speed-check-streak-fizzle {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  30% {
+    opacity: 0.88;
+    transform: translateY(-1px) scale(0.985) rotate(-1deg);
+  }
+
+  70% {
+    opacity: 0.72;
+    transform: translateY(1px) scale(0.97) rotate(1deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes speed-check-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes speed-check-feedback-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(0.18rem);
+  }
+
+  16%,
+  68% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-0.12rem);
+  }
+}
+
 @media (max-width: 759px) {
   .learn-overview__grid,
   .learn-content-grid--two,
@@ -5705,7 +6010,7 @@ button.learn-progress-dots__dot:focus-visible {
   }
 
   .speed-check.is-playing {
-    padding-top: 4.6rem;
+    padding-top: clamp(1.1rem, 3vw, 1.6rem);
   }
 
   .speed-check.is-playing .speed-check__toolbar {
@@ -5714,7 +6019,34 @@ button.learn-progress-dots__dot:focus-visible {
   }
 
   .speed-check.is-playing .speed-check__timer {
-    margin-left: auto;
+    width: 5.9rem;
+  }
+
+  .speed-check__question {
+    padding-top: 5.9rem;
+  }
+
+  .speed-check__question-topbar {
+    gap: 0.6rem;
+  }
+
+  .speed-check__status-pills {
+    gap: 0.35rem;
+  }
+
+  .speed-check__streak-pill {
+    max-width: 8rem;
+    padding-inline: 0.65rem;
+    font-size: 0.72rem;
+  }
+
+  .speed-check__progress-dots {
+    gap: 0.26rem;
+  }
+
+  .speed-check__progress-dot {
+    width: 0.45rem;
+    height: 0.45rem;
   }
 
   .speed-check.is-playing .speed-check__answers {

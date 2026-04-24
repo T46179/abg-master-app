@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import timerIcon from "../../assets/icons/timer.svg";
 import { cn } from "../utils";
 
 export type SpeedCheckPhase = "ready" | "countdown" | "playing" | "results";
@@ -21,8 +22,15 @@ interface SpeedCheckQuestion {
   correct: "Normal" | "Acidaemia" | "Alkalaemia";
 }
 
+type StreakPillTone = "active" | "broken";
+type StreakPillAnimation = "pulse" | "fizzle" | null;
+
 const SPEED_CHECK_QUESTION_COUNT = 10;
 const SPEED_CHECK_XP_PER_CORRECT = 3;
+const SPEED_CHECK_ADVANCE_DELAY_MS = 560;
+const SPEED_CHECK_FINAL_REVEAL_DELAY_MS = 960;
+const SPEED_CHECK_CORRECT_FEEDBACK = ["Correct", "Nice!", "Clean read", "Quick call!"] as const;
+const SPEED_CHECK_INCORRECT_FEEDBACK = ["Not quite", "Reset and try again"] as const;
 
 const SPEED_CHECK_RANGES: Record<SpeedCheckQuestion["correct"], { min: number; max: number }> = {
   Acidaemia: { min: 7.1, max: 7.3 },
@@ -41,6 +49,12 @@ const SPEED_CHECK_PATTERN: SpeedCheckQuestion["correct"][] = [
   "Normal",
   "Alkalaemia",
   "Acidaemia"
+];
+
+const SPEED_CHECK_ANSWERS: SpeedCheckQuestion["correct"][] = [
+  "Acidaemia",
+  "Normal",
+  "Alkalaemia"
 ];
 
 function randomPhInRange(range: { min: number; max: number }) {
@@ -70,6 +84,29 @@ export function generateSpeedCheckQuestions(): SpeedCheckQuestion[] {
 
 export const SPEED_CHECK_QUESTIONS: SpeedCheckQuestion[] = generateSpeedCheckQuestions();
 
+function getStreakBonus(streak: number) {
+  if (streak >= 10) return 5;
+  if (streak >= 5) return 2;
+  if (streak >= 3) return 1;
+  return 0;
+}
+
+function getStreakLabel(streak: number) {
+  if (streak >= 10) return "\u{1F9E0} Perfect run";
+  if (streak >= 5) return `\u26A1 Hot streak x${streak}`;
+  if (streak >= 3) return `\u{1F525} Streak x${streak}`;
+  if (streak === 2) return "Nice rhythm";
+  return "";
+}
+
+function getMilestoneFeedback(streak: number) {
+  if (streak >= 10) return "Perfect run!";
+  if (streak >= 5) return "Hot streak!";
+  if (streak === 4) return "You're warming up";
+  if (streak === 3) return "3 in a row!";
+  return "";
+}
+
 export function SpeedCheckGame({
   level = 1,
   onComplete,
@@ -84,24 +121,146 @@ export function SpeedCheckGame({
 }: SpeedCheckGameProps) {
   const gameRef = useRef<HTMLElement | null>(null);
   const xpCounterRef = useRef<HTMLElement | null>(null);
+  const pendingTimeoutsRef = useRef<number[]>([]);
+  const streakHideTimeoutRef = useRef<number | null>(null);
+  const streakAnimationTimeoutRef = useRef<number | null>(null);
+  const streakAnimationKickoffTimeoutRef = useRef<number | null>(null);
+  const correctFeedbackIndexRef = useRef(0);
+  const incorrectFeedbackIndexRef = useRef(0);
   const [phase, setPhase] = useState<SpeedCheckPhase>("ready");
   const [questions, setQuestions] = useState<SpeedCheckQuestion[]>(() => generateSpeedCheckQuestions());
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<boolean[]>([]);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<SpeedCheckQuestion["correct"] | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [startTime, setStartTime] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [xp, setXp] = useState(0);
   const [showBubble, setShowBubble] = useState(false);
+  const [bubbleLabel, setBubbleLabel] = useState(`+${SPEED_CHECK_XP_PER_CORRECT} XP`);
   const [shakeXpCounter, setShakeXpCounter] = useState(false);
   const [shakePrompt, setShakePrompt] = useState(false);
   const [bubblePosition, setBubblePosition] = useState({ x: 0, y: 0, travelX: 0, travelY: 0 });
   const [countdown, setCountdown] = useState(3);
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [streakPillLabel, setStreakPillLabel] = useState("");
+  const [streakPillTone, setStreakPillTone] = useState<StreakPillTone>("active");
+  const [streakPillAnimation, setStreakPillAnimation] = useState<StreakPillAnimation>(null);
+  const [feedbackCopy, setFeedbackCopy] = useState("");
+  const [feedbackTone, setFeedbackTone] = useState<"correct" | "incorrect" | null>(null);
+  const [feedbackDurationMs, setFeedbackDurationMs] = useState(SPEED_CHECK_ADVANCE_DELAY_MS);
+
+  function clearPendingTimeouts() {
+    pendingTimeoutsRef.current.forEach(timeoutId => window.clearTimeout(timeoutId));
+    pendingTimeoutsRef.current = [];
+  }
+
+  function scheduleTimeout(callback: () => void, delay: number) {
+    const timeoutId = window.setTimeout(() => {
+      pendingTimeoutsRef.current = pendingTimeoutsRef.current.filter(id => id !== timeoutId);
+      callback();
+    }, delay);
+
+    pendingTimeoutsRef.current.push(timeoutId);
+    return timeoutId;
+  }
+
+  function clearStreakTimers() {
+    if (streakHideTimeoutRef.current !== null) {
+      window.clearTimeout(streakHideTimeoutRef.current);
+      streakHideTimeoutRef.current = null;
+    }
+
+    if (streakAnimationTimeoutRef.current !== null) {
+      window.clearTimeout(streakAnimationTimeoutRef.current);
+      streakAnimationTimeoutRef.current = null;
+    }
+
+    if (streakAnimationKickoffTimeoutRef.current !== null) {
+      window.clearTimeout(streakAnimationKickoffTimeoutRef.current);
+      streakAnimationKickoffTimeoutRef.current = null;
+    }
+  }
+
+  function resetTransientState() {
+    clearPendingTimeouts();
+    clearStreakTimers();
+    setShowBubble(false);
+    setBubbleLabel(`+${SPEED_CHECK_XP_PER_CORRECT} XP`);
+    setShakeXpCounter(false);
+    setShakePrompt(false);
+    setCurrentStreak(0);
+    setStreakPillLabel("");
+    setStreakPillTone("active");
+    setStreakPillAnimation(null);
+    setFeedbackCopy("");
+    setFeedbackTone(null);
+    setFeedbackDurationMs(SPEED_CHECK_ADVANCE_DELAY_MS);
+    correctFeedbackIndexRef.current = 0;
+    incorrectFeedbackIndexRef.current = 0;
+  }
+
+  function triggerStreakAnimation(animation: Exclude<StreakPillAnimation, null>) {
+    if (streakAnimationTimeoutRef.current !== null) {
+      window.clearTimeout(streakAnimationTimeoutRef.current);
+    }
+
+    if (streakAnimationKickoffTimeoutRef.current !== null) {
+      window.clearTimeout(streakAnimationKickoffTimeoutRef.current);
+    }
+
+    setStreakPillAnimation(null);
+    streakAnimationKickoffTimeoutRef.current = window.setTimeout(() => {
+      setStreakPillAnimation(animation);
+      streakAnimationKickoffTimeoutRef.current = null;
+    }, 0);
+
+    streakAnimationTimeoutRef.current = window.setTimeout(() => {
+      setStreakPillAnimation(null);
+      streakAnimationTimeoutRef.current = null;
+    }, animation === "pulse" ? 420 : 520);
+  }
+
+  function showBrokenStreakPill(label: string) {
+    setStreakPillTone("broken");
+    setStreakPillLabel(label);
+    triggerStreakAnimation("fizzle");
+
+    if (streakHideTimeoutRef.current !== null) {
+      window.clearTimeout(streakHideTimeoutRef.current);
+    }
+
+    streakHideTimeoutRef.current = window.setTimeout(() => {
+      setStreakPillLabel("");
+      setStreakPillAnimation(null);
+      streakHideTimeoutRef.current = null;
+    }, 900);
+  }
+
+  function getNextCorrectFeedback(streak: number) {
+    const milestoneFeedback = getMilestoneFeedback(streak);
+    if (milestoneFeedback) return milestoneFeedback;
+
+    const message = SPEED_CHECK_CORRECT_FEEDBACK[correctFeedbackIndexRef.current % SPEED_CHECK_CORRECT_FEEDBACK.length];
+    correctFeedbackIndexRef.current += 1;
+    return message;
+  }
+
+  function getNextIncorrectFeedback(hadVisibleStreak: boolean) {
+    if (hadVisibleStreak) return "Streak broken";
+
+    const message = SPEED_CHECK_INCORRECT_FEEDBACK[incorrectFeedbackIndexRef.current % SPEED_CHECK_INCORRECT_FEEDBACK.length];
+    incorrectFeedbackIndexRef.current += 1;
+    return message;
+  }
 
   useEffect(() => {
     onPhaseChange?.(phase);
   }, [onPhaseChange, phase]);
+
+  useEffect(() => () => {
+    clearPendingTimeouts();
+    clearStreakTimers();
+  }, []);
 
   useEffect(() => {
     setPhase("ready");
@@ -111,11 +270,8 @@ export function SpeedCheckGame({
     setShowFeedback(false);
     setStartTime(0);
     setElapsedTime(0);
-    setXp(0);
-    setShowBubble(false);
-    setShakeXpCounter(false);
-    setShakePrompt(false);
     setCountdown(3);
+    resetTransientState();
   }, [resetKey]);
 
   useEffect(() => {
@@ -162,25 +318,33 @@ export function SpeedCheckGame({
     setAnswers([]);
     setSelectedAnswer(null);
     setShowFeedback(false);
-    setXp(0);
-    setShowBubble(false);
-    setShakeXpCounter(false);
-    setShakePrompt(false);
+    resetTransientState();
   }
 
   function handleRetry() {
     handleStart();
   }
 
-  function handleAnswer(answer: string, event: React.MouseEvent<HTMLButtonElement>) {
+  function handleAnswer(answer: SpeedCheckQuestion["correct"], event: React.MouseEvent<HTMLButtonElement>) {
     if (phase !== "playing" || showFeedback) return;
 
     const question = questions[currentQuestionIndex];
     const isCorrect = answer === question.correct;
+    const nextStreak = isCorrect ? currentStreak + 1 : 0;
+    const streakBonus = isCorrect ? getStreakBonus(nextStreak) : 0;
+    const awardedXp = SPEED_CHECK_XP_PER_CORRECT + streakBonus;
+    const isFinalQuestion = currentQuestionIndex >= questions.length - 1;
+    const transitionDelay = isFinalQuestion ? SPEED_CHECK_FINAL_REVEAL_DELAY_MS : SPEED_CHECK_ADVANCE_DELAY_MS;
+    const nextFeedbackCopy = isCorrect
+      ? getNextCorrectFeedback(nextStreak)
+      : getNextIncorrectFeedback(currentStreak >= 2);
 
     setSelectedAnswer(answer);
     setAnswers(current => [...current, isCorrect]);
     setShowFeedback(true);
+    setFeedbackTone(isCorrect ? "correct" : "incorrect");
+    setFeedbackCopy(nextFeedbackCopy);
+    setFeedbackDurationMs(transitionDelay);
 
     if (isCorrect) {
       const gameRect = gameRef.current?.getBoundingClientRect();
@@ -199,43 +363,68 @@ export function SpeedCheckGame({
         travelX: -offsetX,
         travelY: -offsetY
       });
-      setXp(current => current + SPEED_CHECK_XP_PER_CORRECT);
-      onXpAwarded?.(SPEED_CHECK_XP_PER_CORRECT);
+      setBubbleLabel(streakBonus > 0 ? `+${awardedXp} XP - streak bonus` : `+${awardedXp} XP`);
+      onXpAwarded?.(awardedXp);
       setShowBubble(true);
-      window.setTimeout(() => {
+      setCurrentStreak(nextStreak);
+
+      if (nextStreak >= 2) {
+        setStreakPillTone("active");
+        setStreakPillLabel(getStreakLabel(nextStreak));
+        triggerStreakAnimation("pulse");
+      } else {
+        setStreakPillLabel("");
+        setStreakPillAnimation(null);
+      }
+
+      scheduleTimeout(() => {
         setShakeXpCounter(true);
-        window.setTimeout(() => setShakeXpCounter(false), 420);
+        scheduleTimeout(() => setShakeXpCounter(false), 420);
       }, 520);
-      window.setTimeout(() => setShowBubble(false), 900);
+      scheduleTimeout(() => setShowBubble(false), 900);
     } else {
+      if (currentStreak >= 2) {
+        showBrokenStreakPill("Streak broken");
+      } else {
+        setStreakPillLabel("");
+        setStreakPillAnimation(null);
+      }
+
+      setCurrentStreak(0);
       setShakePrompt(true);
-      window.setTimeout(() => setShakePrompt(false), 320);
+      scheduleTimeout(() => setShakePrompt(false), 320);
     }
 
-    window.setTimeout(() => {
-      if (currentQuestionIndex >= questions.length - 1) {
+    scheduleTimeout(() => {
+      if (isFinalQuestion) {
+        const finalElapsedMs = Date.now() - startTime;
+
         onResult?.({
           correctCount: answers.filter(Boolean).length + (isCorrect ? 1 : 0),
           totalQuestions: questions.length,
-          elapsedMs: Date.now() - startTime
+          elapsedMs: finalElapsedMs
         });
+        setElapsedTime(finalElapsedMs);
         setPhase("results");
         setShowFeedback(false);
+        setFeedbackCopy("");
+        setFeedbackTone(null);
         return;
       }
 
       setCurrentQuestionIndex(index => index + 1);
       setSelectedAnswer(null);
       setShowFeedback(false);
-    }, 420);
+      setFeedbackCopy("");
+      setFeedbackTone(null);
+    }, transitionDelay);
   }
 
   const question = questions[currentQuestionIndex];
   const correctCount = answers.filter(Boolean).length;
   const accuracy = answers.length ? Math.round((correctCount / answers.length) * 100) : 0;
-  const totalSeconds = Math.round(elapsedTime / 1000);
-  const averageSeconds = answers.length ? (totalSeconds / answers.length).toFixed(1) : "0.0";
-  const percentile = Math.min(95, Math.max(5, 100 - totalSeconds * 2));
+  const totalSeconds = (elapsedTime / 1000).toFixed(1);
+  const averageSeconds = questions.length ? (elapsedTime / 1000 / questions.length).toFixed(1) : "0.0";
 
   function getTimerTone() {
     const seconds = elapsedTime / 1000;
@@ -252,14 +441,14 @@ export function SpeedCheckGame({
           <div className="speed-check__intro-card">
             <h2>Test your reflexes</h2>
             <p>
-              Select the correct option as fast as you can to score bonus XP 
+              Classify the pH values as fast as you can
             </p>
             <ul className="speed-check__rules">
-              <li>Each correct answer earns XP</li>
-              <li>See how you compare against others</li>
+              <li>Earn bonus XP with streaks</li>
+              <li>Accuracy matters</li>
             </ul>
             <button className="figma-button speed-check__start" type="button" onClick={handleStart}>
-              Start speed check
+              Begin
             </button>
           </div>
         </div>
@@ -272,7 +461,7 @@ export function SpeedCheckGame({
       <section className="speed-check is-results" ref={gameRef}>
         <div className="speed-check__results">
           <div className="speed-check__result-hero">
-            <h2>Great Work!</h2>
+            <h2>{correctCount === questions.length ? "Perfect!" : "Great Work!"}</h2>
           </div>
 
           <div className="speed-check__stats">
@@ -292,10 +481,6 @@ export function SpeedCheckGame({
               <strong>{averageSeconds}s</strong>
               <span>Avg per question</span>
             </article>
-          </div>
-
-          <div className="speed-check__performance">
-            You finished faster than {percentile}% of learners!
           </div>
 
           <div className="speed-check__result-actions">
@@ -324,11 +509,6 @@ export function SpeedCheckGame({
 
   return (
     <section className="speed-check is-playing" ref={gameRef}>
-      <div className="speed-check__toolbar">
-        <span>Question {currentQuestionIndex + 1} / {questions.length}</span>
-        <span className={cn("speed-check__timer", `is-${getTimerTone()}`)}>{(elapsedTime / 1000).toFixed(1)}s</span>
-      </div>
-
       <div className="speed-check__xp-card">
         <div className="dashboard-progress-card__meta speed-check__xp-meta">
           <span>Level {level}</span>
@@ -354,18 +534,70 @@ export function SpeedCheckGame({
             "--speed-check-bubble-travel-y": `${bubblePosition.travelY}px`
           } as CSSProperties & Record<string, string>}
         >
-          +3 XP
+          {bubbleLabel}
         </div>
       ) : null}
 
       <div className={cn("speed-check__question", shakePrompt && "is-shaking")}>
-        <span className="speed-check__prompt">What is the pH status?</span>
+        <div className="speed-check__question-topbar">
+          <div className="speed-check__progress-dots" aria-label="Question progress">
+            {questions.map((_, index) => {
+              let dotState = "upcoming";
+
+              if (index < answers.length) {
+                dotState = answers[index] ? "correct" : "incorrect";
+              } else if (index === currentQuestionIndex) {
+                dotState = "current";
+              }
+
+              return (
+                <span
+                  key={`speed-check-dot-${index}`}
+                  className={cn("speed-check__progress-dot", `is-${dotState}`)}
+                  aria-hidden="true"
+                />
+              );
+            })}
+          </div>
+
+          <div className="speed-check__status-pills">
+            {streakPillLabel ? (
+              <div
+                className={cn(
+                  "speed-check__streak-pill",
+                  `is-${streakPillTone}`,
+                  streakPillAnimation && `is-${streakPillAnimation}`
+                )}
+              >
+                <span>{streakPillLabel}</span>
+              </div>
+            ) : null}
+
+            <div className={cn("speed-check__timer", `is-${getTimerTone()}`)}>
+              <img src={timerIcon} alt="" aria-hidden="true" />
+              <span className="speed-check__timer-value">{(elapsedTime / 1000).toFixed(1)}s</span>
+            </div>
+          </div>
+        </div>
+
+        <span className="speed-check__prompt">Classify the pH</span>
         <strong>{question.ph}</strong>
         <p>Normal range: 7.35 to 7.45</p>
+        <div
+          className={cn(
+            "speed-check__feedback-copy",
+            feedbackTone && `is-${feedbackTone}`,
+            showFeedback && "is-visible"
+          )}
+          style={{ "--speed-check-feedback-duration": `${feedbackDurationMs}ms` } as CSSProperties & Record<string, string>}
+          aria-live="polite"
+        >
+          {feedbackCopy}
+        </div>
       </div>
 
       <div className="speed-check__answers">
-        {["Acidaemia", "Normal", "Alkalaemia"].map(answer => {
+        {SPEED_CHECK_ANSWERS.map(answer => {
           const isSelected = selectedAnswer === answer;
           const isCorrect = answer === question.correct;
           const feedbackState = showFeedback && isSelected
@@ -385,7 +617,7 @@ export function SpeedCheckGame({
               disabled={showFeedback}
             >
               <span>{answer}</span>
-              {feedbackState === "correct" ? <strong>✓</strong> : null}
+              {feedbackState === "correct" ? <strong>OK</strong> : null}
               {feedbackState === "incorrect" ? <strong>X</strong> : null}
             </button>
           );

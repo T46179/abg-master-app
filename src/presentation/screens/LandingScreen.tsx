@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import { ArrowRight } from "lucide-react";
 import { useAppContext } from "../../app/AppProvider";
 import { preloadProtectedPracticeSlots } from "../../app/protectedPracticeSlots";
+import { SeoMetadata } from "../../app/seo";
 import { Link } from "react-router-dom";
 import { trackEvent, trackPageView } from "../../core/analytics";
 import {
@@ -498,6 +499,8 @@ export function LandingScreen() {
 
   return (
     <main className="landing-page">
+      <SeoMetadata />
+
       <MainNav
         mobileOpen={mobileOpen}
         onToggleMobile={() => setMobileOpen(value => !value)}

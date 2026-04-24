@@ -79,7 +79,7 @@ function FoundationsCompletionCard() {
     "Use pH to decide whether the blood is acidotic, alkalotic, or within the normal range",
     <>Recognise CO<sub>2</sub> and HCO<sub>3</sub><sup>-</sup> as the two main values that explain why pH has moved</>,
     "Understand how ABG Master presents the case values, and which cards matter most early on",
-    "Move into Beginner ready to identify the primary acid-base disorder"
+    "Move on to the Beginner module to identify the primary acid-base disorder"
   ];
 
   return (
@@ -196,9 +196,9 @@ function PHScaleVisualiser(props: { showDetails?: boolean }) {
         <>
           <h3 className="learn-section-heading ph-scale-visualiser__heading">pH</h3>
           <ul className="ph-scale-visualiser__notes">
-            <li>pH reflects Hydrogen ion concentration, and is used to describe the acidity or alkalinity of a solution</li>
+            <li>pH reflects how acidic or alkaline the blood is</li>
             <li>The body tightly regulates blood pH so that it stays between 7.35 &ndash; 7.45</li>
-            <li>The pH scale is logarithmic - even small changes can have large effects on cellular function</li>
+            <li>Because pH is logarithmic, even small changes can have large effects on cellular function</li>
           </ul>
 
           <div className="ph-scale-visualiser__key-idea">
@@ -280,8 +280,51 @@ function TwoLeversLesson() {
   );
 }
 
+function LanguageCheckLesson() {
+  return (
+    <div className="learn-content-stack learn-content-stack--borderless-panels learn-language-check-lesson">
+      <p className="learn-card-intro">
+        These terms sound similar, but they do not mean the same thing
+      </p>
+
+      <div className="learn-content-grid learn-content-grid--two learn-language-check-grid">
+        <Panel tone="red">
+          <div className="learn-language-check-card">
+            <div className="learn-language-check-card__primary">
+              <strong>Acidaemia</strong>
+              <span>low pH</span>
+            </div>
+            <div className="learn-language-check-card__secondary">
+              <strong>Acidosis</strong>
+              <span>process lowering the pH</span>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel tone="blue">
+          <div className="learn-language-check-card">
+            <div className="learn-language-check-card__primary">
+              <strong>Alkalaemia</strong>
+              <span>high pH</span>
+            </div>
+            <div className="learn-language-check-card__secondary">
+              <strong>Alkalosis</strong>
+              <span>process raising the pH</span>
+            </div>
+          </div>
+        </Panel>
+      </div>
+
+      <div className="learn-key-message">
+        <Lightbulb aria-hidden="true" />
+        <p>A patient can have an acidosis without being frankly acidaemic if another process is balancing it out</p>
+      </div>
+    </div>
+  );
+}
+
 function ABGPanelTourLesson() {
-  const primaryMetrics = [
+  const primaryMetrics: ABGPrimaryMetric[] = [
     { label: "pH", value: "7.28", reference: "Normal: 7.35 - 7.45", abnormal: true },
     { label: <>PaCO<sub>2</sub></>, value: "58", unit: "mmHg", reference: "Normal: 35 - 45", abnormal: true },
     { label: <>HCO<sub>3</sub><sup>-</sup></>, value: "25", unit: "mmol/L", reference: "Normal: 22 - 26" }
@@ -306,18 +349,7 @@ function ABGPanelTourLesson() {
           <p>Shows the most important values for interpretation</p>
         </div>
 
-        <div className="learn-abg-panel-tour__primary-grid">
-          {primaryMetrics.map(metric => (
-            <article key={String(metric.value)} className="learn-abg-panel-tour__metric-card">
-              <span className="learn-abg-panel-tour__metric-label">{metric.label}</span>
-              <span className={`learn-abg-panel-tour__metric-value${metric.abnormal ? " is-abnormal" : ""}`}>
-                {metric.value}
-                {metric.unit ? <small>{metric.unit}</small> : null}
-              </span>
-              <span className="learn-abg-panel-tour__metric-reference">{metric.reference}</span>
-            </article>
-          ))}
-        </div>
+        <PrimaryABGValueGrid metrics={primaryMetrics} />
       </section>
 
       <section className="learn-abg-panel-tour__section" aria-label="Example supporting values">
@@ -342,6 +374,141 @@ function ABGPanelTourLesson() {
       <div className="learn-key-message">
         <Lightbulb aria-hidden="true" />
         <p>As difficulties increase, ABG Master gradually removes clues like colour highlights and normal ranges, then adds values that may not matter. The goal is to build your judgement about what deserves attention.</p>
+      </div>
+    </div>
+  );
+}
+
+interface ABGPrimaryMetric {
+  label: ReactNode;
+  value: string;
+  unit?: string;
+  reference: string;
+  abnormal?: boolean;
+}
+
+function PrimaryABGValueGrid(props: { metrics: ABGPrimaryMetric[]; compact?: boolean }) {
+  const gridClassName = props.compact
+    ? "learn-abg-panel-tour__primary-grid learn-abg-panel-tour__primary-grid--compact"
+    : "learn-abg-panel-tour__primary-grid";
+
+  return (
+    <div className={gridClassName}>
+      {props.metrics.map(metric => (
+        <article
+          key={`${String(metric.value)}-${String(metric.reference)}`}
+          className={`learn-abg-panel-tour__metric-card${props.compact ? " learn-abg-panel-tour__metric-card--compact" : ""}`}
+        >
+          <span className="learn-abg-panel-tour__metric-label">{metric.label}</span>
+          <span className={`learn-abg-panel-tour__metric-value${metric.abnormal ? " is-abnormal" : ""}`}>
+            {metric.value}
+            {metric.unit ? <small>{metric.unit}</small> : null}
+          </span>
+          <span className="learn-abg-panel-tour__metric-reference">{metric.reference}</span>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function WorkedExampleCard(props: {
+  exampleTitle: string;
+  badge: string;
+  tone: "red" | "blue";
+  metrics: ABGPrimaryMetric[];
+  reasoning: ReactNode[];
+}) {
+  const reasoningItems =
+    props.badge === "Metabolic acidosis"
+      ? [
+          "pH is low → acidaemia",
+          <>HCO<sub>3</sub><sup>-</sup> is low and moving with pH</>,
+          "This fits metabolic acidosis"
+        ]
+      : props.reasoning;
+  const resolvedReasoningItems =
+    props.badge === "Metabolic acidosis"
+      ? [
+          <>pH is low {"\u2192"} acidaemia</>,
+          <>HCO<sub>3</sub><sup>-</sup> is low and moving with pH</>,
+          "This fits metabolic acidosis"
+        ]
+      : reasoningItems;
+
+  return (
+    <Panel tone={props.tone}>
+      <div className="learn-worked-example-card">
+        <div className="learn-worked-example-card__intro">
+          <span className="learn-worked-example-card__eyebrow">{props.exampleTitle}</span>
+          <span className="learn-worked-example-card__separator">-</span>
+          <span className="learn-worked-example-card__label">{props.badge}</span>
+        </div>
+
+        <section className="learn-abg-panel-tour__section learn-worked-example-card__section" aria-label={`${props.exampleTitle} blood gas values`}>
+          <div className="learn-abg-panel-tour__heading learn-worked-example-card__heading">
+            <span>ABG Values</span>
+          </div>
+          <PrimaryABGValueGrid metrics={props.metrics} compact />
+        </section>
+
+        <section className="learn-abg-panel-tour__section learn-worked-example-card__section" aria-label={`${props.exampleTitle} reasoning`}>
+          <div className="learn-abg-panel-tour__heading learn-worked-example-card__heading">
+            <span>Reasoning</span>
+          </div>
+          <BulletList items={resolvedReasoningItems} />
+        </section>
+      </div>
+    </Panel>
+  );
+}
+
+function WorkedExamplesLesson() {
+  const respiratoryAcidosisMetrics: ABGPrimaryMetric[] = [
+    { label: "pH", value: "7.28", reference: "Normal: 7.35 - 7.45", abnormal: true },
+    { label: <>PaCO<sub>2</sub></>, value: "60", unit: "mmHg", reference: "Normal: 35 - 45", abnormal: true },
+    { label: <>HCO<sub>3</sub><sup>-</sup></>, value: "25", unit: "mmol/L", reference: "Normal: 22 - 26" }
+  ];
+
+  const metabolicAcidosisMetrics: ABGPrimaryMetric[] = [
+    { label: "pH", value: "7.25", reference: "Normal: 7.35 - 7.45", abnormal: true },
+    { label: <>PaCO<sub>2</sub></>, value: "35", unit: "mmHg", reference: "Normal: 35 - 45" },
+    { label: <>HCO<sub>3</sub><sup>-</sup></>, value: "15", unit: "mmol/L", reference: "Normal: 22 - 26", abnormal: true }
+  ];
+
+  return (
+    <div className="learn-content-stack learn-content-stack--borderless-panels learn-worked-examples-lesson">
+      <p className="learn-card-intro">
+        Use the pH first, then decide whether CO<sub>2</sub> or HCO<sub>3</sub><sup>-</sup> best explains the direction of change
+      </p>
+
+      <div className="learn-content-grid learn-content-grid--two learn-worked-examples-grid">
+        <WorkedExampleCard
+          exampleTitle="Example 1"
+          badge="Respiratory acidosis"
+          tone="red"
+          metrics={respiratoryAcidosisMetrics}
+          reasoning={[
+            "pH is low → acidaemia",
+            <>CO<sub>2</sub> is high and moving opposite to pH</>,
+            "This fits respiratory acidosis"
+          ]}
+        />
+        <WorkedExampleCard
+          exampleTitle="Example 2"
+          badge="Metabolic acidosis"
+          tone="red"
+          metrics={metabolicAcidosisMetrics}
+          reasoning={[
+            "pH is high → alkalaemia",
+            <>HCO<sub>3</sub><sup>-</sup> is low and moving with pH</>,
+            "This fits metabolic acidosis"
+          ]}
+        />
+      </div>
+
+      <div className="learn-key-message">
+        <Lightbulb aria-hidden="true" />
+        <p>Start with the pH, then look for the value that best explains why it moved.</p>
       </div>
     </div>
   );
@@ -459,6 +626,11 @@ const foundationsLessons: LearnLesson[] = [
     content: <TwoLeversLesson />
   },
   {
+    kind: "content",
+    title: "Language check",
+    content: <LanguageCheckLesson />
+  },
+  {
     kind: "speed-check",
     title: "Speed check"
   },
@@ -506,25 +678,30 @@ const beginnerLessons: LearnLesson[] = [
     content: (
       <div className="learn-content-stack learn-content-stack--borderless-panels">
         <p className="learn-card-intro">
-          When pH is abnormal, identify which system is primarily responsible - the lungs (CO<sub>2</sub>) or the Kidneys (HCO<sub>3</sub><sup>-</sup>)
+          When pH is abnormal, identify which system is primarily responsible - the lungs (CO<sub>2</sub>) or the kidneys (HCO<sub>3</sub><sup>-</sup>)
         </p>
 
         <div className="learn-content-grid learn-content-grid--two learn-primary-disorder-grid">
           <Panel title="Acidaemia" tone="red">
-            <p>CO<sub>2</sub> high &rarr; lungs are the problem</p>
+            <p>CO<sub>2</sub> high &rarr; respiratory process</p>
             <BulletList items={[<>lungs are not clearing CO<sub>2</sub> fast enough, lowering the pH</>]} />
-            <p>HCO<sub>3</sub><sup>-</sup> low &rarr; kidneys are the problem</p>
-            <BulletList items={["kidneys are not maintaining bicarbonate, so buffering is lost"]} />
+            <p>HCO<sub>3</sub><sup>-</sup> low &rarr; metabolic process</p>
+            <BulletList items={["bicarbonate is low because it is being lost or consumed by excess acid"]} />
           </Panel>
           <Panel title="Alkalaemia" tone="blue">
-            <p>CO<sub>2</sub> low &rarr; lungs are the problem</p>
+            <p>CO<sub>2</sub> low &rarr; respiratory process</p>
             <BulletList items={[<>lungs are clearing too much CO<sub>2</sub>, so pH rises</>]} />
-            <p>HCO<sub>3</sub><sup>-</sup> high &rarr; kidneys are the problem</p>
-            <BulletList items={["kidneys are retaining too much bicarbonate, raising the pH"]} />
+            <p>HCO<sub>3</sub><sup>-</sup> high &rarr; metabolic process</p>
+            <BulletList items={["bicarbonate is increased, pushing the pH upward"]} />
           </Panel>
         </div>
       </div>
     )
+  },
+  {
+    kind: "content",
+    title: "Worked examples",
+    content: <WorkedExamplesLesson />
   },
   {
     kind: "content",
@@ -543,7 +720,7 @@ const beginnerLessons: LearnLesson[] = [
         <div className="learn-direction-list learn-cause-list">
           <div className="learn-direction-row is-red">
             <span className="learn-direction-row__system">Respiratory Acidosis</span>
-            <BulletList items={["Drugs (opiates, sedatives, anaesthetics)", "Neuromuscular disorders (myasthenia gravis, toxins)", "Lung defects (trauma, COPD, pulmonary oedema)"]} />
+            <BulletList items={["Drugs (opiates, sedatives, anaesthetics)", "Neuromuscular disorders (myasthenia gravis, toxins)", "Ventilatory failure (chest wall trauma, COPD/asthma exacerbation, pulmonary oedema)"]} />
           </div>
           <div className="learn-direction-row is-red">
             <span className="learn-direction-row__system">Metabolic Acidosis</span>
@@ -551,7 +728,7 @@ const beginnerLessons: LearnLesson[] = [
           </div>
           <div className="learn-direction-row is-blue">
             <span className="learn-direction-row__system">Respiratory Alkalosis</span>
-            <BulletList items={["Central causes (head injury, stroke, anxiety)", "Lung (PE, asthma, pulmonary oedema)", "Pain"]} />
+            <BulletList items={["Central causes (head injury, stroke, anxiety)", "Lung (PE, asthma, pulmonary oedema)", "Pain", "Sepsis"]} />
           </div>
           <div className="learn-direction-row is-blue">
             <span className="learn-direction-row__system">Metabolic Alkalosis</span>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import { PROTECTED_PRACTICE_MESSAGES } from "../../app/protectedPracticeMessages";
+import { SeoMetadata } from "../../app/seo";
 import { trackEvent, trackPageView } from "../../core/analytics";
 import { getReleaseFlags } from "../../core/progression";
 import { Surface } from "../primitives/Surface";
@@ -81,6 +82,8 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
+      <SeoMetadata />
+
       <MainNav
         mobileOpen={mobileOpen}
         onToggleMobile={() => setMobileOpen(value => !value)}

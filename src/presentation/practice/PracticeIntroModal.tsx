@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 interface PracticeIntroModalProps {
   open: boolean;
   onContinue: () => void;
+  onLearnFirst?: () => void;
 }
 
 const PRACTICE_INTRO_COPY = {
@@ -14,7 +15,7 @@ const PRACTICE_INTRO_COPY = {
   ],
   comingSoonTitle: "Coming soon",
   comingSoonItems: [
-    "Learning modules",
+    "More learning modules",
     "Performance Analytics",
   ],
   closing: "Clinical scenarios and feedback explanations are still evolving. Your feedback will help shape the final version.",
@@ -43,7 +44,11 @@ export function PracticeIntroModal(props: PracticeIntroModalProps) {
         </div>
         <p className="practice-intro-modal__cta-prompt">Where would you like to start?</p>
         <div className="modal-card__actions practice-intro-modal__actions">
-          <Link className="figma-button figma-button--secondary results-card__button results-card__button--secondary practice-intro-modal__button" to="/learn/foundations">
+          <Link
+            className="figma-button figma-button--secondary results-card__button results-card__button--secondary practice-intro-modal__button"
+            to="/learn/foundations"
+            onClick={props.onLearnFirst}
+          >
             Learn
           </Link>
           <button className="figma-button results-card__button practice-intro-modal__button" type="button" onClick={props.onContinue}>

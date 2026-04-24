@@ -337,6 +337,12 @@ export function LegacyPracticeScreen() {
     void beginCase(nextDifficulty);
   }
 
+  function handleLearnFirstFromIntro() {
+    state.storage?.savePracticeIntroSeen(true);
+    setIntroOpen(false);
+    setPendingDifficulty(null);
+  }
+
   async function handleDifficultyChange(nextDifficulty: string) {
     const nextNormalizedDifficulty = normalizeDifficultyKey(progressionInput, nextDifficulty);
     const fromDifficulty = activeCaseDifficulty;
@@ -571,6 +577,7 @@ export function LegacyPracticeScreen() {
       <PracticeIntroModal
         open={introOpen}
         onContinue={handleContinueFromIntro}
+        onLearnFirst={handleLearnFirstFromIntro}
       />
 
       <main className="app-shell__page practice-screen">
