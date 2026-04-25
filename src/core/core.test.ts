@@ -371,8 +371,41 @@ describe("progression helpers", () => {
 });
 
 describe("metric visibility", () => {
+  it("hides lactate for beginner cases", () => {
+    const labels = getVisibleCaseMetrics({
+      ...sampleCase,
+      difficulty_level: 1
+    }).map(metric => metric.label);
+
+    expect(labels).not.toContain("Glucose");
+    expect(labels).not.toContain("Lactate");
+  });
+
+  it("shows lactate but not glucose for intermediate cases", () => {
+    const labels = getVisibleCaseMetrics({
+      ...sampleCase,
+      difficulty_level: 2
+    }).map(metric => metric.label);
+
+    expect(labels).toContain("Lactate");
+    expect(labels).not.toContain("Glucose");
+  });
+
   it("shows advanced glucose metrics when available for advanced cases", () => {
-    const labels = getVisibleCaseMetrics(sampleCase).map(metric => metric.label);
+    const labels = getVisibleCaseMetrics({
+      ...sampleCase,
+      difficulty_level: 3
+    }).map(metric => metric.label);
+    expect(labels).toContain("Glucose");
+    expect(labels).toContain("Lactate");
+  });
+
+  it("shows lactate and glucose for master cases", () => {
+    const labels = getVisibleCaseMetrics({
+      ...sampleCase,
+      difficulty_level: 4
+    }).map(metric => metric.label);
+
     expect(labels).toContain("Glucose");
     expect(labels).toContain("Lactate");
   });

@@ -115,7 +115,8 @@ export function buildCaseMetricDefinitions(caseItem: CaseData): CaseMetricDefini
       value: lactate,
       decimals: 1,
       unit: "mmol/L",
-      abnormal: lactate != null && (lactate < 0.5 || lactate > 2)
+      abnormal: lactate != null && (lactate < 0.5 || lactate > 2),
+      minDifficultyLevel: 2
     }
   ];
 }

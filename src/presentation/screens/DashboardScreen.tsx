@@ -148,6 +148,11 @@ export function DashboardScreen() {
             This application is for educational purposes only and should not be used as a substitute for professional
             medical advice, diagnosis, or treatment.
           </p>
+          <p>
+            <Link className="dashboard-footer__link" to="/privacy">
+              Privacy notice
+            </Link>
+          </p>
           <div className="dashboard-footer__actions">
             <button className="figma-button figma-button--secondary dashboard-footer__reset" type="button" onClick={handleResetProgress}>
               Reset progress

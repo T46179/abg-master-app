@@ -21,6 +21,13 @@ describe("app routes", () => {
     expect(landingRoute).toBeTruthy();
   });
 
+  it("renders the privacy notice at /privacy", () => {
+    const privacyRoute = appRoutes.find((route) => route.path === "/privacy");
+
+    expect(privacyRoute?.element).toBeTruthy();
+    expect(getElementName(privacyRoute?.element)).toBe("PrivacyScreen");
+  });
+
   it("keeps dashboard and practice available inside the app shell", () => {
     const shellRoute = appRoutes.find((route) => route.children != null);
     const childPaths = shellRoute?.children?.map((route) => route.path);

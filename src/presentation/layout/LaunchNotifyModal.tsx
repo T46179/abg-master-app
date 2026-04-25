@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type MouseEvent as ReactMouseEvent } from "react";
+import { Link } from "react-router-dom";
 
 interface LaunchNotifyModalProps {
   open: boolean;
@@ -13,7 +14,7 @@ interface LaunchNotifyModalProps {
 const LAUNCH_NOTIFY_COPY = {
   title: "Stay in the Loop",
   intro: "Be the first to know when we launch, and stay up to date with new features",
-  privacy: "This email will only be used to notify you of updates, not for marketing",
+  privacy: "This email will only be used to notify you of ABG Master updates.",
   placeholder: "Enter your email",
   invalidEmail: "Enter a valid email address.",
   submit: "Notify Me",
@@ -121,7 +122,12 @@ export function LaunchNotifyModal(props: LaunchNotifyModalProps) {
             <p id={validationErrorId} className={`launch-notify-error${validationMessage ? "" : " is-hidden"}`} role="alert">
               {validationMessage}
             </p>
-            <p className="launch-notify-help">{LAUNCH_NOTIFY_COPY.privacy}</p>
+            <p className="launch-notify-help">
+              {LAUNCH_NOTIFY_COPY.privacy}{" "}
+              <Link to="/privacy" onClick={props.onClose}>
+                Privacy notice
+              </Link>
+            </p>
             <p className={`launch-notify-error${props.error ? "" : " is-hidden"}`} role="alert">
               {props.error}
             </p>

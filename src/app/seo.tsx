@@ -42,6 +42,10 @@ const SEO_BY_PATH: Record<string, SeoMetadataConfig> = {
   "/learn/master": {
     title: "Mixed Acid-Base Disorders | ABG Master",
     description: "Learn how to recognise mixed acid-base disorders, layered metabolic processes, and complex ABG patterns."
+  },
+  "/privacy": {
+    title: "Privacy Notice | ABG Master",
+    description: "Read how ABG Master handles signup emails, browser storage, protected practice submissions, analytics, and diagnostics."
   }
 };
 

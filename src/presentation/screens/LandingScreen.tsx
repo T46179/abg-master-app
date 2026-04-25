@@ -676,17 +676,24 @@ export function LandingScreen() {
       </section>
 
       <footer className="landing-footer dashboard-footer">
-        <p>&copy; 2026 ABG Master. All rights reserved.</p>
-        <p>
-          Icons by Jos Pham, licensed under{" "}
-          <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
-            CC BY 4.0
-          </a>
-        </p>
         <p>
           This application is for educational purposes only and should not be used as a substitute for professional
           medical advice, diagnosis, or treatment.
         </p>
+        <div className="landing-footer__meta">
+          <p>
+            Icons by Jos Pham, licensed under{" "}
+            <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+              CC BY 4.0
+            </a>
+          </p>
+          <p>
+            <Link className="dashboard-footer__link" to="/privacy">
+              Privacy notice
+            </Link>
+          </p>
+          <p>&copy; 2026 ABG Master. All rights reserved.</p>
+        </div>
       </footer>
     </main>
   );

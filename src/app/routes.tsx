@@ -8,11 +8,16 @@ import { ExamScreen } from "../presentation/screens/ExamScreen";
 import { LeaderboardScreen } from "../presentation/screens/LeaderboardScreen";
 import { LearnScreen } from "../presentation/screens/LearnScreen";
 import { LearnLessonScreen } from "../presentation/screens/LearnLessonScreen";
+import { PrivacyScreen } from "../presentation/screens/PrivacyScreen";
 
 export const appRoutes: RouteObject[] = [
   {
     path: "/",
     element: <LandingScreen />
+  },
+  {
+    path: "/privacy",
+    element: <PrivacyScreen />
   },
   {
     path: "/",
