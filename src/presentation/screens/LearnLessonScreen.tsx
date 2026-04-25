@@ -57,10 +57,11 @@ export function LearnLessonScreen() {
 
   useEffect(() => {
     if (!level || typeof window === "undefined") return;
+    if (!shouldShowLearnLevel(level, state.userState.level) || !isLearnLevelUnlocked(level, state.userState.level) || !isLearnLevelAvailable(level)) return;
 
     window.localStorage.setItem(getLastLearnModuleStorageKey(), level.slug);
     window.localStorage.setItem(getLearnLessonStorageKey(level.slug), String(lessonIndex));
-  }, [lessonIndex, level]);
+  }, [lessonIndex, level, state.userState.level]);
 
   useEffect(() => {
     if (state.status !== "ready" || !level) return;

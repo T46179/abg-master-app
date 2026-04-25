@@ -46,6 +46,7 @@ describe("Learn screens", () => {
       root.unmount();
     });
     container.remove();
+    window.localStorage.clear();
   });
 
   function renderPath(path: string) {
@@ -198,9 +199,6 @@ describe("Learn screens", () => {
     const expectedAccents = [
       ["/learn/foundations", "#FFE0B2"],
       ["/learn/beginner", "#B8DEFF"],
-      ["/learn/intermediate", "#B8E6CC"],
-      ["/learn/advanced", "#FFCDB0"],
-      ["/learn/master", "#D6C2FF"],
       ["/learn/hidden", "#D8B4FF"]
     ];
 
@@ -228,14 +226,20 @@ describe("Learn screens", () => {
     expect(container.querySelector(".learn-deck-screen")).toBeNull();
   });
 
-  it("allows direct lesson routes after the module unlocks", () => {
-    mockUserLevel.value = 5;
-    renderPath("/learn/intermediate");
-    expect(container.querySelector(".learn-deck-screen")).not.toBeNull();
-
+  it("allows direct lesson routes after the module unlocks and is available", () => {
     mockUserLevel.value = 25;
     renderPath("/learn/hidden");
     expect(container.querySelector(".learn-deck-screen")).not.toBeNull();
+  });
+
+  it("does not resume a stored module that is still coming soon", () => {
+    mockUserLevel.value = 25;
+    window.localStorage.setItem("abg-master:learn:last-module", "intermediate");
+
+    renderPath("/learn");
+
+    expect(container.querySelector(".learn-overview")).not.toBeNull();
+    expect(container.querySelector(".learn-deck-screen")).toBeNull();
   });
 
   it("advances lesson content and updates progress dot states", () => {
@@ -311,21 +315,14 @@ describe("Learn screens", () => {
     expect(container.textContent).toContain("Begin");
   });
 
-  it("renders the carbonic acid equation before the compensation panel in the intermediate deck", () => {
+  it("keeps the intermediate lesson route closed while the module is coming soon", () => {
     mockUserLevel.value = 5;
 
     renderPath("/learn/intermediate");
 
-    const bodyText = container.querySelector(".learn-deck__body")?.textContent ?? "";
-    const equationIndex = bodyText.indexOf("CO2 + H2O");
-    const panelIndex = bodyText.indexOf("The body fights back");
-
-    expect(container.textContent).toContain("What is compensation?");
-    expect(container.querySelector(".learn-carbonic-equation")?.textContent).toContain("CO2 + H2O");
-    expect(container.querySelector(".learn-carbonic-equation")?.textContent).toContain("H2CO3");
-    expect(container.querySelector(".learn-carbonic-equation")?.textContent).toContain("HCO3-");
-    expect(equationIndex).toBeGreaterThanOrEqual(0);
-    expect(panelIndex).toBeGreaterThan(equationIndex);
+    expect(container.querySelector(".learn-overview")).not.toBeNull();
+    expect(container.querySelector(".learn-deck-screen")).toBeNull();
+    expect(container.textContent).toContain("Coming Soon");
   });
 });
 
