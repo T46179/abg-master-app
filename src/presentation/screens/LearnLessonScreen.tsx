@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import { getAwardableXp, getLevelProgress, syncUserStateDerivedFields } from "../../core/progression";
-import { getLearnLevel, isLearnLevelUnlocked, shouldShowLearnLevel } from "../learn/content";
+import { getLearnLevel, isLearnLevelAvailable, isLearnLevelUnlocked, shouldShowLearnLevel } from "../learn/content";
 import type { SpeedCheckPhase } from "../learn/SpeedCheckGame";
 import { SpeedCheckGame } from "../learn/SpeedCheckGame";
 import { cn } from "../utils";
@@ -64,7 +64,7 @@ export function LearnLessonScreen() {
 
   useEffect(() => {
     if (state.status !== "ready" || !level) return;
-    if (!shouldShowLearnLevel(level, state.userState.level) || !isLearnLevelUnlocked(level, state.userState.level)) return;
+    if (!shouldShowLearnLevel(level, state.userState.level) || !isLearnLevelUnlocked(level, state.userState.level) || !isLearnLevelAvailable(level)) return;
     if (state.userState.learnProgress?.[level.slug]) return;
 
     void setUserState({
@@ -82,7 +82,7 @@ export function LearnLessonScreen() {
   if (state.status === "loading" || state.status === "idle") return <LoadingView />;
   if (state.status === "error") return <ErrorView message={state.errorMessage} />;
   if (!level) return <Navigate to="/learn" replace />;
-  if (!shouldShowLearnLevel(level, state.userState.level) || !isLearnLevelUnlocked(level, state.userState.level)) {
+  if (!shouldShowLearnLevel(level, state.userState.level) || !isLearnLevelUnlocked(level, state.userState.level) || !isLearnLevelAvailable(level)) {
     return <Navigate to="/learn" replace />;
   }
 

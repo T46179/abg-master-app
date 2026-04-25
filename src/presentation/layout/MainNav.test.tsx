@@ -109,7 +109,7 @@ describe("MainNav", () => {
     renderNavWithLearnDisabled();
 
     expect(container.textContent).toContain("Learn");
-    const learnLink = Array.from(container.querySelectorAll("a")).find((link) => link.getAttribute("href") === "/learn");
+    const learnLink = Array.from(container.querySelectorAll("a")).find((link) => link.getAttribute("href") === "/learn?all=1");
     const disabledLearnItem = Array.from(container.querySelectorAll("span")).find((item) => item.textContent?.includes("Learn"));
 
     expect(learnLink).toBeUndefined();

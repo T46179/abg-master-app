@@ -27,13 +27,14 @@ export function MainNav(props: MainNavProps) {
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, ready: false });
   const navItems: NavItem[] = [
     { to: "/dashboard", label: "Dashboard", end: true },
-    { to: "/learn", label: "Learn", disabled: !props.learnEnabled },
+    { to: "/learn?all=1", label: "Learn", disabled: !props.learnEnabled },
     { to: "/practice", label: "Practice" }
   ];
   const activeItem = navItems.find(item => {
     if (item.disabled) return false;
     if (item.end) return location.pathname === item.to;
-    return location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+    const normalizedTo = item.to.split("?")[0];
+    return location.pathname === normalizedTo || location.pathname.startsWith(`${normalizedTo}/`);
   });
 
   useLayoutEffect(() => {

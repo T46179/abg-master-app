@@ -124,7 +124,7 @@ export function LaunchNotifyModal(props: LaunchNotifyModalProps) {
             </p>
             <p className="launch-notify-help">
               {LAUNCH_NOTIFY_COPY.privacy}{" "}
-              <Link to="/privacy" onClick={props.onClose}>
+              <Link className="launch-notify-help__link" to="/privacy" onClick={props.onClose}>
                 Privacy notice
               </Link>
             </p>

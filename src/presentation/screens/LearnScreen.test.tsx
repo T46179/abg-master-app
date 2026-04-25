@@ -85,9 +85,7 @@ describe("Learn screens", () => {
     expect(container.textContent).not.toContain("Module 1");
     expect(container.textContent).not.toContain("Secret");
     expect(container.textContent).not.toContain("Locked at Level 25");
-    expect(container.textContent).toContain("Unlocks at Level 5");
-    expect(container.textContent).toContain("Unlocks at Level 10");
-    expect(container.textContent).toContain("Unlocks at Level 20");
+    expect(container.textContent).toContain("Coming Soon");
     expect(container.textContent).not.toContain("Unlocks at Level 25");
 
     const moduleCards = Array.from(container.querySelectorAll<HTMLElement>(".learn-level-card"));
@@ -151,12 +149,12 @@ describe("Learn screens", () => {
     expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations"]')?.textContent).toContain("Review");
   });
 
-  it("unlocks learn cards at their configured levels and reveals Master + at level 25", () => {
+  it("keeps intermediate, advanced, and master cards disabled as coming soon across higher levels", () => {
     const expectations = [
-      { level: 5, links: ["/learn/foundations", "/learn/beginner", "/learn/intermediate"], hiddenVisible: false },
-      { level: 10, links: ["/learn/foundations", "/learn/beginner", "/learn/intermediate", "/learn/advanced"], hiddenVisible: false },
-      { level: 20, links: ["/learn/foundations", "/learn/beginner", "/learn/intermediate", "/learn/advanced", "/learn/master"], hiddenVisible: false },
-      { level: 25, links: ["/learn/foundations", "/learn/beginner", "/learn/intermediate", "/learn/advanced", "/learn/master", "/learn/hidden"], hiddenVisible: true }
+      { level: 5, links: ["/learn/foundations", "/learn/beginner"], hiddenVisible: false },
+      { level: 10, links: ["/learn/foundations", "/learn/beginner"], hiddenVisible: false },
+      { level: 20, links: ["/learn/foundations", "/learn/beginner"], hiddenVisible: false },
+      { level: 25, links: ["/learn/foundations", "/learn/beginner", "/learn/hidden"], hiddenVisible: true }
     ];
 
     expectations.forEach(expectation => {
@@ -164,7 +162,9 @@ describe("Learn screens", () => {
       renderPath("/learn");
 
       const unlockedLinks = Array.from(container.querySelectorAll<HTMLAnchorElement>("a.learn-level-card__cta"));
+      const lockedButtons = Array.from(container.querySelectorAll<HTMLButtonElement>(".learn-level-card.is-locked .learn-level-card__cta"));
       expect(unlockedLinks.map(link => link.getAttribute("href"))).toEqual(expectation.links);
+      expect(lockedButtons.filter(button => button.textContent?.includes("Coming Soon"))).toHaveLength(3);
       expect(container.textContent?.includes("Master +")).toBe(expectation.hiddenVisible);
     });
   });
@@ -213,6 +213,11 @@ describe("Learn screens", () => {
 
   it("redirects direct lesson routes when the module is locked or hidden", () => {
     mockUserLevel.value = 1;
+    renderPath("/learn/intermediate");
+    expect(container.querySelector(".learn-overview")).not.toBeNull();
+    expect(container.querySelector(".learn-deck-screen")).toBeNull();
+
+    mockUserLevel.value = 25;
     renderPath("/learn/intermediate");
     expect(container.querySelector(".learn-overview")).not.toBeNull();
     expect(container.querySelector(".learn-deck-screen")).toBeNull();

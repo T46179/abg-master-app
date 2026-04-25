@@ -147,7 +147,7 @@ describe("LandingScreen", () => {
 
     expect(container.textContent).toContain("Four Levels of Mastery");
 
-    const learnLink = Array.from(container.querySelectorAll("a")).find(link => link.getAttribute("href") === "/learn");
+    const learnLink = Array.from(container.querySelectorAll("a")).find(link => link.getAttribute("href") === "/learn?all=1");
 
     expect(learnLink).toBeTruthy();
   });

@@ -28,6 +28,7 @@ export interface LearnLevelConfig {
   badge: string;
   unlockLevel: number;
   hideUntilUnlocked?: boolean;
+  comingSoon?: boolean;
   unlockCopy?: {
     intro: string;
     subtitle?: string;
@@ -135,7 +136,7 @@ function BeginnerCompletionCard() {
 
   return (
     <LearnSummaryCompletionCard
-      intro="You now have the core workflow for blood gas interpretation: read the pH, identify the main driver, and connect the pattern to the clinical story."
+      intro="You now have the core workflow for blood gas interpretation: read the pH, identify the main driver, and connect the pattern to the clinical story"
       items={items}
     />
   );
@@ -384,7 +385,7 @@ interface ABGPrimaryMetric {
   label: ReactNode;
   value: string;
   unit?: string;
-  reference: string;
+  reference?: string;
   abnormal?: boolean;
 }
 
@@ -405,7 +406,7 @@ function PrimaryABGValueGrid(props: { metrics: ABGPrimaryMetric[]; compact?: boo
             {metric.value}
             {metric.unit ? <small>{metric.unit}</small> : null}
           </span>
-          <span className="learn-abg-panel-tour__metric-reference">{metric.reference}</span>
+          {metric.reference ? <span className="learn-abg-panel-tour__metric-reference">{metric.reference}</span> : null}
         </article>
       ))}
     </div>
@@ -1103,6 +1104,7 @@ export const learnLevels: LearnLevelConfig[] = [
     description: "Learn expected compensation and spot when a second disorder is hiding.",
     badge: "Module 2",
     unlockLevel: 5,
+    comingSoon: true,
     unlockCopy: {
       intro: "Intermediate learning is now available",
       subtitle: "Compensation is now part of your blood gas interpretation pathway",
@@ -1129,16 +1131,17 @@ export const learnLevels: LearnLevelConfig[] = [
     description: "Find hidden metabolic processes and make sense of extra acids.",
     badge: "Module 3",
     unlockLevel: 10,
+    comingSoon: true,
     unlockCopy: {
       intro: "Advanced learning is now available.",
 	  subtitle: "Anion gap analysis is now a part of your interpretation pathway",
       practiceChanges: [
-		"Access advanced cases from the Practice Library",
+		    "Access advanced cases from the Practice Library",
         "Use anion gap reasoning to separate normal-gap from raised-gap acidosis",
         "Work through cases with stronger diagnostic pattern recognition",
         "Interpret cases without normal range hints by default",
-		"More detailed explanations in the case summary",
-		"Advanced learning module coming soon"
+		    "More detailed explanations in the case summary",
+		    "Advanced learning module coming soon"
       ]
     },
     palette: {
@@ -1157,12 +1160,16 @@ export const learnLevels: LearnLevelConfig[] = [
     description: "Interpret ABGs that do not fit a single clean explanation.",
     badge: "Module 4",
     unlockLevel: 20,
+    comingSoon: true,
     unlockCopy: {
       intro: "Master learning is now available.",
       practiceChanges: [
-        "Mixed disorders become the focus.",
-        "Normal range references are removed.",
-        "Abnormal colour highlights are removed so you interpret values independently."
+        "Access Master cases from the Practice Library",
+        "Refine your skills and practice the most complex cases including mixed disorders",
+        "Questions and answer options will become dynamic and more case-specific",
+        "Normal range references have been removed",
+        "Abnormal values will no longer be highlighted",
+        "Master learning module coming soon"
       ]
     },
     palette: {
@@ -1207,6 +1214,10 @@ export function getLearnLevel(slug: string | undefined) {
 
 export function isLearnLevelUnlocked(level: LearnLevelConfig, userLevel: number) {
   return Math.max(1, Number(userLevel) || 1) >= level.unlockLevel;
+}
+
+export function isLearnLevelAvailable(level: LearnLevelConfig) {
+  return !level.comingSoon;
 }
 
 export function shouldShowLearnLevel(level: LearnLevelConfig, userLevel: number) {

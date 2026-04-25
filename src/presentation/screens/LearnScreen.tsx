@@ -4,7 +4,7 @@ import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import lockIcon from "../../assets/icons/lock.svg";
 import timerIcon from "../../assets/icons/timer.svg";
-import { getVisibleLearnLevels, isLearnLevelUnlocked } from "../learn/content";
+import { getVisibleLearnLevels, isLearnLevelAvailable, isLearnLevelUnlocked } from "../learn/content";
 import { Surface } from "../primitives/Surface";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
 import type { LearnModuleProgress } from "../../core/types";
@@ -60,6 +60,8 @@ export function LearnScreen() {
             const bestSpeedCheckResult = level.slug === "foundations" ? moduleProgress?.bestSpeedCheckResult : undefined;
             const ctaLabel = getLearnModuleCtaLabel(moduleProgress);
             const isUnlocked = isLearnLevelUnlocked(level, state.userState.level);
+            const isAvailable = isLearnLevelAvailable(level);
+            const canOpenLevel = isUnlocked && isAvailable;
             const cardStyle = {
               "--learn-card-bg-start": level.palette.backgroundStart,
               "--learn-card-bg-end": level.palette.backgroundEnd,
@@ -71,9 +73,9 @@ export function LearnScreen() {
               <Surface
                 key={level.slug}
                 as="article"
-                className={`learn-level-card is-accent-preview${isUnlocked ? "" : " is-locked"}`}
+                className={`learn-level-card is-accent-preview${canOpenLevel ? "" : " is-locked"}`}
                 style={cardStyle}
-                aria-disabled={isUnlocked ? undefined : "true"}
+                aria-disabled={canOpenLevel ? undefined : "true"}
               >
                 <div className="learn-level-card__copy">
                   <h2>{level.title}</h2>
@@ -100,14 +102,14 @@ export function LearnScreen() {
                 </div>
 
                 <div className="learn-level-card__footer">
-                  {isUnlocked ? (
+                  {canOpenLevel ? (
                     <Link className="figma-button learn-level-card__cta" to={`/learn/${level.slug}`}>
                       {ctaLabel}
                       <ArrowRight />
                     </Link>
                   ) : (
                     <button className="figma-button learn-level-card__cta" type="button" disabled>
-                      Unlocks at Level {level.unlockLevel}
+                      {isAvailable ? `Unlocks at Level ${level.unlockLevel}` : "Coming Soon"}
                       <img className="learn-level-card__cta-icon" src={lockIcon} alt="" aria-hidden="true" />
                     </button>
                   )}
