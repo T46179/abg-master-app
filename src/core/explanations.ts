@@ -25,6 +25,7 @@ const BEGINNER_INTERMEDIATE_OVERVIEW_PRIORITY: ExplanationDomain[] = [
 ];
 
 const ADVANCED_MASTER_OVERVIEW_PRIORITY: ExplanationDomain[] = [
+  "acid_base_processes",
   "additional_metabolic_process",
   "anion_gap",
   "compensation",
@@ -96,9 +97,9 @@ function getSelectedDomains(caseItem: CaseData, missedStepKeys: Set<string>): Ex
     return domains;
   }
 
-  const domains: ExplanationDomain[] = ["compensation", "anion_gap", "diagnosis", "clinical_context"];
-  if (hasQuestionFlowStep(caseItem, "additional_metabolic_process") && additionalProcess && additionalProcess !== "None") {
-    domains.unshift("additional_metabolic_process");
+  const domains: ExplanationDomain[] = ["acid_base_processes", "compensation", "anion_gap", "diagnosis", "clinical_context"];
+  if (hasQuestionFlowStep(caseItem, "additional_metabolic_process") && additionalProcess) {
+    domains.splice(3, 0, "additional_metabolic_process");
   }
   if (missedStepKeys.has("primary_disorder")) domains.push("primary_disorder");
   if (missedStepKeys.has("ph_status")) domains.push("ph_status");

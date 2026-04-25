@@ -6,7 +6,9 @@ import {
   applyPracticeOutcome,
   buildFinalStepResults,
   canUseClientSidePracticeFeedback,
+  formatAnswerValue,
   getQuestionFlowStepStatus,
+  isCorrectAnswer,
   reconcileProtectedSummaryWithLockedStepResults
 } from "./practice";
 import { applyProtectedCaseCompletion } from "./protectedPractice";
@@ -125,6 +127,27 @@ const beginnerCase: CaseData = {
       order: 2
     }
   }
+};
+
+const masterMultiSelectCase: CaseData = {
+  ...sampleCase,
+  case_id: "master-multi",
+  difficulty_level: 4,
+  answer_key: {
+    acid_base_processes: ["Metabolic acidosis", "Respiratory alkalosis"]
+  },
+  questions_flow: [
+    {
+      key: "acid_base_processes",
+      selection_mode: "multi",
+      options: [
+        "Metabolic acidosis",
+        "Metabolic alkalosis",
+        "Respiratory acidosis",
+        "Respiratory alkalosis"
+      ]
+    }
+  ]
 };
 
 afterEach(() => {
@@ -624,6 +647,25 @@ describe("explanations", () => {
 });
 
 describe("question flow pill status", () => {
+  it("grades master multi-select answers by normalized exact-set equality", () => {
+    expect(isCorrectAnswer(masterMultiSelectCase, "acid_base_processes", [
+      "Respiratory alkalosis",
+      "Metabolic acidosis"
+    ])).toBe(true);
+    expect(isCorrectAnswer(masterMultiSelectCase, "acid_base_processes", ["Metabolic acidosis"])).toBe(false);
+    expect(isCorrectAnswer(masterMultiSelectCase, "acid_base_processes", [
+      "Metabolic acidosis",
+      "Respiratory alkalosis",
+      "Respiratory acidosis"
+    ])).toBe(false);
+  });
+
+  it("formats array answers for feedback and review text", () => {
+    expect(formatAnswerValue(["Metabolic acidosis", "Respiratory alkalosis"])).toBe(
+      "Metabolic acidosis, Respiratory alkalosis"
+    );
+  });
+
   it("derives correct and incorrect statuses from selected answers for advanced cases", () => {
     expect(getQuestionFlowStepStatus({
       caseItem: sampleCase,
@@ -656,6 +698,43 @@ describe("question flow pill status", () => {
         chosen: "Acidaemia"
       }
     })).toBe("complete");
+  });
+
+  it("keeps in-progress multi-select steps as complete until submitted", () => {
+    expect(getQuestionFlowStepStatus({
+      caseItem: masterMultiSelectCase,
+      stepKey: "acid_base_processes",
+      isCurrentStep: true,
+      stepSelection: {
+        key: "acid_base_processes",
+        label: "Acid-base processes",
+        chosen: ["Metabolic acidosis"]
+      }
+    })).toBeUndefined();
+  });
+
+  it("grades submitted multi-select steps once they are no longer current", () => {
+    expect(getQuestionFlowStepStatus({
+      caseItem: masterMultiSelectCase,
+      stepKey: "acid_base_processes",
+      isPastStep: true,
+      stepSelection: {
+        key: "acid_base_processes",
+        label: "Acid-base processes",
+        chosen: ["Metabolic acidosis", "Respiratory alkalosis"]
+      }
+    })).toBe("correct");
+
+    expect(getQuestionFlowStepStatus({
+      caseItem: masterMultiSelectCase,
+      stepKey: "acid_base_processes",
+      isPastStep: true,
+      stepSelection: {
+        key: "acid_base_processes",
+        label: "Acid-base processes",
+        chosen: ["Metabolic acidosis"]
+      }
+    })).toBe("incorrect");
   });
 
   it("auto-advancing advanced flows require an answer key to judge correctness locally", () => {

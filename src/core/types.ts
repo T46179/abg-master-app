@@ -96,11 +96,13 @@ export interface QuestionFlowStep {
   label?: string;
   prompt?: string;
   options?: string[];
+  selection_mode?: "single" | "multi";
 }
 
 export const EXPLANATION_DOMAINS = [
   "ph_status",
   "primary_disorder",
+  "acid_base_processes",
   "compensation",
   "anion_gap",
   "additional_metabolic_process",
@@ -160,7 +162,7 @@ export interface CaseData {
   learning_objective?: string;
   protected_payload_mode?: string;
   inputs?: CaseInputs;
-  answer_key?: Record<string, string>;
+  answer_key?: Record<string, AnswerValue>;
   questions_flow?: QuestionFlowStep[];
   explanation_blueprint?: ExplanationBlueprintEntry[];
   step_feedback?: Record<string, StepFeedbackEntry>;
@@ -209,17 +211,19 @@ export interface StepResult {
   key: string;
   label: string;
   prompt?: string;
-  chosen: string;
-  correctAnswer: string;
+  chosen: AnswerValue;
+  correctAnswer: AnswerValue;
   correct: boolean;
   feedback?: StepFeedbackEntry | null;
 }
+
+export type AnswerValue = string | string[];
 
 export interface AnswerSelection {
   key: string;
   label: string;
   prompt?: string;
-  chosen: string;
+  chosen: AnswerValue;
 }
 
 export interface SessionState {
@@ -273,7 +277,7 @@ export interface PendingPracticeSubmission {
   caseId: string;
   contentVersion: string;
   difficultyKey: string;
-  answers: Array<{ key: string; chosen: string }>;
+  answers: Array<{ key: string; chosen: AnswerValue }>;
   elapsedSeconds: number;
   timedMode: boolean;
   clientCompletedAt: string;
@@ -351,7 +355,7 @@ export interface ProtectedPracticePrepareResponse {
 
 export interface ProtectedPracticeSubmitRequest {
   caseToken: string;
-  answers: Array<{ key: string; chosen: string }>;
+  answers: Array<{ key: string; chosen: AnswerValue }>;
   elapsedSeconds: number;
   timedMode: boolean;
   clientCompletedAt: string;

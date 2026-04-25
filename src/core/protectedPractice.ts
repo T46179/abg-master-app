@@ -3,6 +3,7 @@ import { evaluateBadges, normalizeStructuredExplanation, updateDailyStreak } fro
 import { getAwardableXp, syncUserStateDerivedFields } from "./progression";
 import type {
   CaseSummary,
+  AnswerValue,
   IssuedPracticeSlot,
   PendingPracticeSubmission,
   ProgressionConfig,
@@ -197,7 +198,7 @@ export function buildPendingPracticeSubmission(input: {
   caseId: string;
   contentVersion: string;
   difficultyKey: string;
-  answers: Array<{ key: string; chosen: string }>;
+  answers: Array<{ key: string; chosen: AnswerValue }>;
   elapsedSeconds: number;
   timedMode: boolean;
   clientCompletedAt: string;

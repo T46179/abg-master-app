@@ -120,7 +120,7 @@ export function getDiagnosisOptionPool(cases: CaseData[]): string[] {
     const diagnosisStep = (item?.questions_flow ?? []).find(step => step?.key === "final_diagnosis");
 
     return [
-      item?.answer_key?.final_diagnosis,
+      Array.isArray(item?.answer_key?.final_diagnosis) ? null : item?.answer_key?.final_diagnosis,
       ...(Array.isArray(diagnosisStep?.options) ? diagnosisStep.options : [])
     ].filter(Boolean) as string[];
   });
@@ -137,7 +137,9 @@ export function shuffleArray<T>(items: T[]): T[] {
 
 export function buildDiagnosisOptionOverride(caseItem: CaseData, step: QuestionFlowStep, cases: CaseData[]): string[] {
   const targetCount = step.options?.length ?? 0;
-  const correctDiagnosis = caseItem?.answer_key?.final_diagnosis;
+  const correctDiagnosis = Array.isArray(caseItem?.answer_key?.final_diagnosis)
+    ? null
+    : caseItem?.answer_key?.final_diagnosis;
   const sanitizedOptions: string[] = [];
 
   function tryAddOption(option: unknown) {

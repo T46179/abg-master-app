@@ -10,6 +10,7 @@ import type {
   StorageAdapter
 } from "../../core/types";
 import { formatElapsed, splitMetrics } from "../../app/viewHelpers";
+import { formatAnswerValue } from "../../core/practice";
 import { MetricInlineText, MetricLabel, MetricReference, MetricValue } from "./MetricText";
 import { useHorizontalOverflowState } from "../useHorizontalOverflowState";
 import { cn } from "../utils";
@@ -357,8 +358,8 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                     >
                       <strong>{stepResult.label}</strong>
                       <p>
-                        You chose <MetricInlineText text={stepResult.chosen} />. Correct answer:{" "}
-                        <MetricInlineText text={stepResult.correctAnswer} />.
+                        You chose <MetricInlineText text={formatAnswerValue(stepResult.chosen)} />. Correct answer:{" "}
+                        <MetricInlineText text={formatAnswerValue(stepResult.correctAnswer)} />.
                       </p>
                     </article>
                   ))}

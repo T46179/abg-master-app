@@ -11,6 +11,7 @@ const patchPracticeState = vi.fn();
 const patchSessionState = vi.fn();
 const setUserState = vi.fn();
 const trackEvent = vi.fn();
+let latestQuestionFlowCardProps: Record<string, unknown> | null = null;
 
 let currentState: {
   status: "ready";
@@ -19,7 +20,7 @@ let currentState: {
     progressionConfig: null;
     dashboardState: null;
     defaultUserState: null;
-    cases: [];
+    cases: unknown[];
     contentVersion: string;
     deliveryMode: "protected_runtime";
   };
@@ -44,21 +45,21 @@ let currentState: {
   sessionState: {
     currentDifficulty: string;
     currentStepIndex: number;
-    selectedAnswers: [];
-    stepResults: [];
-    stepOptionOverrides: {};
+    selectedAnswers: Array<Record<string, unknown>>;
+    stepResults: Array<Record<string, unknown>>;
+    stepOptionOverrides: Record<string, unknown>;
     caseStartMs: null;
     timedMode: false;
     showAdvancedRanges: false;
   };
   practiceState: {
-    currentCase: null;
+    currentCase: Record<string, unknown> | null;
     currentCaseToken: null;
     currentCaseExpiresAt: null;
     lastCaseSummary: null;
-    practiceSlotsByDifficulty: {};
+    practiceSlotsByDifficulty: Record<string, unknown>;
     pendingSubmission: null;
-    syncState: "unavailable";
+    syncState: "idle" | "unavailable";
     syncMessage: string | null;
   };
   storage: {
@@ -151,7 +152,10 @@ vi.mock("../practice/PracticeIntroModal", () => ({
 }));
 
 vi.mock("../practice/QuestionFlowCard", () => ({
-  QuestionFlowCard: () => null
+  QuestionFlowCard: (props: Record<string, unknown>) => {
+    latestQuestionFlowCardProps = props;
+    return null;
+  }
 }));
 
 vi.mock("../practice/ResultsSummaryCard", () => ({
@@ -181,6 +185,7 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
     patchSessionState.mockReset();
     setUserState.mockReset();
     trackEvent.mockReset();
+    latestQuestionFlowCardProps = null;
     Object.defineProperty(window.navigator, "onLine", {
       configurable: true,
       value: true
@@ -251,10 +256,10 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
     vi.restoreAllMocks();
   });
 
-  function renderScreen() {
+  function renderScreen(initialEntry = "/practice?difficulty=beginner") {
     act(() => {
       root.render(
-        <MemoryRouter initialEntries={["/practice?difficulty=beginner"]}>
+        <MemoryRouter initialEntries={[initialEntry]}>
           <ProtectedPracticeScreen />
         </MemoryRouter>
       );
@@ -285,5 +290,57 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
     renderScreen();
 
     expect(container.textContent).toContain("We can't load a new case right now. Please try again.");
+  });
+
+  it("passes the current non-final multi-select selection to the question flow card", () => {
+    currentState.practiceState.syncState = "idle";
+    currentState.practiceState.currentCase = {
+      case_id: "SALICYLATE_001",
+      difficulty_level: 4,
+      clinical_stem: "Test stem",
+      questions_flow: [
+        { key: "ph_status", options: ["Acidaemia", "Alkalaemia", "Normal"] },
+        {
+          key: "acid_base_processes",
+          selection_mode: "multi",
+          options: [
+            "Metabolic acidosis",
+            "Metabolic alkalosis",
+            "Respiratory acidosis",
+            "Respiratory alkalosis"
+          ]
+        },
+        { key: "compensation", options: ["Fits expected compensation", "Does not fit expected compensation"] },
+        { key: "anion_gap", options: ["Raised", "Normal"] },
+        {
+          key: "additional_metabolic_process",
+          options: [
+            "None identified",
+            "Additional normal anion gap metabolic acidosis",
+            "Additional metabolic alkalosis",
+            "Cannot assess / not applicable"
+          ]
+        },
+        { key: "final_diagnosis", options: ["Salicylate toxicity"] }
+      ]
+    };
+    currentState.sessionState.currentStepIndex = 1;
+    currentState.sessionState.selectedAnswers = [
+      {},
+      {
+        key: "acid_base_processes",
+        label: "Acid-base processes",
+        chosen: ["Metabolic acidosis"]
+      }
+    ];
+
+    renderScreen("/practice?difficulty=master");
+
+    expect(latestQuestionFlowCardProps?.currentStepIndex).toBe(1);
+    expect(latestQuestionFlowCardProps?.currentSelection).toEqual({
+      key: "acid_base_processes",
+      label: "Acid-base processes",
+      chosen: ["Metabolic acidosis"]
+    });
   });
 });

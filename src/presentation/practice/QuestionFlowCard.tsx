@@ -2,7 +2,7 @@ import type { RefObject } from "react";
 import type { AnswerSelection, CaseData, QuestionFlowStep, StepResult } from "../../core/types";
 import { Surface } from "../primitives/Surface";
 import { PillNav } from "../primitives/PillNav";
-import { getQuestionFlowStepStatus, prettyStepLabel } from "../../core/practice";
+import { formatAnswerValue, getQuestionFlowStepStatus, prettyStepLabel } from "../../core/practice";
 import { InlineFeedbackCard } from "./InlineFeedbackCard";
 import { MetricInlineText } from "./MetricText";
 
@@ -25,6 +25,22 @@ interface QuestionFlowCardProps {
 }
 
 export function QuestionFlowCard(props: QuestionFlowCardProps) {
+  const isMultiSelect = props.currentStep?.selection_mode === "multi";
+  const selectedValues = Array.isArray(props.currentSelection?.chosen) ? props.currentSelection.chosen : [];
+  const hasMultiSelectAnswer = selectedValues.length > 0;
+
+  function getPillLabel(step: QuestionFlowStep) {
+    if (step.key === "primary_disorder" || step.key === "acid_base_processes") {
+      return "Acid-base disorder";
+    }
+
+    if (step.key === "additional_metabolic_process") {
+      return "Additional process";
+    }
+
+    return step.label ?? prettyStepLabel(step.key);
+  }
+
   const items = props.questions.map((step, index) => {
     const stepResult = props.stepResults[index];
     const stepSelection = props.selectedAnswers[index];
@@ -33,12 +49,13 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
       stepKey: step.key,
       stepResult,
       stepSelection,
-      isPastStep: index < props.currentStepIndex
+      isPastStep: index < props.currentStepIndex,
+      isCurrentStep: index === props.currentStepIndex
     });
 
     return {
       key: `${step.key}-${index}`,
-      label: `${index + 1}. ${step.label ?? prettyStepLabel(step.key)}`,
+      label: `${index + 1}. ${getPillLabel(step)}`,
       active: index === props.currentStepIndex,
       status,
       buttonRef: index === props.currentStepIndex ? props.activeStepRef : undefined
@@ -61,7 +78,45 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
         ) : null}
 
         {!props.currentResult ? (
-          props.currentSelection ? (
+          isMultiSelect ? (
+            <div className="inline-feedback">
+              <div className="question-flow-card__options">
+                {props.currentOptions.map(option => {
+                  const selected = selectedValues.includes(option);
+                  return (
+                    <button
+                      key={option}
+                      className={`answer-option${selected ? " is-selected" : ""}`}
+                      type="button"
+                      onClick={() => props.onAnswer(option)}
+                      disabled={props.interactionDisabled}
+                      aria-pressed={selected}
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                className="figma-button inline-feedback__button"
+                type="button"
+                onClick={props.onContinueStep}
+                disabled={props.interactionDisabled || !hasMultiSelectAnswer}
+              >
+                {props.currentStepIndex >= props.questions.length - 1 && props.isSubmittingCase ? (
+                  <>
+                    <span className="figma-button__spinner" aria-hidden="true" />
+                    <span>Submitting case</span>
+                  </>
+                ) : props.currentStepIndex >= props.questions.length - 1 ? (
+                  "Submit Case"
+                ) : (
+                  "Continue"
+                )}
+              </button>
+            </div>
+          ) : props.currentSelection ? (
             <div className="inline-feedback">
               <div className="inline-feedback__hero">
                 <h3>Answer selected</h3>
@@ -70,7 +125,7 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
               <div className="inline-feedback__grid">
                 <div className="inline-feedback__item">
                   <span className="inline-feedback__label">Your answer</span>
-                  <strong><MetricInlineText text={props.currentSelection.chosen} /></strong>
+                  <strong><MetricInlineText text={formatAnswerValue(props.currentSelection.chosen)} /></strong>
                 </div>
               </div>
 

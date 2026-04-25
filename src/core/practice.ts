@@ -9,12 +9,13 @@ import {
 } from "./progression";
 import { markCaseSeen } from "./selection";
 import { composeCaseStructuredExplanation } from "./explanations";
-import type { AnswerSelection, CaseData, CaseSummary, ProgressionConfig, StepResult, StructuredExplanation, UserState } from "./types";
+import type { AnswerSelection, AnswerValue, CaseData, CaseSummary, ProgressionConfig, StepResult, StructuredExplanation, UserState } from "./types";
 
 export function prettyStepLabel(stepKey: string): string {
   const labels: Record<string, string> = {
     ph_status: "pH status",
     primary_disorder: "Primary disorder",
+    acid_base_processes: "Acid-base processes",
     compensation: "Compensation",
     anion_gap: "Anion gap",
     additional_metabolic_process: "Additional process",
@@ -27,7 +28,20 @@ export function calcAnionGap(na: number, cl: number, hco3: number): number {
   return na - (cl + hco3);
 }
 
-export function getCorrectAnswer(caseItem: CaseData, stepKey: string): string {
+function normalizeAnswerText(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function normalizeAnswerSet(value: AnswerValue): string[] {
+  const values = Array.isArray(value) ? value : [value];
+  return Array.from(new Set(values.map(normalizeAnswerText).filter(Boolean))).sort();
+}
+
+export function formatAnswerValue(value: AnswerValue): string {
+  return Array.isArray(value) ? value.join(", ") : value;
+}
+
+export function getCorrectAnswer(caseItem: CaseData, stepKey: string): AnswerValue {
   const answerKey = caseItem.answer_key ?? {};
 
   if (stepKey === "anion_gap") {
@@ -42,12 +56,20 @@ export function getCorrectAnswer(caseItem: CaseData, stepKey: string): string {
   }
 
   if (answerKey[stepKey] != null) return answerKey[stepKey];
-  if (stepKey === "anion_gap" && answerKey.anion_gap_category) return answerKey.anion_gap_category;
+  if (stepKey === "anion_gap" && answerKey.anion_gap_category) return String(answerKey.anion_gap_category);
   return "Unknown";
 }
 
-export function isCorrectAnswer(caseItem: CaseData, stepKey: string, chosen: string): boolean {
-  return chosen === getCorrectAnswer(caseItem, stepKey);
+export function isCorrectAnswer(caseItem: CaseData, stepKey: string, chosen: AnswerValue): boolean {
+  const correctAnswer = getCorrectAnswer(caseItem, stepKey);
+  const step = caseItem.questions_flow?.find(question => question.key === stepKey);
+  if (step?.selection_mode === "multi" || Array.isArray(correctAnswer) || Array.isArray(chosen)) {
+    const chosenSet = normalizeAnswerSet(chosen);
+    const correctSet = normalizeAnswerSet(correctAnswer);
+    return chosenSet.length === correctSet.length && chosenSet.every((value, index) => value === correctSet[index]);
+  }
+
+  return normalizeAnswerText(chosen) === normalizeAnswerText(correctAnswer);
 }
 
 export function getQuestionFlowStepStatus(input: {
@@ -56,12 +78,27 @@ export function getQuestionFlowStepStatus(input: {
   stepResult?: StepResult | null;
   stepSelection?: AnswerSelection | null;
   isPastStep?: boolean;
+  isCurrentStep?: boolean;
 }): "correct" | "incorrect" | "complete" | undefined {
   if (input.stepResult) {
     return input.stepResult.correct ? "correct" : "incorrect";
   }
 
   if (input.stepSelection?.chosen) {
+    if (Array.isArray(input.stepSelection.chosen)) {
+      if (input.isCurrentStep) {
+        return undefined;
+      }
+
+      if (input.caseItem && Number(input.caseItem.difficulty_level ?? 1) >= 3) {
+        return isCorrectAnswer(input.caseItem, input.stepKey, input.stepSelection.chosen)
+          ? "correct"
+          : "incorrect";
+      }
+
+      return "complete";
+    }
+
     if (input.caseItem && Number(input.caseItem.difficulty_level ?? 1) >= 3) {
       return isCorrectAnswer(input.caseItem, input.stepKey, input.stepSelection.chosen)
         ? "correct"

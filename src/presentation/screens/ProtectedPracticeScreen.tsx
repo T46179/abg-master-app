@@ -51,7 +51,7 @@ import {
   markCaseSeen,
   rememberRecentArchetype
 } from "../../core/selection";
-import type { AnswerSelection, IssuedPracticeSlot, StepResult } from "../../core/types";
+import type { AnswerSelection, AnswerValue, IssuedPracticeSlot, StepResult } from "../../core/types";
 import { getLearnUnlockMilestoneForLevelTransition } from "../learn/content";
 import { LearnUnlockModal } from "../learn/LearnUnlockModal";
 import { Surface } from "../primitives/Surface";
@@ -110,7 +110,7 @@ export function ProtectedPracticeScreen() {
   const currentOptions = currentStep?.options ?? [];
   const totalSteps = currentCase?.questions_flow?.length ?? 0;
   const isFinalStep = currentStepIndex >= Math.max(0, totalSteps - 1);
-  const currentSelection = !allowsClientSideFeedback && isFinalStep && !currentResult
+  const currentSelection = !allowsClientSideFeedback && !currentResult
     ? state.sessionState.selectedAnswers[currentStepIndex] ?? null
     : null;
   const hasAnsweredSteps = allowsClientSideFeedback
@@ -475,6 +475,30 @@ export function ProtectedPracticeScreen() {
   function handleAnswer(option: string) {
     if (!currentStep || !currentCase || currentResult || interactionLocked) return;
 
+    if (currentStep.selection_mode === "multi") {
+      const currentChosen = state.sessionState.selectedAnswers[currentStepIndex]?.chosen;
+      const currentValues = Array.isArray(currentChosen) ? currentChosen : [];
+      const nextValues = currentValues.includes(option)
+        ? currentValues.filter(value => value !== option)
+        : [...currentValues, option];
+      const nextSelections = [...state.sessionState.selectedAnswers];
+
+      if (nextValues.length) {
+        nextSelections[currentStepIndex] = {
+          key: currentStep.key,
+          label: currentStep.label ?? prettyStepLabel(currentStep.key),
+          prompt: currentStep.prompt,
+          chosen: nextValues
+        };
+      } else {
+        delete nextSelections[currentStepIndex];
+      }
+
+      patchSessionState({ selectedAnswers: nextSelections });
+      patchPracticeState({ syncMessage: null });
+      return;
+    }
+
     if (allowsClientSideFeedback) {
       const nextResults = [...state.sessionState.stepResults];
       nextResults[currentStepIndex] = {
@@ -565,10 +589,12 @@ export function ProtectedPracticeScreen() {
       ? state.sessionState.stepResults
           .filter((result): result is StepResult => Boolean(result))
           .map(result => ({ key: result.key, chosen: result.chosen }))
-      : (selectedAnswersOverride ?? state.sessionState.selectedAnswers).map(selection => ({
-          key: selection.key,
-          chosen: selection.chosen
-        }));
+      : (selectedAnswersOverride ?? state.sessionState.selectedAnswers)
+          .filter((selection): selection is AnswerSelection => Boolean(selection))
+          .map(selection => ({
+            key: selection.key,
+            chosen: selection.chosen
+          }));
 
     if (answers.length !== totalSteps) {
       patchPracticeState({
@@ -697,6 +723,72 @@ export function ProtectedPracticeScreen() {
 
   function handleContinueStep() {
     if (interactionLocked) return;
+
+    if (currentStep?.selection_mode === "multi" && currentCase && !currentResult) {
+      const currentSelection = state.sessionState.selectedAnswers[currentStepIndex] ?? null;
+      const chosen: AnswerValue = Array.isArray(currentSelection?.chosen) ? currentSelection.chosen : [];
+
+      if (!chosen.length) {
+        patchPracticeState({
+          syncMessage: PROTECTED_PRACTICE_MESSAGES.answerAllSteps
+        });
+        return;
+      }
+
+      const correctAnswer = getCorrectAnswer(currentCase, currentStep.key);
+      const correct = isCorrectAnswer(currentCase, currentStep.key, chosen);
+
+      if (allowsClientSideFeedback) {
+        const nextResults = [...state.sessionState.stepResults];
+        nextResults[currentStepIndex] = {
+          key: currentStep.key,
+          label: currentStep.label ?? prettyStepLabel(currentStep.key),
+          prompt: currentStep.prompt,
+          chosen,
+          correctAnswer,
+          correct,
+          feedback: buildConciseStepFeedback(currentCase, currentStep.key)
+        };
+        patchSessionState({ stepResults: nextResults });
+        trackEvent("step_answered", {
+          case_id: currentCase.case_id,
+          step: currentStep.key,
+          correct
+        });
+        return;
+      }
+
+      if (correct) {
+        trackEvent("step_answered", {
+          case_id: currentCase.case_id,
+          step: currentStep.key,
+          correct: true
+        });
+        if (currentStepIndex < totalSteps - 1) {
+          patchSessionState({ currentStepIndex: currentStepIndex + 1 });
+          return;
+        }
+        void submitCase(state.sessionState.selectedAnswers);
+        return;
+      }
+
+      const nextResults = [...state.sessionState.stepResults];
+      nextResults[currentStepIndex] = {
+        key: currentStep.key,
+        label: currentStep.label ?? prettyStepLabel(currentStep.key),
+        prompt: currentStep.prompt,
+        chosen,
+        correctAnswer,
+        correct: false
+      };
+      patchSessionState({ stepResults: nextResults });
+      trackEvent("step_answered", {
+        case_id: currentCase.case_id,
+        step: currentStep.key,
+        correct: false
+      });
+      return;
+    }
 
     if (currentStepIndex < totalSteps - 1) {
       patchSessionState({ currentStepIndex: currentStepIndex + 1 });
