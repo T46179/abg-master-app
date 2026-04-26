@@ -341,7 +341,7 @@ describe("Learn screens", () => {
     expect(container.querySelector(".learn-deck-screen")).not.toBeNull();
   });
 
-  it("shows the requested intermediate placeholder pages in order while keeping the module chrome", () => {
+  it("shows the requested intermediate pages in order while keeping the module chrome", () => {
     mockUserLevel.value = 1;
     renderPath("/learn/intermediate");
 
@@ -376,6 +376,39 @@ describe("Learn screens", () => {
         expect(container.querySelector(".learn-key-message")?.textContent).toContain(
           "Compensation is a response, not a cure. It moves the pH back toward normal, but it does not remove the original disorder"
         );
+      }
+
+      if (title === "The compensation rules" && index === 2) {
+        const bodyText = container.querySelector(".learn-deck__body")?.textContent ?? "";
+
+        expect(container.querySelector(".learn-card-intro")?.textContent).toContain(
+          "Identify the primary disorder, then use the matching rule to estimate the expected compensatory response"
+        );
+        expect(bodyText).toContain("Metabolic");
+        expect(bodyText).toContain("When the primary problem is metabolic");
+        expect(bodyText).toContain("Metabolic Acidosis");
+        expect(bodyText).toContain("Metabolic Alkalosis");
+        expect(bodyText).toContain("Acceptable range:");
+        expect(bodyText).toContain("2 mmHg");
+        expect(bodyText).toContain("3 mmHg");
+        expect(container.querySelector('a[href="/blood-gas-compensation-rules"]')?.textContent).toContain("Why these rules?");
+      }
+
+      if (title === "The compensation rules" && index === 3) {
+        const bodyText = container.querySelector(".learn-deck__body")?.textContent ?? "";
+
+        expect(container.querySelector(".learn-card-intro")?.textContent).toContain(
+          "Identify the primary disorder, then use the matching rule to estimate the expected compensatory response"
+        );
+        expect(bodyText).toContain("Respiratory");
+        expect(bodyText).toContain("When the primary problem is respiratory");
+        expect(bodyText).toContain("Acute Respiratory Acidosis");
+        expect(bodyText).toContain("Chronic Respiratory Acidosis");
+        expect(bodyText).toContain("Acute Respiratory Alkalosis");
+        expect(bodyText).toContain("Chronic Respiratory Alkalosis");
+        expect(bodyText).toContain("Acceptable range:");
+        expect(bodyText).toContain("2 mmol/L");
+        expect(container.querySelector('a[href="/blood-gas-compensation-rules"]')?.textContent).toContain("Why these rules?");
       }
 
       if (index < expectedTitles.length - 1) {

@@ -28,6 +28,13 @@ describe("app routes", () => {
     expect(getElementName(privacyRoute?.element)).toBe("PrivacyScreen");
   });
 
+  it("renders the blood gas compensation rules page outside the app shell", () => {
+    const compensationRoute = appRoutes.find((route) => route.path === "/blood-gas-compensation-rules");
+
+    expect(compensationRoute?.element).toBeTruthy();
+    expect(getElementName(compensationRoute?.element)).toBe("BloodGasCompensationRulesScreen");
+  });
+
   it("keeps dashboard and practice available inside the app shell", () => {
     const shellRoute = appRoutes.find((route) => route.children != null);
     const childPaths = shellRoute?.children?.map((route) => route.path);

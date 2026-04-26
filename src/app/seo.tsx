@@ -46,6 +46,10 @@ const SEO_BY_PATH: Record<string, SeoMetadataConfig> = {
   "/privacy": {
     title: "Privacy Notice | ABG Master",
     description: "Read how ABG Master handles signup emails, browser storage, protected practice submissions, analytics, and diagnostics."
+  },
+  "/blood-gas-compensation-rules": {
+    title: "Blood Gas Compensation Rules Explained | ABG Master",
+    description: "Learn the blood gas compensation rules used by ABG Master, including Winter's formula, metabolic alkalosis compensation, and acute and chronic respiratory compensation."
   }
 };
 
