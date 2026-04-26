@@ -61,7 +61,7 @@ describe("Learn screens", () => {
     });
   }
 
-  it("renders level 1 learn modules with later visible levels locked and Master + hidden", () => {
+  it("renders level 1 learn modules with intermediate available and later modules locked", () => {
     renderPath("/learn");
 
     expect(container.textContent).toContain("Foundations");
@@ -94,11 +94,12 @@ describe("Learn screens", () => {
 
     expect(moduleCards).toHaveLength(5);
     expect(moduleCards.every(card => card.classList.contains("is-accent-preview"))).toBe(true);
-    expect(lockedButtons).toHaveLength(3);
-    expect(unlockedLinks).toHaveLength(2);
+    expect(lockedButtons).toHaveLength(2);
+    expect(unlockedLinks).toHaveLength(3);
     expect(unlockedLinks.map(link => link.getAttribute("href"))).toEqual([
       "/learn/foundations",
-      "/learn/beginner"
+      "/learn/beginner",
+      "/learn/intermediate"
     ]);
     expect(unlockedLinks.every(link => link.textContent?.includes("Start Learning"))).toBe(true);
     expect(container.querySelectorAll(".learn-level-card__progress .progress-bar__fill")).toHaveLength(0);
@@ -149,12 +150,12 @@ describe("Learn screens", () => {
     expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations"]')?.textContent).toContain("Review");
   });
 
-  it("keeps intermediate, advanced, and master cards disabled as coming soon across higher levels", () => {
+  it("keeps advanced and master cards disabled as coming soon across higher levels while intermediate stays open", () => {
     const expectations = [
-      { level: 5, links: ["/learn/foundations", "/learn/beginner"], hiddenVisible: false },
-      { level: 10, links: ["/learn/foundations", "/learn/beginner"], hiddenVisible: false },
-      { level: 20, links: ["/learn/foundations", "/learn/beginner"], hiddenVisible: false },
-      { level: 25, links: ["/learn/foundations", "/learn/beginner", "/learn/hidden"], hiddenVisible: true }
+      { level: 5, links: ["/learn/foundations", "/learn/beginner", "/learn/intermediate"], hiddenVisible: false, comingSoonCount: 2 },
+      { level: 10, links: ["/learn/foundations", "/learn/beginner", "/learn/intermediate"], hiddenVisible: false, comingSoonCount: 2 },
+      { level: 20, links: ["/learn/foundations", "/learn/beginner", "/learn/intermediate"], hiddenVisible: false, comingSoonCount: 2 },
+      { level: 25, links: ["/learn/foundations", "/learn/beginner", "/learn/intermediate", "/learn/hidden"], hiddenVisible: true, comingSoonCount: 2 }
     ];
 
     expectations.forEach(expectation => {
@@ -164,7 +165,7 @@ describe("Learn screens", () => {
       const unlockedLinks = Array.from(container.querySelectorAll<HTMLAnchorElement>("a.learn-level-card__cta"));
       const lockedButtons = Array.from(container.querySelectorAll<HTMLButtonElement>(".learn-level-card.is-locked .learn-level-card__cta"));
       expect(unlockedLinks.map(link => link.getAttribute("href"))).toEqual(expectation.links);
-      expect(lockedButtons.filter(button => button.textContent?.includes("Coming Soon"))).toHaveLength(3);
+      expect(lockedButtons.filter(button => button.textContent?.includes("Coming Soon"))).toHaveLength(expectation.comingSoonCount);
       expect(container.textContent?.includes("Master +")).toBe(expectation.hiddenVisible);
     });
   });
@@ -213,12 +214,12 @@ describe("Learn screens", () => {
 
   it("redirects direct lesson routes when the module is locked or hidden", () => {
     mockUserLevel.value = 1;
-    renderPath("/learn/intermediate");
+    renderPath("/learn/advanced");
     expect(container.querySelector(".learn-overview")).not.toBeNull();
     expect(container.querySelector(".learn-deck-screen")).toBeNull();
 
     mockUserLevel.value = 25;
-    renderPath("/learn/intermediate");
+    renderPath("/learn/advanced");
     expect(container.querySelector(".learn-overview")).not.toBeNull();
     expect(container.querySelector(".learn-deck-screen")).toBeNull();
 
@@ -235,6 +236,25 @@ describe("Learn screens", () => {
 
     mockUserLevel.value = 25;
     renderPath("/learn/hidden");
+    expect(container.querySelector(".learn-deck-screen")).not.toBeNull();
+  });
+
+  it("does not resume a stored module that is still coming soon", () => {
+    mockUserLevel.value = 25;
+    window.localStorage.setItem("abg-master:learn:last-module", "advanced");
+
+    renderPath("/learn");
+
+    expect(container.querySelector(".learn-overview")).not.toBeNull();
+    expect(container.querySelector(".learn-deck-screen")).toBeNull();
+  });
+
+  it("allows direct lesson routes for intermediate now that the module is available", () => {
+    mockUserLevel.value = 1;
+
+    renderPath("/learn/intermediate");
+
+    expect(container.querySelector(".learn-overview")).toBeNull();
     expect(container.querySelector(".learn-deck-screen")).not.toBeNull();
   });
 
@@ -311,27 +331,67 @@ describe("Learn screens", () => {
     expect(container.textContent).toContain("Begin");
   });
 
-  it("renders the carbonic acid equation before the compensation panel in the intermediate deck", () => {
-    mockUserLevel.value = 5;
+  it("resumes the stored intermediate module when it is available", () => {
+    mockUserLevel.value = 1;
+    window.localStorage.setItem("abg-master:learn:last-module", "intermediate");
 
+    renderPath("/learn");
+
+    expect(container.querySelector(".learn-overview")).toBeNull();
+    expect(container.querySelector(".learn-deck-screen")).not.toBeNull();
+  });
+
+  it("shows the requested intermediate placeholder pages in order while keeping the module chrome", () => {
+    mockUserLevel.value = 1;
     renderPath("/learn/intermediate");
 
-    const bodyText = container.querySelector(".learn-deck__body")?.textContent ?? "";
-    const equationIndex = bodyText.indexOf("CO2 + H2O");
-    const panelIndex = bodyText.indexOf("The body fights back");
+    const expectedTitles = [
+      "Compensation",
+      "The body fights back",
+      "The compensation rules",
+      "The compensation rules",
+      "Expected vs measured",
+      "Appropriate vs inappropriate",
+      "Worked example",
+      "When the number misses",
+      "Compensation checklist",
+      "Completed!"
+    ];
 
-    expect(container.textContent).toContain("What is compensation?");
-    expect(container.querySelector(".learn-carbonic-equation")?.textContent).toContain("CO2 + H2O");
-    expect(container.querySelector(".learn-carbonic-equation")?.textContent).toContain("H2CO3");
-    expect(container.querySelector(".learn-carbonic-equation")?.textContent).toContain("HCO3-");
-    expect(equationIndex).toBeGreaterThanOrEqual(0);
-    expect(panelIndex).toBeGreaterThan(equationIndex);
+    const expectedDotCount = 10;
+
+    expect(container.querySelector(".learn-card-intro")?.textContent).toContain(
+      "Learn how the body responds to an acid-base disorder, then decide whether that response is expected - or whether a second disorder is hiding"
+    );
+
+    expectedTitles.forEach((title, index) => {
+      expect(container.querySelector(".learn-deck__eyebrow")?.textContent).toBe("Intermediate");
+      expect(container.querySelector(".learn-deck__header h1")?.textContent).toBe(title);
+      expect(container.querySelectorAll("[data-state]")).toHaveLength(expectedDotCount);
+
+      if (title === "The body fights back") {
+        expect(container.querySelector(".learn-section-heading")?.textContent).toBe("Compensation");
+        expect(container.querySelector(".learn-carbonic-equation")?.textContent).toContain("\u21CC");
+        expect(container.querySelector(".learn-deck__body .learn-body-fights-back-lesson")).not.toBeNull();
+        expect(container.querySelector(".learn-key-message")?.textContent).toContain(
+          "Compensation is a response, not a cure. It moves the pH back toward normal, but it does not remove the original disorder"
+        );
+      }
+
+      if (index < expectedTitles.length - 1) {
+        const nextButton = Array.from(container.querySelectorAll("button")).find(button => button.textContent?.includes("Next"));
+        act(() => {
+          nextButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        });
+      } else {
+        expect(Array.from(container.querySelectorAll("button")).some(button => button.textContent?.includes("Finish lesson"))).toBe(true);
+      }
+    });
   });
 });
-
 describe("learn unlock milestone detection for practice results", () => {
   it("detects the highest newly crossed learn unlock threshold", () => {
-    expect(getLearnUnlockMilestoneForLevelTransition(4, 5)?.title).toBe("Intermediate");
+    expect(getLearnUnlockMilestoneForLevelTransition(4, 5)).toBeNull();
     expect(getLearnUnlockMilestoneForLevelTransition(9, 10)?.title).toBe("Advanced");
     expect(getLearnUnlockMilestoneForLevelTransition(19, 20)?.title).toBe("Master");
     expect(getLearnUnlockMilestoneForLevelTransition(24, 25)?.title).toBe("Master +");
@@ -343,3 +403,12 @@ describe("learn unlock milestone detection for practice results", () => {
     expect(getLearnUnlockMilestoneForLevelTransition(25, 25)).toBeNull();
   });
 });
+
+
+
+
+
+
+
+
+

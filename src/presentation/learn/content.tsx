@@ -127,6 +127,10 @@ function LearnSummaryCompletionCard(props: { intro: ReactNode; items: ReactNode[
   );
 }
 
+function BlankLearnPage() {
+  return <div className="learn-content-stack" />;
+}
+
 function BeginnerCompletionCard() {
   const items: ReactNode[] = [
     "Read the pH first and decide whether the blood is acidotic, alkalotic, or normal",
@@ -653,7 +657,7 @@ const beginnerLessons: LearnLesson[] = [
     kind: "content",
     title: "Step 1: Identify pH",
     content: (
-      <div className="learn-content-stack learn-content-stack--borderless-panels">
+      <div className="learn-content-stack learn-content-stack--borderless-panels learn-body-fights-back-lesson">
         <PHScaleVisualiser showDetails={false} />
         <div>
           <h3 className="learn-section-heading">What is the pH status?</h3>
@@ -678,7 +682,7 @@ const beginnerLessons: LearnLesson[] = [
     kind: "content",
     title: "Step 2: Identify the primary disorder",
     content: (
-      <div className="learn-content-stack learn-content-stack--borderless-panels">
+      <div className="learn-content-stack learn-content-stack--borderless-panels learn-body-fights-back-lesson">
         <p className="learn-card-intro">
           When pH is abnormal, identify which system is primarily responsible - the lungs (CO<sub>2</sub>) or the kidneys (HCO<sub>3</sub><sup>-</sup>)
         </p>
@@ -752,48 +756,75 @@ const beginnerLessons: LearnLesson[] = [
 const intermediateLessons: LearnLesson[] = [
   {
     kind: "content",
-    title: "What is compensation?",
+    title: "Compensation",
     content: (
       <div className="learn-content-stack">
+        <p className="learn-card-intro">
+          Learn how the body responds to an acid-base disorder, then decide whether that response is expected - or whether a second disorder is hiding
+        </p>
+      </div>
+    )
+  },
+  {
+    kind: "content",
+    title: "The body fights back",
+    content: (
+      <div className="learn-content-stack learn-content-stack--borderless-panels learn-body-fights-back-lesson">
         <div className="learn-carbonic-equation" aria-label="Carbonic acid buffer equation">
-          CO<sub>2</sub> + H<sub>2</sub>O ⇌ H<sub>2</sub>CO<sub>3</sub> ⇌ H<sup>+</sup> + HCO<sub>3</sub><sup>-</sup>
+          CO<sub>2</sub> + H<sub>2</sub>O &#8652; H<sub>2</sub>CO<sub>3</sub> &#8652; H<sup>+</sup> + HCO<sub>3</sub><sup>-</sup>
         </div>
 
-        <Panel title="The body fights back" tone="violet">
+        <div>
+          <h3 className="learn-section-heading">Compensation</h3>
+          <p className="learn-body-copy">Acid-base abnormalities trigger a compensatory response in three main ways:</p>
+          <BulletList
+            items={[
+              "Buffering - immediate chemical buffering of excess acid or base",
+              "Respiratory regulation - changes in ventilation alter PaCO2 within minutes",
+              <>Renal regulation - the kidneys adjust HCO<sub>3</sub><sup>-</sup> handling over hours to days</>
+            ]}
+          />
+        </div>
+        <div className="learn-key-message">
+          <Lightbulb aria-hidden="true" />
           <p>
-            Compensation is the secondary system trying to pull pH back toward normal. It helps, but
-            it never fully fixes the original problem. The body defends itself in 3 main ways: buffering (immediate), respiratory regulation (quick), and renal regulation (slow)
+            Compensation is a response, not a cure. It moves the pH back toward normal, but it does not remove the original disorder
           </p>
-        </Panel>
-        <div className="learn-content-grid learn-content-grid--two">
-          <Panel title="Respiratory problem">
-            <p>Kidneys adjust HCO3.</p>
-            <p className="learn-muted">Hours to days.</p>
-          </Panel>
-          <Panel title="Metabolic problem">
-            <p>Lungs adjust CO2.</p>
-            <p className="learn-muted">Minutes to hours.</p>
-          </Panel>
         </div>
       </div>
     )
   },
   {
     kind: "content",
-    title: "Expected vs actual",
+    title: "The compensation rules",
+    content: <BlankLearnPage />
+  },
+  {
+    kind: "content",
+    title: "The compensation rules",
+    content: <BlankLearnPage />
+  },
+  {
+    kind: "content",
+    title: "Expected vs measured",
     content: (
-      <div className="learn-content-stack">
-        <Panel title="Metabolic acidosis" tone="red">
-          <p>Expected CO2 = (1.5 x HCO3) + 8 +/- 2</p>
-          <p className="learn-muted">Use Winter&apos;s formula to see whether the lungs are doing what they should.</p>
-        </Panel>
-        <div className="learn-content-grid learn-content-grid--two">
-          <Panel title="Respiratory acidosis">
-            <BulletList items={["Acute: HCO3 rises about 1 per 10 CO2", "Chronic: HCO3 rises about 3 to 4 per 10 CO2"]} />
-          </Panel>
-          <Panel title="Respiratory alkalosis">
-            <BulletList items={["Acute: HCO3 falls about 2 per 10 CO2", "Chronic: HCO3 falls about 4 to 5 per 10 CO2"]} />
-          </Panel>
+      <div className="learn-content-stack learn-content-stack--borderless-panels learn-body-fights-back-lesson learn-expected-measured-lesson">
+        <p className="learn-card-intro">
+          Compare what should happen with what actually happened
+        </p>
+
+        <div className="learn-expected-measured-lesson__body">
+          <h3 className="learn-section-heading">Compensation is predictable</h3>
+          <p className="learn-body-copy">
+            For each primary disorder, there is an <strong>expected value</strong> for compensation. ABG Master compares this with the patient&apos;s <strong>measured value</strong> to decide whether the response fits.
+          </p>
+        </div>
+
+        <div className="learn-key-message">
+          <Lightbulb aria-hidden="true" />
+          <p>
+            When the measured value matches the expected range, compensation is appropriate. When it misses, suspect an additional acid-base process.
+          </p>
         </div>
       </div>
     )
@@ -813,6 +844,16 @@ const intermediateLessons: LearnLesson[] = [
         </Panel>
       </div>
     )
+  },
+  {
+    kind: "content",
+    title: "Worked example",
+    content: <BlankLearnPage />
+  },
+  {
+    kind: "content",
+    title: "When the number misses",
+    content: <BlankLearnPage />
   },
   {
     kind: "content",
@@ -837,20 +878,8 @@ const intermediateLessons: LearnLesson[] = [
   },
   {
     kind: "content",
-    title: "You can now judge compensation",
-    content: (
-      <CompletionCard
-        title="Intermediate complete"
-        body="You know when a second value is a normal response and when it signals an additional disorder."
-        items={[
-          "Apply expected-compensation rules",
-          "Spot mismatch quickly",
-          "Escalate suspicious cases to mixed-disorder thinking"
-        ]}
-      />
-    ),
-    ctaLabel: "Open intermediate practice",
-    ctaHref: "/practice?difficulty=intermediate"
+    title: "Completed!",
+    content: <BlankLearnPage />
   }
 ];
 
@@ -1103,16 +1132,14 @@ export const learnLevels: LearnLevelConfig[] = [
     subtitle: "Understand compensation",
     description: "Learn expected compensation and spot when a second disorder is hiding.",
     badge: "Module 2",
-    unlockLevel: 5,
-    comingSoon: true,
+    unlockLevel: 1,
     unlockCopy: {
       intro: "Intermediate learning is now available",
       subtitle: "Compensation is now part of your blood gas interpretation pathway",
       practiceChanges: [
-		"Access intermediate cases from the Practice Library",
+        "Access intermediate cases from the Practice Library",
         "Learn expected compensation rules",
-        "See expanded explanations after each case",
-        "Intermediate learning module coming soon"
+        "See expanded explanations after each case"
       ]
     },
     palette: {
@@ -1237,3 +1264,13 @@ export function getLearnUnlockMilestoneForLevelTransition(previousLevel: number,
     .filter(level => normalizedPreviousLevel < level.unlockLevel && normalizedCurrentLevel >= level.unlockLevel)
     .sort((left, right) => right.unlockLevel - left.unlockLevel)[0] ?? null;
 }
+
+
+
+
+
+
+
+
+
+
