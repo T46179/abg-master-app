@@ -20,7 +20,7 @@ interface RuleDetail {
 const metabolicRuleDetails: RuleDetail[] = [
   {
     rule: compensationRules.find(rule => rule.slug === "metabolic-acidosis") as CompensationRule,
-    heading: "Metabolic acidosis compensation",
+    heading: "Metabolic acidosis",
     body: [
       <>This is Winter&apos;s formula. It estimates the expected respiratory compensation for a primary metabolic acidosis.</>,
       <>If the measured <PaCO2Text /> is higher than expected, an additional respiratory acidosis may be present. If it is lower than expected, an additional respiratory alkalosis may be present.</>
@@ -28,10 +28,10 @@ const metabolicRuleDetails: RuleDetail[] = [
   },
   {
     rule: compensationRules.find(rule => rule.slug === "metabolic-alkalosis") as CompensationRule,
-    heading: "Metabolic alkalosis compensation",
+    heading: "Metabolic alkalosis",
     body: [
-      <>In metabolic alkalosis, the expected response is hypoventilation. <PaCO2Text /> rises as the lungs retain carbon dioxide.</>,
-      <>Different resources use slightly different acceptable ranges. ABG Master uses &plusmn;3 mmHg so the rule is consistent enough for teaching while allowing physiologic variation.</>
+      <>In metabolic alkalosis, the expected response is hypoventilation, causing <PaCO2Text /> to rise.</>,
+      <>Different resources use slightly different acceptable ranges. ABG Master uses &plusmn;3 mmHg as a practical middle ground. It is strict enough for generated cases to have a clear answer, but not as narrow as the strictest teaching version.</>
     ]
   }
 ];
@@ -143,6 +143,29 @@ function RuleSummaryStack(props: { category: "Metabolic" | "Respiratory" }) {
   );
 }
 
+function EdgeCaseValueCards() {
+  const values = [
+    { label: "pH", value: "7.35" },
+    { label: <PaCO2Text />, value: "26.9", unit: "mmHg" },
+    { label: <HCO3Text />, value: "14.3", unit: "mmol/L" },
+    { label: "Lactate", value: "4.9", unit: "mmol/L" }
+  ];
+
+  return (
+    <div className="comp-rules-page__value-row" aria-label="Example blood gas values">
+      {values.map(value => (
+        <article key={String(value.value)} className="learn-abg-panel-tour__metric-card learn-abg-panel-tour__metric-card--compact">
+          <span className="learn-abg-panel-tour__metric-label">{value.label}</span>
+          <span className="learn-abg-panel-tour__metric-value">
+            {value.value}
+            {value.unit ? <small>{value.unit}</small> : null}
+          </span>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export function BloodGasCompensationRulesScreen() {
   return (
     <main className="comp-rules-page">
@@ -152,22 +175,40 @@ export function BloodGasCompensationRulesScreen() {
         <header className="comp-rules-page__header">
           <div className="comp-rules-page__methodology-pill">
             <span />
-            <p>ABG Master · Methodology</p>
+            <p>ABG Master · Acid-base Analysis</p>
           </div>
           <h1>
             Blood Gas Compensation
-            <span>Rules Explained</span>
           </h1>
-          <p>The formulas ABG Master uses to grade compensation in generated practice cases - and the reasoning behind each acceptable range.</p>
         </header>
 
         <section className="comp-rules-page__takeaway">
           <SectionLabel icon={<Eye aria-hidden="true" />}>Key takeaway</SectionLabel>
           <div className="comp-rules-page__card">
-            <p>Blood gas compensation rules may differ slightly between sources, but the core question is the same:</p>
+            <p>ABG Master&apos;s acceptable ranges for compensation may differ slightly from some acid–base resources. This is intentional.</p>
+            <p>Compensation rules are bedside estimates, not exact laws. Because borderline values can create ambiguous edge cases, ABG Master uses a fixed rule set so generated cases can be interpreted, graded, and explained consistently.</p>
+            <p>The key question is not whether every source uses the exact same number. The key question is:</p>
             <blockquote>Is the compensatory response appropriate for the primary disorder, or should I keep looking for another acid-base process?</blockquote>
             <p>The formula estimates what compensation should look like. The interpretation comes from comparing that expected response with the patient&apos;s measured value.</p>
           </div>
+        </section>
+
+        <section className="comp-rules-page__section">
+          <h2>Why does this matter?</h2>
+          <p>Consider the following case:</p>
+          <EdgeCaseValueCards />
+          <p>This is an edge case: the low <HCO3Text /> and elevated lactate suggest metabolic acidosis, while the very low <PaCO2Text /> and near-normal pH suggest a strong respiratory alkalosis/compensatory response.</p>
+          <p>Using Winter&apos;s formula:<br />Expected <PaCO2Text /> = 1.5 &times; <HCO3Text /> + 8 &plusmn; 2 = 29.5 mmHg (range 27.5&ndash;31.5 mmHg). Measured <PaCO2Text /> is 26.9 mmHg, just outside that range.</p>
+          <p>In practice, this difference is negligible and unlikely to change management.</p>
+          <p>However, this same boundary becomes important when a case needs to be graded. To illustrate this, the same values entered into different online calculators can produce different labels, including:</p>
+          <ul className="comp-rules-page__body-list">
+            <li>Primary metabolic acidosis with secondary respiratory alkalosis and additional metabolic alkalosis</li>
+            <li>Partly compensated metabolic acidosis</li>
+            <li>Combined respiratory alkalosis and metabolic acidosis</li>
+            <li>High anion gap metabolic acidosis</li>
+          </ul>
+          <p>These interpretations are not necessarily &quot;wrong&quot;. They reflect different formulas, rounding rules, terminology, and thresholds.</p>
+          <p>For a learning app or generated case bank, ABG Master needs to choose values carefully. The aim is to find a middle ground: close enough to real-world edge cases to teach difficult reasoning, but separated enough that each case still has one defensible answer, one grading decision, and one explanation. That is why ABG Master uses fixed formulas, acceptable ranges, and rounding rules.</p>
         </section>
 
         <section className="comp-rules-page__section">
@@ -196,7 +237,7 @@ export function BloodGasCompensationRulesScreen() {
             <small>or</small>
             <span className="is-red">&quot;This response does not fit&quot;</span>
           </div>
-          <p>ABG Master uses fixed formulas and acceptable ranges for the same reason: generated practice cases need a clear answer key, consistent grading, and explanations that match the underlying case logic.</p>
+          <p>ABG Master uses fixed formulas and acceptable ranges for the same reason: practice cases need a clear answer, consistent grading, and explanations that match the underlying case logic.</p>
         </section>
 
         <section className="comp-rules-page__section">
@@ -226,9 +267,18 @@ export function BloodGasCompensationRulesScreen() {
           <h2>Why some sources differ</h2>
           <p>You may see small differences between references. For example:</p>
           <ul className="comp-rules-page__check-list">
-            <li><CheckCircle2 aria-hidden="true" />Chronic respiratory acidosis may be taught as a 3.5 or 4 mmol/L <HCO3Text /> rise per 10 mmHg <PaCO2Text /> rise.</li>
-            <li><CheckCircle2 aria-hidden="true" />Chronic respiratory alkalosis may be taught as a 4 or 5 mmol/L <HCO3Text /> fall per 10 mmHg <PaCO2Text /> fall.</li>
-            <li><CheckCircle2 aria-hidden="true" />Metabolic alkalosis may use a narrower or wider expected <PaCO2Text /> range.</li>
+            <li>
+              <CheckCircle2 aria-hidden="true" />
+              <span>Chronic respiratory acidosis may be taught as a 3.5 or 4 mmol/L <HCO3Text /> rise per 10 mmHg <PaCO2Text /> rise.</span>
+            </li>
+            <li>
+              <CheckCircle2 aria-hidden="true" />
+              <span>Chronic respiratory alkalosis may be taught as a 4 or 5 mmol/L <HCO3Text /> fall per 10 mmHg <PaCO2Text /> fall.</span>
+            </li>
+            <li>
+              <CheckCircle2 aria-hidden="true" />
+              <span>Metabolic alkalosis may use a narrower or wider expected <PaCO2Text /> range.</span>
+            </li>
           </ul>
           <p>These differences exist because compensation rules are empirical approximations. They summarise typical physiology; they do not perfectly predict every patient.</p>
         </section>
