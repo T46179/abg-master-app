@@ -661,6 +661,24 @@ function WorkedExamplesLesson() {
   );
 }
 
+function IntermediateWorkedExampleLesson() {
+  const metrics: ABGPrimaryMetric[] = [
+    { label: "pH", value: "7.25", reference: "Normal: 7.35 - 7.45", abnormal: true },
+    { label: <>CO<sub>2</sub></>, value: "28", unit: "mmHg", reference: "Normal: 35 - 45", abnormal: true },
+    { label: <>HCO<sub>3</sub><sup>-</sup></>, value: "12", unit: "mmol/L", reference: "Normal: 22 - 26", abnormal: true }
+  ];
+
+  return (
+    <div className="learn-content-stack learn-intermediate-worked-example">
+      <PrimaryABGValueGrid metrics={metrics} compact />
+      <div className="learn-intermediate-worked-example__workspace" aria-label="Worked example workspace">
+        <div className="learn-intermediate-worked-example__practice-panel" />
+        <div className="learn-intermediate-worked-example__text-panel" />
+      </div>
+    </div>
+  );
+}
+
 interface FourPillarCardProps {
   title: string;
   tone: "red" | "blue";
@@ -957,8 +975,19 @@ const intermediateLessons: LearnLesson[] = [
         <div className="learn-expected-measured-lesson__body">
           <h3 className="learn-section-heading">Compensation is predictable</h3>
           <p className="learn-body-copy">
-            For each primary disorder, there is an <strong>expected value</strong> for compensation. ABG Master compares this with the patient&apos;s <strong>measured value</strong> to decide whether the response fits.
+            For each primary disorder, there is an <strong>expected range</strong> for compensation. Compare this with the patient&apos;s <strong>measured value</strong> to decide whether the response fits.
           </p>
+        </div>
+
+        <div className="learn-content-grid learn-content-grid--two">
+          <Panel title="Appropriate compensation" tone="green">
+            <p>The measured value lands inside the expected range.</p>
+            <BulletList items={["Fits the primary disorder", "Expected physiological response", "No clear evidence of a second process"]} />
+          </Panel>
+          <Panel title="Inappropriate compensation" tone="red">
+            <p>The measured value falls outside the expected range</p>
+            <BulletList items={["Compensation does not fit", "Look for an additional respiratory or metabolic process", "The primary disorder alone may not explain the gas"]} />
+          </Panel>
         </div>
 
         <div className="learn-key-message">
@@ -972,24 +1001,8 @@ const intermediateLessons: LearnLesson[] = [
   },
   {
     kind: "content",
-    title: "Appropriate vs inappropriate",
-    content: (
-      <div className="learn-content-grid learn-content-grid--two">
-        <Panel title="Appropriate compensation" tone="green">
-          <p>The measured value lands inside the expected range.</p>
-          <BulletList items={["One primary process", "Normal body response", "No extra hidden disorder"]} />
-        </Panel>
-        <Panel title="Inappropriate compensation" tone="amber">
-          <p>The measured value misses the expected range.</p>
-          <BulletList items={["Think mixed disorder", "Look for an extra respiratory or metabolic process"]} />
-        </Panel>
-      </div>
-    )
-  },
-  {
-    kind: "content",
     title: "Worked example",
-    content: <BlankLearnPage />
+    content: <IntermediateWorkedExampleLesson />
   },
   {
     kind: "content",

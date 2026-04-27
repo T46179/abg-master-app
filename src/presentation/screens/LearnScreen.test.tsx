@@ -351,14 +351,13 @@ describe("Learn screens", () => {
       "The compensation rules",
       "The compensation rules",
       "Expected vs measured",
-      "Appropriate vs inappropriate",
       "Worked example",
       "When the number misses",
       "Compensation checklist",
       "Completed!"
     ];
 
-    const expectedDotCount = 10;
+    const expectedDotCount = 9;
 
     expect(container.querySelector(".learn-card-intro")?.textContent).toContain(
       "Learn how the body responds to an acid-base disorder, then decide whether that response is expected - or whether a second disorder is hiding"

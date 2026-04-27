@@ -4293,7 +4293,7 @@ button.learn-progress-dots__dot:focus-visible {
 .learn-compensation-rules__columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: center;
+  align-items: start;
   gap: clamp(1.5rem, 4vw, 3rem);
   width: 100%;
 }
@@ -4327,7 +4327,7 @@ button.learn-progress-dots__dot:focus-visible {
 .learn-compensation-rule-stack__explainer {
   display: grid;
   gap: 0.65rem;
-  align-self: center;
+  align-self: start;
   max-width: 100%;
 }
 
@@ -4707,6 +4707,14 @@ button.learn-progress-dots__dot:focus-visible {
 .learn-expected-measured-lesson__body .learn-body-copy {
   margin: 0;
 }
+
+.learn-expected-measured-lesson__body + .learn-content-grid {
+  margin-top: 0.75rem;
+}
+
+.learn-expected-measured-lesson .learn-panel p + .learn-bullet-list {
+  margin-top: 0.75rem;
+}
 .learn-worked-example-card {
   display: grid;
   gap: 1.2rem;
@@ -4757,6 +4765,41 @@ button.learn-progress-dots__dot:focus-visible {
 .learn-worked-example-card .learn-bullet-list {
   font-size: 0.88rem;
   line-height: 1.45;
+}
+
+.learn-intermediate-worked-example {
+  align-content: start;
+  justify-items: center;
+  width: 100%;
+}
+
+.learn-intermediate-worked-example .learn-abg-panel-tour__primary-grid {
+  width: min(100%, 34rem);
+  margin-inline: auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.learn-intermediate-worked-example__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  width: 100%;
+  margin-top: 0.75rem;
+}
+
+.learn-intermediate-worked-example__practice-panel,
+.learn-intermediate-worked-example__text-panel {
+  min-height: clamp(12rem, 28vw, 17rem);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+}
+
+.learn-intermediate-worked-example__practice-panel {
+  border: 1px solid rgba(148, 163, 184, 0.45);
+}
+
+.learn-intermediate-worked-example__text-panel {
+  box-shadow: 0 0.65rem 1.4rem rgba(15, 23, 42, 0.08);
 }
 
 .learn-carbonic-equation {
@@ -6947,6 +6990,11 @@ button.learn-progress-dots__dot:focus-visible {
 
   .learn-abg-panel-tour__metric-card--small {
     min-height: 6.4rem;
+  }
+
+  .learn-intermediate-worked-example__practice-panel,
+  .learn-intermediate-worked-example__text-panel {
+    min-height: 11rem;
   }
 
   .learn-direction-list {

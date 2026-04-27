@@ -136,10 +136,7 @@ export function CompensationRuleStack(props: { category: CompensationRuleCategor
         Identify the primary disorder, then use the matching rule to estimate the expected compensatory response
       </p>
       <div className="learn-compensation-rules__columns">
-        <section className="learn-compensation-rule-stack" aria-labelledby={`compensation-rules-${props.category.toLowerCase()}`}>
-          <h3 className="learn-compensation-rule-stack__heading" id={`compensation-rules-${props.category.toLowerCase()}`}>
-            {props.category}
-          </h3>
+        <section className="learn-compensation-rule-stack">
           <div className="learn-compensation-rule-stack__list">
             {rules.map(rule => <CompensationRulePill key={rule.slug} rule={rule} />)}
           </div>
