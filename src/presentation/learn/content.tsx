@@ -1,8 +1,15 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { Lightbulb } from "lucide-react";
 import kidneysImage from "../../assets/kidneys.webp";
 import lungsImage from "../../assets/lungs.webp";
-import { CompensationRuleStack as SharedCompensationRuleStack } from "./CompensationRules";
+import { PillNav } from "../primitives/PillNav";
+import { MetricInlineText } from "../practice/MetricText";
+import {
+  CompensationRulePill as SharedCompensationRulePill,
+  CompensationRuleStack as SharedCompensationRuleStack,
+  compensationRules as sharedCompensationRules,
+  type CompensationRule as SharedCompensationRule
+} from "./CompensationRules";
 
 export type LearnDifficultyKey =
   | "foundations"
@@ -18,6 +25,7 @@ export interface LearnLesson {
   content?: ReactNode;
   ctaLabel?: string;
   ctaHref?: string;
+  requiresCompletionGate?: boolean;
 }
 
 export interface LearnLevelConfig {
@@ -662,6 +670,8 @@ function WorkedExamplesLesson() {
 }
 
 function IntermediateWorkedExampleLesson() {
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [results, setResults] = useState<Array<MiniWorkedExampleResult | null>>(() => miniWorkedExampleSteps.map(() => null));
   const metrics: ABGPrimaryMetric[] = [
     { label: "pH", value: "7.25", reference: "Normal: 7.35 - 7.45", abnormal: true },
     { label: <>CO<sub>2</sub></>, value: "28", unit: "mmHg", reference: "Normal: 35 - 45", abnormal: true },
@@ -672,8 +682,204 @@ function IntermediateWorkedExampleLesson() {
     <div className="learn-content-stack learn-intermediate-worked-example">
       <PrimaryABGValueGrid metrics={metrics} compact />
       <div className="learn-intermediate-worked-example__workspace" aria-label="Worked example workspace">
-        <div className="learn-intermediate-worked-example__practice-panel" />
-        <div className="learn-intermediate-worked-example__text-panel" />
+        <MiniWorkedExamplePractice
+          currentStepIndex={currentStepIndex}
+          results={results}
+          setCurrentStepIndex={setCurrentStepIndex}
+          setResults={setResults}
+        />
+        <MiniWorkedExampleWorkflow currentStepIndex={currentStepIndex} results={results} />
+      </div>
+    </div>
+  );
+}
+
+type MiniWorkedExampleStep = {
+  key: "ph_status" | "primary_disorder" | "compensation";
+  pillLabel: string;
+  prompt: string;
+  options: string[];
+  correctAnswer: string;
+  correctFeedback: string;
+  incorrectFeedback: string;
+};
+
+type MiniWorkedExampleResult = {
+  chosen: string;
+  correct: boolean;
+};
+
+const miniWorkedExampleSteps: MiniWorkedExampleStep[] = [
+  {
+    key: "ph_status",
+    pillLabel: "pH",
+    prompt: "What is the pH status?",
+    options: ["Acidaemia", "Alkalaemia", "Normal"],
+    correctAnswer: "Acidaemia",
+    correctFeedback: "Correct. A pH of 7.25 is below 7.35, so this is acidaemia.",
+    incorrectFeedback: "Not quite. A pH below 7.35 means the blood is acidaemic."
+  },
+  {
+    key: "primary_disorder",
+    pillLabel: "Acid-base disorder",
+    prompt: "What is the primary acid-base disorder?",
+    options: ["Respiratory acidosis", "Respiratory alkalosis", "Metabolic acidosis", "Metabolic alkalosis"],
+    correctAnswer: "Metabolic acidosis",
+    correctFeedback: "Correct. The low bicarbonate is moving in the same direction as the low pH.",
+    incorrectFeedback: "Not quite. The pH is low and the bicarbonate is low, so the primary disorder is metabolic acidosis."
+  },
+  {
+    key: "compensation",
+    pillLabel: "Compensation",
+    prompt: "Is compensation appropriate?",
+    options: ["Fits expected compensation", "Does not fit expected compensation"],
+    correctAnswer: "Fits expected compensation",
+    correctFeedback: "Correct. The measured CO2 is inside the expected Winter's formula range.",
+    incorrectFeedback: "Not quite. Winter's formula gives an expected CO2 range of 24-28 mmHg, and the measured CO2 is 28 mmHg."
+  }
+];
+
+function MiniWorkedExamplePractice(props: {
+  currentStepIndex: number;
+  results: Array<MiniWorkedExampleResult | null>;
+  setCurrentStepIndex: Dispatch<SetStateAction<number>>;
+  setResults: Dispatch<SetStateAction<Array<MiniWorkedExampleResult | null>>>;
+}) {
+  const currentStep = miniWorkedExampleSteps[props.currentStepIndex];
+  const currentResult = props.results[props.currentStepIndex];
+
+  function handleAnswer(option: string) {
+    const correct = option === currentStep.correctAnswer;
+    props.setResults(previous => previous.map((result, index) => index === props.currentStepIndex ? { chosen: option, correct } : result));
+    if (correct && props.currentStepIndex === miniWorkedExampleSteps.length - 1 && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("abg-master:learn:completion-gate", { detail: { complete: true } }));
+    }
+  }
+
+  function handleContinue() {
+    if (!currentResult?.correct || props.currentStepIndex >= miniWorkedExampleSteps.length - 1) return;
+    props.setCurrentStepIndex(index => index + 1);
+  }
+
+  const items = miniWorkedExampleSteps.map((step, index) => {
+    const result = props.results[index];
+    return {
+      key: step.key,
+      label: `${index + 1}. ${step.pillLabel}`,
+      active: index === props.currentStepIndex,
+      status: result ? (result.correct ? "correct" as const : "incorrect" as const) : undefined,
+      disabled: false
+    };
+  });
+
+  return (
+    <div className="learn-intermediate-worked-example__practice-panel question-flow-card">
+      <div className="question-flow-card__header">
+        <PillNav items={items} className="question-flow-card__pills" />
+      </div>
+
+      <div className="question-flow-card__body">
+        <p className="question-flow-card__prompt">{currentStep.prompt}</p>
+        <div className="question-flow-card__options">
+          {currentStep.options.map(option => {
+            const isSelected = currentResult?.chosen === option;
+            const selectionTone = isSelected ? (currentResult.correct ? " is-correct" : " is-incorrect") : "";
+            return (
+              <button
+                key={option}
+                className={`answer-option${isSelected ? " is-selected" : ""}${selectionTone}`}
+                type="button"
+                onClick={() => handleAnswer(option)}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+
+        {currentResult ? (
+          <div className={`inline-feedback${currentResult.correct ? " is-correct" : " is-incorrect"}`}>
+            <p className="inline-feedback__note">
+              <MetricInlineText text={currentResult.correct ? currentStep.correctFeedback : currentStep.incorrectFeedback} />
+            </p>
+            {props.currentStepIndex < miniWorkedExampleSteps.length - 1 ? (
+              <button
+                className="figma-button inline-feedback__button"
+                type="button"
+                onClick={handleContinue}
+                disabled={!currentResult.correct}
+              >
+                Continue
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function MiniWorkedExampleWorkflow(props: {
+  currentStepIndex: number;
+  results: Array<MiniWorkedExampleResult | null>;
+}) {
+  const [winterPillTouched, setWinterPillTouched] = useState(false);
+  const hasCorrectStepOne = Boolean(props.results[0]?.correct);
+  const hasCorrectStepTwo = Boolean(props.results[1]?.correct);
+  const hasCorrectStepThree = Boolean(props.results[2]?.correct);
+  const shouldShowCompensationStep = hasCorrectStepTwo && props.currentStepIndex >= 2;
+  const winterRule = sharedCompensationRules.find(rule => rule.slug === "metabolic-acidosis") as SharedCompensationRule;
+  const workedWinterRule: SharedCompensationRule = {
+    ...winterRule,
+    formula: (
+      <span className="learn-mini-winter-pill__line">
+        <span className="learn-mini-winter-pill__default"><>PaCO<sub>2</sub> = (1.5 &times; HCO<sub>3</sub><sup>-</sup>) + 8</></span>
+        <span className="learn-mini-winter-pill__worked"><>PaCO<sub>2</sub> = (1.5 &times; 12) + 8 = 26 mmHg</></span>
+      </span>
+    ),
+    range: (
+      <span className="learn-mini-winter-pill__line">
+        <span className="learn-mini-winter-pill__default">Acceptable range: &plusmn;2 mmHg</span>
+        <span className="learn-mini-winter-pill__worked">Expected = 24-28; Measured = 28</span>
+      </span>
+    )
+  };
+
+  return (
+    <div className="learn-intermediate-worked-example__text-panel" aria-live="polite">
+      <h3 className="learn-mini-workflow__title">Summary</h3>
+      <div className="learn-mini-workflow">
+        {hasCorrectStepOne ? (
+          <section className="learn-mini-workflow__step">
+            <h3>Step 1: Acidaemia</h3>
+            <p>pH is 7.25, which is below the normal range.</p>
+          </section>
+        ) : null}
+        {hasCorrectStepTwo ? (
+          <section className="learn-mini-workflow__step">
+            <h3>Step 2: Metabolic acidosis</h3>
+            <p>HCO<sub>3</sub><sup>-</sup> is low, so it explains the low pH.</p>
+          </section>
+        ) : null}
+        {shouldShowCompensationStep ? (
+          <section className="learn-mini-workflow__step">
+            <h3>Step 3: Compensation</h3>
+            <div
+              className={`learn-mini-winter-pill${winterPillTouched ? " has-been-touched" : ""}`}
+              tabIndex={0}
+              onFocus={() => setWinterPillTouched(true)}
+              onMouseEnter={() => setWinterPillTouched(true)}
+            >
+              <SharedCompensationRulePill rule={workedWinterRule} />
+            </div>
+          </section>
+        ) : null}
+        {hasCorrectStepThree ? (
+          <section className="learn-mini-workflow__step">
+            <h3>Final answer</h3>
+            <p>Compensation is appropriate because the measured CO<sub>2</sub> of 28 mmHg sits within the expected range of 24-28 mmHg.</p>
+          </section>
+        ) : null}
       </div>
     </div>
   );
@@ -1002,7 +1208,8 @@ const intermediateLessons: LearnLesson[] = [
   {
     kind: "content",
     title: "Worked example",
-    content: <IntermediateWorkedExampleLesson />
+    content: <IntermediateWorkedExampleLesson />,
+    requiresCompletionGate: true
   },
   {
     kind: "content",

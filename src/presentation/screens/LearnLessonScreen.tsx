@@ -43,6 +43,7 @@ export function LearnLessonScreen() {
   const [lessonIndex, setLessonIndex] = useState(() => level ? readStoredLessonIndex(level.slug, level.lessons.length) : 0);
   const [speedCheckPhase, setSpeedCheckPhase] = useState<SpeedCheckPhase>("ready");
   const [speedCheckResetKey, setSpeedCheckResetKey] = useState(0);
+  const [completionGateSatisfied, setCompletionGateSatisfied] = useState(false);
 
   useEffect(() => {
     if (!level) {
@@ -63,6 +64,11 @@ export function LearnLessonScreen() {
   }, [lessonIndex, level]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [lessonIndex]);
+
+  useEffect(() => {
     if (state.status !== "ready" || !level) return;
     if (!shouldShowLearnLevel(level, state.userState.level) || !isLearnLevelUnlocked(level, state.userState.level) || !isLearnLevelAvailable(level)) return;
     if (state.userState.learnProgress?.[level.slug]) return;
@@ -79,6 +85,20 @@ export function LearnLessonScreen() {
     });
   }, [level, setUserState, state.status, state.userState]);
 
+  useEffect(() => {
+    setCompletionGateSatisfied(false);
+  }, [difficulty, lessonIndex]);
+
+  useEffect(() => {
+    function handleCompletionGate(event: Event) {
+      const detail = (event as CustomEvent<{ complete?: boolean }>).detail;
+      setCompletionGateSatisfied(Boolean(detail?.complete));
+    }
+
+    window.addEventListener("abg-master:learn:completion-gate", handleCompletionGate);
+    return () => window.removeEventListener("abg-master:learn:completion-gate", handleCompletionGate);
+  }, []);
+
   if (state.status === "loading" || state.status === "idle") return <LoadingView />;
   if (state.status === "error") return <ErrorView message={state.errorMessage} />;
   if (!level) return <Navigate to="/learn" replace />;
@@ -90,6 +110,7 @@ export function LearnLessonScreen() {
   const lesson = activeLevel.lessons[lessonIndex];
   const isLastLesson = lessonIndex === activeLevel.lessons.length - 1;
   const isSpeedCheck = lesson.kind === "speed-check";
+  const canAdvanceLesson = !lesson.requiresCompletionGate || completionGateSatisfied;
   const showFooterPracticeCta = !isSpeedCheck && isLastLesson && activeLevel.slug === "beginner" && Boolean(lesson.ctaHref && lesson.ctaLabel);
   const levelProgress = getLevelProgress(state.payload?.progressionConfig ?? null, state.userState);
   const moduleProgress = state.userState.learnProgress?.[activeLevel.slug];
@@ -305,7 +326,7 @@ export function LearnLessonScreen() {
                 </Link>
               ) : null}
 
-              {!isSpeedCheck ? (
+              {!isSpeedCheck && canAdvanceLesson ? (
                 <button className="figma-button" type="button" onClick={handleNextLesson}>
                   {isLastLesson ? "Finish lesson" : "Next"}
                 </button>

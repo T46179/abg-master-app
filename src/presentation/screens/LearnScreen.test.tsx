@@ -410,6 +410,57 @@ describe("Learn screens", () => {
         expect(container.querySelector('a[href="/blood-gas-compensation-rules"]')?.textContent).toContain("Why these rules?");
       }
 
+      if (title === "Worked example") {
+        const getButton = (label: string) =>
+          Array.from(container.querySelectorAll("button")).find(button => button.textContent === label);
+
+        expect(container.querySelector(".learn-deck__body")?.textContent).toContain("7.25");
+        expect(container.querySelector(".learn-deck__body")?.textContent).toContain("28");
+        expect(container.querySelector(".learn-deck__body")?.textContent).toContain("12");
+        expect(container.querySelector(".question-flow-card__prompt")?.textContent).toBe("What is the pH status?");
+        expect(container.textContent).toContain("Acidaemia");
+        expect(container.textContent).toContain("Alkalaemia");
+        expect(container.textContent).toContain("Normal");
+        expect(Array.from(container.querySelectorAll("button")).some(button => button.textContent?.includes("Next"))).toBe(false);
+
+        act(() => {
+          getButton("Alkalaemia")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        });
+        expect(container.querySelector(".question-flow-card__prompt")?.textContent).toBe("What is the pH status?");
+        expect(container.textContent).toContain("Not quite. A pH below 7.35 means the blood is acidaemic.");
+        expect(container.textContent).not.toContain("Correct answer");
+        expect(container.textContent).not.toContain("Step 1: Acidaemia");
+
+        act(() => {
+          getButton("Acidaemia")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        });
+        expect(container.textContent).toContain("Step 1: Acidaemia");
+
+        act(() => {
+          getButton("Continue")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        });
+        expect(container.querySelector(".question-flow-card__prompt")?.textContent).toBe("What is the primary acid-base disorder?");
+
+        act(() => {
+          getButton("Metabolic acidosis")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        });
+        expect(container.textContent).toContain("Step 2: Metabolic acidosis");
+
+        act(() => {
+          getButton("Continue")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        });
+        expect(container.querySelector(".question-flow-card__prompt")?.textContent).toBe("Is compensation appropriate?");
+        expect(container.textContent).toContain("Step 3: Compensation");
+        expect(container.textContent).toContain("Metabolic Acidosis (Winter's Formula)");
+
+        act(() => {
+          getButton("Fits expected compensation")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        });
+        expect(container.textContent).toContain("Final answer");
+        expect(container.textContent).toContain("measured CO2 of 28 mmHg sits within the expected range of 24-28 mmHg");
+        expect(Array.from(container.querySelectorAll("button")).some(button => button.textContent?.includes("Next"))).toBe(true);
+      }
+
       if (index < expectedTitles.length - 1) {
         const nextButton = Array.from(container.querySelectorAll("button")).find(button => button.textContent?.includes("Next"));
         act(() => {
