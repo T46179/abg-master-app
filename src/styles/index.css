@@ -6140,7 +6140,8 @@ button.learn-progress-dots__dot:focus-visible {
   color: #475569;
 }
 
-.comp-rules-page__section-label svg {
+.comp-rules-page__section-label svg,
+.comp-rules-page__section-label img {
   width: 0.9rem;
   height: 0.9rem;
 }
@@ -6321,7 +6322,7 @@ button.learn-progress-dots__dot:focus-visible {
   gap: 0.75rem;
 }
 
-.comp-rules-page__summary-stack h3 {
+.comp-rules-page__summary-stack > h3 {
   margin: 0;
   padding-left: 0.5rem;
   color: #94a3b8;
@@ -6781,6 +6782,37 @@ button.learn-progress-dots__dot:focus-visible {
     transform: rotate(90deg);
   }
 
+  .comp-rules-page__summary-card .learn-compensation-rule {
+    display: grid;
+    grid-template-columns: 3rem minmax(0, 1fr);
+    align-items: center;
+    gap: 1.15rem;
+  }
+
+  .comp-rules-page__summary-card .learn-compensation-rule__icon {
+    justify-self: center;
+    align-self: center;
+  }
+
+  .comp-rules-page__summary-card .learn-compensation-rule__copy {
+    align-self: center;
+    gap: 0.25rem;
+  }
+
+  .comp-rules-page__summary-card .learn-compensation-rule__copy h3,
+  .comp-rules-page__summary-card .learn-compensation-rule__formula,
+  .comp-rules-page__summary-card .learn-compensation-rule__range {
+    width: 100%;
+    text-align: left;
+  }
+
+  .comp-rules-page__summary-card .learn-compensation-rule__formula {
+    overflow-wrap: normal;
+    white-space: nowrap;
+    font-size: clamp(0.66rem, 2.85vw, 0.82rem);
+    line-height: 1.35;
+  }
+
   .comp-rules-page__cta {
     align-items: flex-start;
     flex-direction: column;
@@ -6836,6 +6868,14 @@ button.learn-progress-dots__dot:focus-visible {
   .learn-compensation-rule__formula,
   .learn-compensation-rule__range {
     overflow-wrap: anywhere;
+  }
+
+  .comp-rules-page__rule-block .learn-compensation-rule {
+    align-items: center;
+  }
+
+  .comp-rules-page__rule-block .learn-compensation-rule__icon {
+    align-self: center;
   }
 
   .learn-scale-card__legend {
@@ -7046,6 +7086,18 @@ button.learn-progress-dots__dot:focus-visible {
 
   .learn-deck__footer.is-compact .figma-button {
     width: fit-content;
+  }
+}
+
+@media (max-width: 379px) {
+  .comp-rules-page__summary-card .learn-compensation-rule {
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    gap: 0.8rem;
+    padding-inline: 0.8rem;
+  }
+
+  .comp-rules-page__summary-card .learn-compensation-rule__formula {
+    font-size: clamp(0.56rem, 2.9vw, 0.66rem);
   }
 }
 

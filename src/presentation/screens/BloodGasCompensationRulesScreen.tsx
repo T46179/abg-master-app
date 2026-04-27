@@ -1,7 +1,13 @@
 import type { ReactNode } from "react";
-import { Activity, ArrowRight, CheckCircle2, Eye, Scale, Stethoscope } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SeoMetadata } from "../../app/seo";
+import bookIcon from "../../assets/icons/book.svg";
+import bookSearchIcon from "../../assets/icons/book_search.svg";
+import lightbulbIcon from "../../assets/icons/lightbulb.svg";
+import numbersIcon from "../../assets/icons/numbers.svg";
+import viewIcon from "../../assets/icons/view.svg";
+import warningIcon from "../../assets/icons/warning.svg";
 import {
   CompensationRulePill,
   HCO3Text,
@@ -13,14 +19,12 @@ import {
 
 interface RuleDetail {
   rule: CompensationRule;
-  heading: string;
   body: ReactNode[];
 }
 
 const metabolicRuleDetails: RuleDetail[] = [
   {
     rule: compensationRules.find(rule => rule.slug === "metabolic-acidosis") as CompensationRule,
-    heading: "Metabolic acidosis",
     body: [
       <>This is Winter&apos;s formula. It estimates the expected respiratory compensation for a primary metabolic acidosis.</>,
       <>If the measured <PaCO2Text /> is higher than expected, an additional respiratory acidosis may be present. If it is lower than expected, an additional respiratory alkalosis may be present.</>
@@ -28,10 +32,10 @@ const metabolicRuleDetails: RuleDetail[] = [
   },
   {
     rule: compensationRules.find(rule => rule.slug === "metabolic-alkalosis") as CompensationRule,
-    heading: "Metabolic alkalosis",
     body: [
       <>In metabolic alkalosis, the expected response is hypoventilation, causing <PaCO2Text /> to rise.</>,
-      <>Different resources use slightly different acceptable ranges. ABG Master uses &plusmn;3 mmHg as a practical middle ground. It is strict enough for generated cases to have a clear answer, but not as narrow as the strictest teaching version.</>
+      <>Different resources use slightly different acceptable ranges, typically from &plusmn;2 to &plusmn;5. Metabolic alkalosis compensation is less precise clinically because hypoventilation is limited by oxygenation. Patients cannot simply keep hypoventilating indefinitely to raise <PaCO2Text />.</>,
+      <>ABG Master uses &plusmn;3 mmHg as a practical middle ground. It is strict enough for generated cases to have a clear answer, but not as narrow as the strictest teaching version.</>
     ]
   }
 ];
@@ -39,7 +43,6 @@ const metabolicRuleDetails: RuleDetail[] = [
 const respiratoryRuleDetails: RuleDetail[] = [
   {
     rule: compensationRules.find(rule => rule.slug === "acute-respiratory-acidosis") as CompensationRule,
-    heading: "Acute respiratory acidosis",
     body: [
       <>In acute respiratory acidosis, <PaCO2Text /> rises before the kidneys have had time to retain much bicarbonate.</>,
       <>The expected acute change is therefore small: <HCO3Text /> rises by about 1 mmol/L for every 10 mmHg rise in <PaCO2Text />.</>
@@ -47,23 +50,24 @@ const respiratoryRuleDetails: RuleDetail[] = [
   },
   {
     rule: compensationRules.find(rule => rule.slug === "chronic-respiratory-acidosis") as CompensationRule,
-    heading: "Chronic respiratory acidosis",
     body: [
-      <>In chronic respiratory acidosis, the kidneys have time to retain more bicarbonate, so <HCO3Text /> rises more substantially.</>
+      <>In chronic respiratory acidosis, <PaCO2Text /> has been elevated long enough for the kidneys to retain more bicarbonate, so <HCO3Text /> rises more substantially.</>,
+      <>Acceptable values in other resources range from +3.5 to +5 mmol/L for every 10 mmHg rise in <PaCO2Text />. ABG Master uses +4 mmol/L because it is a widely taught bedside approximation and aligns well with the simple respiratory compensation pattern.</>,
+      <>Using +4 also helps generated cases distinguish chronic respiratory acidosis from acute respiratory acidosis more clearly, while staying clinically plausible.</>
     ]
   },
   {
     rule: compensationRules.find(rule => rule.slug === "acute-respiratory-alkalosis") as CompensationRule,
-    heading: "Acute respiratory alkalosis",
     body: [
-      <>In acute respiratory alkalosis, <PaCO2Text /> falls because ventilation is increased, before renal compensation has fully developed.</>
+      <>In acute respiratory alkalosis, <PaCO2Text /> falls because ventilation is increased, before renal compensation has fully developed. <HCO3Text /> therefore falls only modestly — about 2 mmol/L for every 10 mmHg fall in <PaCO2Text />.</>
     ]
   },
   {
     rule: compensationRules.find(rule => rule.slug === "chronic-respiratory-alkalosis") as CompensationRule,
-    heading: "Chronic respiratory alkalosis",
     body: [
-      <>In chronic respiratory alkalosis, the kidneys have had time to excrete more bicarbonate, so <HCO3Text /> falls further.</>
+      <>In chronic respiratory alkalosis, sustained low <PaCO2Text /> gives the kidneys time to reduce bicarbonate retention and increase bicarbonate excretion. This produces a larger fall in <HCO3Text /> than would be expected in an acute respiratory alkalosis.</>,
+      <>References vary slightly, often using values around −4 to −5 mmol/L for every 10 mmHg fall in <PaCO2Text />. ABG Master uses −5 mmol/L because it fits the commonly taught respiratory compensation pattern and is easy to remember with the other respiratory rules.</>,
+      <>This keeps chronic respiratory alkalosis cases clearly separated from acute respiratory alkalosis, while still reflecting accepted bedside physiology.</>
     ]
   }
 ];
@@ -118,10 +122,13 @@ function SectionLabel(props: { icon: ReactNode; children: ReactNode; tone?: "amb
   );
 }
 
+function SectionIcon(props: { src: string }) {
+  return <img src={props.src} alt="" aria-hidden="true" />;
+}
+
 function RuleBlock(props: { detail: RuleDetail }) {
   return (
     <article className="comp-rules-page__rule-block">
-      <h3>{props.detail.heading}</h3>
       <CompensationRulePill rule={props.detail.rule} />
       <div className="comp-rules-page__rule-copy">
         {props.detail.body.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
@@ -178,12 +185,12 @@ export function BloodGasCompensationRulesScreen() {
             <p>ABG Master · Acid-base Analysis</p>
           </div>
           <h1>
-            Blood Gas Compensation
+            Blood Gas Compensation Rules Explained
           </h1>
         </header>
 
         <section className="comp-rules-page__takeaway">
-          <SectionLabel icon={<Eye aria-hidden="true" />}>Key takeaway</SectionLabel>
+          <SectionLabel icon={<SectionIcon src={lightbulbIcon} />}>Key takeaway</SectionLabel>
           <div className="comp-rules-page__card">
             <p>ABG Master&apos;s acceptable ranges for compensation may differ slightly from some acid–base resources. This is intentional.</p>
             <p>Compensation rules are bedside estimates, not exact laws. Because borderline values can create ambiguous edge cases, ABG Master uses a fixed rule set so generated cases can be interpreted, graded, and explained consistently.</p>
@@ -199,7 +206,7 @@ export function BloodGasCompensationRulesScreen() {
           <EdgeCaseValueCards />
           <p>This is an edge case: the low <HCO3Text /> and elevated lactate suggest metabolic acidosis, while the very low <PaCO2Text /> and near-normal pH suggest a strong respiratory alkalosis/compensatory response.</p>
           <p>Using Winter&apos;s formula:<br />Expected <PaCO2Text /> = 1.5 &times; <HCO3Text /> + 8 &plusmn; 2 = 29.5 mmHg (range 27.5&ndash;31.5 mmHg). Measured <PaCO2Text /> is 26.9 mmHg, just outside that range.</p>
-          <p>In practice, this difference is negligible and unlikely to change management.</p>
+          <p>In real clinical practice, this small boundary difference is unlikely to matter on its own; the broader interpretation still depends on the full clinical context.</p>
           <p>However, this same boundary becomes important when a case needs to be graded. To illustrate this, the same values entered into different online calculators can produce different labels, including:</p>
           <ul className="comp-rules-page__body-list">
             <li>Primary metabolic acidosis with secondary respiratory alkalosis and additional metabolic alkalosis</li>
@@ -212,38 +219,9 @@ export function BloodGasCompensationRulesScreen() {
         </section>
 
         <section className="comp-rules-page__section">
-          <h2>What are compensation rules?</h2>
-          <p>Compensation rules are bedside estimates used in acid-base interpretation. They predict how the lungs or kidneys should respond to a primary acid-base disorder.</p>
-          <div className="comp-rules-page__mini-grid">
-            <article>
-              <span className="comp-rules-page__tag is-red">Metabolic</span>
-              <p>The lungs compensate by changing <PaCO2Text />.</p>
-            </article>
-            <article>
-              <span className="comp-rules-page__tag is-blue">Respiratory</span>
-              <p>The kidneys compensate by changing <HCO3Text />.</p>
-            </article>
-          </div>
-          <p>If the measured response is close to the expected response, the compensation is likely appropriate. If it is not, a mixed acid-base disorder should be considered.</p>
-        </section>
-
-        <section className="comp-rules-page__section">
-          <h2>Why use fixed rules?</h2>
-          <p>Fixed rules make interpretation reproducible. They give learners and clinicians a consistent way to move from:</p>
-          <div className="comp-rules-page__flow" aria-label="Interpretation flow">
-            <span className="is-amber">&quot;This looks abnormal&quot;</span>
-            <ArrowRight aria-hidden="true" />
-            <span className="is-green">&quot;This response fits&quot;</span>
-            <small>or</small>
-            <span className="is-red">&quot;This response does not fit&quot;</span>
-          </div>
-          <p>ABG Master uses fixed formulas and acceptable ranges for the same reason: practice cases need a clear answer, consistent grading, and explanations that match the underlying case logic.</p>
-        </section>
-
-        <section className="comp-rules-page__section">
-          <SectionLabel icon={<Stethoscope aria-hidden="true" />}>The rules ABG Master uses</SectionLabel>
+          <SectionLabel icon={<SectionIcon src={bookIcon} />}>The rules ABG Master uses</SectionLabel>
+          <p>ABG Master uses commonly taught bedside compensation rules, with defined acceptable ranges to keep learning, grading, and explanations consistent. You may notice that some acceptable ranges slightly differ from other acid-base resources, particularly metabolic alkalosis and the chronic respiratory disorders.</p>
           <h2>Metabolic compensation</h2>
-          <p>The rules below are based on commonly taught bedside compensation rules, with defined acceptable ranges to make learning and grading consistent.</p>
           <div className="comp-rules-page__rule-list">
             {metabolicRuleDetails.map(detail => <RuleBlock key={detail.rule.slug} detail={detail} />)}
           </div>
@@ -257,8 +235,7 @@ export function BloodGasCompensationRulesScreen() {
         </section>
 
         <section className="comp-rules-page__summary-card">
-          <SectionLabel icon={<Eye aria-hidden="true" />}>At a glance</SectionLabel>
-          <p>All six rules in one view - useful as a bedside reference.</p>
+          <SectionLabel icon={<SectionIcon src={viewIcon} />}>At a glance</SectionLabel>
           <RuleSummaryStack category="Metabolic" />
           <RuleSummaryStack category="Respiratory" />
         </section>
@@ -284,7 +261,7 @@ export function BloodGasCompensationRulesScreen() {
         </section>
 
         <section className="comp-rules-page__section">
-          <SectionLabel icon={<Scale aria-hidden="true" />}>ABG Master prioritises</SectionLabel>
+          <SectionLabel icon={<SectionIcon src={numbersIcon} />}>ABG Master prioritises</SectionLabel>
           <h2>For learning and case generation</h2>
           <div className="comp-rules-page__priority-grid">
             {priorityItems.map(([number, title, body]) => (
@@ -304,7 +281,7 @@ export function BloodGasCompensationRulesScreen() {
         </section>
 
         <section className="comp-rules-page__limitation">
-          <SectionLabel icon={<Activity aria-hidden="true" />} tone="amber">Important limitation</SectionLabel>
+          <SectionLabel icon={<SectionIcon src={warningIcon} />} tone="amber">Important limitation</SectionLabel>
           <p>These rules are designed for educational interpretation of generated practice cases.</p>
           <p>In real clinical practice, borderline results should be interpreted with the full clinical context, including timing, chronicity, oxygenation, renal function, medications, electrolytes, lactate, ketones, toxicology, and the patient&apos;s trajectory.</p>
           <p>ABG Master uses these rules to teach the logic of compensation - not to replace clinical judgement.</p>
@@ -313,8 +290,8 @@ export function BloodGasCompensationRulesScreen() {
         <section className="comp-rules-page__cta">
           <div>
             <span>Practice with ABG Master</span>
-            <h2>Apply these rules to unlimited generated cases.</h2>
-            <p>Every case is graded against the same formulas - with worked explanations after each answer.</p>
+            <h2>Practise compensation in context</h2>
+            <p>Apply these rules inside full blood gas cases, with worked explanations showing how expected and measured values compare.</p>
           </div>
           <Link to="/practice">
             Start a practice case
@@ -323,7 +300,7 @@ export function BloodGasCompensationRulesScreen() {
         </section>
 
         <section className="comp-rules-page__references">
-          <SectionLabel icon={<Stethoscope aria-hidden="true" />}>References</SectionLabel>
+          <SectionLabel icon={<SectionIcon src={bookSearchIcon} />}>References</SectionLabel>
           <h2>Further reading</h2>
           <ol>
             {references.map((reference, index) => (
