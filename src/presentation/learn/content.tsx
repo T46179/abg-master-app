@@ -824,6 +824,7 @@ function MiniWorkedExampleWorkflow(props: {
   results: Array<MiniWorkedExampleResult | null>;
 }) {
   const [winterPillTouched, setWinterPillTouched] = useState(false);
+  const [winterPillTapped, setWinterPillTapped] = useState(false);
   const hasCorrectStepOne = Boolean(props.results[0]?.correct);
   const hasCorrectStepTwo = Boolean(props.results[1]?.correct);
   const hasCorrectStepThree = Boolean(props.results[2]?.correct);
@@ -831,6 +832,12 @@ function MiniWorkedExampleWorkflow(props: {
   const winterRule = sharedCompensationRules.find(rule => rule.slug === "metabolic-acidosis") as SharedCompensationRule;
   const workedWinterRule: SharedCompensationRule = {
     ...winterRule,
+    title: (
+      <>
+        <span className="learn-mini-winter-pill__desktop-title">Metabolic Acidosis (Winter&apos;s Formula)</span>
+        <span className="learn-mini-winter-pill__mobile-title">Metabolic Acidosis</span>
+      </>
+    ),
     formula: (
       <span className="learn-mini-winter-pill__line">
         <span className="learn-mini-winter-pill__default"><>PaCO<sub>2</sub> = (1.5 &times; HCO<sub>3</sub><sup>-</sup>) + 8</></span>
@@ -839,8 +846,14 @@ function MiniWorkedExampleWorkflow(props: {
     ),
     range: (
       <span className="learn-mini-winter-pill__line">
-        <span className="learn-mini-winter-pill__default">Acceptable range: &plusmn;2 mmHg</span>
-        <span className="learn-mini-winter-pill__worked">Expected = 24-28; Measured = 28</span>
+          <span className="learn-mini-winter-pill__default">
+            <span className="learn-mini-winter-pill__desktop-range">Acceptable range: &plusmn;2 mmHg</span>
+            <span className="learn-mini-winter-pill__mobile-range">Range: &plusmn;2 mmHg</span>
+          </span>
+          <span className="learn-mini-winter-pill__worked">
+            <span className="learn-mini-winter-pill__desktop-worked">Expected = 24-28; Measured = 28</span>
+            <span className="learn-mini-winter-pill__mobile-worked">Expected = 24-28; Measured = 28</span>
+          </span>
       </span>
     )
   };
@@ -865,10 +878,14 @@ function MiniWorkedExampleWorkflow(props: {
           <section className="learn-mini-workflow__step">
             <h3>Step 3: Compensation</h3>
             <div
-              className={`learn-mini-winter-pill${winterPillTouched ? " has-been-touched" : ""}`}
+              className={`learn-mini-winter-pill${winterPillTouched ? " has-been-touched" : ""}${winterPillTapped ? " is-tapped" : ""}`}
               tabIndex={0}
               onFocus={() => setWinterPillTouched(true)}
               onMouseEnter={() => setWinterPillTouched(true)}
+              onClick={() => {
+                setWinterPillTouched(true);
+                setWinterPillTapped(tapped => !tapped);
+              }}
             >
               <SharedCompensationRulePill rule={workedWinterRule} />
             </div>

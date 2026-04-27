@@ -6,7 +6,7 @@ export type CompensationRuleTone = "red" | "green" | "amber" | "orange" | "blue"
 
 export interface CompensationRule {
   category: CompensationRuleCategory;
-  title: string;
+  title: ReactNode;
   formula: ReactNode;
   range: ReactNode;
   tone: CompensationRuleTone;

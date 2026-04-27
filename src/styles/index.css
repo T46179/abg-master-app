@@ -4888,6 +4888,12 @@ button.learn-progress-dots__dot:focus-visible {
   transform: none;
 }
 
+.learn-mini-winter-pill__mobile-title,
+.learn-mini-winter-pill__mobile-range,
+.learn-mini-winter-pill__mobile-worked {
+  display: none;
+}
+
 .learn-mini-winter-pill__line {
   display: grid;
 }
@@ -7154,10 +7160,12 @@ button.learn-progress-dots__dot:focus-visible {
 
   .learn-intermediate-worked-example__workspace {
     grid-template-columns: 1fr;
+    align-content: start;
+    min-height: 52rem;
   }
 
   .learn-intermediate-worked-example__practice-panel {
-    min-height: 26rem;
+    min-height: 0;
   }
 
   .learn-intermediate-worked-example__text-panel {
@@ -7166,6 +7174,77 @@ button.learn-progress-dots__dot:focus-visible {
 
   .learn-intermediate-worked-example__practice-panel {
     padding-inline: 0;
+  }
+
+  .learn-mini-winter-pill .learn-compensation-rule {
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.8rem 0.9rem;
+  }
+
+  .learn-mini-winter-pill .learn-compensation-rule__icon {
+    align-self: center;
+  }
+
+  .learn-mini-winter-pill .learn-compensation-rule__copy {
+    gap: 0.2rem;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .learn-mini-winter-pill .learn-compensation-rule__copy h3 {
+    font-size: 0.84rem;
+    line-height: 1.2;
+  }
+
+  .learn-mini-winter-pill .learn-compensation-rule__formula {
+    overflow-wrap: normal;
+    white-space: nowrap;
+    width: 100%;
+    font-size: clamp(0.72rem, 3.75vw, 0.84rem);
+  }
+
+  .learn-mini-winter-pill .learn-compensation-rule__range {
+    overflow-wrap: normal;
+    white-space: nowrap;
+    width: 100%;
+    font-size: clamp(0.68rem, 3.45vw, 0.78rem);
+  }
+
+  .learn-mini-winter-pill__desktop-title,
+  .learn-mini-winter-pill__desktop-range,
+  .learn-mini-winter-pill__desktop-worked {
+    display: none;
+  }
+
+  .learn-mini-winter-pill__mobile-title,
+  .learn-mini-winter-pill__mobile-range,
+  .learn-mini-winter-pill__mobile-worked {
+    display: inline;
+  }
+
+  .learn-mini-winter-pill:hover .learn-mini-winter-pill__default,
+  .learn-mini-winter-pill:focus-visible .learn-mini-winter-pill__default,
+  .learn-mini-winter-pill:focus-within .learn-mini-winter-pill__default {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .learn-mini-winter-pill:hover .learn-mini-winter-pill__worked,
+  .learn-mini-winter-pill:focus-visible .learn-mini-winter-pill__worked,
+  .learn-mini-winter-pill:focus-within .learn-mini-winter-pill__worked {
+    opacity: 0;
+    transform: translateY(0.28rem);
+  }
+
+  .learn-mini-winter-pill.is-tapped .learn-mini-winter-pill__default {
+    opacity: 0;
+    transform: translateY(-0.28rem);
+  }
+
+  .learn-mini-winter-pill.is-tapped .learn-mini-winter-pill__worked {
+    opacity: 1;
+    transform: translateY(0);
   }
 
   .learn-carbonic-equation {
