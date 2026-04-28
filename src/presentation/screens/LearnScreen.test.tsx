@@ -350,6 +350,7 @@ describe("Learn screens", () => {
       "The body fights back",
       "The compensation rules",
       "The compensation rules",
+      "The 1-2-4-5 rule",
       "Expected vs measured",
       "Worked example",
       "When the number misses",
@@ -357,7 +358,7 @@ describe("Learn screens", () => {
       "Completed!"
     ];
 
-    const expectedDotCount = 9;
+    const expectedDotCount = 10;
 
     expect(container.querySelector(".learn-card-intro")?.textContent).toContain(
       "Learn how the body responds to an acid-base disorder, then decide whether that response is expected - or whether a second disorder is hiding"
@@ -408,6 +409,12 @@ describe("Learn screens", () => {
         expect(bodyText).toContain("Acceptable range:");
         expect(bodyText).toContain("2 mmol/L");
         expect(container.querySelector('a[href="/blood-gas-compensation-rules"]')?.textContent).toContain("Why these rules?");
+      }
+
+      if (title === "The 1-2-4-5 rule") {
+        expect(container.querySelector(".learn-card-intro")?.textContent).toContain(
+          "The easier way to work out how much HCO3- changes in the respiratory disorders"
+        );
       }
 
       if (title === "Worked example") {

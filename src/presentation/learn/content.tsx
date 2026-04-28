@@ -96,7 +96,7 @@ function FoundationsCompletionCard() {
   return (
     <div className="learn-completion learn-completion--foundations">
       <div className="learn-completion__hero">
-        <p className="learn-card-intro">You now have the foundation for interpreting ABGs in ABG Master: pH direction, the two main levers, and how the case values are presented.</p>
+        <p className="learn-card-intro">You now have the foundation for interpreting blood gases: pH direction, the two main levers, and how the case values are presented</p>
 
         <div className="learn-foundations-achievement__title">
           <h3>What you can do now</h3>
@@ -159,6 +159,43 @@ interface CompensationRule {
 
 function HCO3Text() {
   return <>HCO<sub>3</sub><sup>-</sup></>;
+}
+
+function OneTwoFourFiveRuleTable() {
+  const rows = [
+    { onset: "Acute", disorder: "Acidosis", change: "+1", tone: "acid" },
+    { onset: "Acute", disorder: "Alkalosis", change: <>&minus;2</>, tone: "alkaline" },
+    { onset: "Chronic", disorder: "Acidosis", change: "+4", tone: "acid" },
+    { onset: "Chronic", disorder: "Alkalosis", change: <>&minus;5</>, tone: "alkaline" }
+  ];
+
+  return (
+    <div className="learn-one-two-four-five-table" data-node-id="1:51">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col"></th>
+            <th scope="col">Respiratory</th>
+            <th scope="col"><HCO3Text /> changes by</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(row => (
+            <tr key={`${row.onset}-${row.disorder}`}>
+              <td>{row.onset}</td>
+              <td className={`is-${row.tone}`}>{row.disorder}</td>
+              <td className={`is-${row.tone}`}>{row.change}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colSpan={3}>per 10 mmHg change in <PaCO2Text /> from 40mmHg</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
 }
 
 const compensationRules: CompensationRule[] = [
@@ -415,8 +452,8 @@ function TwoLeversLesson() {
             items={[
               "Produced by metabolism and removed by ventilation",
               "Changes rapidly (minutes)",
-              "Not an acid itself, but forms carbonic acid in the blood",
-              "Transported in the blood in the form of bicarbonate"
+              "Combines with water to form carbonic acid",
+              "Mostly transported as bicarbonate"
             ]}
           />
         </Panel>
@@ -425,7 +462,7 @@ function TwoLeversLesson() {
             items={[
               "Regulated by the kidneys",
               "Changes slowly (hours – days)",
-              "Main buffer in the blood",
+              "Main extracellular buffer",
               "Used up when buffering acid and must be replaced"
             ]}
           />
@@ -528,7 +565,7 @@ function ABGPanelTourLesson() {
 
       <div className="learn-key-message">
         <Lightbulb aria-hidden="true" />
-        <p>As difficulties increase, ABG Master gradually removes clues like colour highlights and normal ranges, then adds values that may not matter. The goal is to build your judgement about what deserves attention.</p>
+        <p>As difficulty increases, ABG Master gradually removes clues like colour highlights and normal ranges, then adds values that may not matter. The goal is to build your judgement about what deserves attention.</p>
       </div>
     </div>
   );
@@ -1188,6 +1225,18 @@ const intermediateLessons: LearnLesson[] = [
   },
   {
     kind: "content",
+    title: "The 1-2-4-5 rule",
+    content: (
+      <div className="learn-content-stack learn-one-two-four-five-lesson">
+        <p className="learn-card-intro">
+          The easier way to work out how much HCO<sub>3</sub><sup>-</sup> changes in the respiratory disorders
+        </p>
+        <OneTwoFourFiveRuleTable />
+      </div>
+    )
+  },
+  {
+    kind: "content",
     title: "Expected vs measured",
     content: (
       <div className="learn-content-stack learn-content-stack--borderless-panels learn-body-fights-back-lesson learn-expected-measured-lesson">
@@ -1200,23 +1249,18 @@ const intermediateLessons: LearnLesson[] = [
           <p className="learn-body-copy">
             For each primary disorder, there is an <strong>expected range</strong> for compensation. Compare this with the patient&apos;s <strong>measured value</strong> to decide whether the response fits.
           </p>
-        </div>
-
-        <div className="learn-content-grid learn-content-grid--two">
-          <Panel title="Appropriate compensation" tone="green">
-            <p>The measured value lands inside the expected range.</p>
-            <BulletList items={["Fits the primary disorder", "Expected physiological response", "No clear evidence of a second process"]} />
-          </Panel>
-          <Panel title="Inappropriate compensation" tone="red">
-            <p>The measured value falls outside the expected range</p>
-            <BulletList items={["Compensation does not fit", "Look for an additional respiratory or metabolic process", "The primary disorder alone may not explain the gas"]} />
-          </Panel>
+          <BulletList
+            items={[
+              <><strong>Appropriate compensation:</strong> measured value is within the expected range calculated</>,
+              <><strong>Inappropriate compensation:</strong> measured value falls outside the expected range calculated</>
+            ]}
+          />
         </div>
 
         <div className="learn-key-message">
           <Lightbulb aria-hidden="true" />
           <p>
-            When the measured value matches the expected range, compensation is appropriate. When it misses, suspect an additional acid-base process.
+            Suspect an additional acid-base process when the compensation is inappropriate
           </p>
         </div>
       </div>

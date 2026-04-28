@@ -4691,6 +4691,75 @@ button.learn-progress-dots__dot:focus-visible {
   margin-top: auto;
 }
 
+.learn-one-two-four-five-lesson {
+  justify-items: center;
+  gap: 1.5rem;
+}
+
+.learn-one-two-four-five-table {
+  width: min(100%, 36.875rem);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.learn-one-two-four-five-table table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.learn-one-two-four-five-table th,
+.learn-one-two-four-five-table td {
+  padding: 0 1.25rem;
+  font-family: "Inter", var(--font-family-base);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.learn-one-two-four-five-table th {
+  height: 2.5rem;
+  background: #f8fafc;
+  color: #62748e;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  letter-spacing: 0.05em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.learn-one-two-four-five-table td {
+  height: 3.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #314158;
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.learn-one-two-four-five-table th:nth-child(3),
+.learn-one-two-four-five-table td:nth-child(3) {
+  text-align: right;
+}
+
+.learn-one-two-four-five-table .is-acid {
+  color: #ec003f;
+}
+
+.learn-one-two-four-five-table .is-alkaline {
+  color: #0084d1;
+}
+
+.learn-one-two-four-five-table tfoot td {
+  height: 2.5rem;
+  border-bottom: 0;
+  background: #f8fafc;
+  color: #90a1b9;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  text-align: right;
+}
+
 .learn-expected-measured-lesson {
   gap: 1rem;
 }
@@ -4706,10 +4775,6 @@ button.learn-progress-dots__dot:focus-visible {
 
 .learn-expected-measured-lesson__body .learn-body-copy {
   margin: 0;
-}
-
-.learn-expected-measured-lesson__body + .learn-content-grid {
-  margin-top: 0.75rem;
 }
 
 .learn-expected-measured-lesson .learn-panel p + .learn-bullet-list {
@@ -7042,6 +7107,26 @@ button.learn-progress-dots__dot:focus-visible {
 
   .learn-compensation-rule-stack__explainer {
     padding-top: 0;
+  }
+
+  .learn-one-two-four-five-table th,
+  .learn-one-two-four-five-table td {
+    padding-right: 0.9rem;
+    padding-left: 0.9rem;
+  }
+
+  .learn-one-two-four-five-table th {
+    font-size: clamp(0.64rem, 2.8vw, 0.75rem);
+  }
+
+  .learn-one-two-four-five-table td {
+    height: 3.3rem;
+    font-size: clamp(0.9rem, 3.6vw, 1rem);
+  }
+
+  .learn-one-two-four-five-table tfoot td {
+    height: 2.4rem;
+    font-size: clamp(0.73rem, 3.2vw, 0.875rem);
   }
 
   .learn-compensation-rule {
