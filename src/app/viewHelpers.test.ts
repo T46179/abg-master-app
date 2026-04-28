@@ -35,6 +35,7 @@ describe("view helpers", () => {
     expect(shouldShowPracticeIntro(true, false, false)).toBe(false);
     expect(shouldShowPracticeIntro(false, true, false)).toBe(false);
     expect(shouldShowPracticeIntro(false, false, true)).toBe(false);
+    expect(shouldShowPracticeIntro(false, false, false, true)).toBe(false);
   });
 
   it("resumes the active case difficulty when entering practice without an explicit difficulty param", () => {

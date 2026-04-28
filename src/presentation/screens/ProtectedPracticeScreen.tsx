@@ -121,7 +121,19 @@ export function ProtectedPracticeScreen() {
   const showAbnormalHighlighting = currentDifficultyLevel <= 3;
   const shouldAutoLoadPracticeCase = !currentCase && !summary && canLoadCase;
   const hasSeenPracticeIntro = state.storage?.loadPracticeIntroSeen() ?? false;
-  const shouldOpenPracticeIntro = shouldShowPracticeIntro(hasSeenPracticeIntro, Boolean(currentCase), Boolean(summary));
+  const hasExistingPracticeProgress = Boolean(
+    state.userState.casesCompleted > 0 ||
+    state.userState.totalAnswers > 0 ||
+    state.userState.correctAnswers > 0 ||
+    state.userState.xp > 0 ||
+    state.userState.level > 1
+  );
+  const shouldOpenPracticeIntro = shouldShowPracticeIntro(
+    hasSeenPracticeIntro,
+    Boolean(currentCase),
+    Boolean(summary),
+    hasExistingPracticeProgress
+  );
   const finalLevelProgress = getLevelProgress(payload?.progressionConfig ?? null, state.userState);
   const preAwardUserState = summary
     ? syncUserStateDerivedFields(
@@ -153,6 +165,12 @@ export function ProtectedPracticeScreen() {
       setSearchParams({ difficulty: normalizedDifficulty }, { replace: true });
     }
   }, [normalizedDifficulty, requestedDifficulty, setSearchParams]);
+
+  useEffect(() => {
+    if (hasExistingPracticeProgress && !hasSeenPracticeIntro) {
+      state.storage?.savePracticeIntroSeen(true);
+    }
+  }, [hasExistingPracticeProgress, hasSeenPracticeIntro, state.storage]);
 
   useEffect(() => {
     if (difficultyReconciledRef.current) return;
@@ -400,7 +418,7 @@ export function ProtectedPracticeScreen() {
   }
 
   function requestCaseStart(difficultyKey: string) {
-    if (!state.storage?.loadPracticeIntroSeen()) {
+    if (!hasExistingPracticeProgress && !state.storage?.loadPracticeIntroSeen()) {
       setPendingDifficulty(difficultyKey);
       setIntroOpen(true);
       return;
