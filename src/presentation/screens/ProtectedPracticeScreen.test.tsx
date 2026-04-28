@@ -310,13 +310,13 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
             "Respiratory alkalosis"
           ]
         },
-        { key: "compensation", options: ["Fits expected compensation", "Does not fit expected compensation"] },
+        { key: "compensation", options: ["Appropriate", "Inappropriate"] },
         { key: "anion_gap", options: ["Raised", "Normal"] },
         {
           key: "additional_metabolic_process",
           options: [
-            "None identified",
-            "Additional normal anion gap metabolic acidosis",
+            "No additional metabolic process",
+            "Additional NAGMA",
             "Additional metabolic alkalosis",
             "Cannot assess / not applicable"
           ]
