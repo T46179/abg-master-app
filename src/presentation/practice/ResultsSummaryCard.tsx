@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 import { Surface } from "../primitives/Surface";
+import timerIcon from "../../assets/icons/timer.svg";
 import type {
   CaseData,
   CaseSummary,
@@ -212,7 +213,10 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
     <div className="results-flow">
       <Surface className="results-card">
         <div className="results-card__topbar">
-          <span className="results-card__time">{formatElapsed(props.summary.elapsedSeconds)}</span>
+          <span className="results-card__time">
+            <img src={timerIcon} alt="" aria-hidden="true" />
+            <span>{formatElapsed(props.summary.elapsedSeconds)}</span>
+          </span>
         </div>
 
         <div className="results-card__diagnosis">

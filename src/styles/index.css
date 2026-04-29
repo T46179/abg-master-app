@@ -1105,13 +1105,15 @@ button:disabled {
 
 .practice-scenario-card__body {
   margin: 0.25rem 0 0;
-  color: var(--color-text);
+  color: #4b585b;
+  font-weight: 300;
   line-height: 1.65;
 }
 
 .practice-scenario-card .section-header__eyebrow,
 .value-panels__card .section-header__eyebrow {
-  color: #4b585b;
+  color: #0f2547;
+  font-weight: 500;
 }
 
 .results-card .section-header__eyebrow,
@@ -1401,7 +1403,7 @@ button:disabled {
 .question-flow-card__prompt {
   margin: 0;
   font-size: 1rem;
-  font-weight: 400;
+  font-weight: 300;
   line-height: 1.65;
   letter-spacing: 0;
   color: #4b585b;
@@ -1420,7 +1422,8 @@ button:disabled {
   background: var(--color-surface);
   box-shadow: 0 0.25rem 0.58rem rgba(15, 23, 42, 0.08);
   text-align: left;
-  color: var(--color-text);
+  color: #4b585b;
+  font-weight: 300;
   transition: background-color 160ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
@@ -1460,6 +1463,11 @@ button:disabled {
   border-radius: var(--radius-md);
 }
 
+.question-flow-card--white-answer-card-border .inline-feedback {
+  padding: 0;
+  border: 0;
+}
+
 .inline-feedback.is-correct {
   background: var(--color-green-soft);
   border: 0;
@@ -1468,6 +1476,41 @@ button:disabled {
 .inline-feedback.is-incorrect {
   background: var(--color-red-soft);
   border: 0;
+}
+
+.inline-feedback--answer-flow {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.inline-feedback--answer-flow.is-correct,
+.inline-feedback--answer-flow.is-incorrect {
+  background: transparent;
+}
+
+.inline-feedback--answer-flow.is-correct .inline-feedback__item {
+  background: var(--color-green-soft);
+}
+
+.inline-feedback--answer-flow.is-correct .inline-feedback__label {
+  color: var(--color-green);
+}
+
+.inline-feedback--answer-flow.is-incorrect .inline-feedback__item:first-child {
+  background: var(--color-red-soft);
+}
+
+.inline-feedback--answer-flow.is-incorrect .inline-feedback__item:last-child {
+  background: var(--color-green-soft);
+}
+
+.inline-feedback--answer-flow.is-incorrect .inline-feedback__item:first-child .inline-feedback__label {
+  color: var(--color-red);
+}
+
+.inline-feedback--answer-flow.is-incorrect .inline-feedback__item:last-child .inline-feedback__label {
+  color: var(--color-green);
 }
 
 .inline-feedback__hero h3 {
@@ -1481,6 +1524,7 @@ button:disabled {
   margin: 0.35rem 0 0;
   color: #4b585b;
   font-size: 0.9rem;
+  font-weight: 300;
   line-height: 1.6;
 }
 
@@ -1511,6 +1555,12 @@ button:disabled {
   margin-bottom: 0.25rem;
   color: var(--color-text-muted);
   font-size: 0.8rem;
+}
+
+.inline-feedback__item strong {
+  color: #4b585b;
+  font-weight: 300;
+  line-height: 1.65;
 }
 
 .inline-feedback__button {
@@ -1562,12 +1612,18 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.3rem;
   padding: 0.45rem 0.7rem;
   border-radius: 999px;
   background: #f8fafc;
   color: #0f2547;
   font-size: 0.84rem;
   font-weight: 600;
+}
+
+.results-card__time img {
+  width: 0.72rem;
+  height: 0.72rem;
 }
 
 .results-card__diagnosis {
@@ -1698,6 +1754,10 @@ button:disabled {
   font-size: 0.98rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+.results-card__detail-card p {
+  font-weight: 300;
 }
 
 .results-card__detail-card-header {

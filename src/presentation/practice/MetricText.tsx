@@ -52,7 +52,7 @@ export function MetricReference({ reference }: { reference: string }) {
   );
 }
 
-const INLINE_METRIC_PATTERN = /(PaCO2|PaO2|HCO3-?)/g;
+const INLINE_METRIC_PATTERN = /(PaCO2|PaO2|HCO3-?|CO2)/g;
 
 function renderInlineMetricToken(token: string) {
   switch (token) {
@@ -63,6 +63,8 @@ function renderInlineMetricToken(token: string) {
     case "HCO3":
     case "HCO3-":
       return <>HCO<sub>3</sub><sup>-</sup></>;
+    case "CO2":
+      return <>CO<sub>2</sub></>;
     default:
       return token;
   }
