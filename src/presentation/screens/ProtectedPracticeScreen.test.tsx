@@ -65,6 +65,8 @@ let currentState: {
   storage: {
     loadPracticeIntroSeen: () => boolean;
     savePracticeIntroSeen: ReturnType<typeof vi.fn>;
+    loadAppAreaVisited: () => boolean;
+    saveAppAreaVisited: ReturnType<typeof vi.fn>;
     saveAdvancedRangesPreference: ReturnType<typeof vi.fn>;
     loadSeenCaseState: () => Record<string, never>;
   };
@@ -242,6 +244,8 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
       storage: {
         loadPracticeIntroSeen: () => true,
         savePracticeIntroSeen: vi.fn(),
+        loadAppAreaVisited: () => true,
+        saveAppAreaVisited: vi.fn(),
         saveAdvancedRangesPreference: vi.fn(),
         loadSeenCaseState: () => ({})
       }
@@ -290,6 +294,28 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
     renderScreen();
 
     expect(container.textContent).toContain("We can't load a new case right now. Please try again.");
+  });
+
+  it("self-heals intro flags when existing progress is present", () => {
+    currentState.userState.casesCompleted = 1;
+    currentState.storage.loadPracticeIntroSeen = () => false;
+    currentState.storage.loadAppAreaVisited = () => false;
+
+    renderScreen();
+
+    expect(currentState.storage.savePracticeIntroSeen).toHaveBeenCalledWith(true);
+    expect(currentState.storage.saveAppAreaVisited).toHaveBeenCalledWith(true);
+  });
+
+  it("treats stored seen cases as existing practice progress", () => {
+    currentState.storage.loadPracticeIntroSeen = () => false;
+    currentState.storage.loadAppAreaVisited = () => false;
+    currentState.storage.loadSeenCaseState = () => ({ beginner: ["case-1"] });
+
+    renderScreen();
+
+    expect(currentState.storage.savePracticeIntroSeen).toHaveBeenCalledWith(true);
+    expect(currentState.storage.saveAppAreaVisited).toHaveBeenCalledWith(true);
   });
 
   it("passes the current non-final multi-select selection to the question flow card", () => {

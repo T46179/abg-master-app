@@ -48,6 +48,7 @@ export function DashboardScreen() {
     await state.storage.resetUserState();
     state.storage.saveSeenCaseState({});
     state.storage.savePracticeIntroSeen(false);
+    state.storage.saveAppAreaVisited(false);
     state.storage.saveAdvancedRangesPreference(false);
     window.location.assign("/practice");
   }

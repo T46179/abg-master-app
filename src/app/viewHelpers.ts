@@ -53,11 +53,12 @@ export function shouldConfirmDifficultySwitch(hasActiveUnfinishedCase: boolean, 
 
 export function shouldShowPracticeIntro(
   hasSeenPracticeIntro: boolean,
+  hasVisitedAppArea: boolean,
   hasActiveCase: boolean,
   hasSummary: boolean,
   hasExistingProgress = false
 ) {
-  return !hasSeenPracticeIntro && !hasExistingProgress && !hasActiveCase && !hasSummary;
+  return !hasSeenPracticeIntro && !hasVisitedAppArea && !hasExistingProgress && !hasActiveCase && !hasSummary;
 }
 
 export function getPracticeDifficultyMismatchAction(input: {

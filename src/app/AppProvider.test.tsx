@@ -98,6 +98,8 @@ const storageAdapter = {
   saveResultsReviewExpandedPreference: vi.fn(),
   loadPracticeIntroSeen: vi.fn(() => false),
   savePracticeIntroSeen: vi.fn(),
+  loadAppAreaVisited: vi.fn(() => false),
+  saveAppAreaVisited: vi.fn(),
   loadSeenCaseState: vi.fn(() => ({})),
   saveSeenCaseState: vi.fn()
 };

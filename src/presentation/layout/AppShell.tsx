@@ -27,9 +27,12 @@ export function AppShell() {
       : baseViewName;
 
     patchSessionState({ currentView: viewName });
+    if (pathSegment === "dashboard" || pathSegment === "learn") {
+      state.storage?.saveAppAreaVisited(true);
+    }
     trackPageView(viewName);
     setMobileOpen(false);
-  }, [location.pathname, patchSessionState, state.practiceState.lastCaseSummary]);
+  }, [location.pathname, patchSessionState, state.practiceState.lastCaseSummary, state.storage]);
 
   function handleDiscardPendingCase() {
     if (typeof window === "undefined" || !state.practiceState.pendingSubmission) return;

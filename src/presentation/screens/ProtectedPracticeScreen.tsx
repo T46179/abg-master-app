@@ -120,16 +120,23 @@ export function ProtectedPracticeScreen() {
   const currentDifficultyLevel = Number(currentCase?.difficulty_level ?? summary?.caseData.difficulty_level ?? 1);
   const showAbnormalHighlighting = currentDifficultyLevel <= 3;
   const shouldAutoLoadPracticeCase = !currentCase && !summary && canLoadCase;
+  const isReadyForPracticeIntroGate = state.status === "ready" && Boolean(state.storage);
   const hasSeenPracticeIntro = state.storage?.loadPracticeIntroSeen() ?? false;
+  const hasVisitedAppArea = state.storage?.loadAppAreaVisited() ?? false;
+  const hasSeenStoredCases = Object.values(state.storage?.loadSeenCaseState() ?? {}).some(caseIds => caseIds.length > 0);
   const hasExistingPracticeProgress = Boolean(
     state.userState.casesCompleted > 0 ||
     state.userState.totalAnswers > 0 ||
     state.userState.correctAnswers > 0 ||
     state.userState.xp > 0 ||
-    state.userState.level > 1
+    state.userState.level > 1 ||
+    (Array.isArray(state.userState.appliedProtectedCaseTokens) && state.userState.appliedProtectedCaseTokens.length > 0) ||
+    (Array.isArray(state.userState.recentResults) && state.userState.recentResults.length > 0) ||
+    hasSeenStoredCases
   );
-  const shouldOpenPracticeIntro = shouldShowPracticeIntro(
+  const shouldOpenPracticeIntro = isReadyForPracticeIntroGate && shouldShowPracticeIntro(
     hasSeenPracticeIntro,
+    hasVisitedAppArea,
     Boolean(currentCase),
     Boolean(summary),
     hasExistingPracticeProgress
@@ -167,10 +174,12 @@ export function ProtectedPracticeScreen() {
   }, [normalizedDifficulty, requestedDifficulty, setSearchParams]);
 
   useEffect(() => {
-    if (hasExistingPracticeProgress && !hasSeenPracticeIntro) {
-      state.storage?.savePracticeIntroSeen(true);
+    if (!isReadyForPracticeIntroGate) return;
+    if (hasExistingPracticeProgress && (!hasSeenPracticeIntro || !hasVisitedAppArea)) {
+      if (!hasSeenPracticeIntro) state.storage?.savePracticeIntroSeen(true);
+      if (!hasVisitedAppArea) state.storage?.saveAppAreaVisited(true);
     }
-  }, [hasExistingPracticeProgress, hasSeenPracticeIntro, state.storage]);
+  }, [hasExistingPracticeProgress, hasSeenPracticeIntro, hasVisitedAppArea, isReadyForPracticeIntroGate, state.storage]);
 
   useEffect(() => {
     if (difficultyReconciledRef.current) return;
@@ -319,13 +328,17 @@ export function ProtectedPracticeScreen() {
   ]);
 
   useEffect(() => {
+    if (!isReadyForPracticeIntroGate) return;
     if (!shouldAutoLoadPracticeCase) return;
+    if (introOpen) return;
     if (introAcceptedRef.current) {
       introAcceptedRef.current = false;
       return;
     }
 
     if (shouldOpenPracticeIntro) {
+      state.storage?.savePracticeIntroSeen(true);
+      state.storage?.saveAppAreaVisited(true);
       if (!introOpen || pendingDifficulty !== normalizedDifficulty) {
         setPendingDifficulty(normalizedDifficulty);
         setIntroOpen(true);
@@ -336,8 +349,11 @@ export function ProtectedPracticeScreen() {
       return;
     }
 
+    if (!hasVisitedAppArea) {
+      state.storage?.saveAppAreaVisited(true);
+    }
     void beginCase(normalizedDifficulty);
-  }, [currentCase, introOpen, normalizedDifficulty, pendingDifficulty, shouldAutoLoadPracticeCase, shouldOpenPracticeIntro]);
+  }, [currentCase, hasVisitedAppArea, introOpen, isReadyForPracticeIntroGate, normalizedDifficulty, pendingDifficulty, shouldAutoLoadPracticeCase, shouldOpenPracticeIntro, state.storage]);
 
   async function activateSlot(difficultyKey: string, slot: IssuedPracticeSlot, options?: { preview?: boolean }) {
     if (!slotMatchesDifficultyKey(slot, difficultyKey)) {
@@ -418,17 +434,29 @@ export function ProtectedPracticeScreen() {
   }
 
   function requestCaseStart(difficultyKey: string) {
-    if (!hasExistingPracticeProgress && !state.storage?.loadPracticeIntroSeen()) {
+    const shouldOpenIntro = shouldShowPracticeIntro(
+      state.storage?.loadPracticeIntroSeen() ?? false,
+      state.storage?.loadAppAreaVisited() ?? false,
+      Boolean(currentCase),
+      Boolean(summary),
+      hasExistingPracticeProgress
+    );
+
+    if (shouldOpenIntro) {
+      state.storage?.savePracticeIntroSeen(true);
+      state.storage?.saveAppAreaVisited(true);
       setPendingDifficulty(difficultyKey);
       setIntroOpen(true);
       return;
     }
 
+    state.storage?.saveAppAreaVisited(true);
     void beginCase(difficultyKey);
   }
 
   function handleContinueFromIntro() {
     state.storage?.savePracticeIntroSeen(true);
+    state.storage?.saveAppAreaVisited(true);
     const nextDifficulty = pendingDifficulty ?? normalizedDifficulty;
     introAcceptedRef.current = true;
     setIntroOpen(false);
@@ -442,6 +470,7 @@ export function ProtectedPracticeScreen() {
 
   function handleLearnFirstFromIntro() {
     state.storage?.savePracticeIntroSeen(true);
+    state.storage?.saveAppAreaVisited(true);
     setIntroOpen(false);
     setPendingDifficulty(null);
   }

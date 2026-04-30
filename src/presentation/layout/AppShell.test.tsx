@@ -10,6 +10,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const retryPendingSubmissionNow = vi.fn();
 const discardPendingSubmission = vi.fn();
 const patchSessionState = vi.fn();
+const saveAppAreaVisited = vi.fn();
 
 vi.mock("../../app/AppProvider", () => ({
   useAppContext: () => ({
@@ -31,6 +32,9 @@ vi.mock("../../app/AppProvider", () => ({
       userState: {},
       appStatus: {
         warnings: {}
+      },
+      storage: {
+        saveAppAreaVisited
       }
     },
     patchSessionState,
@@ -56,6 +60,7 @@ describe("AppShell", () => {
     retryPendingSubmissionNow.mockReset();
     discardPendingSubmission.mockReset();
     patchSessionState.mockReset();
+    saveAppAreaVisited.mockReset();
     vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
@@ -79,6 +84,42 @@ describe("AppShell", () => {
     expect(container.textContent).toContain("Your answers are saved. We'll finish when you're back online.");
     expect(container.textContent).toContain("Retry now");
     expect(container.textContent).toContain("Discard this unsaved case");
+  });
+
+  it("marks dashboard and learn routes as app-area visits", () => {
+    act(() => {
+      root.render(
+        <MemoryRouter key="dashboard" initialEntries={["/dashboard"]}>
+          <AppShell />
+        </MemoryRouter>
+      );
+    });
+
+    expect(saveAppAreaVisited).toHaveBeenCalledWith(true);
+
+    saveAppAreaVisited.mockReset();
+
+    act(() => {
+      root.render(
+        <MemoryRouter key="learn" initialEntries={["/learn"]}>
+          <AppShell />
+        </MemoryRouter>
+      );
+    });
+
+    expect(saveAppAreaVisited).toHaveBeenCalledWith(true);
+  });
+
+  it("does not mark the landing route as an app-area visit", () => {
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={["/"]}>
+          <AppShell />
+        </MemoryRouter>
+      );
+    });
+
+    expect(saveAppAreaVisited).not.toHaveBeenCalled();
   });
 
   it("wires retry and discard buttons to the pending submission actions", () => {
