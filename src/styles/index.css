@@ -2823,6 +2823,13 @@ button:disabled {
   line-height: 1.7;
 }
 
+.landing-hero__lede {
+  display: grid;
+  gap: 0.45rem;
+  font-weight: 300;
+  line-height: 1.55;
+}
+
 .landing-hero__actions {
   margin-top: 1rem;
   animation: landing-hero-text-in 1700ms cubic-bezier(0.22, 1, 0.36, 1) 320ms both;
@@ -2884,7 +2891,10 @@ button:disabled {
   opacity: 0;
   transform: translate3d(1.2rem, 0, 0);
   align-self: start;
-  width: min(100%, 35rem);
+  width: min(100%, 38rem);
+  border-color: transparent;
+  box-shadow: none;
+  background: #ffffff;
 }
 
 .landing-hero__preview[data-loaded="true"] {
@@ -2898,6 +2908,124 @@ button:disabled {
   display: block;
   width: 100%;
   height: auto;
+}
+
+.landing-practice-preview {
+  display: grid;
+  gap: 0.72rem;
+  padding: 0.85rem;
+  background: #ffffff;
+}
+
+.landing-practice-preview__card {
+  padding: 0.9rem;
+  border: 0;
+  box-shadow: 0 1px 2px rgba(9, 11, 12, 0.08), 0 4px 7px rgba(9, 11, 12, 0.1);
+}
+
+.landing-practice-preview .practice-scenario-card__body {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.landing-practice-preview .section-header__eyebrow {
+  color: #0f2547;
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+.landing-practice-preview .value-panels__header {
+  align-items: center;
+}
+
+.landing-practice-preview__toggle {
+  gap: 0.45rem;
+}
+
+.landing-practice-preview .value-panels__toggle-label {
+  font-size: 0.64rem;
+}
+
+.landing-practice-preview .value-panels__switch {
+  width: 2.15rem;
+  height: 1.12rem;
+  padding: 0.1rem;
+  pointer-events: none;
+}
+
+.landing-practice-preview .value-panels__switch-thumb {
+  width: 0.92rem;
+  height: 0.92rem;
+}
+
+.landing-practice-preview__metric-grid {
+  grid-template-columns: repeat(auto-fit, minmax(7.4rem, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.68rem;
+}
+
+.landing-practice-preview .metric-card {
+  min-width: 0;
+  padding: 0.7rem;
+  border: 0;
+  background: #f8fafc;
+}
+
+.landing-practice-preview .value-panels__card .metric-card:hover,
+.landing-practice-preview .value-panels__card .metric-card:focus-within {
+  box-shadow: none;
+  transform: none;
+}
+
+.landing-practice-preview .metric-card__label {
+  margin-bottom: 0.7rem;
+  font-size: 0.72rem;
+}
+
+.landing-practice-preview .metric-card__value {
+  gap: 0.22rem;
+  font-size: clamp(1.25rem, 2.1vw, 1.7rem);
+}
+
+.landing-practice-preview .metric-card__value small {
+  font-size: 0.62rem;
+}
+
+.landing-practice-preview .question-flow-card__pills {
+  gap: 0.24rem;
+  padding-bottom: 0;
+}
+
+.landing-practice-preview__pills {
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 2.25rem), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 2.25rem), transparent 100%);
+}
+
+.landing-practice-preview .question-flow-card__pills .pill-nav__button {
+  padding: 0.34rem 0.48rem;
+  font-size: 0.58rem;
+  font-weight: 600;
+}
+
+.landing-practice-preview .question-flow-card__body {
+  gap: 0.7rem;
+  margin-top: 0.72rem;
+}
+
+.landing-practice-preview .question-flow-card__prompt {
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.landing-practice-preview .question-flow-card__options {
+  gap: 0.5rem;
+}
+
+.landing-practice-preview .answer-option {
+  padding: 0.68rem 0.75rem;
+  font-size: 0.8rem;
+  pointer-events: none;
 }
 
 .landing-counter {
@@ -2992,6 +3120,12 @@ button:disabled {
   max-width: 42rem;
   margin-inline: auto;
   font-size: 1.125rem;
+  font-weight: 300;
+}
+
+.landing-curriculum__heading p {
+  font-size: 1.125rem;
+  font-weight: 300;
 }
 
 .landing-section--features {
@@ -3069,6 +3203,10 @@ button:disabled {
 
 .landing-insight-grid__copy p + p {
   margin-top: 1em;
+}
+
+.landing-insight-grid__copy p {
+  font-weight: 300;
 }
 
 .landing-curriculum {
@@ -3149,23 +3287,23 @@ button:disabled {
 }
 
 .landing-curriculum__level-number.is-blue {
-  background: rgba(43, 127, 255, 0.1);
-  color: #155dfc;
+  background: #DBEEFF;
+  color: #2b7fff;
 }
 
 .landing-curriculum__level-number.is-green {
-  background: rgba(0, 201, 80, 0.1);
+  background: #DDF3E4;
   color: #00a63e;
 }
 
-.landing-curriculum__level-number.is-violet {
-  background: rgba(173, 70, 255, 0.1);
-  color: #9810fa;
+.landing-curriculum__level-number.is-orange {
+  background: #FFE8DC;
+  color: #f17c45;
 }
 
-.landing-curriculum__level-number.is-red {
-  background: rgba(251, 44, 54, 0.1);
-  color: #e7000b;
+.landing-curriculum__level-number.is-purple {
+  background: #EBE0FF;
+  color: #8a5cf6;
 }
 
 .landing-curriculum__level h4,
@@ -3181,6 +3319,7 @@ button:disabled {
 .landing-curriculum__level p {
   margin: 0.25rem 0 0;
   color: #717182;
+  font-weight: 300;
   line-height: 1.5;
 }
 
@@ -3403,6 +3542,82 @@ button:disabled {
   line-height: 1.2;
 }
 
+.landing-results-preview {
+  width: 100%;
+  background: #ffffff;
+}
+
+.landing-results-preview__card {
+  position: relative;
+  padding: clamp(1.2rem, 2.2vw, 1.65rem);
+  border: 0;
+  box-shadow: none;
+}
+
+.landing-results-preview .results-card__topbar {
+  top: clamp(1rem, 2vw, 1.35rem);
+  right: clamp(1rem, 2vw, 1.35rem);
+}
+
+.landing-results-preview .results-card__time {
+  padding: 0.38rem 0.58rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.landing-results-preview .results-card__time img {
+  width: 0.72rem;
+  height: 0.72rem;
+}
+
+.landing-results-preview .results-card__diagnosis-main {
+  font-size: clamp(2rem, 4.5vw, 2.65rem);
+  font-weight: 400;
+}
+
+.landing-results-preview .results-card__diagnosis-sub {
+  margin-top: 0.28rem;
+  font-size: 0.98rem;
+  font-weight: 300;
+}
+
+.landing-results-preview .results-card__section-label {
+  font-weight: 400;
+}
+
+.landing-results-preview .results-card__detail-section {
+  margin-top: 1.45rem;
+}
+
+.landing-results-preview .results-card__detail-stack {
+  gap: 0.95rem;
+  margin-top: 0.9rem;
+}
+
+.landing-results-preview .card.results-card__detail-card {
+  padding: clamp(1rem, 2vw, 1.25rem);
+  border-radius: 1.05rem;
+}
+
+.landing-results-preview .results-card__detail-card h4 {
+  font-size: 0.94rem;
+  font-weight: 500;
+}
+
+.landing-results-preview .results-card__detail-card p {
+  margin-top: 0.72rem;
+  font-size: clamp(0.86rem, 1.75vw, 0.98rem);
+  font-weight: 250;
+  line-height: 1.62;
+}
+
+.landing-results-preview .results-card__detail-toggle {
+  width: 1.2rem;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  pointer-events: none;
+}
+
 .landing-bullet-list {
   display: grid;
   gap: 0.8rem;
@@ -3414,6 +3629,7 @@ button:disabled {
 .landing-bullet-list li {
   position: relative;
   padding-left: 2rem;
+  font-weight: 300;
   line-height: 1.5;
   color: #0a0a0a;
 }
@@ -3851,6 +4067,39 @@ button:disabled {
     width: 100%;
   }
 
+  .landing-practice-preview {
+    gap: 0.6rem;
+    padding: 0.65rem;
+  }
+
+  .landing-practice-preview__card {
+    padding: 0.75rem;
+  }
+
+  .landing-practice-preview__metric-grid {
+    grid-template-columns: repeat(auto-fit, minmax(6.8rem, 1fr));
+  }
+
+  .landing-practice-preview__metric-grid--secondary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .landing-practice-preview__metric-grid--secondary .metric-card {
+    padding-inline: 0.55rem;
+  }
+
+  .landing-practice-preview__metric-grid--secondary .metric-card__value small {
+    display: none;
+  }
+
+  .landing-practice-preview .value-panels__header {
+    align-items: flex-start;
+  }
+
+  .landing-practice-preview__toggle {
+    display: none;
+  }
+
   .landing-feature-grid {
     grid-template-columns: 1fr;
   }
@@ -3870,6 +4119,40 @@ button:disabled {
 
   .landing-insight-grid {
     gap: 4rem;
+  }
+
+  .landing-results-preview__card {
+    padding: 1rem;
+  }
+
+  .landing-results-preview .results-card__time {
+    font-size: 0.72rem;
+  }
+
+  .landing-results-preview .results-card__diagnosis-main {
+    font-size: 1.9rem;
+  }
+
+  .landing-results-preview .results-card__diagnosis-sub {
+    font-size: 0.92rem;
+  }
+
+  .landing-results-preview .results-card__detail-section {
+    margin-top: 1.25rem;
+  }
+
+  .landing-results-preview .results-card__detail-stack {
+    gap: 0.75rem;
+  }
+
+  .landing-results-preview .card.results-card__detail-card {
+    padding: 0.9rem;
+    border-radius: 0.9rem;
+  }
+
+  .landing-results-preview .results-card__detail-card p {
+    font-size: 0.82rem;
+    line-height: 1.55;
   }
 
   .landing-analytics {

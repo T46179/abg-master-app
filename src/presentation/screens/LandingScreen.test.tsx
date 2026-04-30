@@ -135,7 +135,7 @@ describe("LandingScreen", () => {
     expect(container.textContent).toContain("Master Blood Gas Interpretation");
 
     const links = Array.from(container.querySelectorAll("a"));
-    const primaryLink = links.find(link => link.textContent?.includes("Begin Your First Case"));
+    const primaryLink = links.find(link => link.textContent?.includes("Start Your First Case"));
     const headerLink = links.find(link => link.textContent?.includes("Dashboard"));
 
     expect(primaryLink?.getAttribute("href")).toBe("/practice");
