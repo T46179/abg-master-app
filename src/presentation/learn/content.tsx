@@ -332,6 +332,22 @@ function BeginnerCompletionCard() {
   );
 }
 
+function IntermediateCompletionCard() {
+  const items: ReactNode[] = [
+    "Use compensation rules to calculate the expected respiratory or metabolic response",
+    "Compare the expected value with the measured value instead of guessing from pH alone",
+    <>Recognise when compensation is appropriate, and when the numbers suggest an additional acid-base process</>,
+    "Apply a repeatable sequence: primary disorder → compensation rule → expected value → measured value"
+  ];
+
+  return (
+    <LearnSummaryCompletionCard
+      intro="You can now check whether the body’s response to an acid-base disorder is appropriate, using expected compensation instead of guesswork"
+      items={items}
+    />
+  );
+}
+
 function PHScaleVisualiser(props: { showDetails?: boolean }) {
   const ticks = [
     { value: "6.8", position: "0%", align: "start" },
@@ -691,7 +707,7 @@ function WorkedExamplesLesson() {
           tone="red"
           metrics={metabolicAcidosisMetrics}
           reasoning={[
-            "pH is high → alkalaemia",
+            "pH is high → acidaemia",
             <>HCO<sub>3</sub><sup>-</sup> is low and moving with pH</>,
             "This fits metabolic acidosis"
           ]}
@@ -1057,7 +1073,7 @@ const foundationsLessons: LearnLesson[] = [
   },
   {
     kind: "speed-check",
-    title: "Speed check"
+    title: "Blood Gas Blitz"
   },
   {
     kind: "content",
@@ -1232,6 +1248,14 @@ const intermediateLessons: LearnLesson[] = [
           The easier way to work out how much HCO<sub>3</sub><sup>-</sup> changes in the respiratory disorders
         </p>
         <OneTwoFourFiveRuleTable />
+        <div className="learn-one-two-four-five-lesson__body">
+          <p className="learn-body-copy">
+            Start from a normal <HCO3Text /> of 24 mmol/L. For every 10 mmHg that <PaCO2Text /> moves away from 40 mmHg, adjust the expected <HCO3Text /> using the number in the table
+          </p>
+          <p className="learn-body-copy">
+            E.g. for an acute respiratory acidosis where <PaCO2Text /> = 60 mmHg, <PaCO2Text /> is 20 mmHg above normal. Using the table, <HCO3Text /> should rise by about +2 mmol/L, from 24 &rarr; 26 mmol/L.
+          </p>
+        </div>
       </div>
     )
   },
@@ -1274,34 +1298,33 @@ const intermediateLessons: LearnLesson[] = [
   },
   {
     kind: "content",
-    title: "When the number misses",
-    content: <BlankLearnPage />
-  },
-  {
-    kind: "content",
     title: "Compensation checklist",
     content: (
-      <div className="learn-content-stack">
-        <Panel title="Use the same sequence every time">
+      <div className="learn-content-stack learn-compensation-checklist-lesson">
+        <div className="learn-compensation-checklist-lesson__body">
+          <h3 className="learn-section-heading">Use the same sequence every time</h3>
           <ol className="learn-step-list">
-            <li>Find the primary disorder.</li>
-            <li>Choose the right compensation rule.</li>
-            <li>Calculate the expected value.</li>
-            <li>Compare expected vs measured.</li>
+            <li>Identify the primary disorder</li>
+            <li>Choose the matching compensation rule</li>
+            <li>Calculate the expected value</li>
+            <li>Compare the expected value with the measured value</li>
           </ol>
-        </Panel>
-        <Panel title="Do not eyeball it">
+        </div>
+        <div className="learn-key-message">
+          <Lightbulb aria-hidden="true" />
           <p>
-            Compensation mistakes are where a lot of mixed disorders hide. A quick formula beats a quick guess.
+            Compensation mistakes usually happen when you guess from the pH alone. Use the formula, then compare the expected value with the measured value.
           </p>
-        </Panel>
+        </div>
       </div>
     )
   },
   {
     kind: "content",
     title: "Completed!",
-    content: <BlankLearnPage />
+    content: <IntermediateCompletionCard />,
+    ctaLabel: "Practice",
+    ctaHref: "/practice?difficulty=intermediate"
   }
 ];
 

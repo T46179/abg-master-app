@@ -11,6 +11,8 @@ const retryPendingSubmissionNow = vi.fn();
 const discardPendingSubmission = vi.fn();
 const patchSessionState = vi.fn();
 const saveAppAreaVisited = vi.fn();
+const trackEvent = vi.fn();
+const trackPageView = vi.fn();
 
 vi.mock("../../app/AppProvider", () => ({
   useAppContext: () => ({
@@ -47,6 +49,11 @@ vi.mock("./MainNav", () => ({
   MainNav: () => null
 }));
 
+vi.mock("../../core/analytics", () => ({
+  trackEvent: (...args: unknown[]) => trackEvent(...args),
+  trackPageView: (...args: unknown[]) => trackPageView(...args)
+}));
+
 import { AppShell } from "./AppShell";
 
 describe("AppShell", () => {
@@ -61,6 +68,8 @@ describe("AppShell", () => {
     discardPendingSubmission.mockReset();
     patchSessionState.mockReset();
     saveAppAreaVisited.mockReset();
+    trackEvent.mockReset();
+    trackPageView.mockReset();
     vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
@@ -108,6 +117,7 @@ describe("AppShell", () => {
     });
 
     expect(saveAppAreaVisited).toHaveBeenCalledWith(true);
+    expect(trackEvent).toHaveBeenCalledWith("learn_opened", {});
   });
 
   it("does not mark the landing route as an app-area visit", () => {

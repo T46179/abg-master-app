@@ -4845,6 +4845,7 @@ button.learn-progress-dots__dot:focus-visible {
 
 .learn-compensation-rule-explainer__link {
   width: fit-content;
+  margin-top: 0.45rem;
   color: var(--color-text-muted);
   font-size: 0.84rem;
   font-weight: 500;
@@ -5105,12 +5106,12 @@ button.learn-progress-dots__dot:focus-visible {
   text-align: right;
 }
 
-.learn-one-two-four-five-table .is-acid {
-  color: #ec003f;
+.learn-one-two-four-five-table td.is-acid {
+  color: #f87171;
 }
 
-.learn-one-two-four-five-table .is-alkaline {
-  color: #0084d1;
+.learn-one-two-four-five-table td.is-alkaline {
+  color: #60a5fa;
 }
 
 .learn-one-two-four-five-table tfoot td {
@@ -5121,6 +5122,18 @@ button.learn-progress-dots__dot:focus-visible {
   font-size: 0.875rem;
   line-height: 1.25rem;
   text-align: right;
+}
+
+.learn-one-two-four-five-lesson__body {
+  display: grid;
+  gap: 0.75rem;
+  justify-self: stretch;
+  width: 100%;
+  text-align: left;
+}
+
+.learn-one-two-four-five-lesson__body .learn-body-copy {
+  margin: 0;
 }
 
 .learn-expected-measured-lesson {
@@ -5143,6 +5156,36 @@ button.learn-progress-dots__dot:focus-visible {
 .learn-expected-measured-lesson .learn-panel p + .learn-bullet-list {
   margin-top: 0.75rem;
 }
+
+.learn-compensation-checklist-lesson {
+  display: flex;
+  flex-direction: column;
+  min-height: 22rem;
+}
+
+.learn-compensation-checklist-lesson__body {
+  margin-top: auto;
+  margin-bottom: auto;
+  text-align: left;
+}
+
+.learn-compensation-checklist-lesson__body .learn-section-heading {
+  margin-bottom: 0.8rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.learn-compensation-checklist-lesson__body .learn-step-list {
+  color: var(--color-text-soft);
+  font-size: 0.95rem;
+  font-weight: 350;
+  line-height: 1.5;
+}
+
+.learn-compensation-checklist-lesson .learn-key-message {
+  margin-top: 0;
+}
+
 .learn-worked-example-card {
   display: grid;
   gap: 1.2rem;

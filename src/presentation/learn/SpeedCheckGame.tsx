@@ -617,8 +617,6 @@ export function SpeedCheckGame({
               disabled={showFeedback}
             >
               <span>{answer}</span>
-              {feedbackState === "correct" ? <strong>OK</strong> : null}
-              {feedbackState === "incorrect" ? <strong>X</strong> : null}
             </button>
           );
         })}

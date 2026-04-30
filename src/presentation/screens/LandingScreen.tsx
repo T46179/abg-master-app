@@ -289,6 +289,7 @@ export function LandingScreen() {
   const curriculumSectionRef = useRef<HTMLElement | null>(null);
   const explanationInsightRef = useRef<HTMLDivElement | null>(null);
   const practicePreloadKeyRef = useRef<string | null>(null);
+  const landingViewedTrackedRef = useRef(false);
   const casesSolvedLabel = useMemo(() => animatedCasesSolvedCount.toLocaleString("en-US"), [animatedCasesSolvedCount]);
   const releaseFlags = useMemo(() => getReleaseFlags(state.payload?.progressionConfig ?? null), [state.payload?.progressionConfig]);
 
@@ -304,6 +305,14 @@ export function LandingScreen() {
     setLaunchNotifySubmitting(false);
     setLaunchNotifyError("");
     setLaunchNotifySubmitted(false);
+  }
+
+  function handleLandingCtaClick(ctaLabel: string, destination: string) {
+    trackEvent("landing_cta_clicked", {
+      cta_label: ctaLabel,
+      destination,
+      source: "landing"
+    });
   }
 
   async function handleLaunchNotifySubmit(email: string) {
@@ -336,6 +345,12 @@ export function LandingScreen() {
 
   useEffect(() => {
     trackPageView("landing");
+    if (!landingViewedTrackedRef.current) {
+      landingViewedTrackedRef.current = true;
+      trackEvent("landing_viewed", {
+        source: "landing"
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -668,6 +683,7 @@ export function LandingScreen() {
         learnEnabled
         showBetaBadge={releaseFlags.enable_beta_badge}
         wideShell
+        onCoreFlowLinkClick={handleLandingCtaClick}
       />
 
       <LaunchNotifyModal
@@ -692,7 +708,11 @@ export function LandingScreen() {
               </div>
 
               <div className="landing-hero__actions">
-                <Link className="figma-button landing-hero__primary" to="/practice">
+                <Link
+                  className="figma-button landing-hero__primary"
+                  to="/practice"
+                  onClick={() => handleLandingCtaClick("Start Your First Case", "/practice")}
+                >
                   <span>Start Your First Case</span>
                   <ArrowRight className="landing-button__icon" aria-hidden="true" />
                 </Link>
@@ -825,7 +845,11 @@ export function LandingScreen() {
         <div className="landing-cta-band__inner">
           <h2>Ready to Master Blood Gas Interpretation?</h2>
           <p>Join learners working through 150+ ABG cases and build mastery step-by-step</p>
-          <Link className="figma-button figma-button--secondary landing-cta-band__button" to="/practice">
+          <Link
+            className="figma-button figma-button--secondary landing-cta-band__button"
+            to="/practice"
+            onClick={() => handleLandingCtaClick("Start Your First Case", "/practice")}
+          >
             Start Your First Case
           </Link>
         </div>

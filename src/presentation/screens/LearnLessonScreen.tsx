@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent } from "react";
 import { ArrowLeft } from "lucide-react";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
+import { trackEvent } from "../../core/analytics";
 import { getAwardableXp, getLevelProgress, syncUserStateDerivedFields } from "../../core/progression";
 import { getLearnLevel, isLearnLevelAvailable, isLearnLevelUnlocked, shouldShowLearnLevel } from "../learn/content";
 import type { SpeedCheckPhase } from "../learn/SpeedCheckGame";
@@ -39,11 +40,14 @@ export function LearnLessonScreen() {
   const { state, setUserState } = useAppContext();
   const navigate = useNavigate();
   const { difficulty } = useParams<{ difficulty: string }>();
+  const [searchParams] = useSearchParams();
   const level = getLearnLevel(difficulty);
   const [lessonIndex, setLessonIndex] = useState(() => level ? readStoredLessonIndex(level.slug, level.lessons.length) : 0);
   const [speedCheckPhase, setSpeedCheckPhase] = useState<SpeedCheckPhase>("ready");
   const [speedCheckResetKey, setSpeedCheckResetKey] = useState(0);
   const [completionGateSatisfied, setCompletionGateSatisfied] = useState(false);
+  const learnModuleStartedTrackedRef = useRef(new Set<string>());
+  const analyticsSource = searchParams.get("source") ?? undefined;
 
   useEffect(() => {
     if (!level) {
@@ -86,6 +90,20 @@ export function LearnLessonScreen() {
   }, [level, setUserState, state.status, state.userState]);
 
   useEffect(() => {
+    if (state.status !== "ready" || !level) return;
+    if (!["foundations", "beginner", "intermediate"].includes(level.slug)) return;
+    if (!shouldShowLearnLevel(level, state.userState.level) || !isLearnLevelUnlocked(level, state.userState.level) || !isLearnLevelAvailable(level)) return;
+    if (learnModuleStartedTrackedRef.current.has(level.slug)) return;
+
+    learnModuleStartedTrackedRef.current.add(level.slug);
+    trackEvent("learn_module_started", {
+      module: level.slug,
+      difficulty: level.slug,
+      ...(analyticsSource ? { source: analyticsSource } : {})
+    });
+  }, [analyticsSource, level, state.status, state.userState.level]);
+
+  useEffect(() => {
     setCompletionGateSatisfied(false);
   }, [difficulty, lessonIndex]);
 
@@ -111,7 +129,7 @@ export function LearnLessonScreen() {
   const isLastLesson = lessonIndex === activeLevel.lessons.length - 1;
   const isSpeedCheck = lesson.kind === "speed-check";
   const canAdvanceLesson = !lesson.requiresCompletionGate || completionGateSatisfied;
-  const showFooterPracticeCta = !isSpeedCheck && isLastLesson && activeLevel.slug === "beginner" && Boolean(lesson.ctaHref && lesson.ctaLabel);
+  const showFooterPracticeCta = !isSpeedCheck && isLastLesson && Boolean(lesson.ctaHref && lesson.ctaLabel);
   const levelProgress = getLevelProgress(state.payload?.progressionConfig ?? null, state.userState);
   const moduleProgress = state.userState.learnProgress?.[activeLevel.slug];
   const canSkipSpeedCheck = isSpeedCheck && Boolean(

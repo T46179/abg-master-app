@@ -13,6 +13,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const mockUserLevel = vi.hoisted(() => ({ value: 1 }));
 const mockLearnProgress = vi.hoisted(() => ({ value: {} as Record<string, { completedLessonCount: number; completed: boolean }> }));
 const setUserState = vi.hoisted(() => vi.fn(async () => undefined));
+const trackEvent = vi.hoisted(() => vi.fn());
 
 vi.mock("../../app/AppProvider", () => ({
   useAppContext: () => ({
@@ -28,6 +29,10 @@ vi.mock("../../app/AppProvider", () => ({
   })
 }));
 
+vi.mock("../../core/analytics", () => ({
+  trackEvent: (...args: unknown[]) => trackEvent(...args)
+}));
+
 describe("Learn screens", () => {
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
@@ -36,6 +41,7 @@ describe("Learn screens", () => {
     mockUserLevel.value = 1;
     mockLearnProgress.value = {};
     setUserState.mockClear();
+    trackEvent.mockClear();
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -252,10 +258,15 @@ describe("Learn screens", () => {
   it("allows direct lesson routes for intermediate now that the module is available", () => {
     mockUserLevel.value = 1;
 
-    renderPath("/learn/intermediate");
+    renderPath("/learn/intermediate?source=landing");
 
     expect(container.querySelector(".learn-overview")).toBeNull();
     expect(container.querySelector(".learn-deck-screen")).not.toBeNull();
+    expect(trackEvent).toHaveBeenCalledWith("learn_module_started", {
+      module: "intermediate",
+      difficulty: "intermediate",
+      source: "landing"
+    });
   });
 
   it("advances lesson content and updates progress dot states", () => {
@@ -353,12 +364,11 @@ describe("Learn screens", () => {
       "The 1-2-4-5 rule",
       "Expected vs measured",
       "Worked example",
-      "When the number misses",
       "Compensation checklist",
       "Completed!"
     ];
 
-    const expectedDotCount = 10;
+    const expectedDotCount = 9;
 
     expect(container.querySelector(".learn-card-intro")?.textContent).toContain(
       "Learn how the body responds to an acid-base disorder, then decide whether that response is expected - or whether a second disorder is hiding"

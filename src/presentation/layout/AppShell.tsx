@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import { PROTECTED_PRACTICE_MESSAGES } from "../../app/protectedPracticeMessages";
@@ -17,6 +17,7 @@ export function AppShell() {
   const [launchNotifySubmitting, setLaunchNotifySubmitting] = useState(false);
   const [launchNotifySubmitted, setLaunchNotifySubmitted] = useState(false);
   const [launchNotifyError, setLaunchNotifyError] = useState("");
+  const learnOpenedTrackedRef = useRef(false);
   const releaseFlags = getReleaseFlags(state.payload?.progressionConfig ?? null);
 
   useEffect(() => {
@@ -29,6 +30,13 @@ export function AppShell() {
     patchSessionState({ currentView: viewName });
     if (pathSegment === "dashboard" || pathSegment === "learn") {
       state.storage?.saveAppAreaVisited(true);
+    }
+    if (pathSegment === "learn" && !learnOpenedTrackedRef.current) {
+      const source = new URLSearchParams(location.search).get("source") ?? undefined;
+      learnOpenedTrackedRef.current = true;
+      trackEvent("learn_opened", {
+        ...(source ? { source } : {})
+      });
     }
     trackPageView(viewName);
     setMobileOpen(false);

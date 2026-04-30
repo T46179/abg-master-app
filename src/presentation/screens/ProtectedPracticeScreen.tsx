@@ -51,7 +51,7 @@ import {
   markCaseSeen,
   rememberRecentArchetype
 } from "../../core/selection";
-import type { AnswerSelection, AnswerValue, IssuedPracticeSlot, StepResult } from "../../core/types";
+import type { AnswerSelection, AnswerValue, CaseData, IssuedPracticeSlot, StepResult } from "../../core/types";
 import { getLearnUnlockMilestoneForLevelTransition } from "../learn/content";
 import { LearnUnlockModal } from "../learn/LearnUnlockModal";
 import { Surface } from "../primitives/Surface";
@@ -75,6 +75,9 @@ export function ProtectedPracticeScreen() {
   const introAcceptedRef = useRef(false);
   const difficultyReconciledRef = useRef(false);
   const latestCaseLoadRequestRef = useRef(0);
+  const practiceOpenedTrackedRef = useRef(false);
+  const caseStartTrackedRef = useRef(new Set<string>());
+  const summaryViewTrackedRef = useRef(new Set<string>());
 
   const payload = state.payload;
   const progressionInput = {
@@ -88,6 +91,7 @@ export function ProtectedPracticeScreen() {
   const hasExplicitDifficultyParam = searchParams.has("difficulty");
   const requestedDifficulty = searchParams.get("difficulty") ?? defaultDifficulty;
   const normalizedDifficulty = normalizeDifficultyKey(progressionInput, requestedDifficulty);
+  const analyticsSource = searchParams.get("source") ?? undefined;
   const difficultyMeta = getDifficultyMeta(progressionInput);
   const accessibleDifficulties = getAccessibleDifficultyKeys(progressionInput);
   const canLoadCase = canStartNewCase(progressionInput);
@@ -167,6 +171,35 @@ export function ProtectedPracticeScreen() {
     state.practiceState.syncState === "submitting" &&
     state.practiceState.pendingSubmission?.caseToken === state.practiceState.currentCaseToken;
 
+  function withAnalyticsSource(params: Record<string, unknown>) {
+    return analyticsSource ? { ...params, source: analyticsSource } : params;
+  }
+
+  function trackPracticeCaseStarted(difficultyKey: string, caseData: CaseData, caseToken?: string | null) {
+    const trackingKey = `${difficultyKey}:${caseToken ?? caseData.case_id}`;
+    if (caseStartTrackedRef.current.has(trackingKey)) return;
+
+    caseStartTrackedRef.current.add(trackingKey);
+    trackEvent("practice_case_started", withAnalyticsSource({
+      difficulty: difficultyKey,
+      case_id: caseData.case_id,
+      archetype: caseData.archetype
+    }));
+  }
+
+  function trackPracticeStepAnswered(isCorrect: boolean) {
+    if (!currentCase || !currentStep) return;
+
+    trackEvent("practice_step_answered", withAnalyticsSource({
+      difficulty: activeCaseDifficulty,
+      case_id: currentCase.case_id,
+      archetype: currentCase.archetype,
+      step: currentStep.key,
+      is_correct: isCorrect,
+      total_steps: totalSteps || undefined
+    }));
+  }
+
   useEffect(() => {
     if (requestedDifficulty !== normalizedDifficulty) {
       setSearchParams({ difficulty: normalizedDifficulty }, { replace: true });
@@ -202,6 +235,15 @@ export function ProtectedPracticeScreen() {
       patchSessionState({ currentDifficulty: normalizedDifficulty });
     }
   }, [normalizedDifficulty, patchSessionState, state.sessionState.currentDifficulty]);
+
+  useEffect(() => {
+    if (state.status !== "ready" || practiceOpenedTrackedRef.current) return;
+
+    practiceOpenedTrackedRef.current = true;
+    trackEvent("practice_opened", withAnalyticsSource({
+      difficulty: normalizedDifficulty
+    }));
+  }, [normalizedDifficulty, state.status]);
 
   useEffect(() => {
     activeStepRef.current?.scrollIntoView({
@@ -240,6 +282,22 @@ export function ProtectedPracticeScreen() {
       window.cancelAnimationFrame(frameId);
     };
   }, [summary?.caseId]);
+
+  useEffect(() => {
+    if (!summary) return;
+
+    const summaryKey = summary.caseToken ?? summary.caseId;
+    if (summaryViewTrackedRef.current.has(summaryKey)) return;
+
+    summaryViewTrackedRef.current.add(summaryKey);
+    trackEvent("case_explanation_viewed", withAnalyticsSource({
+      difficulty: summary.difficulty,
+      case_id: summary.caseId,
+      archetype: summary.caseData.archetype,
+      total_steps: summary.totalSteps,
+      correct_steps: summary.correctSteps
+    }));
+  }, [summary?.caseId, summary?.caseToken]);
 
   async function persistUserState(nextUserState: typeof state.userState) {
     await setUserState(nextUserState);
@@ -384,11 +442,7 @@ export function ProtectedPracticeScreen() {
     });
     setRecentArchetypes(previous => rememberRecentArchetype(previous, slot.caseData));
     if (!options?.preview) {
-      trackEvent("case_started", {
-        case_id: slot.caseData.case_id,
-        archetype: slot.caseData.archetype,
-        difficulty: difficultyKey
-      });
+      trackPracticeCaseStarted(difficultyKey, slot.caseData, slot.caseToken);
     }
   }
 
@@ -399,11 +453,7 @@ export function ProtectedPracticeScreen() {
       currentDifficulty: difficultyKey,
       caseStartMs: Date.now()
     });
-    trackEvent("case_started", {
-      case_id: currentCase.case_id,
-      archetype: currentCase.archetype,
-      difficulty: difficultyKey
-    });
+    trackPracticeCaseStarted(difficultyKey, currentCase, state.practiceState.currentCaseToken);
   }
 
   async function beginCase(difficultyKey: string, options?: { confirmAbandon?: boolean; preview?: boolean }) {
@@ -563,11 +613,7 @@ export function ProtectedPracticeScreen() {
         selectedAnswers: []
       });
 
-      trackEvent("step_answered", {
-        case_id: currentCase.case_id,
-        step: currentStep.key,
-        correct: nextResults[currentStepIndex]?.correct
-      });
+      trackPracticeStepAnswered(Boolean(nextResults[currentStepIndex]?.correct));
       return;
     }
 
@@ -587,11 +633,7 @@ export function ProtectedPracticeScreen() {
         patchSessionState({
           selectedAnswers: nextSelections
         });
-        trackEvent("step_answered", {
-          case_id: currentCase.case_id,
-          step: currentStep.key,
-          correct: true
-        });
+        trackPracticeStepAnswered(true);
         return;
       }
 
@@ -599,11 +641,7 @@ export function ProtectedPracticeScreen() {
         selectedAnswers: nextSelections,
         currentStepIndex: currentStepIndex + 1
       });
-      trackEvent("step_answered", {
-        case_id: currentCase.case_id,
-        step: currentStep.key,
-        correct: true
-      });
+      trackPracticeStepAnswered(true);
       return;
     }
 
@@ -620,11 +658,7 @@ export function ProtectedPracticeScreen() {
       selectedAnswers: nextSelections,
       stepResults: nextResults
     });
-    trackEvent("step_answered", {
-      case_id: currentCase.case_id,
-      step: currentStep.key,
-      correct: false
-    });
+    trackPracticeStepAnswered(false);
   }
 
   async function submitCase(selectedAnswersOverride?: AnswerSelection[]) {
@@ -726,13 +760,14 @@ export function ProtectedPracticeScreen() {
         caseStartMs: null
       });
 
-      trackEvent("case_completed", {
+      trackEvent("practice_case_completed", withAnalyticsSource({
         case_id: currentCase.case_id,
         archetype: currentCase.archetype,
         difficulty: normalizedDifficulty,
-        accuracy: result.summary.accuracy,
-        elapsed_seconds: Math.round(elapsedSeconds)
-      });
+        total_steps: cappedSummary.totalSteps,
+        correct_steps: cappedSummary.correctSteps,
+        completed: true
+      }));
     } catch (error) {
       if (isProtectedPracticeError(error) && error.code === "CASE_TOKEN_EXPIRED") {
         const nextSlots = {
@@ -797,20 +832,12 @@ export function ProtectedPracticeScreen() {
           feedback: buildConciseStepFeedback(currentCase, currentStep.key)
         };
         patchSessionState({ stepResults: nextResults });
-        trackEvent("step_answered", {
-          case_id: currentCase.case_id,
-          step: currentStep.key,
-          correct
-        });
+        trackPracticeStepAnswered(correct);
         return;
       }
 
       if (correct) {
-        trackEvent("step_answered", {
-          case_id: currentCase.case_id,
-          step: currentStep.key,
-          correct: true
-        });
+        trackPracticeStepAnswered(true);
         if (currentStepIndex < totalSteps - 1) {
           patchSessionState({ currentStepIndex: currentStepIndex + 1 });
           return;
@@ -829,11 +856,7 @@ export function ProtectedPracticeScreen() {
         correct: false
       };
       patchSessionState({ stepResults: nextResults });
-      trackEvent("step_answered", {
-        case_id: currentCase.case_id,
-        step: currentStep.key,
-        correct: false
-      });
+      trackPracticeStepAnswered(false);
       return;
     }
 
@@ -848,6 +871,20 @@ export function ProtectedPracticeScreen() {
   function handleOpenFeedback() {
     if (!summary) return;
     openCaseFeedbackForm(summary);
+  }
+
+  function handleNextCaseFromSummary() {
+    if (!summary) return;
+
+    const nextSlot = state.practiceState.practiceSlotsByDifficulty[normalizedDifficulty];
+    trackEvent("practice_next_case_clicked", {
+      difficulty: normalizedDifficulty,
+      completed_case_id: summary.caseId,
+      next_case_id: nextSlot?.caseData.case_id,
+      archetype: summary.caseData.archetype,
+      source: "case_summary"
+    });
+    requestCaseStart(normalizedDifficulty);
   }
 
   if (state.status === "loading" || state.status === "idle") return <LoadingView />;
@@ -916,7 +953,7 @@ export function ProtectedPracticeScreen() {
               caseItem={summary.caseData}
               showSummaryReferences={showSummaryReferences}
               showAbnormalHighlighting={showAbnormalHighlighting}
-              onNextCase={() => requestCaseStart(normalizedDifficulty)}
+              onNextCase={handleNextCaseFromSummary}
               onOpenFeedback={handleOpenFeedback}
               storage={state.storage}
             />
