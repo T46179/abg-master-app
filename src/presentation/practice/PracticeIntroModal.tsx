@@ -8,18 +8,13 @@ interface PracticeIntroModalProps {
 
 const PRACTICE_INTRO_COPY = {
   title: "Welcome to ABG Master!",
-  introLead: "Practice structured ABG interpretation through clinical cases.",
+  introLead: "Build your blood gas interpretation skills through structured learning and clinical practice cases",
   paragraphs: [
-    "Difficulty currently scales as you progress, but is still being refined as the case library grows.",
-    "Case explanations and stems are currently a work in progress."
+    "Choose Learn for guided modules, or Practice to work through cases with feedback and explanations.",
+    "ABG Master is in beta, so some case wording, difficulty scaling, and explanations are still being refined. Your feedback will help improve the future versions.",
+    "All difficulties are unlocked during beta."
   ],
-  comingSoonTitle: "Coming soon",
-  comingSoonItems: [
-    "More learning modules",
-    "Performance Analytics",
-  ],
-  closing: "Clinical scenarios and feedback explanations are still evolving. Your feedback will help shape the final version.",
-  cta: "Start Practicing"
+  cta: "Practice"
 } as const;
 
 export function PracticeIntroModal(props: PracticeIntroModalProps) {
@@ -34,13 +29,6 @@ export function PracticeIntroModal(props: PracticeIntroModalProps) {
           {PRACTICE_INTRO_COPY.paragraphs.map(paragraph => (
             <p key={paragraph}>{paragraph}</p>
           ))}
-          <p className="practice-intro-copy__subheading"><strong>{PRACTICE_INTRO_COPY.comingSoonTitle}</strong></p>
-          <ul className="practice-intro-list">
-            {PRACTICE_INTRO_COPY.comingSoonItems.map(item => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-          <p>{PRACTICE_INTRO_COPY.closing}</p>
         </div>
         <p className="practice-intro-modal__cta-prompt">Where would you like to start?</p>
         <div className="modal-card__actions practice-intro-modal__actions">

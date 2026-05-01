@@ -9,8 +9,13 @@ import { LeaderboardScreen } from "../presentation/screens/LeaderboardScreen";
 import { LearnScreen } from "../presentation/screens/LearnScreen";
 import { LearnLessonScreen } from "../presentation/screens/LearnLessonScreen";
 import { PrivacyScreen } from "../presentation/screens/PrivacyScreen";
+import { BloodGasCompensationRulesScreen } from "../presentation/screens/BloodGasCompensationRulesScreen";
 
 export const appRoutes: RouteObject[] = [
+  {
+    path: "/blood-gas-compensation-rules",
+    element: <BloodGasCompensationRulesScreen />
+  },
   {
     path: "/",
     element: <LandingScreen />

@@ -132,14 +132,60 @@ describe("LandingScreen", () => {
     renderScreen();
 
     expect(trackPageView).toHaveBeenCalledWith("landing");
+    expect(trackEvent).toHaveBeenCalledWith("landing_viewed", {
+      source: "landing"
+    });
     expect(container.textContent).toContain("Master Blood Gas Interpretation");
 
     const links = Array.from(container.querySelectorAll("a"));
-    const primaryLink = links.find(link => link.textContent?.includes("Begin Your First Case"));
+    const primaryLink = links.find(link => link.textContent?.includes("Start Your First Case"));
     const headerLink = links.find(link => link.textContent?.includes("Dashboard"));
 
     expect(primaryLink?.getAttribute("href")).toBe("/practice");
     expect(headerLink?.getAttribute("href")).toBe("/dashboard");
+  });
+
+  it("tracks prominent landing cta clicks into practice", () => {
+    renderScreen();
+
+    const practiceLinks = Array.from(container.querySelectorAll<HTMLAnchorElement>('a[href="/practice"]'))
+      .filter(link => link.textContent?.includes("Start Your First Case"));
+
+    expect(practiceLinks).toHaveLength(2);
+
+    act(() => {
+      practiceLinks.forEach(link => {
+        link.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+    });
+
+    expect(trackEvent).toHaveBeenCalledWith("landing_cta_clicked", {
+      cta_label: "Start Your First Case",
+      destination: "/practice",
+      source: "landing"
+    });
+
+    const learnNavLink = Array.from(container.querySelectorAll<HTMLAnchorElement>('a[href="/learn?all=1"]'))
+      .find(link => link.textContent?.trim() === "Learn");
+    const practiceNavLink = Array.from(container.querySelectorAll<HTMLAnchorElement>('a[href="/practice"]'))
+      .find(link => link.textContent?.trim() === "Practice");
+
+    act(() => {
+      learnNavLink?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      practiceNavLink?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(trackEvent).toHaveBeenCalledWith("landing_cta_clicked", {
+      cta_label: "Learn",
+      destination: "/learn?all=1",
+      source: "landing"
+    });
+    expect(trackEvent).toHaveBeenCalledWith("landing_cta_clicked", {
+      cta_label: "Practice",
+      destination: "/practice",
+      source: "landing"
+    });
+    expect(trackEvent.mock.calls.filter(call => call[0] === "landing_cta_clicked")).toHaveLength(4);
   });
 
   it("shows learn in navigation while keeping launch content visible", () => {

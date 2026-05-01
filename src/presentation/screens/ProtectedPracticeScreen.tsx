@@ -51,7 +51,7 @@ import {
   markCaseSeen,
   rememberRecentArchetype
 } from "../../core/selection";
-import type { AnswerSelection, AnswerValue, IssuedPracticeSlot, StepResult } from "../../core/types";
+import type { AnswerSelection, AnswerValue, CaseData, IssuedPracticeSlot, StepResult } from "../../core/types";
 import { getLearnUnlockMilestoneForLevelTransition } from "../learn/content";
 import { LearnUnlockModal } from "../learn/LearnUnlockModal";
 import { Surface } from "../primitives/Surface";
@@ -75,6 +75,9 @@ export function ProtectedPracticeScreen() {
   const introAcceptedRef = useRef(false);
   const difficultyReconciledRef = useRef(false);
   const latestCaseLoadRequestRef = useRef(0);
+  const practiceOpenedTrackedRef = useRef(false);
+  const caseStartTrackedRef = useRef(new Set<string>());
+  const summaryViewTrackedRef = useRef(new Set<string>());
 
   const payload = state.payload;
   const progressionInput = {
@@ -88,6 +91,7 @@ export function ProtectedPracticeScreen() {
   const hasExplicitDifficultyParam = searchParams.has("difficulty");
   const requestedDifficulty = searchParams.get("difficulty") ?? defaultDifficulty;
   const normalizedDifficulty = normalizeDifficultyKey(progressionInput, requestedDifficulty);
+  const analyticsSource = searchParams.get("source") ?? undefined;
   const difficultyMeta = getDifficultyMeta(progressionInput);
   const accessibleDifficulties = getAccessibleDifficultyKeys(progressionInput);
   const canLoadCase = canStartNewCase(progressionInput);
@@ -120,8 +124,27 @@ export function ProtectedPracticeScreen() {
   const currentDifficultyLevel = Number(currentCase?.difficulty_level ?? summary?.caseData.difficulty_level ?? 1);
   const showAbnormalHighlighting = currentDifficultyLevel <= 3;
   const shouldAutoLoadPracticeCase = !currentCase && !summary && canLoadCase;
+  const isReadyForPracticeIntroGate = state.status === "ready" && Boolean(state.storage);
   const hasSeenPracticeIntro = state.storage?.loadPracticeIntroSeen() ?? false;
-  const shouldOpenPracticeIntro = shouldShowPracticeIntro(hasSeenPracticeIntro, Boolean(currentCase), Boolean(summary));
+  const hasVisitedAppArea = state.storage?.loadAppAreaVisited() ?? false;
+  const hasSeenStoredCases = Object.values(state.storage?.loadSeenCaseState() ?? {}).some(caseIds => caseIds.length > 0);
+  const hasExistingPracticeProgress = Boolean(
+    state.userState.casesCompleted > 0 ||
+    state.userState.totalAnswers > 0 ||
+    state.userState.correctAnswers > 0 ||
+    state.userState.xp > 0 ||
+    state.userState.level > 1 ||
+    (Array.isArray(state.userState.appliedProtectedCaseTokens) && state.userState.appliedProtectedCaseTokens.length > 0) ||
+    (Array.isArray(state.userState.recentResults) && state.userState.recentResults.length > 0) ||
+    hasSeenStoredCases
+  );
+  const shouldOpenPracticeIntro = isReadyForPracticeIntroGate && shouldShowPracticeIntro(
+    hasSeenPracticeIntro,
+    hasVisitedAppArea,
+    Boolean(currentCase),
+    Boolean(summary),
+    hasExistingPracticeProgress
+  );
   const finalLevelProgress = getLevelProgress(payload?.progressionConfig ?? null, state.userState);
   const preAwardUserState = summary
     ? syncUserStateDerivedFields(
@@ -148,11 +171,48 @@ export function ProtectedPracticeScreen() {
     state.practiceState.syncState === "submitting" &&
     state.practiceState.pendingSubmission?.caseToken === state.practiceState.currentCaseToken;
 
+  function withAnalyticsSource(params: Record<string, unknown>) {
+    return analyticsSource ? { ...params, source: analyticsSource } : params;
+  }
+
+  function trackPracticeCaseStarted(difficultyKey: string, caseData: CaseData, caseToken?: string | null) {
+    const trackingKey = `${difficultyKey}:${caseToken ?? caseData.case_id}`;
+    if (caseStartTrackedRef.current.has(trackingKey)) return;
+
+    caseStartTrackedRef.current.add(trackingKey);
+    trackEvent("practice_case_started", withAnalyticsSource({
+      difficulty: difficultyKey,
+      case_id: caseData.case_id,
+      archetype: caseData.archetype
+    }));
+  }
+
+  function trackPracticeStepAnswered(isCorrect: boolean) {
+    if (!currentCase || !currentStep) return;
+
+    trackEvent("practice_step_answered", withAnalyticsSource({
+      difficulty: activeCaseDifficulty,
+      case_id: currentCase.case_id,
+      archetype: currentCase.archetype,
+      step: currentStep.key,
+      is_correct: isCorrect,
+      total_steps: totalSteps || undefined
+    }));
+  }
+
   useEffect(() => {
     if (requestedDifficulty !== normalizedDifficulty) {
       setSearchParams({ difficulty: normalizedDifficulty }, { replace: true });
     }
   }, [normalizedDifficulty, requestedDifficulty, setSearchParams]);
+
+  useEffect(() => {
+    if (!isReadyForPracticeIntroGate) return;
+    if (hasExistingPracticeProgress && (!hasSeenPracticeIntro || !hasVisitedAppArea)) {
+      if (!hasSeenPracticeIntro) state.storage?.savePracticeIntroSeen(true);
+      if (!hasVisitedAppArea) state.storage?.saveAppAreaVisited(true);
+    }
+  }, [hasExistingPracticeProgress, hasSeenPracticeIntro, hasVisitedAppArea, isReadyForPracticeIntroGate, state.storage]);
 
   useEffect(() => {
     if (difficultyReconciledRef.current) return;
@@ -175,6 +235,15 @@ export function ProtectedPracticeScreen() {
       patchSessionState({ currentDifficulty: normalizedDifficulty });
     }
   }, [normalizedDifficulty, patchSessionState, state.sessionState.currentDifficulty]);
+
+  useEffect(() => {
+    if (state.status !== "ready" || practiceOpenedTrackedRef.current) return;
+
+    practiceOpenedTrackedRef.current = true;
+    trackEvent("practice_opened", withAnalyticsSource({
+      difficulty: normalizedDifficulty
+    }));
+  }, [normalizedDifficulty, state.status]);
 
   useEffect(() => {
     activeStepRef.current?.scrollIntoView({
@@ -213,6 +282,22 @@ export function ProtectedPracticeScreen() {
       window.cancelAnimationFrame(frameId);
     };
   }, [summary?.caseId]);
+
+  useEffect(() => {
+    if (!summary) return;
+
+    const summaryKey = summary.caseToken ?? summary.caseId;
+    if (summaryViewTrackedRef.current.has(summaryKey)) return;
+
+    summaryViewTrackedRef.current.add(summaryKey);
+    trackEvent("case_explanation_viewed", withAnalyticsSource({
+      difficulty: summary.difficulty,
+      case_id: summary.caseId,
+      archetype: summary.caseData.archetype,
+      total_steps: summary.totalSteps,
+      correct_steps: summary.correctSteps
+    }));
+  }, [summary?.caseId, summary?.caseToken]);
 
   async function persistUserState(nextUserState: typeof state.userState) {
     await setUserState(nextUserState);
@@ -301,13 +386,17 @@ export function ProtectedPracticeScreen() {
   ]);
 
   useEffect(() => {
+    if (!isReadyForPracticeIntroGate) return;
     if (!shouldAutoLoadPracticeCase) return;
+    if (introOpen) return;
     if (introAcceptedRef.current) {
       introAcceptedRef.current = false;
       return;
     }
 
     if (shouldOpenPracticeIntro) {
+      state.storage?.savePracticeIntroSeen(true);
+      state.storage?.saveAppAreaVisited(true);
       if (!introOpen || pendingDifficulty !== normalizedDifficulty) {
         setPendingDifficulty(normalizedDifficulty);
         setIntroOpen(true);
@@ -318,8 +407,11 @@ export function ProtectedPracticeScreen() {
       return;
     }
 
+    if (!hasVisitedAppArea) {
+      state.storage?.saveAppAreaVisited(true);
+    }
     void beginCase(normalizedDifficulty);
-  }, [currentCase, introOpen, normalizedDifficulty, pendingDifficulty, shouldAutoLoadPracticeCase, shouldOpenPracticeIntro]);
+  }, [currentCase, hasVisitedAppArea, introOpen, isReadyForPracticeIntroGate, normalizedDifficulty, pendingDifficulty, shouldAutoLoadPracticeCase, shouldOpenPracticeIntro, state.storage]);
 
   async function activateSlot(difficultyKey: string, slot: IssuedPracticeSlot, options?: { preview?: boolean }) {
     if (!slotMatchesDifficultyKey(slot, difficultyKey)) {
@@ -350,11 +442,7 @@ export function ProtectedPracticeScreen() {
     });
     setRecentArchetypes(previous => rememberRecentArchetype(previous, slot.caseData));
     if (!options?.preview) {
-      trackEvent("case_started", {
-        case_id: slot.caseData.case_id,
-        archetype: slot.caseData.archetype,
-        difficulty: difficultyKey
-      });
+      trackPracticeCaseStarted(difficultyKey, slot.caseData, slot.caseToken);
     }
   }
 
@@ -365,11 +453,7 @@ export function ProtectedPracticeScreen() {
       currentDifficulty: difficultyKey,
       caseStartMs: Date.now()
     });
-    trackEvent("case_started", {
-      case_id: currentCase.case_id,
-      archetype: currentCase.archetype,
-      difficulty: difficultyKey
-    });
+    trackPracticeCaseStarted(difficultyKey, currentCase, state.practiceState.currentCaseToken);
   }
 
   async function beginCase(difficultyKey: string, options?: { confirmAbandon?: boolean; preview?: boolean }) {
@@ -400,17 +484,29 @@ export function ProtectedPracticeScreen() {
   }
 
   function requestCaseStart(difficultyKey: string) {
-    if (!state.storage?.loadPracticeIntroSeen()) {
+    const shouldOpenIntro = shouldShowPracticeIntro(
+      state.storage?.loadPracticeIntroSeen() ?? false,
+      state.storage?.loadAppAreaVisited() ?? false,
+      Boolean(currentCase),
+      Boolean(summary),
+      hasExistingPracticeProgress
+    );
+
+    if (shouldOpenIntro) {
+      state.storage?.savePracticeIntroSeen(true);
+      state.storage?.saveAppAreaVisited(true);
       setPendingDifficulty(difficultyKey);
       setIntroOpen(true);
       return;
     }
 
+    state.storage?.saveAppAreaVisited(true);
     void beginCase(difficultyKey);
   }
 
   function handleContinueFromIntro() {
     state.storage?.savePracticeIntroSeen(true);
+    state.storage?.saveAppAreaVisited(true);
     const nextDifficulty = pendingDifficulty ?? normalizedDifficulty;
     introAcceptedRef.current = true;
     setIntroOpen(false);
@@ -424,6 +520,7 @@ export function ProtectedPracticeScreen() {
 
   function handleLearnFirstFromIntro() {
     state.storage?.savePracticeIntroSeen(true);
+    state.storage?.saveAppAreaVisited(true);
     setIntroOpen(false);
     setPendingDifficulty(null);
   }
@@ -516,11 +613,7 @@ export function ProtectedPracticeScreen() {
         selectedAnswers: []
       });
 
-      trackEvent("step_answered", {
-        case_id: currentCase.case_id,
-        step: currentStep.key,
-        correct: nextResults[currentStepIndex]?.correct
-      });
+      trackPracticeStepAnswered(Boolean(nextResults[currentStepIndex]?.correct));
       return;
     }
 
@@ -540,11 +633,7 @@ export function ProtectedPracticeScreen() {
         patchSessionState({
           selectedAnswers: nextSelections
         });
-        trackEvent("step_answered", {
-          case_id: currentCase.case_id,
-          step: currentStep.key,
-          correct: true
-        });
+        trackPracticeStepAnswered(true);
         return;
       }
 
@@ -552,11 +641,7 @@ export function ProtectedPracticeScreen() {
         selectedAnswers: nextSelections,
         currentStepIndex: currentStepIndex + 1
       });
-      trackEvent("step_answered", {
-        case_id: currentCase.case_id,
-        step: currentStep.key,
-        correct: true
-      });
+      trackPracticeStepAnswered(true);
       return;
     }
 
@@ -573,11 +658,7 @@ export function ProtectedPracticeScreen() {
       selectedAnswers: nextSelections,
       stepResults: nextResults
     });
-    trackEvent("step_answered", {
-      case_id: currentCase.case_id,
-      step: currentStep.key,
-      correct: false
-    });
+    trackPracticeStepAnswered(false);
   }
 
   async function submitCase(selectedAnswersOverride?: AnswerSelection[]) {
@@ -679,13 +760,14 @@ export function ProtectedPracticeScreen() {
         caseStartMs: null
       });
 
-      trackEvent("case_completed", {
+      trackEvent("practice_case_completed", withAnalyticsSource({
         case_id: currentCase.case_id,
         archetype: currentCase.archetype,
         difficulty: normalizedDifficulty,
-        accuracy: result.summary.accuracy,
-        elapsed_seconds: Math.round(elapsedSeconds)
-      });
+        total_steps: cappedSummary.totalSteps,
+        correct_steps: cappedSummary.correctSteps,
+        completed: true
+      }));
     } catch (error) {
       if (isProtectedPracticeError(error) && error.code === "CASE_TOKEN_EXPIRED") {
         const nextSlots = {
@@ -750,20 +832,12 @@ export function ProtectedPracticeScreen() {
           feedback: buildConciseStepFeedback(currentCase, currentStep.key)
         };
         patchSessionState({ stepResults: nextResults });
-        trackEvent("step_answered", {
-          case_id: currentCase.case_id,
-          step: currentStep.key,
-          correct
-        });
+        trackPracticeStepAnswered(correct);
         return;
       }
 
       if (correct) {
-        trackEvent("step_answered", {
-          case_id: currentCase.case_id,
-          step: currentStep.key,
-          correct: true
-        });
+        trackPracticeStepAnswered(true);
         if (currentStepIndex < totalSteps - 1) {
           patchSessionState({ currentStepIndex: currentStepIndex + 1 });
           return;
@@ -782,11 +856,7 @@ export function ProtectedPracticeScreen() {
         correct: false
       };
       patchSessionState({ stepResults: nextResults });
-      trackEvent("step_answered", {
-        case_id: currentCase.case_id,
-        step: currentStep.key,
-        correct: false
-      });
+      trackPracticeStepAnswered(false);
       return;
     }
 
@@ -801,6 +871,20 @@ export function ProtectedPracticeScreen() {
   function handleOpenFeedback() {
     if (!summary) return;
     openCaseFeedbackForm(summary);
+  }
+
+  function handleNextCaseFromSummary() {
+    if (!summary) return;
+
+    const nextSlot = state.practiceState.practiceSlotsByDifficulty[normalizedDifficulty];
+    trackEvent("practice_next_case_clicked", {
+      difficulty: normalizedDifficulty,
+      completed_case_id: summary.caseId,
+      next_case_id: nextSlot?.caseData.case_id,
+      archetype: summary.caseData.archetype,
+      source: "case_summary"
+    });
+    requestCaseStart(normalizedDifficulty);
   }
 
   if (state.status === "loading" || state.status === "idle") return <LoadingView />;
@@ -869,7 +953,7 @@ export function ProtectedPracticeScreen() {
               caseItem={summary.caseData}
               showSummaryReferences={showSummaryReferences}
               showAbnormalHighlighting={showAbnormalHighlighting}
-              onNextCase={() => requestCaseStart(normalizedDifficulty)}
+              onNextCase={handleNextCaseFromSummary}
               onOpenFeedback={handleOpenFeedback}
               storage={state.storage}
             />

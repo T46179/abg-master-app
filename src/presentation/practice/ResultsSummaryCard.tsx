@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 import { Surface } from "../primitives/Surface";
+import timerIcon from "../../assets/icons/timer.svg";
 import type {
   CaseData,
   CaseSummary,
@@ -55,6 +56,7 @@ function getTrimmedSectionBody(section: Pick<ExplanationSection, "body">) {
 }
 
 const EXPLANATION_DISPLAY_ORDER: Partial<Record<ExplanationSection["key"], number>> = {
+  primary_disorder: 0,
   compensation: 1,
   anion_gap: 2,
   additional_metabolic_process: 3,
@@ -70,6 +72,7 @@ function getRenderedExplanationSections(caseSummary: CaseSummary): ExplanationSe
     "compensation",
     "clinical_context",
     "diagnosis",
+    "primary_disorder",
     "key_takeaway"
   ]);
 
@@ -212,7 +215,10 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
     <div className="results-flow">
       <Surface className="results-card">
         <div className="results-card__topbar">
-          <span className="results-card__time">{formatElapsed(props.summary.elapsedSeconds)}</span>
+          <span className="results-card__time">
+            <img src={timerIcon} alt="" aria-hidden="true" />
+            <span>{formatElapsed(props.summary.elapsedSeconds)}</span>
+          </span>
         </div>
 
         <div className="results-card__diagnosis">
@@ -358,8 +364,10 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                     >
                       <strong>{stepResult.label}</strong>
                       <p>
-                        You chose <MetricInlineText text={formatAnswerValue(stepResult.chosen)} />. Correct answer:{" "}
-                        <MetricInlineText text={formatAnswerValue(stepResult.correctAnswer)} />.
+                        <span>You chose: <MetricInlineText text={formatAnswerValue(stepResult.chosen)} /></span>
+                        {!stepResult.correct ? (
+                          <span>Correct answer: <MetricInlineText text={formatAnswerValue(stepResult.correctAnswer)} /></span>
+                        ) : null}
                       </p>
                     </article>
                   ))}

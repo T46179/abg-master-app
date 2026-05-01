@@ -12,6 +12,7 @@ import type {
 const USER_STATE_STORAGE_KEY = "abgmaster_userState";
 const USER_STATE_MODE_STORAGE_KEY = "abgmaster_userState_mode";
 const PRACTICE_INTRO_SEEN_STORAGE_KEY = "practiceIntroSeen";
+const APP_AREA_VISITED_STORAGE_KEY = "abgmaster_appAreaVisited";
 const ADVANCED_RANGES_STORAGE_KEY = "abgmaster_showAdvancedRanges";
 const RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY = "abgmaster_resultsExplanationPreferences";
 const RESULTS_REVIEW_EXPANDED_STORAGE_KEY = "abgmaster_resultsReviewExpanded";
@@ -28,6 +29,7 @@ export const STORAGE_KEYS = {
   USER_STATE_STORAGE_KEY,
   USER_STATE_MODE_STORAGE_KEY,
   PRACTICE_INTRO_SEEN_STORAGE_KEY,
+  APP_AREA_VISITED_STORAGE_KEY,
   ADVANCED_RANGES_STORAGE_KEY,
   RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY,
   RESULTS_REVIEW_EXPANDED_STORAGE_KEY,
@@ -241,6 +243,14 @@ export function createLocalStorageAdapter(browserStorage: BrowserStorageLike): S
       safeSetItem(browserStorage, PRACTICE_INTRO_SEEN_STORAGE_KEY, String(Boolean(value)));
     },
 
+    loadAppAreaVisited() {
+      return safeGetItem(browserStorage, APP_AREA_VISITED_STORAGE_KEY) === "true";
+    },
+
+    saveAppAreaVisited(value) {
+      safeSetItem(browserStorage, APP_AREA_VISITED_STORAGE_KEY, String(Boolean(value)));
+    },
+
     loadAdvancedRangesPreference() {
       return safeGetItem(browserStorage, ADVANCED_RANGES_STORAGE_KEY) === "true";
     },
@@ -417,6 +427,14 @@ export function createSupabaseStorageAdapter(
       localAdapter.savePracticeIntroSeen(value);
     },
 
+    loadAppAreaVisited() {
+      return localAdapter.loadAppAreaVisited();
+    },
+
+    saveAppAreaVisited(value) {
+      localAdapter.saveAppAreaVisited(value);
+    },
+
     loadAdvancedRangesPreference() {
       return localAdapter.loadAdvancedRangesPreference();
     },
@@ -487,6 +505,12 @@ export function createAppStorage(options?: {
     },
     savePracticeIntroSeen(value) {
       activeAdapter.savePracticeIntroSeen(value);
+    },
+    loadAppAreaVisited() {
+      return activeAdapter.loadAppAreaVisited();
+    },
+    saveAppAreaVisited(value) {
+      activeAdapter.saveAppAreaVisited(value);
     },
     loadAdvancedRangesPreference() {
       return activeAdapter.loadAdvancedRangesPreference();

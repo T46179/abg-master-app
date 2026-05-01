@@ -4,6 +4,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { CaseSummary, IssuedPracticeSlot } from "../../core/types";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -11,7 +12,9 @@ const patchPracticeState = vi.fn();
 const patchSessionState = vi.fn();
 const setUserState = vi.fn();
 const trackEvent = vi.fn();
+const mockCanStartNewCase = vi.hoisted(() => vi.fn(() => false));
 let latestQuestionFlowCardProps: Record<string, unknown> | null = null;
+let latestResultsSummaryCardProps: Record<string, unknown> | null = null;
 
 let currentState: {
   status: "ready";
@@ -24,8 +27,8 @@ let currentState: {
     contentVersion: string;
     deliveryMode: "protected_runtime";
   };
-  runtimeConfig: null;
-  supabase: null;
+  runtimeConfig: Record<string, unknown> | null;
+  supabase: Record<string, unknown> | null;
   userState: {
     xp: number;
     level: number;
@@ -54,9 +57,9 @@ let currentState: {
   };
   practiceState: {
     currentCase: Record<string, unknown> | null;
-    currentCaseToken: null;
-    currentCaseExpiresAt: null;
-    lastCaseSummary: null;
+    currentCaseToken: string | null;
+    currentCaseExpiresAt: string | null;
+    lastCaseSummary: CaseSummary | Record<string, unknown> | null;
     practiceSlotsByDifficulty: Record<string, unknown>;
     pendingSubmission: null;
     syncState: "idle" | "unavailable";
@@ -65,8 +68,11 @@ let currentState: {
   storage: {
     loadPracticeIntroSeen: () => boolean;
     savePracticeIntroSeen: ReturnType<typeof vi.fn>;
+    loadAppAreaVisited: () => boolean;
+    saveAppAreaVisited: ReturnType<typeof vi.fn>;
     saveAdvancedRangesPreference: ReturnType<typeof vi.fn>;
-    loadSeenCaseState: () => Record<string, never>;
+    loadSeenCaseState: () => Record<string, string[]>;
+    saveSeenCaseState: ReturnType<typeof vi.fn>;
   };
 };
 
@@ -126,7 +132,7 @@ vi.mock("../../core/practice", () => ({
 }));
 
 vi.mock("../../core/progression", () => ({
-  canStartNewCase: () => false,
+  canStartNewCase: () => mockCanStartNewCase(),
   getAccessibleDifficultyKeys: () => [],
   getAwardableXp: vi.fn(),
   getDifficultyLabel: () => "beginner",
@@ -159,7 +165,10 @@ vi.mock("../practice/QuestionFlowCard", () => ({
 }));
 
 vi.mock("../practice/ResultsSummaryCard", () => ({
-  ResultsSummaryCard: () => null,
+  ResultsSummaryCard: (props: Record<string, unknown>) => {
+    latestResultsSummaryCardProps = props;
+    return <button type="button" onClick={() => (props.onNextCase as () => void)?.()}>Next case</button>;
+  },
   ResultsSummaryHeader: () => null
 }));
 
@@ -171,7 +180,56 @@ vi.mock("../practice/ValuePanels", () => ({
   ValuePanels: () => null
 }));
 
+import {
+  applyProtectedCaseCompletion,
+  buildPendingPracticeSubmission,
+  submitProtectedPracticeCase
+} from "../../core/protectedPractice";
+import { reconcileProtectedSummaryWithLockedStepResults } from "../../core/practice";
 import { ProtectedPracticeScreen } from "./ProtectedPracticeScreen";
+
+function makeCaseSummary(overrides: Partial<CaseSummary> = {}): CaseSummary {
+  return {
+    caseToken: "summary-token",
+    caseId: "CASE_005",
+    title: "Test case",
+    difficulty: "beginner",
+    explanation: { overview: "Test explanation", sections: [] },
+    learningObjective: "Test learning objective",
+    elapsedSeconds: 30,
+    accuracy: 1,
+    correctSteps: 5,
+    totalSteps: 5,
+    totalXpAward: 10,
+    baseXp: 10,
+    perfectBonus: 0,
+    speedBonus: 0,
+    level: 1,
+    stepResults: [],
+    caseData: {
+      case_id: "CASE_005",
+      archetype: "simple_nagma",
+      difficulty_level: 1
+    },
+    ...overrides
+  };
+}
+
+function makePracticeSlot(overrides: Partial<IssuedPracticeSlot> = {}): IssuedPracticeSlot {
+  return {
+    caseToken: "token-next",
+    issuedAt: "2026-04-30T00:00:00.000Z",
+    expiresAt: "2026-04-30T01:00:00.000Z",
+    contentVersion: "beta-1",
+    difficultyKey: "beginner",
+    caseData: {
+      case_id: "CASE_NEXT",
+      archetype: "simple_nagma",
+      difficulty_level: 1
+    },
+    ...overrides
+  };
+}
 
 describe("ProtectedPracticeScreen unavailable messaging", () => {
   let container: HTMLDivElement;
@@ -185,7 +243,40 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
     patchSessionState.mockReset();
     setUserState.mockReset();
     trackEvent.mockReset();
+    mockCanStartNewCase.mockReset();
+    mockCanStartNewCase.mockReturnValue(false);
     latestQuestionFlowCardProps = null;
+    latestResultsSummaryCardProps = null;
+    vi.mocked(buildPendingPracticeSubmission).mockReturnValue({
+      caseToken: "token-1",
+      caseId: "CASE_001",
+      contentVersion: "beta-1",
+      difficultyKey: "beginner",
+      answers: [],
+      elapsedSeconds: 0,
+      timedMode: false,
+      clientCompletedAt: "2026-04-30T00:00:00.000Z"
+    });
+    vi.mocked(reconcileProtectedSummaryWithLockedStepResults).mockImplementation(({ summary }) => summary);
+    vi.mocked(applyProtectedCaseCompletion).mockImplementation(({ userState }) => userState);
+    vi.mocked(submitProtectedPracticeCase).mockResolvedValue({
+      summary: makeCaseSummary({
+        caseId: "CASE_005",
+        caseData: {
+          case_id: "CASE_005",
+          archetype: "simple_nagma",
+          difficulty_level: 1
+        }
+      }),
+      replacementSlot: makePracticeSlot({
+        caseToken: "token-next",
+        caseData: {
+          case_id: "CASE_NEXT",
+          archetype: "simple_nagma",
+          difficulty_level: 1
+        }
+      })
+    });
     Object.defineProperty(window.navigator, "onLine", {
       configurable: true,
       value: true
@@ -242,8 +333,11 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
       storage: {
         loadPracticeIntroSeen: () => true,
         savePracticeIntroSeen: vi.fn(),
+        loadAppAreaVisited: () => true,
+        saveAppAreaVisited: vi.fn(),
         saveAdvancedRangesPreference: vi.fn(),
-        loadSeenCaseState: () => ({})
+        loadSeenCaseState: () => ({}),
+        saveSeenCaseState: vi.fn()
       }
     };
   });
@@ -265,6 +359,160 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
       );
     });
   }
+
+  it("tracks practice page opens with the selected difficulty", () => {
+    renderScreen("/practice?difficulty=beginner&source=landing");
+
+    expect(trackEvent).toHaveBeenCalledWith("practice_opened", {
+      difficulty: "beginner",
+      source: "landing"
+    });
+  });
+
+  it("tracks practice case starts when a cached case is activated", async () => {
+    mockCanStartNewCase.mockReturnValue(true);
+    currentState.runtimeConfig = {
+      SUPABASE_URL: "https://example.supabase.co",
+      SUPABASE_ANON_KEY: "anon"
+    };
+    currentState.supabase = {};
+    currentState.practiceState.practiceSlotsByDifficulty = {
+      beginner: {
+        caseToken: "token-1",
+        issuedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        contentVersion: "beta-1",
+        difficultyKey: "beginner",
+        caseData: {
+          case_id: "CASE_001",
+          archetype: "simple_nagma",
+          difficulty_level: 1,
+          questions_flow: [{ key: "ph_status", options: ["Acidaemia"] }]
+        }
+      }
+    };
+
+    renderScreen("/practice?difficulty=beginner&source=landing");
+    await flushEffects();
+
+    expect(trackEvent).toHaveBeenCalledWith("practice_case_started", {
+      difficulty: "beginner",
+      case_id: "CASE_001",
+      archetype: "simple_nagma",
+      source: "landing"
+    });
+  });
+
+  it("tracks practice step answers with correctness", () => {
+    currentState.practiceState.currentCase = {
+      case_id: "CASE_002",
+      archetype: "simple_nagma",
+      difficulty_level: 1,
+      clinical_stem: "Test stem",
+      questions_flow: [{ key: "ph_status", options: ["Acidaemia", "Alkalaemia", "Normal"] }]
+    };
+
+    renderScreen("/practice?difficulty=beginner&source=landing");
+
+    act(() => {
+      (latestQuestionFlowCardProps?.onAnswer as (option: string) => void)?.("Acidaemia");
+    });
+
+    expect(trackEvent).toHaveBeenCalledWith("practice_step_answered", {
+      difficulty: "beginner",
+      case_id: "CASE_002",
+      archetype: "simple_nagma",
+      step: "ph_status",
+      is_correct: false,
+      total_steps: 1,
+      source: "landing"
+    });
+  });
+
+  it("tracks practice case completion", async () => {
+    currentState.runtimeConfig = {
+      SUPABASE_URL: "https://example.supabase.co",
+      SUPABASE_ANON_KEY: "anon"
+    };
+    currentState.supabase = {};
+    currentState.practiceState.currentCaseToken = "token-5";
+    currentState.practiceState.currentCase = {
+      case_id: "CASE_005",
+      archetype: "simple_nagma",
+      difficulty_level: 1,
+      clinical_stem: "Test stem",
+      questions_flow: [{ key: "ph_status", options: ["Acidaemia"] }]
+    };
+    currentState.sessionState.selectedAnswers = [
+      {
+        key: "ph_status",
+        chosen: "Acidaemia"
+      }
+    ];
+
+    renderScreen();
+
+    await act(async () => {
+      (latestQuestionFlowCardProps?.onContinueStep as () => void)?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(trackEvent).toHaveBeenCalledWith("practice_case_completed", {
+      difficulty: "beginner",
+      case_id: "CASE_005",
+      archetype: "simple_nagma",
+      total_steps: 5,
+      correct_steps: 5,
+      completed: true
+    });
+  });
+
+  it("tracks summary views and next-case clicks", () => {
+    currentState.practiceState.lastCaseSummary = makeCaseSummary({
+      caseToken: "summary-token",
+      caseId: "CASE_003",
+      difficulty: "beginner",
+      correctSteps: 4,
+      totalSteps: 5,
+      caseData: {
+        case_id: "CASE_003",
+        archetype: "simple_nagma",
+        difficulty_level: 1
+      }
+    });
+    currentState.practiceState.practiceSlotsByDifficulty = {
+      beginner: makePracticeSlot({
+        caseData: {
+          case_id: "CASE_004",
+          archetype: "simple_nagma",
+          difficulty_level: 1
+        }
+      })
+    };
+
+    renderScreen();
+
+    expect(trackEvent).toHaveBeenCalledWith("case_explanation_viewed", {
+      difficulty: "beginner",
+      case_id: "CASE_003",
+      archetype: "simple_nagma",
+      total_steps: 5,
+      correct_steps: 4
+    });
+
+    act(() => {
+      (latestResultsSummaryCardProps?.onNextCase as () => void)?.();
+    });
+
+    expect(trackEvent).toHaveBeenCalledWith("practice_next_case_clicked", {
+      difficulty: "beginner",
+      completed_case_id: "CASE_003",
+      next_case_id: "CASE_004",
+      archetype: "simple_nagma",
+      source: "case_summary"
+    });
+  });
 
   it("shows a specific unavailable message from state instead of the generic fallback", () => {
     currentState.practiceState.syncMessage = "New cases aren't ready to load right now. Please try again in a moment.";
@@ -292,6 +540,34 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
     expect(container.textContent).toContain("We can't load a new case right now. Please try again.");
   });
 
+  async function flushEffects() {
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+
+  it("self-heals intro flags when existing progress is present", () => {
+    currentState.userState.casesCompleted = 1;
+    currentState.storage.loadPracticeIntroSeen = () => false;
+    currentState.storage.loadAppAreaVisited = () => false;
+
+    renderScreen();
+
+    expect(currentState.storage.savePracticeIntroSeen).toHaveBeenCalledWith(true);
+    expect(currentState.storage.saveAppAreaVisited).toHaveBeenCalledWith(true);
+  });
+
+  it("treats stored seen cases as existing practice progress", () => {
+    currentState.storage.loadPracticeIntroSeen = () => false;
+    currentState.storage.loadAppAreaVisited = () => false;
+    currentState.storage.loadSeenCaseState = () => ({ beginner: ["case-1"] });
+
+    renderScreen();
+
+    expect(currentState.storage.savePracticeIntroSeen).toHaveBeenCalledWith(true);
+    expect(currentState.storage.saveAppAreaVisited).toHaveBeenCalledWith(true);
+  });
+
   it("passes the current non-final multi-select selection to the question flow card", () => {
     currentState.practiceState.syncState = "idle";
     currentState.practiceState.currentCase = {
@@ -310,13 +586,13 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
             "Respiratory alkalosis"
           ]
         },
-        { key: "compensation", options: ["Fits expected compensation", "Does not fit expected compensation"] },
+        { key: "compensation", options: ["Appropriate", "Inappropriate"] },
         { key: "anion_gap", options: ["Raised", "Normal"] },
         {
           key: "additional_metabolic_process",
           options: [
-            "None identified",
-            "Additional normal anion gap metabolic acidosis",
+            "No additional metabolic process",
+            "Additional NAGMA",
             "Additional metabolic alkalosis",
             "Cannot assess / not applicable"
           ]

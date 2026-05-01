@@ -12,7 +12,7 @@ interface InlineFeedbackCardProps {
 
 export function InlineFeedbackCard(props: InlineFeedbackCardProps) {
   return (
-    <div className={`inline-feedback${props.result.correct ? " is-correct" : " is-incorrect"}`}>
+    <div className={`inline-feedback inline-feedback--answer-flow${props.result.correct ? " is-correct" : " is-incorrect"}`}>
       <div className="inline-feedback__grid">
         <div className="inline-feedback__item">
           <span className="inline-feedback__label">Your answer</span>

@@ -2,22 +2,30 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://www.abgmaster.com/</loc>
-    <lastmod>2026-04-24</lastmod>
+    <lastmod>2026-05-01</lastmod>
   </url>
   <url>
     <loc>https://www.abgmaster.com/practice</loc>
-    <lastmod>2026-04-24</lastmod>
+    <lastmod>2026-05-01</lastmod>
   </url>
   <url>
     <loc>https://www.abgmaster.com/learn</loc>
-    <lastmod>2026-04-24</lastmod>
+    <lastmod>2026-05-01</lastmod>
   </url>
   <url>
     <loc>https://www.abgmaster.com/learn/foundations</loc>
-    <lastmod>2026-04-24</lastmod>
+    <lastmod>2026-05-01</lastmod>
   </url>
   <url>
     <loc>https://www.abgmaster.com/learn/beginner</loc>
-    <lastmod>2026-04-24</lastmod>
+    <lastmod>2026-05-01</lastmod>
+  </url>
+    <url>
+    <loc>https://www.abgmaster.com/learn/intermediate</loc>
+    <lastmod>2026-05-01</lastmod>
+  </url>
+  <url>
+    <loc>https://www.abgmaster.com/blood-gas-compensation-rules</loc>
+    <lastmod>2026-05-01</lastmod>
   </url>
 </urlset>

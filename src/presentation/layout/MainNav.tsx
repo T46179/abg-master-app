@@ -11,6 +11,7 @@ interface MainNavProps {
   learnEnabled: boolean;
   showBetaBadge: boolean;
   wideShell?: boolean;
+  onCoreFlowLinkClick?: (label: string, destination: string) => void;
 }
 
 interface NavItem {
@@ -103,6 +104,11 @@ export function MainNav(props: MainNavProps) {
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) => cn("main-nav__link", isActive && "is-active")}
+                onClick={() => {
+                  if (item.to.startsWith("/learn") || item.to.startsWith("/practice")) {
+                    props.onCoreFlowLinkClick?.(item.label, item.to);
+                  }
+                }}
               >
                 <span ref={node => { desktopLinkRefs.current[item.to] = node; }}>{item.label}</span>
               </NavLink>
@@ -156,7 +162,12 @@ export function MainNav(props: MainNavProps) {
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) => cn("main-nav__mobile-link", isActive && "is-active")}
-                onClick={props.onCloseMobile}
+                onClick={() => {
+                  if (item.to.startsWith("/learn") || item.to.startsWith("/practice")) {
+                    props.onCoreFlowLinkClick?.(item.label, item.to);
+                  }
+                  props.onCloseMobile();
+                }}
               >
                 <span>{item.label}</span>
               </NavLink>

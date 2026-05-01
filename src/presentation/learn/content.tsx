@@ -1,7 +1,15 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { Lightbulb } from "lucide-react";
 import kidneysImage from "../../assets/kidneys.webp";
 import lungsImage from "../../assets/lungs.webp";
+import { PillNav } from "../primitives/PillNav";
+import { MetricInlineText } from "../practice/MetricText";
+import {
+  CompensationRulePill as SharedCompensationRulePill,
+  CompensationRuleStack as SharedCompensationRuleStack,
+  compensationRules as sharedCompensationRules,
+  type CompensationRule as SharedCompensationRule
+} from "./CompensationRules";
 
 export type LearnDifficultyKey =
   | "foundations"
@@ -17,6 +25,7 @@ export interface LearnLesson {
   content?: ReactNode;
   ctaLabel?: string;
   ctaHref?: string;
+  requiresCompletionGate?: boolean;
 }
 
 export interface LearnLevelConfig {
@@ -87,7 +96,7 @@ function FoundationsCompletionCard() {
   return (
     <div className="learn-completion learn-completion--foundations">
       <div className="learn-completion__hero">
-        <p className="learn-card-intro">You now have the foundation for interpreting ABGs in ABG Master: pH direction, the two main levers, and how the case values are presented.</p>
+        <p className="learn-card-intro">You now have the foundation for interpreting blood gases: pH direction, the two main levers, and how the case values are presented</p>
 
         <div className="learn-foundations-achievement__title">
           <h3>What you can do now</h3>
@@ -127,6 +136,187 @@ function LearnSummaryCompletionCard(props: { intro: ReactNode; items: ReactNode[
   );
 }
 
+function BlankLearnPage() {
+  return <div className="learn-content-stack" />;
+}
+
+function PaCO2Text() {
+  return <>PaCO<sub>2</sub></>;
+}
+
+type CompensationRuleCategory = "Metabolic" | "Respiratory";
+type CompensationRuleTone = "red" | "green" | "amber" | "orange" | "blue" | "violet";
+
+interface CompensationRule {
+  category: CompensationRuleCategory;
+  title: string;
+  formula: ReactNode;
+  range: string;
+  tone: CompensationRuleTone;
+  icon?: ReactNode;
+  placeholder: string;
+}
+
+function HCO3Text() {
+  return <>HCO<sub>3</sub><sup>-</sup></>;
+}
+
+function OneTwoFourFiveRuleTable() {
+  const rows = [
+    { onset: "Acute", disorder: "Acidosis", change: "+1", tone: "acid" },
+    { onset: "Acute", disorder: "Alkalosis", change: <>&minus;2</>, tone: "alkaline" },
+    { onset: "Chronic", disorder: "Acidosis", change: "+4", tone: "acid" },
+    { onset: "Chronic", disorder: "Alkalosis", change: <>&minus;5</>, tone: "alkaline" }
+  ];
+
+  return (
+    <div className="learn-one-two-four-five-table" data-node-id="1:51">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col"></th>
+            <th scope="col">Respiratory</th>
+            <th scope="col"><HCO3Text /> changes by</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(row => (
+            <tr key={`${row.onset}-${row.disorder}`}>
+              <td>{row.onset}</td>
+              <td className={`is-${row.tone}`}>{row.disorder}</td>
+              <td className={`is-${row.tone}`}>{row.change}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colSpan={3}>per 10 mmHg change in <PaCO2Text /> from 40mmHg</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
+const compensationRules: CompensationRule[] = [
+  {
+    category: "Metabolic",
+    title: "Metabolic Acidosis (Winter's Formula)",
+    formula: <><PaCO2Text /> = (1.5 &times; <HCO3Text />) + 8</>,
+    range: "Acceptable range: ±2 mmHg",
+    tone: "red",
+    placeholder: "Ac"
+  },
+  {
+    category: "Metabolic",
+    title: "Metabolic Alkalosis",
+    formula: <><PaCO2Text /> = 0.7 &times; (<HCO3Text /> &minus; 24) + 40</>,
+    range: "Acceptable range: ±3 mmHg",
+    tone: "green",
+    placeholder: "Al"
+  },
+  {
+    category: "Respiratory",
+    title: "Acute Respiratory Acidosis",
+    formula: <><HCO3Text /> = 24 + ((<PaCO2Text /> &minus; 40) / 10)</>,
+    range: "Acceptable range: ±2 mmol/L",
+    tone: "amber",
+    placeholder: "Ac"
+  },
+  {
+    category: "Respiratory",
+    title: "Chronic Respiratory Acidosis",
+    formula: <><HCO3Text /> = 24 + 4 &times; ((<PaCO2Text /> &minus; 40) / 10)</>,
+    range: "Acceptable range: ±2 mmol/L",
+    tone: "orange",
+    placeholder: "Ch"
+  },
+  {
+    category: "Respiratory",
+    title: "Acute Respiratory Alkalosis",
+    formula: <><HCO3Text /> = 24 &minus; 2 &times; ((40 &minus; <PaCO2Text />) / 10)</>,
+    range: "Acceptable range: ±2 mmol/L",
+    tone: "blue",
+    placeholder: "Ac"
+  },
+  {
+    category: "Respiratory",
+    title: "Chronic Respiratory Alkalosis",
+    formula: <><HCO3Text /> = 24 &minus; 5 &times; ((40 &minus; <PaCO2Text />) / 10)</>,
+    range: "Acceptable range: ±2 mmol/L",
+    tone: "violet",
+    placeholder: "Ch"
+  }
+];
+
+const compensationRuleExplanations: Record<CompensationRuleCategory, { title: string; body: ReactNode; note: ReactNode }> = {
+  Metabolic: {
+    title: "When the primary problem is metabolic",
+    body: (
+      <>
+        Use these rules to estimate the PaCO<sub>2</sub> the lungs should produce in response to the bicarbonate change.
+      </>
+    ),
+    note: <>If the measured <PaCO2Text /> falls outside the acceptable range, suspect an additional respiratory process.</>
+  },
+  Respiratory: {
+    title: "When the primary problem is respiratory",
+    body: (
+      <>
+        Use these rules to estimate the HCO<sub>3</sub><sup>-</sup> the kidneys should produce in response to the PaCO<sub>2</sub> change.
+      </>
+    ),
+    note: "Choose acute when the change is recent, and chronic when the kidneys have had time to adapt"
+  }
+};
+
+function CompensationRuleIcon(props: { rule: CompensationRule }) {
+  return (
+    <span className={`learn-compensation-rule__icon is-${props.rule.tone}`} aria-hidden="true">
+      {props.rule.icon ?? <span>{props.rule.placeholder}</span>}
+    </span>
+  );
+}
+
+function CompensationRulePill(props: { rule: CompensationRule }) {
+  return (
+    <article className="learn-compensation-rule">
+      <CompensationRuleIcon rule={props.rule} />
+      <div className="learn-compensation-rule__copy">
+        <h3>{props.rule.title}</h3>
+        <p className="learn-compensation-rule__formula">{props.rule.formula}</p>
+        <p className="learn-compensation-rule__range">{props.rule.range}</p>
+      </div>
+    </article>
+  );
+}
+
+function CompensationRuleStack(props: { category: CompensationRuleCategory }) {
+  const rules = compensationRules.filter(rule => rule.category === props.category);
+  const explanation = compensationRuleExplanations[props.category];
+
+  return (
+    <div className="learn-content-stack learn-compensation-rules">
+      <p className="learn-card-intro">
+        Identify the primary disorder, then use the matching rule to estimate the expected compensatory response
+      </p>
+      <section className="learn-compensation-rule-stack" aria-labelledby={`compensation-rules-${props.category.toLowerCase()}`}>
+        <h3 className="learn-compensation-rule-stack__heading" id={`compensation-rules-${props.category.toLowerCase()}`}>
+          {props.category}
+        </h3>
+        <div className="learn-compensation-rule-stack__list">
+          {rules.map(rule => <CompensationRulePill key={rule.title} rule={rule} />)}
+        </div>
+      </section>
+      <aside className="learn-compensation-rule-explainer">
+        <h3>{explanation.title}</h3>
+        <p>{explanation.body}</p>
+        <p>{explanation.note}</p>
+      </aside>
+    </div>
+  );
+}
+
 function BeginnerCompletionCard() {
   const items: ReactNode[] = [
     "Read the pH first and decide whether the blood is acidotic, alkalotic, or normal",
@@ -137,6 +327,22 @@ function BeginnerCompletionCard() {
   return (
     <LearnSummaryCompletionCard
       intro="You now have the core workflow for blood gas interpretation: read the pH, identify the main driver, and connect the pattern to the clinical story"
+      items={items}
+    />
+  );
+}
+
+function IntermediateCompletionCard() {
+  const items: ReactNode[] = [
+    "Use compensation rules to calculate the expected respiratory or metabolic response",
+    "Compare the expected value with the measured value instead of guessing from pH alone",
+    <>Recognise when compensation is appropriate, and when the numbers suggest an additional acid-base process</>,
+    "Apply a repeatable sequence: primary disorder → compensation rule → expected value → measured value"
+  ];
+
+  return (
+    <LearnSummaryCompletionCard
+      intro="You can now check whether the body’s response to an acid-base disorder is appropriate, using expected compensation instead of guesswork"
       items={items}
     />
   );
@@ -262,8 +468,8 @@ function TwoLeversLesson() {
             items={[
               "Produced by metabolism and removed by ventilation",
               "Changes rapidly (minutes)",
-              "Not an acid itself, but forms carbonic acid in the blood",
-              "Transported in the blood in the form of bicarbonate"
+              "Combines with water to form carbonic acid",
+              "Mostly transported as bicarbonate"
             ]}
           />
         </Panel>
@@ -272,7 +478,7 @@ function TwoLeversLesson() {
             items={[
               "Regulated by the kidneys",
               "Changes slowly (hours – days)",
-              "Main buffer in the blood",
+              "Main extracellular buffer",
               "Used up when buffering acid and must be replaced"
             ]}
           />
@@ -375,7 +581,7 @@ function ABGPanelTourLesson() {
 
       <div className="learn-key-message">
         <Lightbulb aria-hidden="true" />
-        <p>As difficulties increase, ABG Master gradually removes clues like colour highlights and normal ranges, then adds values that may not matter. The goal is to build your judgement about what deserves attention.</p>
+        <p>As difficulty increases, ABG Master gradually removes clues like colour highlights and normal ranges, then adds values that may not matter. The goal is to build your judgement about what deserves attention.</p>
       </div>
     </div>
   );
@@ -501,7 +707,7 @@ function WorkedExamplesLesson() {
           tone="red"
           metrics={metabolicAcidosisMetrics}
           reasoning={[
-            "pH is high → alkalaemia",
+            "pH is high → acidaemia",
             <>HCO<sub>3</sub><sup>-</sup> is low and moving with pH</>,
             "This fits metabolic acidosis"
           ]}
@@ -511,6 +717,239 @@ function WorkedExamplesLesson() {
       <div className="learn-key-message">
         <Lightbulb aria-hidden="true" />
         <p>Start with the pH, then look for the value that best explains why it moved.</p>
+      </div>
+    </div>
+  );
+}
+
+function IntermediateWorkedExampleLesson() {
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [results, setResults] = useState<Array<MiniWorkedExampleResult | null>>(() => miniWorkedExampleSteps.map(() => null));
+  const metrics: ABGPrimaryMetric[] = [
+    { label: "pH", value: "7.25", reference: "Normal: 7.35 - 7.45", abnormal: true },
+    { label: <>CO<sub>2</sub></>, value: "28", unit: "mmHg", reference: "Normal: 35 - 45", abnormal: true },
+    { label: <>HCO<sub>3</sub><sup>-</sup></>, value: "12", unit: "mmol/L", reference: "Normal: 22 - 26", abnormal: true }
+  ];
+
+  return (
+    <div className="learn-content-stack learn-intermediate-worked-example">
+      <PrimaryABGValueGrid metrics={metrics} compact />
+      <div className="learn-intermediate-worked-example__workspace" aria-label="Worked example workspace">
+        <MiniWorkedExamplePractice
+          currentStepIndex={currentStepIndex}
+          results={results}
+          setCurrentStepIndex={setCurrentStepIndex}
+          setResults={setResults}
+        />
+        <MiniWorkedExampleWorkflow currentStepIndex={currentStepIndex} results={results} />
+      </div>
+    </div>
+  );
+}
+
+type MiniWorkedExampleStep = {
+  key: "ph_status" | "primary_disorder" | "compensation";
+  pillLabel: string;
+  prompt: string;
+  options: string[];
+  correctAnswer: string;
+  correctFeedback: string;
+  incorrectFeedback: string;
+};
+
+type MiniWorkedExampleResult = {
+  chosen: string;
+  correct: boolean;
+};
+
+const miniWorkedExampleSteps: MiniWorkedExampleStep[] = [
+  {
+    key: "ph_status",
+    pillLabel: "pH",
+    prompt: "What is the pH status?",
+    options: ["Acidaemia", "Alkalaemia", "Normal"],
+    correctAnswer: "Acidaemia",
+    correctFeedback: "Correct. A pH of 7.25 is below 7.35, so this is acidaemia.",
+    incorrectFeedback: "Not quite. A pH below 7.35 means the blood is acidaemic."
+  },
+  {
+    key: "primary_disorder",
+    pillLabel: "Acid-base disorder",
+    prompt: "What is the primary acid-base disorder?",
+    options: ["Respiratory acidosis", "Respiratory alkalosis", "Metabolic acidosis", "Metabolic alkalosis"],
+    correctAnswer: "Metabolic acidosis",
+    correctFeedback: "Correct. The low bicarbonate is moving in the same direction as the low pH.",
+    incorrectFeedback: "Not quite. The pH is low and the bicarbonate is low, so the primary disorder is metabolic acidosis."
+  },
+  {
+    key: "compensation",
+    pillLabel: "Compensation",
+    prompt: "Is compensation appropriate?",
+    options: ["Fits expected compensation", "Does not fit expected compensation"],
+    correctAnswer: "Fits expected compensation",
+    correctFeedback: "Correct. The measured CO2 is inside the expected Winter's formula range.",
+    incorrectFeedback: "Not quite. Winter's formula gives an expected CO2 range of 24-28 mmHg, and the measured CO2 is 28 mmHg."
+  }
+];
+
+function MiniWorkedExamplePractice(props: {
+  currentStepIndex: number;
+  results: Array<MiniWorkedExampleResult | null>;
+  setCurrentStepIndex: Dispatch<SetStateAction<number>>;
+  setResults: Dispatch<SetStateAction<Array<MiniWorkedExampleResult | null>>>;
+}) {
+  const currentStep = miniWorkedExampleSteps[props.currentStepIndex];
+  const currentResult = props.results[props.currentStepIndex];
+
+  function handleAnswer(option: string) {
+    const correct = option === currentStep.correctAnswer;
+    props.setResults(previous => previous.map((result, index) => index === props.currentStepIndex ? { chosen: option, correct } : result));
+    if (correct && props.currentStepIndex === miniWorkedExampleSteps.length - 1 && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("abg-master:learn:completion-gate", { detail: { complete: true } }));
+    }
+  }
+
+  function handleContinue() {
+    if (!currentResult?.correct || props.currentStepIndex >= miniWorkedExampleSteps.length - 1) return;
+    props.setCurrentStepIndex(index => index + 1);
+  }
+
+  const items = miniWorkedExampleSteps.map((step, index) => {
+    const result = props.results[index];
+    return {
+      key: step.key,
+      label: `${index + 1}. ${step.pillLabel}`,
+      active: index === props.currentStepIndex,
+      status: result ? (result.correct ? "correct" as const : "incorrect" as const) : undefined,
+      disabled: false
+    };
+  });
+
+  return (
+    <div className="learn-intermediate-worked-example__practice-panel question-flow-card">
+      <div className="question-flow-card__header">
+        <PillNav items={items} className="question-flow-card__pills" />
+      </div>
+
+      <div className="question-flow-card__body">
+        <p className="question-flow-card__prompt">{currentStep.prompt}</p>
+        <div className="question-flow-card__options">
+          {currentStep.options.map(option => {
+            const isSelected = currentResult?.chosen === option;
+            const selectionTone = isSelected ? (currentResult.correct ? " is-correct" : " is-incorrect") : "";
+            return (
+              <button
+                key={option}
+                className={`answer-option${isSelected ? " is-selected" : ""}${selectionTone}`}
+                type="button"
+                onClick={() => handleAnswer(option)}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+
+        {currentResult ? (
+          <div className={`inline-feedback${currentResult.correct ? " is-correct" : " is-incorrect"}`}>
+            <p className="inline-feedback__note">
+              <MetricInlineText text={currentResult.correct ? currentStep.correctFeedback : currentStep.incorrectFeedback} />
+            </p>
+            {props.currentStepIndex < miniWorkedExampleSteps.length - 1 ? (
+              <button
+                className="figma-button inline-feedback__button"
+                type="button"
+                onClick={handleContinue}
+                disabled={!currentResult.correct}
+              >
+                Continue
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function MiniWorkedExampleWorkflow(props: {
+  currentStepIndex: number;
+  results: Array<MiniWorkedExampleResult | null>;
+}) {
+  const [winterPillTouched, setWinterPillTouched] = useState(false);
+  const [winterPillTapped, setWinterPillTapped] = useState(false);
+  const hasCorrectStepOne = Boolean(props.results[0]?.correct);
+  const hasCorrectStepTwo = Boolean(props.results[1]?.correct);
+  const hasCorrectStepThree = Boolean(props.results[2]?.correct);
+  const shouldShowCompensationStep = hasCorrectStepTwo && props.currentStepIndex >= 2;
+  const winterRule = sharedCompensationRules.find(rule => rule.slug === "metabolic-acidosis") as SharedCompensationRule;
+  const workedWinterRule: SharedCompensationRule = {
+    ...winterRule,
+    title: (
+      <>
+        <span className="learn-mini-winter-pill__desktop-title">Metabolic Acidosis (Winter&apos;s Formula)</span>
+        <span className="learn-mini-winter-pill__mobile-title">Metabolic Acidosis</span>
+      </>
+    ),
+    formula: (
+      <span className="learn-mini-winter-pill__line">
+        <span className="learn-mini-winter-pill__default"><>PaCO<sub>2</sub> = (1.5 &times; HCO<sub>3</sub><sup>-</sup>) + 8</></span>
+        <span className="learn-mini-winter-pill__worked"><>PaCO<sub>2</sub> = (1.5 &times; 12) + 8 = 26 mmHg</></span>
+      </span>
+    ),
+    range: (
+      <span className="learn-mini-winter-pill__line">
+          <span className="learn-mini-winter-pill__default">
+            <span className="learn-mini-winter-pill__desktop-range">Acceptable range: &plusmn;2 mmHg</span>
+            <span className="learn-mini-winter-pill__mobile-range">Range: &plusmn;2 mmHg</span>
+          </span>
+          <span className="learn-mini-winter-pill__worked">
+            <span className="learn-mini-winter-pill__desktop-worked">Expected = 24-28; Measured = 28</span>
+            <span className="learn-mini-winter-pill__mobile-worked">Expected = 24-28; Measured = 28</span>
+          </span>
+      </span>
+    )
+  };
+
+  return (
+    <div className="learn-intermediate-worked-example__text-panel" aria-live="polite">
+      <h3 className="learn-mini-workflow__title">Summary</h3>
+      <div className="learn-mini-workflow">
+        {hasCorrectStepOne ? (
+          <section className="learn-mini-workflow__step">
+            <h3>Step 1: Acidaemia</h3>
+            <p>pH is 7.25, which is below the normal range.</p>
+          </section>
+        ) : null}
+        {hasCorrectStepTwo ? (
+          <section className="learn-mini-workflow__step">
+            <h3>Step 2: Metabolic acidosis</h3>
+            <p>HCO<sub>3</sub><sup>-</sup> is low, so it explains the low pH.</p>
+          </section>
+        ) : null}
+        {shouldShowCompensationStep ? (
+          <section className="learn-mini-workflow__step">
+            <h3>Step 3: Compensation</h3>
+            <div
+              className={`learn-mini-winter-pill${winterPillTouched ? " has-been-touched" : ""}${winterPillTapped ? " is-tapped" : ""}`}
+              tabIndex={0}
+              onFocus={() => setWinterPillTouched(true)}
+              onMouseEnter={() => setWinterPillTouched(true)}
+              onClick={() => {
+                setWinterPillTouched(true);
+                setWinterPillTapped(tapped => !tapped);
+              }}
+            >
+              <SharedCompensationRulePill rule={workedWinterRule} />
+            </div>
+          </section>
+        ) : null}
+        {hasCorrectStepThree ? (
+          <section className="learn-mini-workflow__step">
+            <h3>Final answer</h3>
+            <p>Compensation is appropriate because the measured CO<sub>2</sub> of 28 mmHg sits within the expected range of 24-28 mmHg.</p>
+          </section>
+        ) : null}
       </div>
     </div>
   );
@@ -634,7 +1073,7 @@ const foundationsLessons: LearnLesson[] = [
   },
   {
     kind: "speed-check",
-    title: "Speed check"
+    title: "Blood Gas Blitz"
   },
   {
     kind: "content",
@@ -653,7 +1092,7 @@ const beginnerLessons: LearnLesson[] = [
     kind: "content",
     title: "Step 1: Identify pH",
     content: (
-      <div className="learn-content-stack learn-content-stack--borderless-panels">
+      <div className="learn-content-stack learn-content-stack--borderless-panels learn-body-fights-back-lesson">
         <PHScaleVisualiser showDetails={false} />
         <div>
           <h3 className="learn-section-heading">What is the pH status?</h3>
@@ -678,7 +1117,7 @@ const beginnerLessons: LearnLesson[] = [
     kind: "content",
     title: "Step 2: Identify the primary disorder",
     content: (
-      <div className="learn-content-stack learn-content-stack--borderless-panels">
+      <div className="learn-content-stack learn-content-stack--borderless-panels learn-body-fights-back-lesson">
         <p className="learn-card-intro">
           When pH is abnormal, identify which system is primarily responsible - the lungs (CO<sub>2</sub>) or the kidneys (HCO<sub>3</sub><sup>-</sup>)
         </p>
@@ -752,104 +1191,139 @@ const beginnerLessons: LearnLesson[] = [
 const intermediateLessons: LearnLesson[] = [
   {
     kind: "content",
-    title: "What is compensation?",
+    title: "Compensation",
     content: (
       <div className="learn-content-stack">
+        <p className="learn-card-intro">
+          Learn how the body responds to an acid-base disorder, then decide whether that response is expected - or whether a second disorder is hiding
+        </p>
+      </div>
+    )
+  },
+  {
+    kind: "content",
+    title: "The body fights back",
+    content: (
+      <div className="learn-content-stack learn-content-stack--borderless-panels learn-body-fights-back-lesson">
         <div className="learn-carbonic-equation" aria-label="Carbonic acid buffer equation">
-          CO<sub>2</sub> + H<sub>2</sub>O ⇌ H<sub>2</sub>CO<sub>3</sub> ⇌ H<sup>+</sup> + HCO<sub>3</sub><sup>-</sup>
+          CO<sub>2</sub> + H<sub>2</sub>O &#8652; H<sub>2</sub>CO<sub>3</sub> &#8652; H<sup>+</sup> + HCO<sub>3</sub><sup>-</sup>
         </div>
 
-        <Panel title="The body fights back" tone="violet">
+        <div>
+          <h3 className="learn-section-heading">Compensation</h3>
+          <p className="learn-body-copy">Acid-base abnormalities trigger a compensatory response in three main ways:</p>
+          <BulletList
+            items={[
+              "Buffering - immediate chemical buffering of excess acid or base",
+              <>Respiratory regulation - changes in ventilation alter <PaCO2Text /> within minutes</>,
+              <>Renal regulation - the kidneys adjust HCO<sub>3</sub><sup>-</sup> handling over hours to days</>
+            ]}
+          />
+        </div>
+        <div className="learn-key-message">
+          <Lightbulb aria-hidden="true" />
           <p>
-            Compensation is the secondary system trying to pull pH back toward normal. It helps, but
-            it never fully fixes the original problem. The body defends itself in 3 main ways: buffering (immediate), respiratory regulation (quick), and renal regulation (slow)
+            Compensation is a response, not a cure. It moves the pH back toward normal, but it does not remove the original disorder
           </p>
-        </Panel>
-        <div className="learn-content-grid learn-content-grid--two">
-          <Panel title="Respiratory problem">
-            <p>Kidneys adjust HCO3.</p>
-            <p className="learn-muted">Hours to days.</p>
-          </Panel>
-          <Panel title="Metabolic problem">
-            <p>Lungs adjust CO2.</p>
-            <p className="learn-muted">Minutes to hours.</p>
-          </Panel>
         </div>
       </div>
     )
   },
   {
     kind: "content",
-    title: "Expected vs actual",
+    title: "The compensation rules",
+    content: <SharedCompensationRuleStack category="Metabolic" showMethodologyLink />
+  },
+  {
+    kind: "content",
+    title: "The compensation rules",
+    content: <SharedCompensationRuleStack category="Respiratory" showMethodologyLink />
+  },
+  {
+    kind: "content",
+    title: "The 1-2-4-5 rule",
     content: (
-      <div className="learn-content-stack">
-        <Panel title="Metabolic acidosis" tone="red">
-          <p>Expected CO2 = (1.5 x HCO3) + 8 +/- 2</p>
-          <p className="learn-muted">Use Winter&apos;s formula to see whether the lungs are doing what they should.</p>
-        </Panel>
-        <div className="learn-content-grid learn-content-grid--two">
-          <Panel title="Respiratory acidosis">
-            <BulletList items={["Acute: HCO3 rises about 1 per 10 CO2", "Chronic: HCO3 rises about 3 to 4 per 10 CO2"]} />
-          </Panel>
-          <Panel title="Respiratory alkalosis">
-            <BulletList items={["Acute: HCO3 falls about 2 per 10 CO2", "Chronic: HCO3 falls about 4 to 5 per 10 CO2"]} />
-          </Panel>
+      <div className="learn-content-stack learn-one-two-four-five-lesson">
+        <p className="learn-card-intro">
+          The easier way to work out how much HCO<sub>3</sub><sup>-</sup> changes in the respiratory disorders
+        </p>
+        <OneTwoFourFiveRuleTable />
+        <div className="learn-one-two-four-five-lesson__body">
+          <p className="learn-body-copy">
+            Start from a normal <HCO3Text /> of 24 mmol/L. For every 10 mmHg that <PaCO2Text /> moves away from 40 mmHg, adjust the expected <HCO3Text /> using the number in the table
+          </p>
+          <p className="learn-body-copy">
+            E.g. for an acute respiratory acidosis where <PaCO2Text /> = 60 mmHg, <PaCO2Text /> is 20 mmHg above normal. Using the table, <HCO3Text /> should rise by about +2 mmol/L, from 24 &rarr; 26 mmol/L.
+          </p>
         </div>
       </div>
     )
   },
   {
     kind: "content",
-    title: "Appropriate vs inappropriate",
+    title: "Expected vs measured",
     content: (
-      <div className="learn-content-grid learn-content-grid--two">
-        <Panel title="Appropriate compensation" tone="green">
-          <p>The measured value lands inside the expected range.</p>
-          <BulletList items={["One primary process", "Normal body response", "No extra hidden disorder"]} />
-        </Panel>
-        <Panel title="Inappropriate compensation" tone="amber">
-          <p>The measured value misses the expected range.</p>
-          <BulletList items={["Think mixed disorder", "Look for an extra respiratory or metabolic process"]} />
-        </Panel>
+      <div className="learn-content-stack learn-content-stack--borderless-panels learn-body-fights-back-lesson learn-expected-measured-lesson">
+        <p className="learn-card-intro">
+          Compare what should happen with what actually happened
+        </p>
+
+        <div className="learn-expected-measured-lesson__body">
+          <h3 className="learn-section-heading">Compensation is predictable</h3>
+          <p className="learn-body-copy">
+            For each primary disorder, there is an <strong>expected range</strong> for compensation. Compare this with the patient&apos;s <strong>measured value</strong> to decide whether the response fits.
+          </p>
+          <BulletList
+            items={[
+              <><strong>Appropriate compensation:</strong> measured value is within the expected range calculated</>,
+              <><strong>Inappropriate compensation:</strong> measured value falls outside the expected range calculated</>
+            ]}
+          />
+        </div>
+
+        <div className="learn-key-message">
+          <Lightbulb aria-hidden="true" />
+          <p>
+            Suspect an additional acid-base process when the compensation is inappropriate
+          </p>
+        </div>
       </div>
     )
+  },
+  {
+    kind: "content",
+    title: "Worked example",
+    content: <IntermediateWorkedExampleLesson />,
+    requiresCompletionGate: true
   },
   {
     kind: "content",
     title: "Compensation checklist",
     content: (
-      <div className="learn-content-stack">
-        <Panel title="Use the same sequence every time">
+      <div className="learn-content-stack learn-compensation-checklist-lesson">
+        <div className="learn-compensation-checklist-lesson__body">
+          <h3 className="learn-section-heading">Use the same sequence every time</h3>
           <ol className="learn-step-list">
-            <li>Find the primary disorder.</li>
-            <li>Choose the right compensation rule.</li>
-            <li>Calculate the expected value.</li>
-            <li>Compare expected vs measured.</li>
+            <li>Identify the primary disorder</li>
+            <li>Choose the matching compensation rule</li>
+            <li>Calculate the expected value</li>
+            <li>Compare the expected value with the measured value</li>
           </ol>
-        </Panel>
-        <Panel title="Do not eyeball it">
+        </div>
+        <div className="learn-key-message">
+          <Lightbulb aria-hidden="true" />
           <p>
-            Compensation mistakes are where a lot of mixed disorders hide. A quick formula beats a quick guess.
+            Compensation mistakes usually happen when you guess from the pH alone. Use the formula, then compare the expected value with the measured value.
           </p>
-        </Panel>
+        </div>
       </div>
     )
   },
   {
     kind: "content",
-    title: "You can now judge compensation",
-    content: (
-      <CompletionCard
-        title="Intermediate complete"
-        body="You know when a second value is a normal response and when it signals an additional disorder."
-        items={[
-          "Apply expected-compensation rules",
-          "Spot mismatch quickly",
-          "Escalate suspicious cases to mixed-disorder thinking"
-        ]}
-      />
-    ),
-    ctaLabel: "Open intermediate practice",
+    title: "Completed!",
+    content: <IntermediateCompletionCard />,
+    ctaLabel: "Practice",
     ctaHref: "/practice?difficulty=intermediate"
   }
 ];
@@ -1103,16 +1577,14 @@ export const learnLevels: LearnLevelConfig[] = [
     subtitle: "Understand compensation",
     description: "Learn expected compensation and spot when a second disorder is hiding.",
     badge: "Module 2",
-    unlockLevel: 5,
-    comingSoon: true,
+    unlockLevel: 1,
     unlockCopy: {
       intro: "Intermediate learning is now available",
       subtitle: "Compensation is now part of your blood gas interpretation pathway",
       practiceChanges: [
-		"Access intermediate cases from the Practice Library",
+        "Access intermediate cases from the Practice Library",
         "Learn expected compensation rules",
-        "See expanded explanations after each case",
-        "Intermediate learning module coming soon"
+        "See expanded explanations after each case"
       ]
     },
     palette: {
@@ -1237,3 +1709,13 @@ export function getLearnUnlockMilestoneForLevelTransition(previousLevel: number,
     .filter(level => normalizedPreviousLevel < level.unlockLevel && normalizedCurrentLevel >= level.unlockLevel)
     .sort((left, right) => right.unlockLevel - left.unlockLevel)[0] ?? null;
 }
+
+
+
+
+
+
+
+
+
+

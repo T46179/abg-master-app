@@ -326,6 +326,8 @@ export interface StorageAdapter {
   saveSeenCaseState(seenState: Record<string, string[]>): void;
   loadPracticeIntroSeen(): boolean;
   savePracticeIntroSeen(value: boolean): void;
+  loadAppAreaVisited(): boolean;
+  saveAppAreaVisited(value: boolean): void;
   loadAdvancedRangesPreference(): boolean;
   saveAdvancedRangesPreference(value: boolean): void;
   loadResultsExplanationPreferences(): ResultsExplanationPreferences;

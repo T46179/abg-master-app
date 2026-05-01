@@ -14,24 +14,19 @@ import {
 import { createEmptySeenCasesState } from "../../core/selection";
 import { LaunchNotifyModal } from "../layout/LaunchNotifyModal";
 import { MainNav } from "../layout/MainNav";
+import { MetricLabel, MetricValue } from "../practice/MetricText";
 import { Surface } from "../primitives/Surface";
 import { cn } from "../utils";
 import gradedDifficultyIcon from "../../assets/icons/layer-group.svg";
 import openBookIcon from "../../assets/icons/book-open.svg";
 import comprehensiveReviewIcon from "../../assets/icons/projector-screen.svg";
 import lockIcon from "../../assets/icons/lock.svg";
-import heroCaseDesktop from "../../assets/hero_case_desktop.png";
+import timerIcon from "../../assets/icons/timer.svg";
 import iphoneAniongapMobile from "../../assets/iphone_AG_highres.webp";
 import iphoneCaseMobile from "../../assets/iphone_case_highres.webp";
 
-const HERO_PREVIEW_IMAGE = {
-  src: heroCaseDesktop,
-  width: 561,
-  height: 591
-} as const;
 const CURRICULUM_ADVANCED_IMAGE = iphoneAniongapMobile;
 const CURRICULUM_FOUNDATIONS_IMAGE = iphoneCaseMobile;
-const EXPLANATION_CARD_IMAGE = "https://www.figma.com/api/mcp/asset/215f43b5-bb71-4db7-8483-9bedf0fd7b46";
 const FEATURE_GRADED_DIFFICULTY_ICON = gradedDifficultyIcon;
 const FEATURE_PERFORMANCE_ANALYTICS_ICON = openBookIcon;
 const FEATURE_COMPREHENSIVE_REVIEW_ICON = comprehensiveReviewIcon;
@@ -39,6 +34,53 @@ const FEATURE_COMING_SOON_ICON = lockIcon;
 
 const DEFAULT_CASES_SOLVED_COUNT = 0;
 const CASES_SOLVED_METRIC_KEY = "cases_solved";
+
+const landingPracticePreviewMetrics = {
+  primary: [
+    { label: "pH", renderedValue: "7.31", unit: "", abnormal: true },
+    { label: "PaCO2", renderedValue: "28.5 mmHg", unit: "mmHg", abnormal: true },
+    { label: "HCO3", renderedValue: "14.0 mmol/L", unit: "mmol/L", abnormal: true }
+  ],
+  secondary: [
+    { label: "Na", renderedValue: "139 mmol/L", unit: "mmol/L", abnormal: false },
+    { label: "Cl", renderedValue: "101 mmol/L", unit: "mmol/L", abnormal: false },
+    { label: "Lactate", renderedValue: "1.8 mmol/L", unit: "mmol/L", abnormal: false }
+  ]
+} as const;
+
+const landingPracticePreviewSteps = [
+  "1. pH",
+  "2. Primary acid-base disorder",
+  "3. Compensation",
+  "4. Anion gap",
+  "5. Diagnosis"
+] as const;
+
+const landingPracticePreviewOptions = ["Acidaemia", "Alkalaemia", "Normal"] as const;
+
+const landingResultsPreviewSections = [
+  {
+    title: "Compensation",
+    body: "In metabolic acidosis, the body compensates by hyperventilating to lower PaCO2. Using Winter's formula, the expected PaCO2 is about 33.5 mmHg (acceptable range 31.5-35.5). The measured PaCO2 is 33.6 mmHg. This is within the expected range, indicating appropriate respiratory compensation.",
+    collapsible: true
+  },
+  {
+    title: "Anion Gap Analysis",
+    body: "The anion gap is 140 - (114 + 17) = 9.0, which is normal. This makes a raised-gap metabolic acidosis less likely.",
+    collapsible: true
+  },
+  {
+    title: "Clinical Significance",
+    body: "Diarrhoea causes normal anion gap metabolic acidosis through direct bicarbonate loss from the gut. Chloride rises to maintain electroneutrality, creating a hyperchloraemic acidosis. The pattern may occur with volume depletion and low potassium.",
+    collapsible: true
+  },
+  {
+    title: "Key Takeaway",
+    body: "A normal anion gap acidosis points away from hidden acids and toward bicarbonate loss — often from the gut.",
+    collapsible: false,
+    takeaway: true
+  }
+] as const;
 
 const curriculumLevels = [
   {
@@ -61,15 +103,15 @@ const curriculumLevels = [
   },
   {
     number: "03",
-    title: "Advanced",
+    title: "Advanced (coming soon)",
     description: "Master the anion gap and identify unmeasured acids. Recognise patterns seen in conditions like DKA, lactic acidosis, and toxic ingestions.",
-    tone: "violet"
+    tone: "orange"
   },
   {
     number: "04",
-    title: "Master",
+    title: "Master (coming soon)",
     description: "Go beyond single diagnoses. Identify when results don't fit expected patterns and detect multiple simultaneous processes in complex clinical scenarios.",
-    tone: "red"
+    tone: "purple"
   }
 ] as const satisfies ReadonlyArray<{
   number: string;
@@ -109,6 +151,126 @@ const explanationHighlights = [
   "Key takeaways that reinforce high-yield patterns and exam thinking"
 ];
 
+function LandingPracticePreview() {
+  return (
+    <div className="landing-practice-preview" aria-label="Static practice case preview">
+      <Surface className="practice-scenario-card landing-practice-preview__card">
+        <span className="section-header__eyebrow">Clinical scenario</span>
+        <p className="practice-scenario-card__body">
+          A 61-year-old woman presents drowsy and nauseated after several days of poor oral intake. She is confused and appears fluid overloaded.
+        </p>
+      </Surface>
+
+      <Surface className="value-panels__card landing-practice-preview__card">
+        <div className="value-panels__header">
+          <span className="section-header__eyebrow">ABG values</span>
+          <div className="value-panels__toggle landing-practice-preview__toggle" aria-hidden="true">
+            <span className="value-panels__toggle-label">Reference ranges</span>
+            <span className="value-panels__switch">
+              <span className="value-panels__switch-thumb" />
+            </span>
+          </div>
+        </div>
+
+        <div className="metric-grid metric-grid--primary landing-practice-preview__metric-grid">
+          {landingPracticePreviewMetrics.primary.map(metric => (
+            <article key={metric.label} className="metric-card">
+              <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
+              <MetricValue renderedValue={metric.renderedValue} unit={metric.unit} abnormal={metric.abnormal} />
+            </article>
+          ))}
+        </div>
+      </Surface>
+
+      <Surface className="value-panels__card landing-practice-preview__card">
+        <div className="value-panels__header">
+          <span className="section-header__eyebrow">Electrolytes &amp; other values</span>
+        </div>
+
+        <div className="metric-grid metric-grid--secondary landing-practice-preview__metric-grid landing-practice-preview__metric-grid--secondary">
+          {landingPracticePreviewMetrics.secondary.map(metric => (
+            <article key={metric.label} className="metric-card metric-card--secondary">
+              <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
+              <MetricValue renderedValue={metric.renderedValue} unit={metric.unit} abnormal={metric.abnormal} />
+            </article>
+          ))}
+        </div>
+      </Surface>
+
+      <Surface className="question-flow-card landing-practice-preview__card">
+        <div className="question-flow-card__header">
+          <div className="pill-nav question-flow-card__pills landing-practice-preview__pills">
+            {landingPracticePreviewSteps.map((step, index) => (
+              <span
+                key={step}
+                className={cn("pill-nav__button", index === 0 && "is-active")}
+              >
+                {step}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="question-flow-card__body">
+          <p className="question-flow-card__prompt">What is the pH status?</p>
+          <div className="question-flow-card__options">
+            {landingPracticePreviewOptions.map(option => (
+              <div key={option} className="answer-option">
+                {option}
+              </div>
+            ))}
+          </div>
+        </div>
+      </Surface>
+    </div>
+  );
+}
+
+function LandingResultsPreview() {
+  return (
+    <div className="landing-results-preview" aria-label="Static results summary preview">
+      <Surface className="results-card landing-results-preview__card">
+        <div className="results-card__topbar">
+          <span className="results-card__time">
+            <img src={timerIcon} alt="" aria-hidden="true" />
+            <span>67.0s</span>
+          </span>
+        </div>
+
+        <div className="results-card__diagnosis">
+          <div className="results-card__diagnosis-main">NAGMA</div>
+          <div className="results-card__diagnosis-sub">Diarrhoea</div>
+        </div>
+
+        <div className="results-card__detail-section">
+          <h3 className="results-card__section-label">Detailed Explanation</h3>
+          <div className="results-card__detail-stack">
+            {landingResultsPreviewSections.map(section => (
+              <div
+                key={section.title}
+                className={cn(
+                  "card",
+                  "results-card__detail-card",
+                  section.takeaway && "results-card__detail-card--takeaway"
+                )}
+              >
+                <div className="results-card__detail-card-header">
+                  <h4>{section.title}</h4>
+                  {section.collapsible ? (
+                    <span className="results-card__detail-toggle" aria-hidden="true">-</span>
+                  ) : null}
+                </div>
+                <p>{section.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </Surface>
+    </div>
+  );
+}
+
 export function LandingScreen() {
   const { state, patchPracticeState } = useAppContext();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -122,12 +284,12 @@ export function LandingScreen() {
   const [featuresRevealProgress, setFeaturesRevealProgress] = useState(0);
   const [curriculumMotionVisible, setCurriculumMotionVisible] = useState(false);
   const [explanationInsightVisible, setExplanationInsightVisible] = useState(false);
-  const [heroPreviewLoaded, setHeroPreviewLoaded] = useState(false);
   const animatedCasesSolvedCountRef = useRef(animatedCasesSolvedCount);
   const featuresSectionRef = useRef<HTMLElement | null>(null);
   const curriculumSectionRef = useRef<HTMLElement | null>(null);
   const explanationInsightRef = useRef<HTMLDivElement | null>(null);
   const practicePreloadKeyRef = useRef<string | null>(null);
+  const landingViewedTrackedRef = useRef(false);
   const casesSolvedLabel = useMemo(() => animatedCasesSolvedCount.toLocaleString("en-US"), [animatedCasesSolvedCount]);
   const releaseFlags = useMemo(() => getReleaseFlags(state.payload?.progressionConfig ?? null), [state.payload?.progressionConfig]);
 
@@ -143,6 +305,14 @@ export function LandingScreen() {
     setLaunchNotifySubmitting(false);
     setLaunchNotifyError("");
     setLaunchNotifySubmitted(false);
+  }
+
+  function handleLandingCtaClick(ctaLabel: string, destination: string) {
+    trackEvent("landing_cta_clicked", {
+      cta_label: ctaLabel,
+      destination,
+      source: "landing"
+    });
   }
 
   async function handleLaunchNotifySubmit(email: string) {
@@ -175,6 +345,12 @@ export function LandingScreen() {
 
   useEffect(() => {
     trackPageView("landing");
+    if (!landingViewedTrackedRef.current) {
+      landingViewedTrackedRef.current = true;
+      trackEvent("landing_viewed", {
+        source: "landing"
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -507,6 +683,7 @@ export function LandingScreen() {
         learnEnabled
         showBetaBadge={releaseFlags.enable_beta_badge}
         wideShell
+        onCoreFlowLinkClick={handleLandingCtaClick}
       />
 
       <LaunchNotifyModal
@@ -524,14 +701,19 @@ export function LandingScreen() {
             <div className="landing-hero__copy-frame">
               <div className="landing-hero__intro">
                 <h1>Master Blood Gas Interpretation</h1>
-                <p>
-                  From fundamentals to complex mixed acid-base disorders. Built on physiology. Designed for mastery.
+                <p className="landing-hero__lede">
+                  <span>Learn arterial blood gas interpretation from first principles to advanced acid–base disorders.</span>
+                  <span>Built on physiology. Designed for mastery.</span>
                 </p>
               </div>
 
               <div className="landing-hero__actions">
-                <Link className="figma-button landing-hero__primary" to="/practice">
-                  <span>Begin Your First Case</span>
+                <Link
+                  className="figma-button landing-hero__primary"
+                  to="/practice"
+                  onClick={() => handleLandingCtaClick("Start Your First Case", "/practice")}
+                >
+                  <span>Start Your First Case</span>
                   <ArrowRight className="landing-button__icon" aria-hidden="true" />
                 </Link>
               </div>
@@ -539,7 +721,7 @@ export function LandingScreen() {
               <div className="landing-hero__stats" aria-label="ABG platform stats">
                 <div className="landing-hero__stat">
                   <strong>150+</strong>
-                  <span>ABG Cases &amp; Growing</span>
+                  <span>Blood Gas Cases &amp; Growing</span>
                 </div>
                 <div className="landing-hero__stat">
                   <strong>4</strong>
@@ -549,14 +731,8 @@ export function LandingScreen() {
             </div>
           </div>
 
-          <div className="landing-hero__preview" data-loaded={heroPreviewLoaded}>
-            <img
-              src={HERO_PREVIEW_IMAGE.src}
-              width={HERO_PREVIEW_IMAGE.width}
-              height={HERO_PREVIEW_IMAGE.height}
-              alt="ABG case example interface preview"
-              onLoad={() => setHeroPreviewLoaded(true)}
-            />
+          <div className="landing-hero__preview" data-loaded="true">
+            <LandingPracticePreview />
           </div>
         </div>
       </section>
@@ -598,7 +774,7 @@ export function LandingScreen() {
       <section ref={curriculumSectionRef} className="landing-section landing-section--curriculum">
         <div className="landing-shell">
           <div className="landing-section__heading landing-curriculum__heading" data-visible={curriculumMotionVisible}>
-            <h2>A Structured Way to Learn (Coming Soon)</h2>
+            <h2>A Structured Way to Learn</h2>
             <p>
               Progress through structured, step-by-step lessons that build your ABG interpretation skills from the ground up.
             </p>
@@ -648,12 +824,12 @@ export function LandingScreen() {
         <div className="landing-shell landing-insight-grid">
           <div ref={explanationInsightRef} className="landing-insight-grid__row landing-insight-grid__row--reverse">
             <div className="landing-insight-grid__image-card landing-insight-grid__media landing-insight-grid__media--from-left" data-visible={explanationInsightVisible}>
-              <img src={EXPLANATION_CARD_IMAGE} alt="Detailed case analysis and explanation preview" />
+              <LandingResultsPreview />
             </div>
             <div className="landing-insight-grid__copy landing-insight-grid__copy--from-right" data-visible={explanationInsightVisible}>
               <h2>Learn From Every Case</h2>
               <p>
-                Each case is paired with focused explanations that highlight the underlying physiology - helping you understand why the results looks the way they do.
+                Each case is paired with focused explanations that highlight the underlying physiology - helping you understand why the results look the way they do.
               </p>
               <ul className="landing-bullet-list">
                 {explanationHighlights.map(item => (
@@ -669,8 +845,12 @@ export function LandingScreen() {
         <div className="landing-cta-band__inner">
           <h2>Ready to Master Blood Gas Interpretation?</h2>
           <p>Join learners working through 150+ ABG cases and build mastery step-by-step</p>
-          <Link className="figma-button figma-button--secondary landing-cta-band__button" to="/practice">
-            Begin Your First Case
+          <Link
+            className="figma-button figma-button--secondary landing-cta-band__button"
+            to="/practice"
+            onClick={() => handleLandingCtaClick("Start Your First Case", "/practice")}
+          >
+            Start Your First Case
           </Link>
         </div>
       </section>

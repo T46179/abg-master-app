@@ -851,6 +851,7 @@ describe("storage adapters", () => {
     await initialStorage.saveUserState(savedState);
     initialStorage.saveSeenCaseState({ beginner: ["case-1"], intermediate: [], advanced: ["case-2"], master: [] });
     initialStorage.savePracticeIntroSeen(true);
+    initialStorage.saveAppAreaVisited(true);
     initialStorage.saveAdvancedRangesPreference(true);
     initialStorage.saveResultsExplanationPreferences({
       compensation: false,
@@ -871,6 +872,7 @@ describe("storage adapters", () => {
       master: []
     });
     expect(reloadedStorage.loadPracticeIntroSeen()).toBe(true);
+    expect(reloadedStorage.loadAppAreaVisited()).toBe(true);
     expect(reloadedStorage.loadAdvancedRangesPreference()).toBe(true);
     expect(reloadedStorage.loadResultsExplanationPreferences()).toEqual({
       compensation: false,
@@ -894,6 +896,20 @@ describe("storage adapters", () => {
     await reloadedStorage.init({ releaseSignature: "sig-1" });
 
     expect(reloadedStorage.loadPracticeIntroSeen()).toBe(false);
+  });
+
+  it("persists app area visited changes across re-init", async () => {
+    const browserStorage = createMemoryStorage();
+    const storage = createAppStorage({ browserStorage });
+
+    await storage.init({ releaseSignature: "sig-1" });
+    storage.saveAppAreaVisited(true);
+    storage.saveAppAreaVisited(false);
+
+    const reloadedStorage = createAppStorage({ browserStorage });
+    await reloadedStorage.init({ releaseSignature: "sig-1" });
+
+    expect(reloadedStorage.loadAppAreaVisited()).toBe(false);
   });
 
   it("merges remote core progress over local extras when supabase is enabled", async () => {

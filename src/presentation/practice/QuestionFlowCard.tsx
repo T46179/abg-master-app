@@ -28,6 +28,13 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
   const isMultiSelect = props.currentStep?.selection_mode === "multi";
   const selectedValues = Array.isArray(props.currentSelection?.chosen) ? props.currentSelection.chosen : [];
   const hasMultiSelectAnswer = selectedValues.length > 0;
+  const isMasterCase = Number(props.caseItem?.difficulty_level ?? 1) >= 4;
+  const currentStepKey = props.currentStep?.key;
+  const hasWhiteAnswerCardBorder = isMasterCase && (
+    currentStepKey === "acid_base_processes" ||
+    currentStepKey === "diagnosis" ||
+    currentStepKey === "final_diagnosis"
+  );
 
   function getPillLabel(step: QuestionFlowStep) {
     if (step.key === "primary_disorder" || step.key === "acid_base_processes") {
@@ -63,7 +70,7 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
   });
 
   return (
-    <Surface className="question-flow-card">
+    <Surface className={`question-flow-card${hasWhiteAnswerCardBorder ? " question-flow-card--white-answer-card-border" : ""}`}>
       <div className="question-flow-card__header">
         <PillNav items={items} className="question-flow-card__pills" />
       </div>

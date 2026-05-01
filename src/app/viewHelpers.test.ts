@@ -31,10 +31,12 @@ describe("view helpers", () => {
   });
 
   it("only shows the practice intro before the first case begins", () => {
-    expect(shouldShowPracticeIntro(false, false, false)).toBe(true);
-    expect(shouldShowPracticeIntro(true, false, false)).toBe(false);
-    expect(shouldShowPracticeIntro(false, true, false)).toBe(false);
-    expect(shouldShowPracticeIntro(false, false, true)).toBe(false);
+    expect(shouldShowPracticeIntro(false, false, false, false)).toBe(true);
+    expect(shouldShowPracticeIntro(true, false, false, false)).toBe(false);
+    expect(shouldShowPracticeIntro(false, true, false, false)).toBe(false);
+    expect(shouldShowPracticeIntro(false, false, true, false)).toBe(false);
+    expect(shouldShowPracticeIntro(false, false, false, true)).toBe(false);
+    expect(shouldShowPracticeIntro(false, false, false, false, true)).toBe(false);
   });
 
   it("resumes the active case difficulty when entering practice without an explicit difficulty param", () => {

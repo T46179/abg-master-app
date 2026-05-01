@@ -78,6 +78,8 @@ function createStorageAdapter(overrides: Partial<StorageAdapter> = {}): StorageA
     saveSeenCaseState: vi.fn(),
     loadPracticeIntroSeen: vi.fn(() => false),
     savePracticeIntroSeen: vi.fn(),
+    loadAppAreaVisited: vi.fn(() => false),
+    saveAppAreaVisited: vi.fn(),
     loadAdvancedRangesPreference: vi.fn(() => false),
     saveAdvancedRangesPreference: vi.fn(),
     loadResultsExplanationPreferences: vi.fn(() => ({
@@ -123,6 +125,7 @@ describe("ResultsSummaryCard", () => {
       { key: "anion_gap", title: "Duplicate gap", body: "Should not render.", order: 4 },
       { key: "additional_metabolic_process", title: "Additional Metabolic Process", body: "Additional process body.", order: 0 },
       { key: "clinical_context", title: "Clinical Significance", body: "Clinical significance body.", order: 3 },
+      { key: "primary_disorder", title: "Primary Disorder", body: "Primary disorder explanation.", order: 2 },
       { key: "compensation", title: "Compensation", body: "Compensation explanation.", order: 1 },
       { key: "anion_gap", title: "Anion Gap Analysis", body: "Raised anion gap explanation.", order: 2 }
     ]);
@@ -144,6 +147,8 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).toContain("Mixed Disorder");
     expect(container.textContent).toContain("HAGMA + Metabolic Alkalosis (DKA + Vomiting)");
     expect(container.textContent).toContain("Detailed Explanation");
+    expect(container.textContent).toContain("Primary Disorder");
+    expect(container.textContent).toContain("Primary disorder explanation.");
     expect(container.textContent).toContain("Additional Metabolic Process");
     expect(container.textContent).toContain("Additional process body.");
     expect(container.textContent).toContain("Compensation");
@@ -159,13 +164,15 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).toContain("62.0s");
     expect(container.textContent).toContain("Answer Review");
     expect(container.textContent).toContain("pH status");
-    expect(container.textContent).toContain("You chose Acidaemia. Correct answer: Acidaemia.");
+    expect(container.textContent).toContain("You chose: Acidaemia");
+    expect(container.textContent).not.toContain("Correct answer: Acidaemia");
     expect(container.textContent).toContain("Final diagnosis");
-    expect(container.textContent).toContain("You chose Wrong answer. Correct answer: Correct answer.");
+    expect(container.textContent).toContain("You chose: Wrong answerCorrect answer: Correct answer");
 
     const headings = Array.from(container.querySelectorAll("h3, h4")).map(node => node.textContent);
     expect(headings).toEqual([
       "Detailed Explanation",
+      "Primary Disorder",
       "Compensation",
       "Anion Gap Analysis",
       "Additional Metabolic Process",
