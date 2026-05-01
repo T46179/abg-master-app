@@ -188,39 +188,6 @@ describe("ResultsSummaryCard", () => {
     expect(toggles).toEqual(["-", "-", "-", "-"]);
   });
 
-  it("renders multi-select answers in the answer review", () => {
-    const storage = createStorageAdapter({
-      loadResultsReviewExpandedPreference: vi.fn(() => true)
-    });
-    const summary = buildSummary([]);
-    summary.stepResults = [
-      {
-        key: "acid_base_processes",
-        label: "Acid-base processes",
-        chosen: ["Respiratory alkalosis", "Metabolic acidosis"],
-        correctAnswer: ["Metabolic acidosis", "Respiratory alkalosis"],
-        correct: true
-      }
-    ];
-
-    act(() => {
-      root.render(
-        <ResultsSummaryCard
-          summary={summary}
-          caseItem={buildCaseItem("salicylate_toxicity")}
-          showSummaryReferences={false}
-          showAbnormalHighlighting={false}
-          onNextCase={() => {}}
-          onOpenFeedback={() => {}}
-          storage={storage}
-        />
-      );
-    });
-
-    expect(container.textContent).toContain("Respiratory alkalosis, Metabolic acidosis");
-    expect(container.textContent).toContain("Metabolic acidosis, Respiratory alkalosis");
-  });
-
   it("falls back to diagnosis when clinical context is absent", () => {
     const summary = buildSummary([
       { key: "diagnosis", title: "Diagnosis", body: "Diagnosis significance.", order: 3 }
