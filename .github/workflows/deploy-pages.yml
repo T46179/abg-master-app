@@ -41,7 +41,7 @@ jobs:
           VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE: ${{ vars.VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE }}
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist
+          path: ./docs
 
   deploy:
     needs: build

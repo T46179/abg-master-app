@@ -7,6 +7,9 @@ const packageJson = JSON.parse(readFileSync(resolve(__dirname, "package.json"), 
 
 export default defineConfig({
   base: "/",
+  build: {
+    outDir: "docs"
+  },
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version ?? "0.0.0")
   },

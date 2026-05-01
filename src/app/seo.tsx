@@ -53,6 +53,10 @@ const SEO_BY_PATH: Record<string, SeoMetadataConfig> = {
   }
 };
 
+const CANONICAL_PATH_BY_PATH: Record<string, string> = {
+  "/blood-gas-compensation-rules": "/blood-gas-compensation-rules/"
+};
+
 function normalizePathname(pathname: string) {
   if (pathname === "/") return pathname;
   return pathname.replace(/\/+$/, "");
@@ -100,7 +104,8 @@ export function SeoMetadata() {
   useEffect(() => {
     const pathname = normalizePathname(location.pathname);
     const metadata = SEO_BY_PATH[pathname] ?? HOME_METADATA;
-    const canonicalUrl = `${SITE_URL}${SEO_BY_PATH[pathname] ? pathname : "/"}`;
+    const canonicalPath = CANONICAL_PATH_BY_PATH[pathname] ?? (SEO_BY_PATH[pathname] ? pathname : "/");
+    const canonicalUrl = `${SITE_URL}${canonicalPath}`;
 
     document.title = metadata.title;
     upsertMetaByName("description", metadata.description);
