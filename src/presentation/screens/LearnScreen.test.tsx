@@ -53,6 +53,7 @@ describe("Learn screens", () => {
       root.unmount();
     });
     container.remove();
+    window.localStorage.clear();
   });
 
   function renderPath(path: string) {
@@ -254,8 +255,6 @@ describe("Learn screens", () => {
       ["/learn/foundations", "#FFE0B2"],
       ["/learn/beginner", "#B8DEFF"],
       ["/learn/intermediate", "#B8E6CC"],
-      ["/learn/advanced", "#FFCDB0"],
-      ["/learn/master", "#D6C2FF"],
       ["/learn/hidden", "#D8B4FF"]
     ];
 
@@ -283,7 +282,7 @@ describe("Learn screens", () => {
     expect(container.querySelector(".learn-deck-screen")).toBeNull();
   });
 
-  it("allows direct lesson routes after the module unlocks", () => {
+  it("allows direct lesson routes after the module unlocks and is available", () => {
     mockUserLevel.value = 5;
     renderPath("/learn/intermediate");
     expect(container.querySelector(".learn-deck-screen")).not.toBeNull();

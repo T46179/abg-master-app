@@ -47,7 +47,9 @@ export function LearnScreen() {
   const visibleLearnLevels = getVisibleLearnLevels(state.userState.level);
   const lastLearnModuleSlug = searchParams.get("all") === "1" ? null : readLastLearnModuleSlug();
   const lastLearnModule = visibleLearnLevels.find(level =>
-    level.slug === lastLearnModuleSlug && isLearnLevelUnlocked(level, state.userState.level)
+    level.slug === lastLearnModuleSlug &&
+    isLearnLevelUnlocked(level, state.userState.level) &&
+    isLearnLevelAvailable(level)
   );
 
   if (lastLearnModule) {
