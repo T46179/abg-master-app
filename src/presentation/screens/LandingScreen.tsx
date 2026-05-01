@@ -251,7 +251,7 @@ function LandingResultsPreview() {
                 className={cn(
                   "card",
                   "results-card__detail-card",
-                  section.takeaway && "results-card__detail-card--takeaway"
+                  "takeaway" in section && section.takeaway && "results-card__detail-card--takeaway"
                 )}
               >
                 <div className="results-card__detail-card-header">
