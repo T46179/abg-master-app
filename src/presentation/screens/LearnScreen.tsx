@@ -23,6 +23,12 @@ function getLearnModuleCtaLabel(progress: LearnModuleProgress | undefined): stri
   return "Start Learning";
 }
 
+function getLearnModuleCtaHref(slug: string, progress: LearnModuleProgress | undefined): string {
+  if (progress?.completed) return `/learn/${slug}?mode=review`;
+  if (progress) return `/learn/${slug}?mode=continue`;
+  return `/learn/${slug}?mode=start`;
+}
+
 function formatSpeedCheckTime(elapsedMs: number): string {
   return `${Math.max(0, Math.round(elapsedMs / 1000))}s`;
 }
@@ -103,7 +109,7 @@ export function LearnScreen() {
 
                 <div className="learn-level-card__footer">
                   {canOpenLevel ? (
-                    <Link className="figma-button learn-level-card__cta" to={`/learn/${level.slug}`}>
+                    <Link className="figma-button learn-level-card__cta" to={getLearnModuleCtaHref(level.slug, moduleProgress)}>
                       {ctaLabel}
                       <ArrowRight />
                     </Link>

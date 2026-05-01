@@ -36,13 +36,24 @@ function readStoredLessonIndex(slug: string, lessonCount: number) {
   return Math.max(0, Math.min(lessonCount - 1, parsedIndex));
 }
 
+function getEntryLessonIndex(slug: string, lessonCount: number, mode: string | null) {
+  if (mode === "start" || mode === "review") return 0;
+  return readStoredLessonIndex(slug, lessonCount);
+}
+
+function saveStoredLessonIndex(slug: string, lessonIndex: number) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(getLearnLessonStorageKey(slug), String(lessonIndex));
+}
+
 export function LearnLessonScreen() {
   const { state, setUserState } = useAppContext();
   const navigate = useNavigate();
   const { difficulty } = useParams<{ difficulty: string }>();
   const [searchParams] = useSearchParams();
   const level = getLearnLevel(difficulty);
-  const [lessonIndex, setLessonIndex] = useState(() => level ? readStoredLessonIndex(level.slug, level.lessons.length) : 0);
+  const entryMode = searchParams.get("mode");
+  const [lessonIndex, setLessonIndex] = useState(() => level ? getEntryLessonIndex(level.slug, level.lessons.length, entryMode) : 0);
   const [speedCheckPhase, setSpeedCheckPhase] = useState<SpeedCheckPhase>("ready");
   const [speedCheckResetKey, setSpeedCheckResetKey] = useState(0);
   const [completionGateSatisfied, setCompletionGateSatisfied] = useState(false);
@@ -55,16 +66,20 @@ export function LearnLessonScreen() {
       return;
     }
 
-    setLessonIndex(readStoredLessonIndex(level.slug, level.lessons.length));
+    const nextLessonIndex = getEntryLessonIndex(level.slug, level.lessons.length, entryMode);
+    setLessonIndex(nextLessonIndex);
+    if (entryMode === "start" || entryMode === "review") {
+      saveStoredLessonIndex(level.slug, nextLessonIndex);
+    }
     setSpeedCheckPhase("ready");
     setSpeedCheckResetKey(0);
-  }, [difficulty, level]);
+  }, [difficulty, entryMode, level]);
 
   useEffect(() => {
     if (!level || typeof window === "undefined") return;
 
     window.localStorage.setItem(getLastLearnModuleStorageKey(), level.slug);
-    window.localStorage.setItem(getLearnLessonStorageKey(level.slug), String(lessonIndex));
+    saveStoredLessonIndex(level.slug, lessonIndex);
   }, [lessonIndex, level]);
 
   useEffect(() => {
@@ -144,10 +159,10 @@ export function LearnLessonScreen() {
     "--learn-card-accent-dark": activeLevel.palette.accentDark
   } as CSSProperties;
 
-  function getNextLessonUserState() {
+  function getNextLessonUserState(options?: { completeModule?: boolean }) {
     const completedLessonCount = lessonIndex + 1;
     const currentProgress = state.userState.learnProgress?.[activeLevel.slug];
-    const nextCompleted = isLastLesson || Boolean(currentProgress?.completed);
+    const nextCompleted = Boolean(options?.completeModule || currentProgress?.completed);
     const nextCompletedLessonCount = nextCompleted
       ? activeLevel.lessons.length
       : Math.max(currentProgress?.completedLessonCount ?? 0, completedLessonCount);
@@ -173,7 +188,7 @@ export function LearnLessonScreen() {
   }
 
   function handleNextLesson() {
-    const nextUserState = getNextLessonUserState();
+    const nextUserState = getNextLessonUserState({ completeModule: isLastLesson });
     if (nextUserState) void setUserState(nextUserState);
 
     if (isLastLesson) {
@@ -187,7 +202,7 @@ export function LearnLessonScreen() {
   async function handleFooterPracticeCtaClick(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault();
 
-    const nextUserState = getNextLessonUserState();
+    const nextUserState = getNextLessonUserState({ completeModule: true });
     if (nextUserState) {
       await setUserState(nextUserState);
     }

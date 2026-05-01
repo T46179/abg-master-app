@@ -42,6 +42,7 @@ describe("Learn screens", () => {
     mockLearnProgress.value = {};
     setUserState.mockClear();
     trackEvent.mockClear();
+    window.localStorage.clear();
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -103,9 +104,9 @@ describe("Learn screens", () => {
     expect(lockedButtons).toHaveLength(2);
     expect(unlockedLinks).toHaveLength(3);
     expect(unlockedLinks.map(link => link.getAttribute("href"))).toEqual([
-      "/learn/foundations",
-      "/learn/beginner",
-      "/learn/intermediate"
+      "/learn/foundations?mode=start",
+      "/learn/beginner?mode=start",
+      "/learn/intermediate?mode=start"
     ]);
     expect(unlockedLinks.every(link => link.textContent?.includes("Start Learning"))).toBe(true);
     expect(container.querySelectorAll(".learn-level-card__progress .progress-bar__fill")).toHaveLength(0);
@@ -123,7 +124,7 @@ describe("Learn screens", () => {
 
     expect(container.textContent).toContain("6 lessons");
     expect(container.textContent).toContain("17% Complete");
-    expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations"]')?.textContent).toContain("Continue");
+    expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations?mode=continue"]')?.textContent).toContain("Continue");
     expect(container.textContent).not.toMatch(/\b0% Complete/);
     expect(container.querySelectorAll(".learn-level-card__pill")).toHaveLength(6);
   });
@@ -138,7 +139,7 @@ describe("Learn screens", () => {
 
     renderPath("/learn");
 
-    expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations"]')?.textContent).toContain("Continue");
+    expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations?mode=continue"]')?.textContent).toContain("Continue");
     expect(container.textContent).not.toMatch(/\b0% Complete/);
   });
 
@@ -153,15 +154,62 @@ describe("Learn screens", () => {
     renderPath("/learn");
 
     expect(container.textContent).toContain("100% Complete");
-    expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations"]')?.textContent).toContain("Review");
+    expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations?mode=review"]')?.textContent).toContain("Review");
+  });
+
+  it("starts an unseen module from the first lesson even when stale resume state exists", () => {
+    window.localStorage.setItem("abg-master:learn:foundations:lesson-index", "4");
+
+    renderPath("/learn/foundations?mode=start");
+
+    expect(container.querySelector(".learn-deck__header h1")?.textContent).toBe("What is pH?");
+    expect(window.localStorage.getItem("abg-master:learn:foundations:lesson-index")).toBe("0");
+    expect(setUserState).toHaveBeenCalledWith({
+      level: 1,
+      learnProgress: {
+        foundations: {
+          completedLessonCount: 0,
+          completed: false
+        }
+      }
+    });
+  });
+
+  it("continues a started module from its saved lesson", () => {
+    mockLearnProgress.value = {
+      foundations: {
+        completedLessonCount: 2,
+        completed: false
+      }
+    };
+    window.localStorage.setItem("abg-master:learn:foundations:lesson-index", "2");
+
+    renderPath("/learn/foundations?mode=continue");
+
+    expect(container.querySelector(".learn-deck__header h1")?.textContent).toBe("Language check");
+  });
+
+  it("reviews a completed module from the first lesson", () => {
+    mockLearnProgress.value = {
+      foundations: {
+        completedLessonCount: 6,
+        completed: true
+      }
+    };
+    window.localStorage.setItem("abg-master:learn:foundations:lesson-index", "4");
+
+    renderPath("/learn/foundations?mode=review");
+
+    expect(container.querySelector(".learn-deck__header h1")?.textContent).toBe("What is pH?");
+    expect(window.localStorage.getItem("abg-master:learn:foundations:lesson-index")).toBe("0");
   });
 
   it("keeps advanced and master cards disabled as coming soon across higher levels while intermediate stays open", () => {
     const expectations = [
-      { level: 5, links: ["/learn/foundations", "/learn/beginner", "/learn/intermediate"], hiddenVisible: false, comingSoonCount: 2 },
-      { level: 10, links: ["/learn/foundations", "/learn/beginner", "/learn/intermediate"], hiddenVisible: false, comingSoonCount: 2 },
-      { level: 20, links: ["/learn/foundations", "/learn/beginner", "/learn/intermediate"], hiddenVisible: false, comingSoonCount: 2 },
-      { level: 25, links: ["/learn/foundations", "/learn/beginner", "/learn/intermediate", "/learn/hidden"], hiddenVisible: true, comingSoonCount: 2 }
+      { level: 5, links: ["/learn/foundations?mode=start", "/learn/beginner?mode=start", "/learn/intermediate?mode=start"], hiddenVisible: false, comingSoonCount: 2 },
+      { level: 10, links: ["/learn/foundations?mode=start", "/learn/beginner?mode=start", "/learn/intermediate?mode=start"], hiddenVisible: false, comingSoonCount: 2 },
+      { level: 20, links: ["/learn/foundations?mode=start", "/learn/beginner?mode=start", "/learn/intermediate?mode=start"], hiddenVisible: false, comingSoonCount: 2 },
+      { level: 25, links: ["/learn/foundations?mode=start", "/learn/beginner?mode=start", "/learn/intermediate?mode=start", "/learn/hidden?mode=start"], hiddenVisible: true, comingSoonCount: 2 }
     ];
 
     expectations.forEach(expectation => {
@@ -325,6 +373,80 @@ describe("Learn screens", () => {
     expect(dots).toHaveLength(6);
     expect(dots[0]?.getAttribute("data-state")).toBe("complete");
     expect(dots[1]?.getAttribute("data-state")).toBe("current");
+  });
+
+  it("does not complete a module until the final lesson action is clicked", () => {
+    mockLearnProgress.value = {
+      foundations: {
+        completedLessonCount: 4,
+        completed: false
+      }
+    };
+    window.localStorage.setItem("abg-master:learn:foundations:lesson-index", "4");
+
+    renderPath("/learn/foundations?mode=continue");
+
+    expect(container.querySelector(".learn-deck__header h1")?.textContent).toBe("The ABG panel");
+
+    const nextButton = Array.from(container.querySelectorAll("button")).find(button => button.textContent?.includes("Next"));
+    act(() => {
+      nextButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.querySelector(".learn-deck__header h1")?.textContent).toBe("Completed!");
+    expect(setUserState).toHaveBeenCalledWith({
+      level: 1,
+      learnProgress: {
+        foundations: {
+          completedLessonCount: 5,
+          completed: false
+        }
+      }
+    });
+
+    const finishButton = Array.from(container.querySelectorAll("button")).find(button => button.textContent?.includes("Finish lesson"));
+    act(() => {
+      finishButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(setUserState).toHaveBeenCalledWith({
+      level: 1,
+      learnProgress: {
+        foundations: {
+          completedLessonCount: 6,
+          completed: true
+        }
+      }
+    });
+  });
+
+  it("completes a module when Practice is clicked on the final lesson", async () => {
+    mockLearnProgress.value = {
+      beginner: {
+        completedLessonCount: 5,
+        completed: false
+      }
+    };
+    window.localStorage.setItem("abg-master:learn:beginner:lesson-index", "5");
+
+    renderPath("/learn/beginner?mode=continue");
+
+    expect(container.querySelector(".learn-deck__header h1")?.textContent).toBe("Completed!");
+
+    const practiceLink = Array.from(container.querySelectorAll<HTMLAnchorElement>("a")).find(link => link.textContent?.includes("Practice"));
+    await act(async () => {
+      practiceLink?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+
+    expect(setUserState).toHaveBeenCalledWith({
+      level: 1,
+      learnProgress: {
+        beginner: {
+          completedLessonCount: 6,
+          completed: true
+        }
+      }
+    });
   });
 
   it("renders the speed check lesson inside the foundations deck", () => {

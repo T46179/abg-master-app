@@ -103,13 +103,13 @@ const curriculumLevels = [
   },
   {
     number: "03",
-    title: "Advanced",
+    title: "Advanced (coming soon)",
     description: "Master the anion gap and identify unmeasured acids. Recognise patterns seen in conditions like DKA, lactic acidosis, and toxic ingestions.",
     tone: "orange"
   },
   {
     number: "04",
-    title: "Master",
+    title: "Master (coming soon)",
     description: "Go beyond single diagnoses. Identify when results don't fit expected patterns and detect multiple simultaneous processes in complex clinical scenarios.",
     tone: "purple"
   }
@@ -774,7 +774,7 @@ export function LandingScreen() {
       <section ref={curriculumSectionRef} className="landing-section landing-section--curriculum">
         <div className="landing-shell">
           <div className="landing-section__heading landing-curriculum__heading" data-visible={curriculumMotionVisible}>
-            <h2>A Structured Way to Learn (Coming Soon)</h2>
+            <h2>A Structured Way to Learn</h2>
             <p>
               Progress through structured, step-by-step lessons that build your ABG interpretation skills from the ground up.
             </p>

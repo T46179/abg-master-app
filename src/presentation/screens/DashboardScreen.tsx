@@ -15,6 +15,14 @@ import { StatCard } from "../primitives/StatCard";
 import { Surface } from "../primitives/Surface";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
 
+function clearLearnModuleResumeState() {
+  if (typeof window === "undefined") return;
+
+  Object.keys(window.localStorage)
+    .filter(key => key === "abg-master:learn:last-module" || /^abg-master:learn:[^:]+:lesson-index$/.test(key))
+    .forEach(key => window.localStorage.removeItem(key));
+}
+
 export function DashboardScreen() {
   const { state } = useAppContext();
   if (state.status === "loading" || state.status === "idle") return <LoadingView />;
@@ -42,7 +50,7 @@ export function DashboardScreen() {
   async function handleResetProgress() {
     if (!state.storage) return;
 
-    const confirmed = window.confirm("Reset all progress?\n\nThis will clear your XP, level, and streak.\nThis cannot be undone.");
+    const confirmed = window.confirm("Reset all progress?\n\nThis will clear your XP, level, streak, practice history, and learning module progress.\nThis cannot be undone.");
     if (!confirmed) return;
 
     await state.storage.resetUserState();
@@ -50,6 +58,7 @@ export function DashboardScreen() {
     state.storage.savePracticeIntroSeen(false);
     state.storage.saveAppAreaVisited(false);
     state.storage.saveAdvancedRangesPreference(false);
+    clearLearnModuleResumeState();
     window.location.assign("/practice");
   }
 
