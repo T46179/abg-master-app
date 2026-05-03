@@ -14,7 +14,7 @@ const mockStorage = vi.hoisted(() => ({
   savePracticeIntroSeen: vi.fn(),
   saveAppAreaVisited: vi.fn(),
   saveAdvancedRangesPreference: vi.fn(),
-  loadLastPracticeDifficulty: vi.fn(() => null),
+  loadLastPracticeDifficulty: vi.fn((): string | null => null),
   saveLastPracticeDifficulty: vi.fn()
 }));
 
