@@ -212,7 +212,7 @@ export function normalizeStructuredExplanation(explanation: unknown): Structured
 export function canUseClientSidePracticeFeedback(caseItem: CaseData | null | undefined): boolean {
   return Boolean(
     caseItem &&
-    Number(caseItem.difficulty_level ?? 1) <= 2 &&
+    Number(caseItem.difficulty_level ?? 1) <= 3 &&
     (!caseItem.protected_payload_mode || caseItem.protected_payload_mode === "practice_learning") &&
     caseItem.answer_key &&
     Object.keys(caseItem.answer_key).length &&

@@ -330,6 +330,8 @@ export interface StorageAdapter {
   saveAppAreaVisited(value: boolean): void;
   loadAdvancedRangesPreference(): boolean;
   saveAdvancedRangesPreference(value: boolean): void;
+  loadLastPracticeDifficulty(): string | null;
+  saveLastPracticeDifficulty(value: string): void;
   loadResultsExplanationPreferences(): ResultsExplanationPreferences;
   saveResultsExplanationPreferences(value: ResultsExplanationPreferences): void;
   loadResultsReviewExpandedPreference(): boolean;

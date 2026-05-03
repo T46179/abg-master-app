@@ -702,7 +702,7 @@ export function LandingScreen() {
               <div className="landing-hero__intro">
                 <h1>Master Blood Gas Interpretation</h1>
                 <p className="landing-hero__lede">
-                  <span>Learn arterial blood gas interpretation from first principles to advanced acid–base disorders.</span>
+                  <span>Learn arterial blood gas interpretation from first principles to complex mixed disorders.</span>
                   <span>Built on physiology. Designed for mastery.</span>
                 </p>
               </div>

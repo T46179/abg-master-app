@@ -5,10 +5,10 @@ import {
   canAccessDifficulty,
   getCasesRemainingToday,
   getDifficultyMeta,
-  getHighestAccessibleDifficultyKey,
   getLevelProgress,
   getMaxReachableLevel
 } from "../../core/progression";
+import { getDefaultPracticeDifficulty } from "../../app/viewHelpers";
 import { ProgressBar } from "../primitives/ProgressBar";
 import { SectionHeader } from "../primitives/SectionHeader";
 import { StatCard } from "../primitives/StatCard";
@@ -45,7 +45,10 @@ export function DashboardScreen() {
   const recentAccuracy = recent.length ? Math.round((recent.filter(Boolean).length / recent.length) * 100) : 100;
   const casesRemaining = getCasesRemainingToday(payload?.progressionConfig ?? null, state.userState);
   const longestStreak = state.userState.longestStreak ?? state.userState.streak ?? 0;
-  const defaultDifficulty = getHighestAccessibleDifficultyKey(progressionInput);
+  const defaultDifficulty = getDefaultPracticeDifficulty(
+    progressionInput,
+    state.storage?.loadLastPracticeDifficulty() ?? null
+  );
 
   async function handleResetProgress() {
     if (!state.storage) return;

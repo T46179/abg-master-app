@@ -8,7 +8,7 @@ import type {
 
 export const DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced", "master"] as const;
 
-interface ProgressionStateInput {
+export interface ProgressionStateInput {
   progressionConfig: ProgressionConfig | null;
   dashboardState?: DashboardState | null;
   defaultUserState?: DefaultUserStateSnapshot | null;

@@ -581,9 +581,30 @@ describe("practice outcome", () => {
 });
 
 describe("explanations", () => {
-  it("only enables inline client-side feedback for beginner/intermediate practice_learning cases with step feedback", () => {
+  it("enables inline client-side feedback through advanced practice_learning cases with step feedback", () => {
+    const advancedCase: CaseData = {
+      ...sampleCase,
+      protected_payload_mode: "practice_learning",
+      answer_key: {
+        ph_status: "Acidaemia"
+      },
+      step_feedback: {
+        ph_status: {
+          key: "ph_status",
+          title: "pH status",
+          body: "The pH is < 7.35, consistent with an acidaemia.",
+          order: 1
+        }
+      }
+    };
+    const masterCase: CaseData = {
+      ...advancedCase,
+      difficulty_level: 4
+    };
+
     expect(canUseClientSidePracticeFeedback(beginnerCase)).toBe(true);
-    expect(canUseClientSidePracticeFeedback(sampleCase)).toBe(false);
+    expect(canUseClientSidePracticeFeedback(advancedCase)).toBe(true);
+    expect(canUseClientSidePracticeFeedback(masterCase)).toBe(false);
   });
 
   it("reintroduces advanced ph status only when that step was missed", () => {
@@ -853,6 +874,7 @@ describe("storage adapters", () => {
     initialStorage.savePracticeIntroSeen(true);
     initialStorage.saveAppAreaVisited(true);
     initialStorage.saveAdvancedRangesPreference(true);
+    initialStorage.saveLastPracticeDifficulty("advanced");
     initialStorage.saveResultsExplanationPreferences({
       compensation: false,
       anion_gap: true,
@@ -874,6 +896,7 @@ describe("storage adapters", () => {
     expect(reloadedStorage.loadPracticeIntroSeen()).toBe(true);
     expect(reloadedStorage.loadAppAreaVisited()).toBe(true);
     expect(reloadedStorage.loadAdvancedRangesPreference()).toBe(true);
+    expect(reloadedStorage.loadLastPracticeDifficulty()).toBe("advanced");
     expect(reloadedStorage.loadResultsExplanationPreferences()).toEqual({
       compensation: false,
       anion_gap: true,
@@ -882,6 +905,18 @@ describe("storage adapters", () => {
     });
     expect(reloadedStorage.loadResultsReviewExpandedPreference()).toBe(true);
     expect(browserStorage.getItem(STORAGE_KEYS.USER_STATE_MODE_STORAGE_KEY)).toBe("sig-1");
+  });
+
+  it("sanitizes the stored last practice difficulty", async () => {
+    const browserStorage = createMemoryStorage();
+    const storage = createAppStorage({ browserStorage });
+
+    await storage.init({ releaseSignature: "sig-1" });
+    storage.saveLastPracticeDifficulty("MASTER");
+    expect(storage.loadLastPracticeDifficulty()).toBe("master");
+
+    storage.saveLastPracticeDifficulty("not-real");
+    expect(storage.loadLastPracticeDifficulty()).toBeNull();
   });
 
   it("persists practice intro acceptance changes across re-init", async () => {

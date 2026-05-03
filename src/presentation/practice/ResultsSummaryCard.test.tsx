@@ -82,6 +82,8 @@ function createStorageAdapter(overrides: Partial<StorageAdapter> = {}): StorageA
     saveAppAreaVisited: vi.fn(),
     loadAdvancedRangesPreference: vi.fn(() => false),
     saveAdvancedRangesPreference: vi.fn(),
+    loadLastPracticeDifficulty: vi.fn(() => null),
+    saveLastPracticeDifficulty: vi.fn(),
     loadResultsExplanationPreferences: vi.fn(() => ({
       compensation: true,
       anion_gap: true,

@@ -14,6 +14,7 @@ const USER_STATE_MODE_STORAGE_KEY = "abgmaster_userState_mode";
 const PRACTICE_INTRO_SEEN_STORAGE_KEY = "practiceIntroSeen";
 const APP_AREA_VISITED_STORAGE_KEY = "abgmaster_appAreaVisited";
 const ADVANCED_RANGES_STORAGE_KEY = "abgmaster_showAdvancedRanges";
+const LAST_PRACTICE_DIFFICULTY_STORAGE_KEY = "abgmaster_lastPracticeDifficulty";
 const RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY = "abgmaster_resultsExplanationPreferences";
 const RESULTS_REVIEW_EXPANDED_STORAGE_KEY = "abgmaster_resultsReviewExpanded";
 const SEEN_CASES_STORAGE_KEY = "abgmaster_seenCasesByDifficulty";
@@ -31,6 +32,7 @@ export const STORAGE_KEYS = {
   PRACTICE_INTRO_SEEN_STORAGE_KEY,
   APP_AREA_VISITED_STORAGE_KEY,
   ADVANCED_RANGES_STORAGE_KEY,
+  LAST_PRACTICE_DIFFICULTY_STORAGE_KEY,
   RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY,
   RESULTS_REVIEW_EXPANDED_STORAGE_KEY,
   SEEN_CASES_STORAGE_KEY
@@ -121,6 +123,11 @@ export function sanitizeSeenCaseState(source: unknown): Record<string, string[]>
   });
 
   return sanitized;
+}
+
+export function sanitizePracticeDifficulty(source: unknown): string | null {
+  const normalized = String(source ?? "").trim().toLowerCase();
+  return DIFFICULTY_ORDER.includes(normalized) ? normalized : null;
 }
 
 export function sanitizeResultsExplanationPreferences(source: unknown): ResultsExplanationPreferences {
@@ -257,6 +264,19 @@ export function createLocalStorageAdapter(browserStorage: BrowserStorageLike): S
 
     saveAdvancedRangesPreference(value) {
       safeSetItem(browserStorage, ADVANCED_RANGES_STORAGE_KEY, String(Boolean(value)));
+    },
+
+    loadLastPracticeDifficulty() {
+      return sanitizePracticeDifficulty(safeGetItem(browserStorage, LAST_PRACTICE_DIFFICULTY_STORAGE_KEY));
+    },
+
+    saveLastPracticeDifficulty(value) {
+      const sanitized = sanitizePracticeDifficulty(value);
+      if (sanitized) {
+        safeSetItem(browserStorage, LAST_PRACTICE_DIFFICULTY_STORAGE_KEY, sanitized);
+      } else {
+        safeRemoveItem(browserStorage, LAST_PRACTICE_DIFFICULTY_STORAGE_KEY);
+      }
     },
 
     loadResultsExplanationPreferences() {
@@ -443,6 +463,14 @@ export function createSupabaseStorageAdapter(
       localAdapter.saveAdvancedRangesPreference(value);
     },
 
+    loadLastPracticeDifficulty() {
+      return localAdapter.loadLastPracticeDifficulty();
+    },
+
+    saveLastPracticeDifficulty(value) {
+      localAdapter.saveLastPracticeDifficulty(value);
+    },
+
     loadResultsExplanationPreferences() {
       return localAdapter.loadResultsExplanationPreferences();
     },
@@ -517,6 +545,12 @@ export function createAppStorage(options?: {
     },
     saveAdvancedRangesPreference(value) {
       activeAdapter.saveAdvancedRangesPreference(value);
+    },
+    loadLastPracticeDifficulty() {
+      return activeAdapter.loadLastPracticeDifficulty();
+    },
+    saveLastPracticeDifficulty(value) {
+      activeAdapter.saveLastPracticeDifficulty(value);
     },
     loadResultsExplanationPreferences() {
       return activeAdapter.loadResultsExplanationPreferences();

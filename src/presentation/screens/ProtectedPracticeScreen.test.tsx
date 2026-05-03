@@ -71,6 +71,8 @@ let currentState: {
     loadAppAreaVisited: () => boolean;
     saveAppAreaVisited: ReturnType<typeof vi.fn>;
     saveAdvancedRangesPreference: ReturnType<typeof vi.fn>;
+    loadLastPracticeDifficulty: () => string | null;
+    saveLastPracticeDifficulty: ReturnType<typeof vi.fn>;
     loadSeenCaseState: () => Record<string, string[]>;
     saveSeenCaseState: ReturnType<typeof vi.fn>;
   };
@@ -86,6 +88,7 @@ vi.mock("../../app/AppProvider", () => ({
 }));
 
 vi.mock("../../app/viewHelpers", () => ({
+  getDefaultPracticeDifficulty: () => "beginner",
   getPracticeDifficultyMismatchAction: () => null,
   shouldConfirmDifficultySwitch: () => false,
   shouldShowPracticeIntro: () => false
@@ -336,6 +339,8 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
         loadAppAreaVisited: () => true,
         saveAppAreaVisited: vi.fn(),
         saveAdvancedRangesPreference: vi.fn(),
+        loadLastPracticeDifficulty: () => null,
+        saveLastPracticeDifficulty: vi.fn(),
         loadSeenCaseState: () => ({}),
         saveSeenCaseState: vi.fn()
       }

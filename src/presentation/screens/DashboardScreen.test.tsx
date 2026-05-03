@@ -13,7 +13,9 @@ const mockStorage = vi.hoisted(() => ({
   saveSeenCaseState: vi.fn(),
   savePracticeIntroSeen: vi.fn(),
   saveAppAreaVisited: vi.fn(),
-  saveAdvancedRangesPreference: vi.fn()
+  saveAdvancedRangesPreference: vi.fn(),
+  loadLastPracticeDifficulty: vi.fn(() => null),
+  saveLastPracticeDifficulty: vi.fn()
 }));
 
 vi.mock("../../app/AppProvider", () => ({
@@ -22,7 +24,10 @@ vi.mock("../../app/AppProvider", () => ({
       status: "ready",
       errorMessage: null,
       payload: {
-        progressionConfig: null,
+        progressionConfig: {
+          release_flags: { enable_all_difficulties: true },
+          difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" }
+        },
         dashboardState: null,
         defaultUserState: null,
         cases: []
@@ -66,6 +71,9 @@ describe("DashboardScreen", () => {
     mockStorage.savePracticeIntroSeen.mockClear();
     mockStorage.saveAppAreaVisited.mockClear();
     mockStorage.saveAdvancedRangesPreference.mockClear();
+    mockStorage.loadLastPracticeDifficulty.mockClear();
+    mockStorage.loadLastPracticeDifficulty.mockReturnValue(null);
+    mockStorage.saveLastPracticeDifficulty.mockClear();
     vi.spyOn(window, "confirm").mockReturnValue(true);
 
     originalLocation = window.location;
@@ -113,5 +121,22 @@ describe("DashboardScreen", () => {
     expect(window.localStorage.getItem("abg-master:learn:foundations:lesson-index")).toBeNull();
     expect(window.localStorage.getItem("abg-master:learn:beginner:lesson-index")).toBeNull();
     expect(window.localStorage.getItem("abg-master:unrelated")).toBe("keep");
+  });
+
+  it("links next case to the remembered practice difficulty", () => {
+    mockStorage.loadLastPracticeDifficulty.mockReturnValue("advanced");
+
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <DashboardScreen />
+        </MemoryRouter>
+      );
+    });
+
+    const nextCaseLink = Array.from(container.querySelectorAll<HTMLAnchorElement>("a"))
+      .find(link => link.textContent?.includes("Next case"));
+
+    expect(nextCaseLink?.getAttribute("href")).toBe("/practice?difficulty=advanced");
   });
 });

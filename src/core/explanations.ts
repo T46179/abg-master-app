@@ -174,5 +174,5 @@ export function buildConciseStepFeedback(caseItem: CaseData, stepKey: string): S
 export function supportsInlineStepFeedback(caseItem: CaseData | null | undefined): boolean {
   if (!caseItem) return false;
   const level = Number(caseItem.difficulty_level ?? 1);
-  return level <= 2 && caseItem.protected_payload_mode === "practice_learning";
+  return level <= 3 && caseItem.protected_payload_mode === "practice_learning";
 }

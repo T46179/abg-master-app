@@ -1,4 +1,9 @@
 import { getVisibleCaseMetrics, renderMetricValue } from "../core/metrics";
+import {
+  canAccessDifficulty,
+  normalizeDifficultyKey,
+  type ProgressionStateInput
+} from "../core/progression";
 import type { CaseData } from "../core/types";
 
 const PRIMARY_METRIC_LABELS = new Set(["pH", "PaCO2", "HCO3"]);
@@ -71,4 +76,15 @@ export function getPracticeDifficultyMismatchAction(input: {
   if (!input.hasActiveCase || input.hasSummary || !input.activeCaseDifficulty) return null;
   if (input.activeCaseDifficulty === input.normalizedDifficulty) return null;
   return input.hasExplicitDifficultyParam ? "replace_active_case" : "resume_active_case";
+}
+
+export function getDefaultPracticeDifficulty(
+  progressionInput: ProgressionStateInput,
+  lastPracticeDifficulty: string | null | undefined
+) {
+  if (lastPracticeDifficulty && canAccessDifficulty(progressionInput, lastPracticeDifficulty)) {
+    return normalizeDifficultyKey(progressionInput, lastPracticeDifficulty);
+  }
+
+  return normalizeDifficultyKey(progressionInput, "intermediate");
 }

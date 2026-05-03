@@ -8,6 +8,7 @@ import {
 } from "../../app/protectedPracticeSlots";
 import { PROTECTED_PRACTICE_MESSAGES, getProtectedPracticeUnavailableMessage } from "../../app/protectedPracticeMessages";
 import {
+  getDefaultPracticeDifficulty,
   getPracticeDifficultyMismatchAction,
   shouldConfirmDifficultySwitch,
   shouldShowPracticeIntro
@@ -41,7 +42,6 @@ import {
   getAwardableXp,
   getDifficultyLabel,
   getDifficultyMeta,
-  getHighestAccessibleDifficultyKey,
   getLevelProgress,
   normalizeDifficultyKey,
   syncUserStateDerivedFields
@@ -87,7 +87,10 @@ export function ProtectedPracticeScreen() {
     userState: state.userState,
     cases: []
   };
-  const defaultDifficulty = getHighestAccessibleDifficultyKey(progressionInput);
+  const defaultDifficulty = getDefaultPracticeDifficulty(
+    progressionInput,
+    state.storage?.loadLastPracticeDifficulty() ?? null
+  );
   const hasExplicitDifficultyParam = searchParams.has("difficulty");
   const requestedDifficulty = searchParams.get("difficulty") ?? defaultDifficulty;
   const normalizedDifficulty = normalizeDifficultyKey(progressionInput, requestedDifficulty);
@@ -205,6 +208,12 @@ export function ProtectedPracticeScreen() {
       setSearchParams({ difficulty: normalizedDifficulty }, { replace: true });
     }
   }, [normalizedDifficulty, requestedDifficulty, setSearchParams]);
+
+  useEffect(() => {
+    if (state.status !== "ready") return;
+    if (!hasExplicitDifficultyParam && difficultyMismatchAction) return;
+    state.storage?.saveLastPracticeDifficulty(normalizedDifficulty);
+  }, [difficultyMismatchAction, hasExplicitDifficultyParam, normalizedDifficulty, state.status, state.storage]);
 
   useEffect(() => {
     if (!isReadyForPracticeIntroGate) return;
@@ -560,6 +569,7 @@ export function ProtectedPracticeScreen() {
     }
 
     setSearchParams({ difficulty: nextNormalizedDifficulty });
+    state.storage?.saveLastPracticeDifficulty(nextNormalizedDifficulty);
     await beginCase(nextNormalizedDifficulty, { confirmAbandon: false });
   }
 

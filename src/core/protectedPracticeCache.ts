@@ -4,7 +4,7 @@ import type { IssuedPracticeSlot, PendingPracticeSubmission } from "./types";
 const PRACTICE_SLOTS_STORAGE_KEY = "abgmaster_practiceSlotsByDifficulty";
 const PENDING_SUBMISSION_STORAGE_KEY = "abgmaster_pendingPracticeSubmission";
 const DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced", "master"] as const;
-const PRACTICE_SLOTS_CACHE_VERSION = 2;
+const PRACTICE_SLOTS_CACHE_VERSION = 3;
 
 function safeGetItem(storage: BrowserStorageLike, key: string): string | null {
   try {

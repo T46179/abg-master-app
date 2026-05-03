@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatElapsed,
   formatLevelProgressText,
+  getDefaultPracticeDifficulty,
   getPracticeDifficultyMismatchAction,
   shouldConfirmDifficultySwitch,
   shouldShowPracticeIntro
@@ -57,5 +58,84 @@ describe("view helpers", () => {
       activeCaseDifficulty: "beginner",
       normalizedDifficulty: "master"
     })).toBe("replace_active_case");
+  });
+
+  it("defaults new practice entry to intermediate when accessible", () => {
+    expect(getDefaultPracticeDifficulty({
+      progressionConfig: {
+        release_flags: { enable_all_difficulties: true },
+        difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" }
+      },
+      userState: {
+        xp: 0,
+        level: 1,
+        casesCompleted: 0,
+        abandonedCases: 0,
+        correctAnswers: 0,
+        totalAnswers: 0,
+        streak: 0,
+        dailyCasesUsed: 0,
+        lastCaseDate: null,
+        unlockedDifficulties: ["beginner"],
+        isPremium: false,
+        badges: [],
+        recentResults: [],
+        appliedProtectedCaseTokens: [],
+        learnProgress: {}
+      }
+    }, null)).toBe("intermediate");
+  });
+
+  it("prefers the last accessible practice difficulty", () => {
+    const input = {
+      progressionConfig: {
+        release_flags: { enable_all_difficulties: true },
+        difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" }
+      },
+      userState: {
+        xp: 0,
+        level: 1,
+        casesCompleted: 0,
+        abandonedCases: 0,
+        correctAnswers: 0,
+        totalAnswers: 0,
+        streak: 0,
+        dailyCasesUsed: 0,
+        lastCaseDate: null,
+        unlockedDifficulties: ["beginner"],
+        isPremium: false,
+        badges: [],
+        recentResults: [],
+        appliedProtectedCaseTokens: [],
+        learnProgress: {}
+      }
+    };
+
+    expect(getDefaultPracticeDifficulty(input, "advanced")).toBe("advanced");
+  });
+
+  it("falls back safely when the stored practice difficulty is not accessible", () => {
+    expect(getDefaultPracticeDifficulty({
+      progressionConfig: {
+        difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" }
+      },
+      userState: {
+        xp: 0,
+        level: 1,
+        casesCompleted: 0,
+        abandonedCases: 0,
+        correctAnswers: 0,
+        totalAnswers: 0,
+        streak: 0,
+        dailyCasesUsed: 0,
+        lastCaseDate: null,
+        unlockedDifficulties: ["beginner"],
+        isPremium: false,
+        badges: [],
+        recentResults: [],
+        appliedProtectedCaseTokens: [],
+        learnProgress: {}
+      }
+    }, "master")).toBe("beginner");
   });
 });
