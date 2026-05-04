@@ -20,6 +20,7 @@ const RESULTS_REVIEW_EXPANDED_STORAGE_KEY = "abgmaster_resultsReviewExpanded";
 const SEEN_CASES_STORAGE_KEY = "abgmaster_seenCasesByDifficulty";
 const DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced", "master"];
 const RESULTS_EXPLANATION_PREFERENCE_KEYS: ResultsExplanationPreferenceKey[] = [
+  "primary_disorder",
   "compensation",
   "anion_gap",
   "additional_metabolic_process",
@@ -65,6 +66,7 @@ function createEmptySeenCaseState() {
 
 function createDefaultResultsExplanationPreferences(): ResultsExplanationPreferences {
   return {
+    primary_disorder: true,
     compensation: true,
     anion_gap: true,
     additional_metabolic_process: true,

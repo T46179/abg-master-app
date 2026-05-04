@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { Bell, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "../utils";
 
@@ -126,7 +126,7 @@ export function MainNav(props: MainNavProps) {
 
         <div className="main-nav__controls">
           <button className="main-nav__stay-updated" type="button" onClick={props.onOpenStayUpdated}>
-            <Bell className="main-nav__link-icon" />
+            <span className="main-nav__link-icon main-nav__bell-icon" aria-hidden="true" />
             <span>Stay Updated</span>
           </button>
 
@@ -136,7 +136,7 @@ export function MainNav(props: MainNavProps) {
             aria-label="Stay Updated"
             onClick={props.onOpenStayUpdated}
           >
-            <Bell />
+            <span className="main-nav__bell-icon" aria-hidden="true" />
           </button>
 
           <button

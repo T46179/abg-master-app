@@ -876,6 +876,7 @@ describe("storage adapters", () => {
     initialStorage.saveAdvancedRangesPreference(true);
     initialStorage.saveLastPracticeDifficulty("advanced");
     initialStorage.saveResultsExplanationPreferences({
+      primary_disorder: true,
       compensation: false,
       anion_gap: true,
       additional_metabolic_process: true,
@@ -898,6 +899,7 @@ describe("storage adapters", () => {
     expect(reloadedStorage.loadAdvancedRangesPreference()).toBe(true);
     expect(reloadedStorage.loadLastPracticeDifficulty()).toBe("advanced");
     expect(reloadedStorage.loadResultsExplanationPreferences()).toEqual({
+      primary_disorder: true,
       compensation: false,
       anion_gap: true,
       additional_metabolic_process: true,

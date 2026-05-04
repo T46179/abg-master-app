@@ -90,6 +90,7 @@ const storageAdapter = {
   loadLastPracticeDifficulty: vi.fn(() => null),
   saveLastPracticeDifficulty: vi.fn(),
   loadResultsExplanationPreferences: vi.fn(() => ({
+    primary_disorder: true,
     compensation: true,
     anion_gap: true,
     additional_metabolic_process: true,

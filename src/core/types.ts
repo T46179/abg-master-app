@@ -138,6 +138,7 @@ export interface StructuredExplanation {
 }
 
 export type ResultsExplanationPreferenceKey =
+  | "primary_disorder"
   | "compensation"
   | "anion_gap"
   | "additional_metabolic_process"

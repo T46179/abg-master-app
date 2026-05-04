@@ -107,6 +107,7 @@ function getRenderedExplanationSections(caseSummary: CaseSummary): ExplanationSe
 }
 
 const COLLAPSIBLE_EXPLANATION_KEYS = new Set<ResultsExplanationPreferenceKey>([
+  "primary_disorder",
   "compensation",
   "anion_gap",
   "additional_metabolic_process",
@@ -119,6 +120,7 @@ function isCollapsibleExplanationKey(key: ExplanationSection["key"]): key is Res
 
 function getExpandedPreferences(storage?: StorageAdapter | null): ResultsExplanationPreferences {
   return storage?.loadResultsExplanationPreferences() ?? {
+    primary_disorder: true,
     compensation: true,
     anion_gap: true,
     additional_metabolic_process: true,
@@ -128,6 +130,18 @@ function getExpandedPreferences(storage?: StorageAdapter | null): ResultsExplana
 
 function getResultsReviewExpandedPreference(storage?: StorageAdapter | null) {
   return storage?.loadResultsReviewExpandedPreference() ?? false;
+}
+
+function ExpandCollapseIcon(props: { expanded: boolean }) {
+  return (
+    <span
+      className={cn(
+        "results-card__collapse-icon",
+        props.expanded ? "results-card__collapse-icon--collapse" : "results-card__collapse-icon--expand"
+      )}
+      aria-hidden="true"
+    />
+  );
 }
 
 interface ResultsSummaryCardProps {
@@ -250,7 +264,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                         aria-label={`${expandedByKey[section.key] ? "Collapse" : "Expand"} ${section.title}`}
                         onClick={() => handleToggleSection(section.key as ResultsExplanationPreferenceKey)}
                       >
-                        {expandedByKey[section.key] ? "-" : "+"}
+                        <ExpandCollapseIcon expanded={expandedByKey[section.key]} />
                       </button>
                     ) : null}
                   </div>
@@ -283,7 +297,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
             aria-label={`${isReviewExpanded ? "Collapse" : "Expand"} review case details`}
             onClick={() => setIsReviewExpanded(current => !current)}
           >
-            {isReviewExpanded ? "-" : "+"}
+            <ExpandCollapseIcon expanded={isReviewExpanded} />
           </button>
         </div>
 

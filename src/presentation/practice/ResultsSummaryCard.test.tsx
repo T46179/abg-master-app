@@ -85,6 +85,7 @@ function createStorageAdapter(overrides: Partial<StorageAdapter> = {}): StorageA
     loadLastPracticeDifficulty: vi.fn(() => null),
     saveLastPracticeDifficulty: vi.fn(),
     loadResultsExplanationPreferences: vi.fn(() => ({
+      primary_disorder: true,
       compensation: true,
       anion_gap: true,
       additional_metabolic_process: true,
@@ -242,6 +243,7 @@ describe("ResultsSummaryCard", () => {
 
   it("collapses only the targeted explanation card body and persists the setting", () => {
     const preferences: ResultsExplanationPreferences = {
+      primary_disorder: true,
       compensation: true,
       anion_gap: true,
       additional_metabolic_process: true,
@@ -276,7 +278,7 @@ describe("ResultsSummaryCard", () => {
     });
 
     const toggle = container.querySelector<HTMLButtonElement>(".results-card__detail-toggle");
-    expect(toggle?.textContent).toBe("-");
+    expect(toggle?.getAttribute("aria-label")).toBe("Collapse Compensation");
     expect(container.textContent).toContain("Compensation explanation.");
 
     act(() => {
@@ -288,8 +290,9 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).toContain("Additional process body.");
     expect(container.textContent).toContain("Clinical significance body.");
     expect(container.textContent).toContain("Takeaway body.");
-    expect(toggle?.textContent).toBe("+");
+    expect(toggle?.getAttribute("aria-label")).toBe("Expand Compensation");
     expect(storage.saveResultsExplanationPreferences).toHaveBeenCalledWith({
+      primary_disorder: true,
       compensation: false,
       anion_gap: true,
       additional_metabolic_process: true,
@@ -317,6 +320,7 @@ describe("ResultsSummaryCard", () => {
 
   it("collapses the additional metabolic process card body and persists the setting", () => {
     const preferences: ResultsExplanationPreferences = {
+      primary_disorder: true,
       compensation: true,
       anion_gap: true,
       additional_metabolic_process: true,
@@ -351,7 +355,7 @@ describe("ResultsSummaryCard", () => {
 
     const toggles = Array.from(container.querySelectorAll<HTMLButtonElement>(".results-card__detail-toggle"));
     const additionalToggle = toggles.find(button => button.getAttribute("aria-label") === "Collapse Additional Metabolic Process");
-    expect(additionalToggle?.textContent).toBe("-");
+    expect(additionalToggle?.getAttribute("aria-label")).toBe("Collapse Additional Metabolic Process");
     expect(container.textContent).toContain("Additional process body.");
 
     act(() => {
@@ -362,8 +366,9 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).toContain("Compensation explanation.");
     expect(container.textContent).toContain("Raised anion gap explanation.");
     expect(container.textContent).toContain("Takeaway body.");
-    expect(additionalToggle?.textContent).toBe("+");
+    expect(additionalToggle?.getAttribute("aria-label")).toBe("Expand Additional Metabolic Process");
     expect(storage.saveResultsExplanationPreferences).toHaveBeenCalledWith({
+      primary_disorder: true,
       compensation: true,
       anion_gap: true,
       additional_metabolic_process: false,
