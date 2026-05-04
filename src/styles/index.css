@@ -2610,31 +2610,38 @@ button:disabled {
     width: 100%;
   }
 
-  .results-card__metric-section--primary .metric-card {
+  .results-card__metric-section--primary .metric-card,
+  .value-panels__card--primary .metric-grid--primary .metric-card {
     padding: 0.82rem 0.72rem;
     min-width: 0;
   }
 
-  .results-card__metric-section--primary .metric-card__label {
+  .results-card__metric-section--primary .metric-card__label,
+  .value-panels__card--primary .metric-grid--primary .metric-card__label {
     margin-bottom: 1.05rem;
     line-height: 1;
   }
 
   .results-card__metric-section--primary .metric-card__label sub,
-  .results-card__metric-section--primary .metric-card__label sup {
+  .results-card__metric-section--primary .metric-card__label sup,
+  .value-panels__card--primary .metric-grid--primary .metric-card__label sub,
+  .value-panels__card--primary .metric-grid--primary .metric-card__label sup {
     line-height: 0;
   }
 
-  .results-card__metric-section--primary .metric-card__value {
+  .results-card__metric-section--primary .metric-card__value,
+  .value-panels__card--primary .metric-grid--primary .metric-card__value {
     gap: 0.2rem;
     font-size: clamp(1.5rem, 6vw, 1.84rem);
   }
 
-  .results-card__metric-section--primary .metric-card__value small {
+  .results-card__metric-section--primary .metric-card__value small,
+  .value-panels__card--primary .metric-grid--primary .metric-card__value small {
     display: none;
   }
 
-  .results-card__metric-section--primary .metric-card__reference {
+  .results-card__metric-section--primary .metric-card__reference,
+  .value-panels__card--primary .metric-grid--primary .metric-card__reference {
     margin-top: 0.32rem;
     font-size: 0.73rem;
     line-height: 1.2;
@@ -2644,56 +2651,26 @@ button:disabled {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .value-panels__card .metric-grid--primary .metric-card {
-    padding: 0.82rem 0.72rem;
-    min-width: 0;
-  }
-
-  .value-panels__card .metric-grid--primary .metric-card__label {
-    margin-bottom: 1.05rem;
-    line-height: 1;
-  }
-
-  .value-panels__card .metric-grid--primary .metric-card__label sub,
-  .value-panels__card .metric-grid--primary .metric-card__label sup {
-    line-height: 0;
-  }
-
-  .value-panels__card .metric-grid--primary .metric-card__value {
-    gap: 0.2rem;
-    font-size: clamp(1.5rem, 6vw, 1.84rem);
-  }
-
-  .value-panels__card .metric-grid--primary .metric-card__value small {
-    display: none;
-  }
-
-  .value-panels__card .metric-grid--primary .metric-card__reference {
-    margin-top: 0.32rem;
-    font-size: 0.73rem;
-    line-height: 1.2;
-  }
-
-  .value-panels > .value-panels__card:last-child {
+  .value-panels__card--secondary {
     width: 100%;
     max-width: 100%;
     min-width: 0;
   }
 
-  .value-panels > .value-panels__card:last-child > .value-panels__secondary-scroll {
+  .value-panels__card--secondary > .value-panels__secondary-scroll {
     position: relative;
     width: 100%;
     max-width: 100%;
     min-width: 0;
   }
 
-  .value-panels > .value-panels__card:last-child > .value-panels__secondary-scroll::after {
+  .value-panels__card--secondary > .value-panels__secondary-scroll::after {
     background: var(--color-navy);
     color: var(--color-surface);
     box-shadow: 0 10px 22px rgba(15, 37, 71, 0.12);
   }
 
-  .value-panels > .value-panels__card:last-child > .value-panels__secondary-scroll > .metric-scroll {
+  .metric-scroll--secondary {
     width: 100%;
     max-width: 100%;
     min-width: 0;
@@ -2703,32 +2680,39 @@ button:disabled {
     -webkit-overflow-scrolling: touch;
   }
 
-  .value-panels > .value-panels__card:last-child > .value-panels__secondary-scroll > .metric-scroll::-webkit-scrollbar {
+  .metric-scroll--secondary::-webkit-scrollbar {
     display: none;
   }
 
-  .value-panels > .value-panels__card:last-child .metric-grid--secondary {
+  .metric-grid--scrolling {
     display: flex;
     flex-wrap: nowrap;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
     align-items: stretch;
   }
 
-  .value-panels > .value-panels__card:last-child .metric-card--secondary {
+  .value-panels__card--secondary .metric-grid--scrolling {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .metric-card--scroll-item {
     flex: 0 0 auto;
     min-width: 9.5rem;
     min-height: 6.95rem;
     padding: 0.82rem 0.82rem 0.76rem;
   }
 
-  .value-panels > .value-panels__card:last-child .metric-card--secondary .metric-card__label {
+  .value-panels__card--secondary.value-panels__card--references-hidden .metric-card--scroll-item {
+    min-height: 5.75rem;
+  }
+
+  .metric-card--scroll-item .metric-card__label {
     margin-bottom: 1.05rem;
     line-height: 1;
   }
 
-  .value-panels > .value-panels__card:last-child .metric-card--secondary .metric-card__reference {
+  .metric-card--scroll-item .metric-card__reference {
     margin-top: 0.32rem;
     line-height: 1.2;
   }
@@ -2748,43 +2732,12 @@ button:disabled {
   }
 
   .results-card__metric-section--secondary > .results-card__secondary-scroll > .results-card__metric-scroll {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
     margin-top: 0;
   }
 
-  .results-card__metric-section--secondary > .results-card__secondary-scroll > .results-card__metric-scroll::-webkit-scrollbar {
-    display: none;
-  }
-
   .results-card__metric-section--secondary .results-card__metric-grid-secondary {
-    display: inline-flex;
-    flex-wrap: nowrap;
     width: max-content;
     min-width: 100%;
-    align-items: stretch;
-  }
-
-  .results-card__metric-section--secondary .metric-card--secondary {
-    flex: 0 0 auto;
-    min-width: 9.5rem;
-    min-height: 6.95rem;
-    padding: 0.82rem 0.82rem 0.76rem;
-  }
-
-  .results-card__metric-section--secondary .metric-card--secondary .metric-card__label {
-    margin-bottom: 1.05rem;
-    line-height: 1;
-  }
-
-  .results-card__metric-section--secondary .metric-card--secondary .metric-card__reference {
-    margin-top: 0.32rem;
-    line-height: 1.2;
   }
 
   .results-card__hero,
@@ -2801,7 +2754,7 @@ button:disabled {
     align-items: center;
   }
 
-  .value-panels > .value-panels__card:first-child > .value-panels__header {
+  .value-panels__card--primary > .value-panels__header {
     flex-direction: row;
     justify-content: space-between;
     align-items: flex-start;

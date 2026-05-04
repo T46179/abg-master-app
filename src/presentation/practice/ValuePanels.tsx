@@ -23,7 +23,7 @@ export function ValuePanels(props: ValuePanelsProps) {
 
   return (
     <div className="value-panels">
-      <Surface className="value-panels__card">
+      <Surface className="value-panels__card value-panels__card--primary">
         <div className="value-panels__header">
           <div>
             <span className="section-header__eyebrow">ABG values</span>
@@ -64,7 +64,13 @@ export function ValuePanels(props: ValuePanelsProps) {
       </Surface>
 
       {secondary.length ? (
-        <Surface className="value-panels__card">
+        <Surface
+          className={cn(
+            "value-panels__card",
+            "value-panels__card--secondary",
+            showReferences ? "value-panels__card--references-visible" : "value-panels__card--references-hidden"
+          )}
+        >
           <div className="value-panels__header">
             <div>
               <span className="section-header__eyebrow">Electrolytes &amp; other values</span>
@@ -76,18 +82,19 @@ export function ValuePanels(props: ValuePanelsProps) {
           >
             <div
               ref={secondaryScroll.ref}
-              className={cn("metric-scroll", "scroll-fade")}
+              className={cn("metric-scroll", "metric-scroll--secondary", "scroll-fade")}
               data-overflowing={secondaryScroll.overflowing}
               data-at-start={secondaryScroll.atStart}
               data-at-end={secondaryScroll.atEnd}
             >
-              <div className="metric-grid metric-grid--secondary">
+              <div className="metric-grid metric-grid--secondary metric-grid--scrolling">
                 {secondary.map(metric => (
                   <article
                     key={metric.label}
                     className={[
                       "metric-card",
-                      "metric-card--secondary"
+                      "metric-card--secondary",
+                      "metric-card--scroll-item"
                     ].join(" ")}
                   >
                     <span className="metric-card__label"><MetricLabel label={metric.label} /></span>

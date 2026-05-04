@@ -187,8 +187,14 @@ describe("ResultsSummaryCard", () => {
       "Answer Review"
     ]);
 
-    const toggles = Array.from(container.querySelectorAll(".results-card__detail-toggle")).map(node => node.textContent);
-    expect(toggles).toEqual(["-", "-", "-", "-"]);
+    const toggles = Array.from(container.querySelectorAll(".results-card__detail-toggle")).map(node => node.getAttribute("aria-label"));
+    expect(toggles).toEqual([
+      "Collapse Primary Disorder",
+      "Collapse Compensation",
+      "Collapse Anion Gap Analysis",
+      "Collapse Additional Metabolic Process",
+      "Collapse Clinical Significance"
+    ]);
   });
 
   it("falls back to diagnosis when clinical context is absent", () => {

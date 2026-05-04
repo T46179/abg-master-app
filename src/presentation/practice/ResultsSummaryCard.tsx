@@ -331,18 +331,19 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                 >
                   <div
                     ref={secondaryScroll.ref}
-                    className={cn("metric-scroll", "scroll-fade", "results-card__metric-scroll")}
+                    className={cn("metric-scroll", "metric-scroll--secondary", "scroll-fade", "results-card__metric-scroll")}
                     data-overflowing={secondaryScroll.overflowing}
                     data-at-start={secondaryScroll.atStart}
                     data-at-end={secondaryScroll.atEnd}
                   >
-                    <div className="metric-grid metric-grid--secondary results-card__metric-grid-secondary">
+                    <div className="metric-grid metric-grid--secondary metric-grid--scrolling results-card__metric-grid-secondary">
                       {metrics.secondary.map(metric => (
                         <article
                           key={metric.label}
                           className={[
                             "metric-card",
-                            "metric-card--secondary"
+                            "metric-card--secondary",
+                            "metric-card--scroll-item"
                           ].join(" ")}
                         >
                           <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
