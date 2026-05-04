@@ -11,6 +11,14 @@
   --color-text-faint: #9ca8ab;
   --color-primary: #161b1d;
   --color-primary-foreground: #ffffff;
+  --color-navy: #0f2547;
+  --color-navy-soft: #24436f;
+  --color-copy-soft: #4b585b;
+  --color-copy-subtle: #717182;
+  --color-slate-strong: #0f172a;
+  --color-slate-muted: #475569;
+  --color-slate-faint: #94a3b8;
+  --color-blue-muted: #5f7897;
   --color-link: #2563eb;
   --color-link-hover: #1d4ed8;
   --color-blue-soft: #eff6ff;
@@ -23,6 +31,7 @@
   --color-orange: #ea580c;
   --color-red-soft: #fef2f2;
   --color-red: #dc2626;
+  --color-surface-raised: #f8fafc;
   --color-yellow-soft: #fefce8;
   --color-yellow: #ca8a04;
   --radius-sm: 0.625rem;
