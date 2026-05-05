@@ -6,17 +6,11 @@ import { useAppContext } from "../../app/AppProvider";
 import { trackEvent } from "../../core/analytics";
 import { getAwardableXp, getLevelProgress, syncUserStateDerivedFields } from "../../core/progression";
 import { getLearnLevel, isLearnLevelAvailable, isLearnLevelUnlocked, shouldShowLearnLevel } from "../learn/content";
-import type { SpeedCheckPhase } from "../learn/SpeedCheckGame";
-import { SpeedCheckGame } from "../learn/SpeedCheckGame";
+import type { BloodGasBlitzAttemptResult, BloodGasBlitzPhase } from "../minigames/BloodGasBlitz";
+import { BloodGasBlitzGame } from "../minigames/BloodGasBlitz";
 import { cn } from "../utils";
 import { Surface } from "../primitives/Surface";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
-
-interface SpeedCheckResult {
-  correctCount: number;
-  totalQuestions: number;
-  elapsedMs: number;
-}
 
 function getLearnLessonStorageKey(slug: string) {
   return `abg-master:learn:${slug}:lesson-index`;
@@ -54,7 +48,7 @@ export function LearnLessonScreen() {
   const level = getLearnLevel(difficulty);
   const entryMode = searchParams.get("mode");
   const [lessonIndex, setLessonIndex] = useState(() => level ? getEntryLessonIndex(level.slug, level.lessons.length, entryMode) : 0);
-  const [speedCheckPhase, setSpeedCheckPhase] = useState<SpeedCheckPhase>("ready");
+  const [speedCheckPhase, setSpeedCheckPhase] = useState<BloodGasBlitzPhase>("ready");
   const [speedCheckResetKey, setSpeedCheckResetKey] = useState(0);
   const [completionGateSatisfied, setCompletionGateSatisfied] = useState(false);
   const learnModuleStartedTrackedRef = useRef(new Set<string>());
@@ -242,7 +236,7 @@ export function LearnLessonScreen() {
     }, state.payload?.progressionConfig ?? null));
   }
 
-  function handleSpeedCheckResult(result: SpeedCheckResult) {
+  function handleSpeedCheckResult(result: BloodGasBlitzAttemptResult) {
     const currentProgress = state.userState.learnProgress?.[activeLevel.slug];
     const currentBest = currentProgress?.bestSpeedCheckResult;
     const isBetterResult =
@@ -317,12 +311,13 @@ export function LearnLessonScreen() {
 
           <div className="learn-deck__body">
             {isSpeedCheck ? (
-              <SpeedCheckGame
+              <BloodGasBlitzGame
                 level={state.userState.level}
                 onComplete={handleNextLesson}
                 onPhaseChange={setSpeedCheckPhase}
                 onResult={handleSpeedCheckResult}
                 onXpAwarded={handleSpeedCheckXpAwarded}
+                placement="learn-foundations"
                 xpForNextLevel={levelProgress.xpForNextLevel}
                 xpIntoLevel={levelProgress.xpIntoLevel}
                 xpProgressLabel={`${levelProgress.xpIntoLevel} / ${levelProgress.xpForNextLevel || levelProgress.xpIntoLevel} XP`}

@@ -3,11 +3,18 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SpeedCheckGame } from "./SpeedCheckGame";
+import {
+  BloodGasBlitzGame,
+  BLOOD_GAS_BLITZ_GAME_ID,
+  bloodGasBlitzVersions,
+  generateBloodGasBlitzQuestions,
+  getPlayableBloodGasBlitzConfig
+} from "./index";
+import type { BloodGasBlitzAttemptResult } from "./index";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-describe("SpeedCheckGame", () => {
+describe("BloodGasBlitzGame", () => {
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
   let now = 0;
@@ -30,18 +37,20 @@ describe("SpeedCheckGame", () => {
     vi.useRealTimers();
   });
 
-  function renderGame(onComplete = vi.fn(), onXpAwarded = vi.fn()) {
+  function renderGame(onComplete = vi.fn(), onXpAwarded = vi.fn(), onResult = vi.fn()) {
     act(() => {
       root.render(
-        <SpeedCheckGame
+        <BloodGasBlitzGame
           onComplete={onComplete}
+          onResult={onResult}
           onXpAwarded={onXpAwarded}
+          placement="learn-foundations"
           xpProgressLabel="0 / 200 XP"
         />
       );
     });
 
-    return { onComplete, onXpAwarded };
+    return { onComplete, onXpAwarded, onResult };
   }
 
   function clickButton(label: string) {
@@ -108,5 +117,57 @@ describe("SpeedCheckGame", () => {
     clickButton("Continue");
 
     expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("emits a future-ready attempt result while preserving existing fields", () => {
+    const { onResult } = renderGame();
+
+    startGame();
+
+    for (let index = 0; index < 10; index += 1) {
+      clickButton(getVisibleQuestionAnswer());
+      act(() => {
+        const delay = index === 9 ? 960 : 560;
+        now += delay;
+        vi.advanceTimersByTime(delay);
+      });
+    }
+
+    expect(onResult).toHaveBeenCalledTimes(1);
+    const result = onResult.mock.calls[0][0] as BloodGasBlitzAttemptResult;
+
+    expect(result).toMatchObject({
+      gameId: BLOOD_GAS_BLITZ_GAME_ID,
+      versionId: "ph-classification-v1",
+      placement: "learn-foundations",
+      correctCount: 10,
+      totalQuestions: 10,
+      accuracy: 100,
+      maxStreak: 10
+    });
+    expect(result.elapsedMs).toBeGreaterThan(0);
+    expect(result.averageMsPerQuestion).toBe(Math.round(result.elapsedMs / 10));
+    expect(Date.parse(result.startedAt)).not.toBeNaN();
+    expect(Date.parse(result.completedAt)).not.toBeNaN();
+    expect(result.startedAt).not.toBe(result.completedAt);
+    expect(result.answers).toHaveLength(10);
+    expect(result.answers[0]).toEqual(expect.objectContaining({
+      questionId: expect.any(String),
+      questionIndex: expect.any(Number),
+      value: expect.any(Number),
+      expectedAnswer: expect.any(String),
+      selectedAnswer: expect.any(String),
+      isCorrect: true,
+      answeredAtMs: expect.any(Number)
+    }));
+  });
+
+  it("keeps pH v1 playable and CO2 v1 planned-only", () => {
+    const questions = generateBloodGasBlitzQuestions("ph-classification-v1");
+
+    expect(questions).toHaveLength(10);
+    expect(new Set(questions.map(question => question.expectedAnswer))).toEqual(new Set(["Acidaemia", "Normal", "Alkalaemia"]));
+    expect(getPlayableBloodGasBlitzConfig("ph-classification-v1").status).toBe("playable");
+    expect(bloodGasBlitzVersions["co2-classification-v1"]).toMatchObject({ status: "planned" });
   });
 });

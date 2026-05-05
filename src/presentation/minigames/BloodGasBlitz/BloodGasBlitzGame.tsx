@@ -1,15 +1,34 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import timerIcon from "../../assets/icons/timer.svg";
-import { cn } from "../utils";
+import timerIcon from "../../../assets/icons/timer.svg";
+import { cn } from "../../utils";
+import {
+  BLOOD_GAS_BLITZ_ADVANCE_DELAY_MS,
+  BLOOD_GAS_BLITZ_CORRECT_FEEDBACK,
+  BLOOD_GAS_BLITZ_FINAL_REVEAL_DELAY_MS,
+  BLOOD_GAS_BLITZ_INCORRECT_FEEDBACK,
+  BLOOD_GAS_BLITZ_XP_PER_CORRECT,
+  getPlayableBloodGasBlitzConfig
+} from "./bloodGasBlitzConfig";
+import { generateBloodGasBlitzQuestions } from "./bloodGasBlitzQuestionGenerator";
+import {
+  BLOOD_GAS_BLITZ_GAME_ID,
+  type BloodGasBlitzAnswerAttempt,
+  type BloodGasBlitzAnswerLabel,
+  type BloodGasBlitzAttemptResult,
+  type BloodGasBlitzPhase,
+  type BloodGasBlitzPlacement,
+  type BloodGasBlitzPlayableVersionId,
+  type BloodGasBlitzQuestion
+} from "./bloodGasBlitzTypes";
 
-export type SpeedCheckPhase = "ready" | "countdown" | "playing" | "results";
-
-interface SpeedCheckGameProps {
+export interface BloodGasBlitzGameProps {
   onComplete: () => void;
-  onPhaseChange?: (phase: SpeedCheckPhase) => void;
-  onResult?: (result: { correctCount: number; totalQuestions: number; elapsedMs: number }) => void;
+  onPhaseChange?: (phase: BloodGasBlitzPhase) => void;
+  onResult?: (result: BloodGasBlitzAttemptResult) => void;
   onXpAwarded?: (amount: number) => void;
+  placement?: BloodGasBlitzPlacement;
   resetKey?: number;
+  versionId?: BloodGasBlitzPlayableVersionId;
   level?: number;
   xpForNextLevel?: number;
   xpIntoLevel?: number;
@@ -17,72 +36,8 @@ interface SpeedCheckGameProps {
   xpProgressValue?: number;
 }
 
-interface SpeedCheckQuestion {
-  ph: number;
-  correct: "Normal" | "Acidaemia" | "Alkalaemia";
-}
-
 type StreakPillTone = "active" | "broken";
 type StreakPillAnimation = "pulse" | "fizzle" | null;
-
-const SPEED_CHECK_QUESTION_COUNT = 10;
-const SPEED_CHECK_XP_PER_CORRECT = 3;
-const SPEED_CHECK_ADVANCE_DELAY_MS = 560;
-const SPEED_CHECK_FINAL_REVEAL_DELAY_MS = 960;
-const SPEED_CHECK_CORRECT_FEEDBACK = ["Correct", "Nice!", "Clean read", "Quick call!"] as const;
-const SPEED_CHECK_INCORRECT_FEEDBACK = ["Not quite", "Reset and try again"] as const;
-
-const SPEED_CHECK_RANGES: Record<SpeedCheckQuestion["correct"], { min: number; max: number }> = {
-  Acidaemia: { min: 7.1, max: 7.3 },
-  Normal: { min: 7.37, max: 7.43 },
-  Alkalaemia: { min: 7.5, max: 7.6 }
-};
-
-const SPEED_CHECK_PATTERN: SpeedCheckQuestion["correct"][] = [
-  "Acidaemia",
-  "Normal",
-  "Alkalaemia",
-  "Acidaemia",
-  "Normal",
-  "Alkalaemia",
-  "Acidaemia",
-  "Normal",
-  "Alkalaemia",
-  "Acidaemia"
-];
-
-const SPEED_CHECK_ANSWERS: SpeedCheckQuestion["correct"][] = [
-  "Acidaemia",
-  "Normal",
-  "Alkalaemia"
-];
-
-function randomPhInRange(range: { min: number; max: number }) {
-  const value = range.min + Math.random() * (range.max - range.min);
-  return Number(value.toFixed(2));
-}
-
-function shuffleQuestions(questions: SpeedCheckQuestion[]) {
-  const shuffled = [...questions];
-
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
-  }
-
-  return shuffled;
-}
-
-export function generateSpeedCheckQuestions(): SpeedCheckQuestion[] {
-  return shuffleQuestions(
-    SPEED_CHECK_PATTERN.slice(0, SPEED_CHECK_QUESTION_COUNT).map(correct => ({
-      ph: randomPhInRange(SPEED_CHECK_RANGES[correct]),
-      correct
-    }))
-  );
-}
-
-export const SPEED_CHECK_QUESTIONS: SpeedCheckQuestion[] = generateSpeedCheckQuestions();
 
 function getStreakBonus(streak: number) {
   if (streak >= 10) return 5;
@@ -107,18 +62,33 @@ function getMilestoneFeedback(streak: number) {
   return "";
 }
 
-export function SpeedCheckGame({
+function getMaxStreak(answers: BloodGasBlitzAnswerAttempt[]) {
+  let current = 0;
+  let max = 0;
+
+  answers.forEach(answer => {
+    current = answer.isCorrect ? current + 1 : 0;
+    max = Math.max(max, current);
+  });
+
+  return max;
+}
+
+export function BloodGasBlitzGame({
   level = 1,
   onComplete,
   onPhaseChange,
   onResult,
   onXpAwarded,
+  placement,
   resetKey = 0,
+  versionId = "ph-classification-v1",
   xpForNextLevel = 0,
   xpIntoLevel = 0,
   xpProgressLabel = "0 / 0 XP",
   xpProgressValue = 0
-}: SpeedCheckGameProps) {
+}: BloodGasBlitzGameProps) {
+  const config = getPlayableBloodGasBlitzConfig(versionId);
   const gameRef = useRef<HTMLElement | null>(null);
   const xpCounterRef = useRef<HTMLElement | null>(null);
   const pendingTimeoutsRef = useRef<number[]>([]);
@@ -127,16 +97,17 @@ export function SpeedCheckGame({
   const streakAnimationKickoffTimeoutRef = useRef<number | null>(null);
   const correctFeedbackIndexRef = useRef(0);
   const incorrectFeedbackIndexRef = useRef(0);
-  const [phase, setPhase] = useState<SpeedCheckPhase>("ready");
-  const [questions, setQuestions] = useState<SpeedCheckQuestion[]>(() => generateSpeedCheckQuestions());
+  const [phase, setPhase] = useState<BloodGasBlitzPhase>("ready");
+  const [questions, setQuestions] = useState<BloodGasBlitzQuestion[]>(() => generateBloodGasBlitzQuestions(versionId));
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<boolean[]>([]);
-  const [selectedAnswer, setSelectedAnswer] = useState<SpeedCheckQuestion["correct"] | null>(null);
+  const [answers, setAnswers] = useState<BloodGasBlitzAnswerAttempt[]>([]);
+  const [selectedAnswer, setSelectedAnswer] = useState<BloodGasBlitzAnswerLabel | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [startTime, setStartTime] = useState(0);
+  const [startedAt, setStartedAt] = useState("");
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showBubble, setShowBubble] = useState(false);
-  const [bubbleLabel, setBubbleLabel] = useState(`+${SPEED_CHECK_XP_PER_CORRECT} XP`);
+  const [bubbleLabel, setBubbleLabel] = useState(`+${BLOOD_GAS_BLITZ_XP_PER_CORRECT} XP`);
   const [shakeXpCounter, setShakeXpCounter] = useState(false);
   const [shakePrompt, setShakePrompt] = useState(false);
   const [bubblePosition, setBubblePosition] = useState({ x: 0, y: 0, travelX: 0, travelY: 0 });
@@ -147,7 +118,7 @@ export function SpeedCheckGame({
   const [streakPillAnimation, setStreakPillAnimation] = useState<StreakPillAnimation>(null);
   const [feedbackCopy, setFeedbackCopy] = useState("");
   const [feedbackTone, setFeedbackTone] = useState<"correct" | "incorrect" | null>(null);
-  const [feedbackDurationMs, setFeedbackDurationMs] = useState(SPEED_CHECK_ADVANCE_DELAY_MS);
+  const [feedbackDurationMs, setFeedbackDurationMs] = useState(BLOOD_GAS_BLITZ_ADVANCE_DELAY_MS);
 
   function clearPendingTimeouts() {
     pendingTimeoutsRef.current.forEach(timeoutId => window.clearTimeout(timeoutId));
@@ -185,7 +156,7 @@ export function SpeedCheckGame({
     clearPendingTimeouts();
     clearStreakTimers();
     setShowBubble(false);
-    setBubbleLabel(`+${SPEED_CHECK_XP_PER_CORRECT} XP`);
+    setBubbleLabel(`+${BLOOD_GAS_BLITZ_XP_PER_CORRECT} XP`);
     setShakeXpCounter(false);
     setShakePrompt(false);
     setCurrentStreak(0);
@@ -194,7 +165,7 @@ export function SpeedCheckGame({
     setStreakPillAnimation(null);
     setFeedbackCopy("");
     setFeedbackTone(null);
-    setFeedbackDurationMs(SPEED_CHECK_ADVANCE_DELAY_MS);
+    setFeedbackDurationMs(BLOOD_GAS_BLITZ_ADVANCE_DELAY_MS);
     correctFeedbackIndexRef.current = 0;
     incorrectFeedbackIndexRef.current = 0;
   }
@@ -240,7 +211,7 @@ export function SpeedCheckGame({
     const milestoneFeedback = getMilestoneFeedback(streak);
     if (milestoneFeedback) return milestoneFeedback;
 
-    const message = SPEED_CHECK_CORRECT_FEEDBACK[correctFeedbackIndexRef.current % SPEED_CHECK_CORRECT_FEEDBACK.length];
+    const message = BLOOD_GAS_BLITZ_CORRECT_FEEDBACK[correctFeedbackIndexRef.current % BLOOD_GAS_BLITZ_CORRECT_FEEDBACK.length];
     correctFeedbackIndexRef.current += 1;
     return message;
   }
@@ -248,7 +219,7 @@ export function SpeedCheckGame({
   function getNextIncorrectFeedback(hadVisibleStreak: boolean) {
     if (hadVisibleStreak) return "Streak broken";
 
-    const message = SPEED_CHECK_INCORRECT_FEEDBACK[incorrectFeedbackIndexRef.current % SPEED_CHECK_INCORRECT_FEEDBACK.length];
+    const message = BLOOD_GAS_BLITZ_INCORRECT_FEEDBACK[incorrectFeedbackIndexRef.current % BLOOD_GAS_BLITZ_INCORRECT_FEEDBACK.length];
     incorrectFeedbackIndexRef.current += 1;
     return message;
   }
@@ -264,15 +235,17 @@ export function SpeedCheckGame({
 
   useEffect(() => {
     setPhase("ready");
+    setQuestions(generateBloodGasBlitzQuestions(versionId));
     setCurrentQuestionIndex(0);
     setAnswers([]);
     setSelectedAnswer(null);
     setShowFeedback(false);
     setStartTime(0);
+    setStartedAt("");
     setElapsedTime(0);
     setCountdown(3);
     resetTransientState();
-  }, [resetKey]);
+  }, [resetKey, versionId]);
 
   useEffect(() => {
     if (phase !== "playing") return undefined;
@@ -293,6 +266,7 @@ export function SpeedCheckGame({
     const timeoutIds = countdownTicks.map((value, index) =>
       window.setTimeout(() => {
         if (value === 0) {
+          setStartedAt(new Date().toISOString());
           setPhase("playing");
           setStartTime(Date.now());
           setElapsedTime(0);
@@ -309,10 +283,11 @@ export function SpeedCheckGame({
   }, [phase]);
 
   function handleStart() {
-    setQuestions(generateSpeedCheckQuestions());
+    setQuestions(generateBloodGasBlitzQuestions(versionId));
     setPhase("countdown");
     setCountdown(3);
     setStartTime(0);
+    setStartedAt("");
     setElapsedTime(0);
     setCurrentQuestionIndex(0);
     setAnswers([]);
@@ -325,22 +300,33 @@ export function SpeedCheckGame({
     handleStart();
   }
 
-  function handleAnswer(answer: SpeedCheckQuestion["correct"], event: React.MouseEvent<HTMLButtonElement>) {
+  function handleAnswer(answer: BloodGasBlitzAnswerLabel, event: React.MouseEvent<HTMLButtonElement>) {
     if (phase !== "playing" || showFeedback) return;
 
     const question = questions[currentQuestionIndex];
-    const isCorrect = answer === question.correct;
+    const isCorrect = answer === question.expectedAnswer;
+    const answeredAtMs = Date.now() - startTime;
+    const answerAttempt: BloodGasBlitzAnswerAttempt = {
+      questionId: question.id,
+      questionIndex: currentQuestionIndex,
+      value: question.value,
+      expectedAnswer: question.expectedAnswer,
+      selectedAnswer: answer,
+      isCorrect,
+      answeredAtMs
+    };
+    const nextAnswers = [...answers, answerAttempt];
     const nextStreak = isCorrect ? currentStreak + 1 : 0;
     const streakBonus = isCorrect ? getStreakBonus(nextStreak) : 0;
-    const awardedXp = SPEED_CHECK_XP_PER_CORRECT + streakBonus;
+    const awardedXp = BLOOD_GAS_BLITZ_XP_PER_CORRECT + streakBonus;
     const isFinalQuestion = currentQuestionIndex >= questions.length - 1;
-    const transitionDelay = isFinalQuestion ? SPEED_CHECK_FINAL_REVEAL_DELAY_MS : SPEED_CHECK_ADVANCE_DELAY_MS;
+    const transitionDelay = isFinalQuestion ? BLOOD_GAS_BLITZ_FINAL_REVEAL_DELAY_MS : BLOOD_GAS_BLITZ_ADVANCE_DELAY_MS;
     const nextFeedbackCopy = isCorrect
       ? getNextCorrectFeedback(nextStreak)
       : getNextIncorrectFeedback(currentStreak >= 2);
 
     setSelectedAnswer(answer);
-    setAnswers(current => [...current, isCorrect]);
+    setAnswers(nextAnswers);
     setShowFeedback(true);
     setFeedbackTone(isCorrect ? "correct" : "incorrect");
     setFeedbackCopy(nextFeedbackCopy);
@@ -399,10 +385,22 @@ export function SpeedCheckGame({
       if (isFinalQuestion) {
         const finalElapsedMs = Date.now() - startTime;
 
+        const correctAnswerCount = nextAnswers.filter(item => item.isCorrect).length;
+        const completedAt = new Date().toISOString();
+
         onResult?.({
-          correctCount: answers.filter(Boolean).length + (isCorrect ? 1 : 0),
+          gameId: BLOOD_GAS_BLITZ_GAME_ID,
+          versionId,
+          ...(placement ? { placement } : {}),
+          startedAt,
+          completedAt,
+          correctCount: correctAnswerCount,
           totalQuestions: questions.length,
-          elapsedMs: finalElapsedMs
+          elapsedMs: finalElapsedMs,
+          accuracy: questions.length ? Math.round((correctAnswerCount / questions.length) * 100) : 0,
+          averageMsPerQuestion: questions.length ? Math.round(finalElapsedMs / questions.length) : 0,
+          maxStreak: getMaxStreak(nextAnswers),
+          answers: nextAnswers
         });
         setElapsedTime(finalElapsedMs);
         setPhase("results");
@@ -421,7 +419,7 @@ export function SpeedCheckGame({
   }
 
   const question = questions[currentQuestionIndex];
-  const correctCount = answers.filter(Boolean).length;
+  const correctCount = answers.filter(answer => answer.isCorrect).length;
   const accuracy = answers.length ? Math.round((correctCount / answers.length) * 100) : 0;
   const totalSeconds = (elapsedTime / 1000).toFixed(1);
   const averageSeconds = questions.length ? (elapsedTime / 1000 / questions.length).toFixed(1) : "0.0";
@@ -542,10 +540,10 @@ export function SpeedCheckGame({
         <div className="speed-check__question-topbar">
           <div className="speed-check__progress-dots" aria-label="Question progress">
             {questions.map((_, index) => {
-              let dotState = "upcoming";
+                  let dotState = "upcoming";
 
-              if (index < answers.length) {
-                dotState = answers[index] ? "correct" : "incorrect";
+                  if (index < answers.length) {
+                    dotState = answers[index].isCorrect ? "correct" : "incorrect";
               } else if (index === currentQuestionIndex) {
                 dotState = "current";
               }
@@ -580,9 +578,9 @@ export function SpeedCheckGame({
           </div>
         </div>
 
-        <span className="speed-check__prompt">Classify the pH</span>
-        <strong>{question.ph}</strong>
-        <p>Normal range: 7.35 to 7.45</p>
+        <span className="speed-check__prompt">{config.prompt}</span>
+        <strong>{question.value}</strong>
+        <p>{config.rangeLabel}</p>
         <div
           className={cn(
             "speed-check__feedback-copy",
@@ -597,9 +595,9 @@ export function SpeedCheckGame({
       </div>
 
       <div className="speed-check__answers">
-        {SPEED_CHECK_ANSWERS.map(answer => {
+        {config.answers.map(answer => {
           const isSelected = selectedAnswer === answer;
-          const isCorrect = answer === question.correct;
+          const isCorrect = answer === question.expectedAnswer;
           const feedbackState = showFeedback && isSelected
             ? isCorrect ? "correct" : "incorrect"
             : "idle";
