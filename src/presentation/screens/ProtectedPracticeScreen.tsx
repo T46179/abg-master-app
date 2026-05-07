@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import {
   getMissingPracticeSlotDifficulties,
@@ -55,8 +55,8 @@ import type { AnswerSelection, AnswerValue, CaseData, IssuedPracticeSlot, StepRe
 import { getLearnUnlockMilestoneForLevelTransition } from "../learn/content";
 import { LearnUnlockModal } from "../learn/LearnUnlockModal";
 import { Surface } from "../primitives/Surface";
+import { CalibrationIntroModal } from "../practice/CalibrationIntroModal";
 import { PracticeDifficultyRail } from "../practice/PracticeDifficultyRail";
-import { PracticeIntroModal } from "../practice/PracticeIntroModal";
 import { QuestionFlowCard } from "../practice/QuestionFlowCard";
 import { ResultsSummaryCard, ResultsSummaryHeader } from "../practice/ResultsSummaryCard";
 import { ScenarioCard } from "../practice/ScenarioCard";
@@ -65,6 +65,7 @@ import { ErrorView, LoadingView } from "../shared/StatusViews";
 
 export function ProtectedPracticeScreen() {
   const { state, setUserState, patchPracticeState, patchSessionState } = useAppContext();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [recentArchetypes, setRecentArchetypes] = useState<string[]>([]);
   const [introOpen, setIntroOpen] = useState(false);
@@ -516,22 +517,10 @@ export function ProtectedPracticeScreen() {
   function handleContinueFromIntro() {
     state.storage?.savePracticeIntroSeen(true);
     state.storage?.saveAppAreaVisited(true);
-    const nextDifficulty = pendingDifficulty ?? normalizedDifficulty;
     introAcceptedRef.current = true;
     setIntroOpen(false);
     setPendingDifficulty(null);
-    if (currentCase && !summary && activeCaseDifficulty === nextDifficulty) {
-      activatePreviewedSlot(nextDifficulty);
-      return;
-    }
-    void beginCase(nextDifficulty);
-  }
-
-  function handleLearnFirstFromIntro() {
-    state.storage?.savePracticeIntroSeen(true);
-    state.storage?.saveAppAreaVisited(true);
-    setIntroOpen(false);
-    setPendingDifficulty(null);
+    navigate("/calibration");
   }
 
   async function handleDifficultyChange(nextDifficulty: string) {
@@ -923,10 +912,9 @@ export function ProtectedPracticeScreen() {
         }}
       />
 
-      <PracticeIntroModal
+      <CalibrationIntroModal
         open={introOpen}
         onContinue={handleContinueFromIntro}
-        onLearnFirst={handleLearnFirstFromIntro}
       />
 
       <main className="app-shell__page practice-screen">

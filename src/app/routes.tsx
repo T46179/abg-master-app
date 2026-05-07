@@ -10,6 +10,7 @@ import { LearnScreen } from "../presentation/screens/LearnScreen";
 import { LearnLessonScreen } from "../presentation/screens/LearnLessonScreen";
 import { PrivacyScreen } from "../presentation/screens/PrivacyScreen";
 import { BloodGasCompensationRulesScreen } from "../presentation/screens/BloodGasCompensationRulesScreen";
+import { CalibrationScreen } from "../presentation/calibration";
 
 export const appRoutes: RouteObject[] = [
   {
@@ -30,6 +31,7 @@ export const appRoutes: RouteObject[] = [
     children: [
       { path: "dashboard", element: <DashboardScreen /> },
       { path: "practice", element: <PracticeScreen /> },
+      { path: "calibration", element: <CalibrationScreen /> },
       {
         path: "learn",
         children: [

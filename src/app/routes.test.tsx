@@ -35,12 +35,21 @@ describe("app routes", () => {
     expect(getElementName(compensationRoute?.element)).toBe("BloodGasCompensationRulesScreen");
   });
 
-  it("keeps dashboard and practice available inside the app shell", () => {
+  it("keeps dashboard, practice, and calibration available inside the app shell", () => {
     const shellRoute = appRoutes.find((route) => route.children != null);
     const childPaths = shellRoute?.children?.map((route) => route.path);
 
     expect(childPaths).toContain("dashboard");
     expect(childPaths).toContain("practice");
+    expect(childPaths).toContain("calibration");
+  });
+
+  it("renders the calibration scaffold at /calibration", () => {
+    const shellRoute = appRoutes.find((route) => route.children != null);
+    const calibrationRoute = shellRoute?.children?.find((route) => route.path === "calibration");
+
+    expect(calibrationRoute?.element).toBeTruthy();
+    expect(getElementName(calibrationRoute?.element)).toBe("CalibrationScreen");
   });
 
   it("renders the learn overview at /learn", () => {

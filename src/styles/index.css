@@ -585,6 +585,7 @@ button:disabled {
 .dashboard-screen__container,
 .learn-screen__container,
 .profile-screen__container,
+.calibration-screen__container,
 .practice-screen__container {
   width: min(100%, var(--screen-max));
   margin: 0 auto;
@@ -923,6 +924,7 @@ button:disabled {
 .profile-section,
 .learn-card,
 .learn-screen__hero,
+.calibration-step-shell,
 .practice-alert-card,
 .question-flow-card,
 .results-card,
@@ -1134,6 +1136,197 @@ button:disabled {
 .value-panels__card .section-header__eyebrow {
   color: var(--color-navy);
   font-weight: 500;
+}
+
+.calibration-screen__container {
+  max-width: 44rem;
+}
+
+.calibration-step-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.calibration-step-shell__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.calibration-step-shell__eyebrow,
+.calibration-step-shell__step {
+  color: var(--color-navy);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.calibration-step-shell h1 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: clamp(1.8rem, 4vw, 2.45rem);
+  font-weight: 560;
+  letter-spacing: 0;
+  line-height: 1.12;
+}
+
+.calibration-step-shell p {
+  max-width: 42rem;
+  margin: 0;
+  color: var(--color-copy-soft);
+  font-weight: 300;
+  line-height: 1.65;
+}
+
+.calibration-screen__placeholder {
+  min-height: 9rem;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-soft);
+}
+
+.calibration-screen__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.calibration-screen__button {
+  min-width: 10rem;
+}
+
+.calibration-build-gas {
+  display: grid;
+  gap: 1.35rem;
+  padding: clamp(1rem, 3vw, 1.45rem);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 0.25rem 1.5rem rgba(15, 23, 42, 0.08);
+}
+
+.calibration-build-gas__rows {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.calibration-build-gas__row {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.calibration-build-gas__row-header,
+.calibration-build-gas__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.calibration-build-gas__row-label {
+  color: var(--color-navy);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.calibration-build-gas__row-unit,
+.calibration-build-gas__footer {
+  color: var(--color-text-faint);
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+.calibration-build-gas__choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.calibration-build-gas__choice {
+  position: relative;
+  display: grid;
+  min-height: 5rem;
+  place-items: center;
+  gap: 0.15rem;
+  border-color: var(--color-border);
+  background: var(--color-surface-raised);
+  text-align: center;
+}
+
+.calibration-build-gas__choice .metric-card__value {
+  color: var(--color-text);
+  font-size: clamp(1.35rem, 3vw, 1.55rem);
+  font-weight: 650;
+}
+
+.calibration-build-gas__choice.is-selected {
+  border-color: var(--color-navy);
+  background: color-mix(in srgb, var(--color-navy) 5%, var(--color-surface));
+}
+
+.calibration-build-gas__choice.is-selected .metric-card__value {
+  color: var(--color-navy);
+}
+
+.calibration-build-gas__check {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  display: inline-grid;
+  width: 1rem;
+  height: 1rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-navy);
+  color: var(--color-surface);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.calibration-build-gas__status {
+  color: var(--color-text-faint);
+  font-size: 0.73rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.calibration-build-gas__footer {
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.calibration-build-gas__summary {
+  color: var(--color-navy-soft);
+  font-size: 0.86rem;
+}
+
+.calibration-compensation {
+  display: grid;
+  gap: 1rem;
+}
+
+.calibration-compensation__card {
+  display: grid;
+  gap: 1rem;
+}
+
+.value-panels__card .calibration-compensation__metric-grid {
+  margin-top: 0;
+}
+
+.calibration-compensation__option {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.calibration-compensation__option small {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  font-weight: 300;
+  line-height: 1.45;
 }
 
 .results-card .section-header__eyebrow,
@@ -2075,42 +2268,65 @@ button:disabled {
   line-height: 1.65;
 }
 
-.practice-intro-modal {
-  width: min(100%, 38rem);
+.calibration-intro-modal {
+  width: min(100%, 46rem);
+  padding: 1.65rem;
+  border-color: rgba(15, 37, 71, 0.08);
+  border-radius: 1.35rem;
+  box-shadow: 0 28px 70px rgba(15, 37, 71, 0.14);
 }
 
-.practice-intro-modal h2 {
-  font-size: 1.35rem;
+.calibration-intro-modal__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: #f3f5f9;
+  color: var(--color-navy);
+  font-size: 0.84rem;
+  font-weight: 400;
 }
 
-.practice-intro-copy {
+.calibration-intro-modal__pill-icon {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  background: currentColor;
+  -webkit-mask-image: url("../assets/icons/flask.svg");
+  mask-image: url("../assets/icons/flask.svg");
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.modal-card .calibration-intro-modal__eyebrow {
+  margin-top: 1.65rem;
+  color: var(--color-navy);
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.calibration-intro-modal h2 {
+  max-width: 24rem;
   margin-top: 1rem;
+  color: #111827;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 600;
+  line-height: 1.18;
 }
 
-.practice-intro-copy p {
-  margin-top: 0.85rem;
-  font-size: 0.93rem;
-  line-height: 1.55;
-}
-
-.practice-intro-copy p strong {
-  color: var(--color-text);
-}
-
-.practice-intro-copy .practice-intro-copy__subheading {
-  margin-top: 1.35rem;
-}
-
-.practice-intro-list {
-  margin: 0.85rem 0 0;
-  padding-left: 1.2rem;
-  color: var(--color-text-soft);
-  font-size: 0.93rem;
-  line-height: 1.5;
-}
-
-.practice-intro-list li + li {
-  margin-top: 0.45rem;
+.modal-card .calibration-intro-modal__body {
+  max-width: 38rem;
+  margin-top: 1.3rem;
+  color: var(--color-copy-soft);
+  font-weight: 300;
+  line-height: 1.65;
 }
 
 .modal-card__actions {
@@ -2120,21 +2336,35 @@ button:disabled {
   margin-top: 1.3rem;
 }
 
-.practice-intro-modal__button {
-  min-width: 11rem;
+.calibration-intro-modal__actions {
+  margin-top: 2.65rem;
 }
 
-.modal-card .practice-intro-modal__cta-prompt {
-  margin-top: 1.35rem;
-  color: var(--color-text-soft);
-  font-size: 0.93rem;
-  font-weight: 400;
-  line-height: 1.55;
+.calibration-intro-modal__button {
+  width: 100%;
+  min-height: 3.55rem;
+  border-radius: 0.95rem;
+  background: var(--color-navy);
+  box-shadow: 0 18px 34px rgba(15, 37, 71, 0.16);
+  font-size: 1.05rem;
 }
 
-.practice-intro-modal__actions {
-  justify-content: space-between;
-  margin-top: 0.85rem;
+.calibration-intro-modal__button:hover:not(:disabled) {
+  background: var(--color-navy);
+}
+
+.calibration-intro-modal__skip {
+  display: block;
+  width: fit-content;
+  margin: 1.25rem auto 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-copy-soft);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 300;
+  text-align: center;
 }
 
 .learn-unlock-modal {
@@ -2575,8 +2805,55 @@ button:disabled {
     padding-inline: 0.85rem;
   }
 
-  .practice-intro-modal {
+  .calibration-build-gas__choice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .calibration-build-gas__row-header,
+  .calibration-build-gas__footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .calibration-intro-modal {
     padding: 1.2rem;
+  }
+
+  .calibration-intro-modal__pill {
+    min-height: 2.1rem;
+    padding-inline: 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  .modal-card .calibration-intro-modal__eyebrow {
+    margin-top: 1.35rem;
+    font-size: 0.9rem;
+  }
+
+  .calibration-intro-modal h2 {
+    margin-top: 1rem;
+    font-size: 1.9rem;
+  }
+
+  .modal-card .calibration-intro-modal__body {
+    margin-top: 1.05rem;
+    font-size: 0.98rem;
+    line-height: 1.6;
+  }
+
+  .calibration-intro-modal__actions {
+    margin-top: 2rem;
+  }
+
+  .calibration-intro-modal__button {
+    min-height: 3.35rem;
+    font-size: 1rem;
+  }
+
+  .calibration-intro-modal__skip {
+    margin-top: 1.05rem;
+    font-size: 0.86rem;
   }
 
   .launch-notify-modal {

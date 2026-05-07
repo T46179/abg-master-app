@@ -156,8 +156,8 @@ vi.mock("../practice/PracticeDifficultyRail", () => ({
   PracticeDifficultyRail: () => null
 }));
 
-vi.mock("../practice/PracticeIntroModal", () => ({
-  PracticeIntroModal: () => null
+vi.mock("../practice/CalibrationIntroModal", () => ({
+  CalibrationIntroModal: () => null
 }));
 
 vi.mock("../practice/QuestionFlowCard", () => ({
