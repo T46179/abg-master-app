@@ -47,8 +47,11 @@ export function getEligibleCasesForDifficulty(options: {
   seenCasesByDifficulty: Record<string, string[]>;
   recentArchetypes: string[];
 }): CaseData[] {
-  const exactMatches = options.cases.filter(caseItem => caseMatchesDifficulty(caseItem, options.difficultyKey, options.progressionConfig));
-  const pool = exactMatches.length ? exactMatches : [...options.cases];
+  const practiceEligibleCases = options.cases.filter(caseItem => {
+    return caseItem.source_type !== "authored" || caseItem.practice_pool_eligible === true;
+  });
+  const exactMatches = practiceEligibleCases.filter(caseItem => caseMatchesDifficulty(caseItem, options.difficultyKey, options.progressionConfig));
+  const pool = exactMatches.length ? exactMatches : [...practiceEligibleCases];
 
   const seenCaseIds = getSeenCaseIdsForDifficulty(options.seenCasesByDifficulty, options.difficultyKey);
   const unseenCases = pool.filter(caseItem => !seenCaseIds.has(caseItem.case_id));

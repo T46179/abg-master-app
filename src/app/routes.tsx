@@ -11,6 +11,8 @@ import { LearnLessonScreen } from "../presentation/screens/LearnLessonScreen";
 import { PrivacyScreen } from "../presentation/screens/PrivacyScreen";
 import { BloodGasCompensationRulesScreen } from "../presentation/screens/BloodGasCompensationRulesScreen";
 import { CalibrationScreen } from "../presentation/calibration";
+import { CasePreviewScreen } from "../presentation/screens/CasePreviewScreen";
+import { AuthoredCaseGalleryScreen } from "../presentation/screens/AuthoredCaseGalleryScreen";
 
 export const appRoutes: RouteObject[] = [
   {
@@ -32,6 +34,8 @@ export const appRoutes: RouteObject[] = [
       { path: "dashboard", element: <DashboardScreen /> },
       { path: "practice", element: <PracticeScreen /> },
       { path: "calibration", element: <CalibrationScreen /> },
+      { path: "case-preview/:caseId", element: <CasePreviewScreen /> },
+      { path: "dev/authored-cases", element: <AuthoredCaseGalleryScreen /> },
       {
         path: "learn",
         children: [

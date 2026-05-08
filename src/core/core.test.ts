@@ -607,6 +607,20 @@ describe("explanations", () => {
     expect(canUseClientSidePracticeFeedback(masterCase)).toBe(false);
   });
 
+  it("hides metrics listed in display.hidden_inputs", () => {
+    const labels = getVisibleCaseMetrics({
+      ...sampleCase,
+      difficulty_level: 4,
+      display: {
+        hidden_inputs: ["pao2_mmHg", "glucose_mmolL", "Lactate"]
+      }
+    }).map(metric => metric.label);
+
+    expect(labels).not.toContain("PaO2");
+    expect(labels).not.toContain("Glucose");
+    expect(labels).not.toContain("Lactate");
+  });
+
   it("reintroduces advanced ph status only when that step was missed", () => {
     const advancedCase: CaseData = {
       ...sampleCase,

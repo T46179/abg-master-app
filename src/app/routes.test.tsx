@@ -42,6 +42,8 @@ describe("app routes", () => {
     expect(childPaths).toContain("dashboard");
     expect(childPaths).toContain("practice");
     expect(childPaths).toContain("calibration");
+    expect(childPaths).toContain("case-preview/:caseId");
+    expect(childPaths).toContain("dev/authored-cases");
   });
 
   it("renders the calibration scaffold at /calibration", () => {

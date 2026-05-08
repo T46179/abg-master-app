@@ -154,6 +154,8 @@ export interface StepFeedbackEntry {
 
 export interface CaseData {
   case_id: string;
+  source_type?: "generated" | "authored";
+  practice_pool_eligible?: boolean;
   title?: string;
   archetype?: string;
   category?: string;
@@ -168,6 +170,18 @@ export interface CaseData {
   explanation_blueprint?: ExplanationBlueprintEntry[];
   step_feedback?: Record<string, StepFeedbackEntry>;
   explanation?: string | StructuredExplanation;
+  display?: {
+    hidden_inputs?: string[];
+    [key: string]: unknown;
+  };
+  contributor?: {
+    display_name?: string;
+    credit_enabled?: boolean;
+  };
+  featured?: {
+    eligible?: boolean;
+    priority?: number;
+  };
 }
 
 export interface CasesPayload {

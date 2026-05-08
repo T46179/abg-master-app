@@ -142,8 +142,25 @@ export function isMetricVisibleForDifficulty(metric: CaseMetricDefinition, diffi
 
 export function getVisibleCaseMetrics(caseItem: CaseData): CaseMetricDefinition[] {
   const difficultyLevel = Number(caseItem?.difficulty_level ?? 1);
+  const hiddenInputs = new Set((caseItem?.display?.hidden_inputs ?? []).map(value => String(value)));
+  const metricInputKeys: Record<string, string[]> = {
+    pH: ["ph"],
+    PaCO2: ["paco2_mmHg"],
+    HCO3: ["hco3_mmolL"],
+    PaO2: ["pao2_mmHg"],
+    "Base excess": ["base_excess_mEqL"],
+    Na: ["na_mmolL"],
+    K: ["k_mmolL"],
+    Cl: ["cl_mmolL"],
+    Glucose: ["glucose_mmolL"],
+    Lactate: ["lactate_mmolL"]
+  };
 
   return buildCaseMetricDefinitions(caseItem).filter(metric => {
+    if (hiddenInputs.has(metric.label) || (metricInputKeys[metric.label] ?? []).some(key => hiddenInputs.has(key))) {
+      return false;
+    }
+
     if (!isMetricVisibleForDifficulty(metric, difficultyLevel)) {
       return false;
     }
