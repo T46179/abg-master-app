@@ -47,6 +47,7 @@ import {
   syncUserStateDerivedFields
 } from "../../core/progression";
 import {
+  buildStepOptionOverrides,
   createEmptySeenCasesState,
   markCaseSeen,
   rememberRecentArchetype
@@ -55,12 +56,10 @@ import type { AnswerSelection, AnswerValue, CaseData, IssuedPracticeSlot, StepRe
 import { getLearnUnlockMilestoneForLevelTransition } from "../learn/content";
 import { LearnUnlockModal } from "../learn/LearnUnlockModal";
 import { Surface } from "../primitives/Surface";
+import { ActivePracticeCase } from "../practice/ActivePracticeCase";
 import { CalibrationIntroModal } from "../practice/CalibrationIntroModal";
 import { PracticeDifficultyRail } from "../practice/PracticeDifficultyRail";
-import { QuestionFlowCard } from "../practice/QuestionFlowCard";
 import { ResultsSummaryCard, ResultsSummaryHeader } from "../practice/ResultsSummaryCard";
-import { ScenarioCard } from "../practice/ScenarioCard";
-import { ValuePanels } from "../practice/ValuePanels";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
 
 export function ProtectedPracticeScreen() {
@@ -115,7 +114,7 @@ export function ProtectedPracticeScreen() {
   const currentStep = currentCase?.questions_flow?.[currentStepIndex] ?? null;
   const allowsClientSideFeedback = canUseClientSidePracticeFeedback(currentCase);
   const currentResult = state.sessionState.stepResults[currentStepIndex] ?? null;
-  const currentOptions = currentStep?.options ?? [];
+  const currentOptions = state.sessionState.stepOptionOverrides[currentStepIndex] ?? currentStep?.options ?? [];
   const totalSteps = currentCase?.questions_flow?.length ?? 0;
   const isFinalStep = currentStepIndex >= Math.max(0, totalSteps - 1);
   const currentSelection = !allowsClientSideFeedback && !currentResult
@@ -447,7 +446,7 @@ export function ProtectedPracticeScreen() {
       currentStepIndex: 0,
       selectedAnswers: [],
       stepResults: [],
-      stepOptionOverrides: {},
+      stepOptionOverrides: buildStepOptionOverrides(slot.caseData, payload?.cases ?? []),
       caseStartMs: options?.preview ? null : Date.now()
     });
     setRecentArchetypes(previous => rememberRecentArchetype(previous, slot.caseData));
@@ -956,43 +955,30 @@ export function ProtectedPracticeScreen() {
               storage={state.storage}
             />
           ) : currentCase ? (
-            <div className="practice-stage">
-              <div className="practice-stage__sidebar">
-                <div className="practice-stage__sticky">
-                  <ScenarioCard clinicalStem={currentCase.clinical_stem} />
-                  <ValuePanels
-                    caseItem={currentCase}
-                    showAdvancedRanges={state.sessionState.showAdvancedRanges}
-                    showAbnormalHighlighting={showAbnormalHighlighting}
-                    onToggleAdvancedRanges={handleAdvancedRangesToggle}
-                  />
-                </div>
-              </div>
-
-              <div className="practice-stage__main">
-                <QuestionFlowCard
-                  caseItem={currentCase}
-                  questions={currentCase.questions_flow ?? []}
-                  currentStepIndex={currentStepIndex}
-                  currentStep={currentStep}
-                  currentSelection={currentSelection as AnswerSelection | null}
-                  currentResult={currentResult}
-                  currentOptions={currentOptions}
-                  selectedAnswers={allowsClientSideFeedback ? [] : state.sessionState.selectedAnswers}
-                  stepResults={state.sessionState.stepResults}
-                  onAnswer={handleAnswer}
-                  onContinueStep={handleContinueStep}
-                  activeStepRef={activeStepRef}
-                  interactionDisabled={interactionLocked}
-                  interactionDisabledMessage={
-                    interactionLocked && !isSubmittingCase
-                      ? PROTECTED_PRACTICE_MESSAGES.interactionLocked
-                      : null
-                  }
-                  isSubmittingCase={isSubmittingCase}
-                />
-              </div>
-            </div>
+            <ActivePracticeCase
+              caseItem={currentCase}
+              questions={currentCase.questions_flow ?? []}
+              currentStepIndex={currentStepIndex}
+              currentStep={currentStep}
+              currentSelection={currentSelection as AnswerSelection | null}
+              currentResult={currentResult}
+              currentOptions={currentOptions}
+              selectedAnswers={allowsClientSideFeedback ? [] : state.sessionState.selectedAnswers}
+              stepResults={state.sessionState.stepResults}
+              showAdvancedRanges={state.sessionState.showAdvancedRanges}
+              showAbnormalHighlighting={showAbnormalHighlighting}
+              onToggleAdvancedRanges={handleAdvancedRangesToggle}
+              onAnswer={handleAnswer}
+              onContinueStep={handleContinueStep}
+              activeStepRef={activeStepRef}
+              interactionDisabled={interactionLocked}
+              interactionDisabledMessage={
+                interactionLocked && !isSubmittingCase
+                  ? PROTECTED_PRACTICE_MESSAGES.interactionLocked
+                  : null
+              }
+              isSubmittingCase={isSubmittingCase}
+            />
           ) : state.practiceState.syncState === "unavailable" ? (
             <Surface className="practice-alert-card">
               {state.practiceState.syncMessage ?? getProtectedPracticeUnavailableMessage()}

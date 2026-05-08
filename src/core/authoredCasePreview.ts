@@ -19,6 +19,7 @@ export function normalizeDevHashRoute(location: Location = window.location, env 
 
 export interface AuthoredCasePreviewPayload {
   cases: CaseData[];
+  allCases: CaseData[];
 }
 
 export async function loadAuthoredCasePreviewPayload(fetchImpl: typeof fetch = fetch): Promise<AuthoredCasePreviewPayload> {
@@ -28,9 +29,10 @@ export async function loadAuthoredCasePreviewPayload(fetchImpl: typeof fetch = f
   }
 
   const payload = await response.json();
-  const cases = Array.isArray(payload?.cases) ? payload.cases as CaseData[] : [];
+  const allCases = Array.isArray(payload?.cases) ? payload.cases as CaseData[] : [];
   return {
-    cases: cases.filter(caseItem => caseItem.source_type === "authored")
+    cases: allCases.filter(caseItem => caseItem.source_type === "authored"),
+    allCases
   };
 }
 

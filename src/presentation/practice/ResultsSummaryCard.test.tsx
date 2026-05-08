@@ -520,4 +520,28 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).toContain("120 / 200 XP");
     expect(container.querySelector(".progress-bar__fill")).not.toBeNull();
   });
+
+  it("renders authored case metadata on the combined summary header", () => {
+    const summary = {
+      ...buildSummary([]),
+      caseData: {
+        ...buildCaseItem("respiratory_alkalosis_hagma"),
+        source_type: "authored" as const
+      }
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryHeader
+          summary={summary}
+          level={21}
+          xpProgressLabel="120 / 200 XP"
+          progressValue={60}
+        />
+      );
+    });
+
+    expect(container.querySelector(".case-metadata-icon--authored")).not.toBeNull();
+    expect(container.textContent).toContain("This case has been adapted from a real-life clinical scenario");
+  });
 });

@@ -36,6 +36,7 @@ describe("authored case preview helpers", () => {
     const payload = await loadAuthoredCasePreviewPayload(fetchImpl);
 
     expect(payload.cases).toEqual([authoredCase]);
+    expect(payload.allCases).toHaveLength(2);
     expect(payload.cases[0].source_type).toBe("authored");
   });
 

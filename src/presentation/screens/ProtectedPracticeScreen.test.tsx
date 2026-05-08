@@ -147,6 +147,7 @@ vi.mock("../../core/progression", () => ({
 }));
 
 vi.mock("../../core/selection", () => ({
+  buildStepOptionOverrides: vi.fn(() => ({})),
   createEmptySeenCasesState: () => ({}),
   markCaseSeen: vi.fn(),
   rememberRecentArchetype: vi.fn((previous: string[]) => previous)

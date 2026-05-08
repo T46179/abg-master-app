@@ -5,11 +5,10 @@ import { composeCaseStructuredExplanation } from "../../core/explanations";
 import { shouldShowMetricReferences } from "../../core/metrics";
 import { getCorrectAnswer, isCorrectAnswer, prettyStepLabel } from "../../core/practice";
 import { getDifficultyLabel } from "../../core/progression";
+import { buildStepOptionOverrides } from "../../core/selection";
 import type { AnswerSelection, AnswerValue, CaseData, CaseSummary, StepResult } from "../../core/types";
-import { QuestionFlowCard } from "../practice/QuestionFlowCard";
+import { ActivePracticeCase } from "../practice/ActivePracticeCase";
 import { ResultsSummaryCard, ResultsSummaryHeader } from "../practice/ResultsSummaryCard";
-import { ScenarioCard } from "../practice/ScenarioCard";
-import { ValuePanels } from "../practice/ValuePanels";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
 
 function buildPreviewSummary(caseItem: CaseData, stepResults: StepResult[], elapsedSeconds: number): CaseSummary {
@@ -38,6 +37,7 @@ function buildPreviewSummary(caseItem: CaseData, stepResults: StepResult[], elap
 export function CasePreviewScreen() {
   const { caseId = "" } = useParams();
   const [caseItem, setCaseItem] = useState<CaseData | null>(null);
+  const [optionPoolCases, setOptionPoolCases] = useState<CaseData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -63,6 +63,7 @@ export function CasePreviewScreen() {
           setError("The requested authored case is unavailable.");
         } else {
           setCaseItem(foundCase);
+          setOptionPoolCases(payload.allCases?.length ? payload.allCases : payload.cases);
         }
         setLoading(false);
       })
@@ -81,7 +82,10 @@ export function CasePreviewScreen() {
   const currentResult = stepResults[currentStepIndex] ?? null;
   const currentSelection = selectedAnswers[currentStepIndex] ?? null;
   const totalSteps = caseItem?.questions_flow?.length ?? 0;
-  const currentOptions = currentStep?.options ?? [];
+  const stepOptionOverrides = useMemo(() => (
+    caseItem ? buildStepOptionOverrides(caseItem, optionPoolCases.length ? optionPoolCases : [caseItem]) : {}
+  ), [caseItem, optionPoolCases]);
+  const currentOptions = stepOptionOverrides[currentStepIndex] ?? currentStep?.options ?? [];
   const currentDifficultyLevel = Number(caseItem?.difficulty_level ?? 1);
   const showAbnormalHighlighting = currentDifficultyLevel <= 3;
   const showSummaryReferences = Boolean(summary && shouldShowMetricReferences(summary.caseData, showAdvancedRanges));
@@ -197,14 +201,7 @@ export function CasePreviewScreen() {
   return (
     <main className="app-shell__page practice-screen">
       <div className="practice-screen__container">
-        <ValuePanels
-          caseItem={caseItem}
-          showAdvancedRanges={showAdvancedRanges}
-          showAbnormalHighlighting={showAbnormalHighlighting}
-          onToggleAdvancedRanges={() => setShowAdvancedRanges(value => !value)}
-        />
-        <ScenarioCard clinicalStem={caseItem.clinical_stem} />
-        <QuestionFlowCard
+        <ActivePracticeCase
           caseItem={caseItem}
           questions={caseItem.questions_flow ?? []}
           currentStepIndex={currentStepIndex}
@@ -214,6 +211,9 @@ export function CasePreviewScreen() {
           currentOptions={currentOptions}
           selectedAnswers={selectedAnswers}
           stepResults={stepResults}
+          showAdvancedRanges={showAdvancedRanges}
+          showAbnormalHighlighting={showAbnormalHighlighting}
+          onToggleAdvancedRanges={() => setShowAdvancedRanges(value => !value)}
           onAnswer={handleAnswer}
           onContinueStep={handleContinueStep}
           activeStepRef={activeStepRef}

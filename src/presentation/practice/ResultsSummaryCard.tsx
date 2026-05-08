@@ -13,6 +13,7 @@ import type {
 import { formatElapsed, splitMetrics } from "../../app/viewHelpers";
 import { formatAnswerValue } from "../../core/practice";
 import { MetricInlineText, MetricLabel, MetricReference, MetricValue } from "./MetricText";
+import { CaseMetadataIcons } from "./CaseMetadataIcons";
 import { useHorizontalOverflowState } from "../useHorizontalOverflowState";
 import { cn } from "../utils";
 
@@ -174,6 +175,7 @@ export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
             <p>You scored {props.summary.accuracy}% and earned {props.summary.totalXpAward} XP.</p>
           </div>
         </div>
+        <CaseMetadataIcons caseItem={props.summary.caseData} />
       </div>
 
       <div className="results-summary-card__progress">
