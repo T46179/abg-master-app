@@ -5,7 +5,7 @@ interface CalibrationIntroModalProps {
 
 const CALIBRATION_INTRO_COPY = {
   pill: "Calibration",
-  eyebrow: "Welcome to ABG Master",
+  eyebrow: "Welcome to ABG Master!",
   title: "Let's find your starting level",
   body: "Four short challenges. Two minutes. We'll estimate where you should begin so practice feels right — not too easy, not too hard.",
   cta: "Begin Calibration",

@@ -53,6 +53,21 @@ describe("BloodGasBlitzGame", () => {
     return { onComplete, onXpAwarded, onResult };
   }
 
+  function renderCalibrationGame(onComplete = vi.fn(), onXpAwarded = vi.fn(), onResult = vi.fn()) {
+    act(() => {
+      root.render(
+        <BloodGasBlitzGame
+          onComplete={onComplete}
+          onResult={onResult}
+          onXpAwarded={onXpAwarded}
+          preset="onboarding-calibration"
+        />
+      );
+    });
+
+    return { onComplete, onXpAwarded, onResult };
+  }
+
   function clickButton(label: string) {
     const button = Array.from(container.querySelectorAll("button")).find(item => item.textContent?.includes(label));
     expect(button).toBeTruthy();
@@ -117,6 +132,46 @@ describe("BloodGasBlitzGame", () => {
     clickButton("Continue");
 
     expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the calibration preset without XP chrome or XP awards", () => {
+    const { onXpAwarded, onResult } = renderCalibrationGame();
+
+    expect(container.textContent).toContain("Classify the 10 pH values as fast as you can. Speed and accuracy matter.");
+    expect(container.textContent).not.toContain("Earn bonus XP with streaks");
+    expect(container.querySelector(".speed-check__rules")).toBeNull();
+
+    startGame();
+
+    expect(container.textContent).toContain("Classify the pH");
+    expect(container.querySelectorAll(".speed-check__progress-dot")).toHaveLength(10);
+    expect(container.querySelector(".speed-check__timer")).toBeTruthy();
+    expect(container.textContent).not.toContain("Level 1");
+    expect(container.querySelector(".speed-check__xp-card")).toBeNull();
+
+    clickButton(getVisibleQuestionAnswer());
+
+    expect(container.textContent).not.toContain("+3 XP");
+    expect(container.querySelector(".speed-check__bubble")).toBeNull();
+    expect(onXpAwarded).not.toHaveBeenCalled();
+
+    for (let index = 0; index < 10; index += 1) {
+      if (index > 0) clickButton(getVisibleQuestionAnswer());
+      act(() => {
+        const delay = index === 9 ? 960 : 560;
+        now += delay;
+        vi.advanceTimersByTime(delay);
+      });
+    }
+
+    expect(onResult).toHaveBeenCalledTimes(1);
+    expect(onResult.mock.calls[0][0]).toMatchObject({
+      placement: "onboarding-calibration",
+      correctCount: 10,
+      totalQuestions: 10
+    });
+    expect(container.textContent).not.toContain("Retry");
+    expect(container.textContent).toContain("Continue");
   });
 
   it("emits a future-ready attempt result while preserving existing fields", () => {

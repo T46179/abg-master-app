@@ -1,53 +1,56 @@
-import { Surface } from "../primitives/Surface";
-import { MetricLabel, MetricValue } from "../practice/MetricText";
+import { useState } from "react";
+import { MetricLabel, MetricReference, MetricValue } from "../practice/MetricText";
 
-const COMPENSATION_CHECK_METRICS: Array<{ label: string; value: string; unit?: string }> = [
-  { label: "pH", value: "7.25" },
-  { label: "PaCO2", value: "26", unit: "mmHg" },
-  { label: "HCO3", value: "12", unit: "mmol/L" }
+const COMPENSATION_CHECK_METRICS: Array<{ label: string; value: string; unit?: string; reference: string }> = [
+  { label: "pH", value: "7.25", reference: "7.35 - 7.45" },
+  { label: "PaCO2", value: "26", unit: "mmHg", reference: "35 - 45 mmHg" },
+  { label: "HCO3", value: "12", unit: "mmol/L", reference: "22 - 26 mmol/L" }
 ] as const;
 
 const COMPENSATION_CHECK_OPTIONS = [
-  {
-    label: "Appropriate compensation",
-    description: "Expected PaCO2 fits the measured value"
-  },
-  {
-    label: "Additional respiratory acidosis",
-    description: "PaCO2 is higher than expected"
-  },
-  {
-    label: "Additional respiratory alkalosis",
-    description: "PaCO2 is lower than expected"
-  }
+  { label: "Appropriate compensation" },
+  { label: "Additional respiratory acidosis" },
+  { label: "Additional respiratory alkalosis" }
 ] as const;
 
 export function CompensationCheckCalibrationStep() {
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+
   return (
     <div className="calibration-compensation">
-      <Surface className="value-panels__card calibration-compensation__card">
+      <section className="calibration-compensation__card calibration-compensation__values">
         <span className="section-header__eyebrow">ABG Values</span>
         <div className="metric-grid metric-grid--primary calibration-compensation__metric-grid">
           {COMPENSATION_CHECK_METRICS.map(metric => (
             <article className="metric-card" key={metric.label}>
               <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
               <MetricValue renderedValue={metric.value} unit={metric.unit} />
+              <MetricReference reference={metric.reference} />
             </article>
           ))}
         </div>
-      </Surface>
+      </section>
 
-      <Surface className="calibration-compensation__card calibration-compensation__answers">
+      <section className="calibration-compensation__card calibration-compensation__answers">
         <span className="section-header__eyebrow">Answers</span>
         <div className="question-flow-card__options calibration-compensation__options">
-          {COMPENSATION_CHECK_OPTIONS.map(option => (
-            <div className="answer-option calibration-compensation__option" key={option.label}>
-              <span>{option.label}</span>
-              <small>{option.description}</small>
-            </div>
-          ))}
+          {COMPENSATION_CHECK_OPTIONS.map(option => {
+            const selected = selectedAnswer === option.label;
+
+            return (
+              <button
+                className={`answer-option calibration-compensation__option${selected ? " is-selected" : ""}`}
+                type="button"
+                key={option.label}
+                aria-pressed={selected}
+                onClick={() => setSelectedAnswer(option.label)}
+              >
+                <span className="calibration-compensation__option-label">{option.label}</span>
+              </button>
+            );
+          })}
         </div>
-      </Surface>
+      </section>
     </div>
   );
 }

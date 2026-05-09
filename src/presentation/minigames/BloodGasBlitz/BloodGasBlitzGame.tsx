@@ -10,6 +10,7 @@ import {
   getPlayableBloodGasBlitzConfig
 } from "./bloodGasBlitzConfig";
 import { generateBloodGasBlitzQuestions } from "./bloodGasBlitzQuestionGenerator";
+import { getBloodGasBlitzPreset, type BloodGasBlitzPresetId } from "./bloodGasBlitzPresets";
 import {
   BLOOD_GAS_BLITZ_GAME_ID,
   type BloodGasBlitzAnswerAttempt,
@@ -27,6 +28,7 @@ export interface BloodGasBlitzGameProps {
   onResult?: (result: BloodGasBlitzAttemptResult) => void;
   onXpAwarded?: (amount: number) => void;
   placement?: BloodGasBlitzPlacement;
+  preset?: BloodGasBlitzPresetId;
   resetKey?: number;
   versionId?: BloodGasBlitzPlayableVersionId;
   level?: number;
@@ -81,6 +83,7 @@ export function BloodGasBlitzGame({
   onResult,
   onXpAwarded,
   placement,
+  preset = "learn-foundations",
   resetKey = 0,
   versionId = "ph-classification-v1",
   xpForNextLevel = 0,
@@ -89,6 +92,10 @@ export function BloodGasBlitzGame({
   xpProgressValue = 0
 }: BloodGasBlitzGameProps) {
   const config = getPlayableBloodGasBlitzConfig(versionId);
+  const presetConfig = getBloodGasBlitzPreset(preset);
+  const resultPlacement = placement ?? presetConfig.placement;
+  const shouldShowXp = presetConfig.showXp;
+  const shouldAwardXp = presetConfig.awardXp;
   const gameRef = useRef<HTMLElement | null>(null);
   const xpCounterRef = useRef<HTMLElement | null>(null);
   const pendingTimeoutsRef = useRef<number[]>([]);
@@ -350,8 +357,8 @@ export function BloodGasBlitzGame({
         travelY: -offsetY
       });
       setBubbleLabel(streakBonus > 0 ? `+${awardedXp} XP - streak bonus` : `+${awardedXp} XP`);
-      onXpAwarded?.(awardedXp);
-      setShowBubble(true);
+      if (shouldAwardXp) onXpAwarded?.(awardedXp);
+      if (shouldShowXp) setShowBubble(true);
       setCurrentStreak(nextStreak);
 
       if (nextStreak >= 2) {
@@ -363,11 +370,13 @@ export function BloodGasBlitzGame({
         setStreakPillAnimation(null);
       }
 
-      scheduleTimeout(() => {
-        setShakeXpCounter(true);
-        scheduleTimeout(() => setShakeXpCounter(false), 420);
-      }, 520);
-      scheduleTimeout(() => setShowBubble(false), 900);
+      if (shouldShowXp) {
+        scheduleTimeout(() => {
+          setShakeXpCounter(true);
+          scheduleTimeout(() => setShakeXpCounter(false), 420);
+        }, 520);
+        scheduleTimeout(() => setShowBubble(false), 900);
+      }
     } else {
       if (currentStreak >= 2) {
         showBrokenStreakPill("Streak broken");
@@ -391,7 +400,7 @@ export function BloodGasBlitzGame({
         onResult?.({
           gameId: BLOOD_GAS_BLITZ_GAME_ID,
           versionId,
-          ...(placement ? { placement } : {}),
+          placement: resultPlacement,
           startedAt,
           completedAt,
           correctCount: correctAnswerCount,
@@ -434,17 +443,21 @@ export function BloodGasBlitzGame({
 
   if (phase === "ready") {
     return (
-      <section className="speed-check is-ready" ref={gameRef}>
+      <section className={cn("speed-check is-ready", `speed-check--${preset}`)} ref={gameRef}>
         <div className="speed-check__hero">
           <div className="speed-check__intro-card">
             <h2>Test your reflexes</h2>
             <p>
-              Classify the pH values as fast as you can
+              {preset === "onboarding-calibration"
+                ? "Classify the 10 pH values as fast as you can. Speed and accuracy matter."
+                : "Classify the pH values as fast as you can"}
             </p>
-            <ul className="speed-check__rules">
-              <li>Earn bonus XP with streaks</li>
-              <li>Accuracy matters</li>
-            </ul>
+            {preset === "learn-foundations" ? (
+              <ul className="speed-check__rules">
+                <li>Earn bonus XP with streaks</li>
+                <li>Accuracy matters</li>
+              </ul>
+            ) : null}
             <button className="figma-button speed-check__start" type="button" onClick={handleStart}>
               Begin
             </button>
@@ -456,7 +469,7 @@ export function BloodGasBlitzGame({
 
   if (phase === "results") {
     return (
-      <section className="speed-check is-results" ref={gameRef}>
+      <section className={cn("speed-check is-results", `speed-check--${preset}`)} ref={gameRef}>
         <div className="speed-check__results">
           <div className="speed-check__result-hero">
             <h2>{correctCount === questions.length ? "Perfect!" : "Great Work!"}</h2>
@@ -482,9 +495,11 @@ export function BloodGasBlitzGame({
           </div>
 
           <div className="speed-check__result-actions">
-            <button className="figma-button speed-check__retry" type="button" onClick={handleRetry}>
-              Retry
-            </button>
+            {preset === "learn-foundations" ? (
+              <button className="figma-button speed-check__retry" type="button" onClick={handleRetry}>
+                Retry
+              </button>
+            ) : null}
             <button className="figma-button speed-check__continue" type="button" onClick={onComplete}>
               Continue
             </button>
@@ -496,7 +511,7 @@ export function BloodGasBlitzGame({
 
   if (phase === "countdown") {
     return (
-      <section className="speed-check is-countdown" ref={gameRef}>
+      <section className={cn("speed-check is-countdown", `speed-check--${preset}`)} ref={gameRef}>
         <div className="speed-check__countdown" aria-live="polite">
           <span>Get ready</span>
           <strong>{countdown}</strong>
@@ -506,23 +521,25 @@ export function BloodGasBlitzGame({
   }
 
   return (
-    <section className="speed-check is-playing" ref={gameRef}>
-      <div className="speed-check__xp-card">
-        <div className="dashboard-progress-card__meta speed-check__xp-meta">
-          <span>Level {level}</span>
-          <strong ref={xpCounterRef} className={cn("speed-check__xp-value", shakeXpCounter && "is-absorbing")}>
-            {xpForNextLevel ? `${xpIntoLevel} / ${xpForNextLevel} XP` : xpProgressLabel}
-          </strong>
+    <section className={cn("speed-check is-playing", `speed-check--${preset}`)} ref={gameRef}>
+      {shouldShowXp ? (
+        <div className="speed-check__xp-card">
+          <div className="dashboard-progress-card__meta speed-check__xp-meta">
+            <span>Level {level}</span>
+            <strong ref={xpCounterRef} className={cn("speed-check__xp-value", shakeXpCounter && "is-absorbing")}>
+              {xpForNextLevel ? `${xpIntoLevel} / ${xpForNextLevel} XP` : xpProgressLabel}
+            </strong>
+          </div>
+          <div className="progress-bar">
+            <div
+              className="progress-bar__fill progress-bar__fill--animated"
+              style={{ width: `${Math.max(0, Math.min(100, xpProgressValue))}%` }}
+            />
+          </div>
         </div>
-        <div className="progress-bar">
-          <div
-            className="progress-bar__fill progress-bar__fill--animated"
-            style={{ width: `${Math.max(0, Math.min(100, xpProgressValue))}%` }}
-          />
-        </div>
-      </div>
+      ) : null}
 
-      {showBubble ? (
+      {shouldShowXp && showBubble ? (
         <div
           className="speed-check__bubble"
           style={{

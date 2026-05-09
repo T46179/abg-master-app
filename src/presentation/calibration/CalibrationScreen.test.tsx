@@ -2,7 +2,7 @@
 
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CalibrationScreen } from "./CalibrationScreen";
 import type { BloodGasBlitzAttemptResult } from "../minigames/BloodGasBlitz";
@@ -15,6 +15,7 @@ const latestBloodGasBlitzProps = vi.hoisted(() => ({
     onResult?: (result: BloodGasBlitzAttemptResult) => void;
     onXpAwarded?: (amount: number) => void;
     placement?: string;
+    preset?: string;
     versionId?: string;
     xpProgressLabel?: string;
   }
@@ -63,6 +64,7 @@ describe("CalibrationScreen", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     act(() => {
       root.unmount();
     });
@@ -70,12 +72,17 @@ describe("CalibrationScreen", () => {
   });
 
   function renderScreen() {
+    function PracticeRouteProbe() {
+      const location = useLocation();
+      return <main>Practice route {location.search}</main>;
+    }
+
     act(() => {
       root.render(
         <MemoryRouter initialEntries={["/calibration"]}>
           <Routes>
             <Route path="/calibration" element={<CalibrationScreen />} />
-            <Route path="/practice" element={<main>Practice route</main>} />
+            <Route path="/practice" element={<PracticeRouteProbe />} />
           </Routes>
         </MemoryRouter>
       );
@@ -91,78 +98,115 @@ describe("CalibrationScreen", () => {
     });
   }
 
-  it("renders the intro first", () => {
+  it("starts on Blood Gas Blitz", () => {
     renderScreen();
-
-    expect(container.textContent).toContain("Let's find your starting level");
-    expect(container.textContent).toContain("Start calibration");
-    expect(container.textContent).not.toContain("Back");
-  });
-
-  it("starts on Blood Gas Blitz after the intro", () => {
-    renderScreen();
-
-    clickButton("Start calibration");
 
     expect(container.textContent).toContain("Blood Gas Blitz");
     expect(container.textContent).toContain("Mock Blood Gas Blitz Game");
-    expect(container.textContent).toContain("Back");
+    expect(container.textContent).not.toContain("Back");
+    expect(container.textContent).toContain("1 of 4");
     expect(container.textContent).not.toContain("Continue");
     expect(container.textContent).toContain("Temporary next");
     expect(latestBloodGasBlitzProps.value).toMatchObject({
-      placement: "onboarding-calibration",
-      versionId: "ph-classification-v1",
-      xpProgressLabel: ""
+      preset: "onboarding-calibration",
+      versionId: "ph-classification-v1"
     });
+    expect(latestBloodGasBlitzProps.value?.onXpAwarded).toBeUndefined();
+    expect(latestBloodGasBlitzProps.value?.xpProgressLabel).toBeUndefined();
   });
 
   it("continues through the ordered calibration phases", () => {
+    vi.useFakeTimers();
     renderScreen();
 
-    clickButton("Start calibration");
     clickButton("Mock finish blitz");
     expect(container.textContent).toContain("Build a Gas");
 
     clickButton("Continue");
-    expect(container.textContent).toContain("Is the compensation appropriate?");
+    expect(container.textContent).toContain("ABG Values");
 
     clickButton("Continue");
-    expect(container.textContent).toContain("Mixed Process Challenge");
+    expect(container.textContent).toContain("Almost There");
+    expect(container.textContent).toContain("Use the values below to choose the best answer");
 
     clickButton("Continue");
-    expect(container.textContent).toContain("Analysing sample");
+    expect(container.textContent).toContain("ABG Analyser");
+    expect(container.textContent).not.toContain("4 of 4");
 
+    act(() => {
+      vi.advanceTimersByTime(3200);
+    });
+    expect(container.textContent).toContain("Calibration complete");
+    expect(container.textContent).toContain("Intermediate unlocked");
+    expect(container.textContent).toContain("Beginner");
+    expect(container.textContent).toContain("Intermediate");
+    expect(container.textContent).toContain("Advanced");
+    expect(container.textContent).toContain("Master");
+    expect(container.textContent).toContain("Start your first case");
+    expect(container.textContent).toContain("I'd rather start easier");
+  });
+
+  it("shows the analyser transition without calibration chrome and advances automatically", () => {
+    vi.useFakeTimers();
+    renderScreen();
+
+    clickButton("Mock finish blitz");
     clickButton("Continue");
-    expect(container.textContent).toContain("Calibration result");
-    expect(container.textContent).toContain("Return to practice");
+    clickButton("Continue");
+    clickButton("Continue");
+
+    expect(container.textContent).toContain("ABG Analyser");
+    expect(container.textContent).toContain("ANALYSING SAMPLE");
+    expect(container.textContent).toContain("Cartridge 04");
+    expect(container.textContent).toContain("Please wait");
+    expect(container.textContent).not.toContain("Back");
+    expect(container.textContent).not.toContain("Continue");
+    expect(container.textContent).not.toContain("4 of 4");
+    expect(container.querySelector(".calibration-progress-header")).toBeNull();
+    expect(container.querySelector(".calibration-step-shell")).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(3200);
+    });
+
+    expect(container.textContent).toContain("Calibration complete");
+    expect(container.textContent).toContain("Intermediate unlocked");
+    expect(container.textContent).toContain("Start your first case");
   });
 
   it("shows the Build a Gas metabolic acidosis scaffold", () => {
     renderScreen();
 
-    clickButton("Start calibration");
     clickButton("Mock finish blitz");
 
     expect(container.textContent).toContain("Build a Gas");
+    expect(container.textContent).toContain("Select the cards below to build a Metabolic Acidosis");
+    expect(container.textContent).toContain("2 of 4");
     expect(container.textContent).toContain("7.28");
     expect(container.textContent).toContain("28");
     expect(container.textContent).toContain("14");
-    expect(container.textContent).toContain("Your build");
-    expect(container.textContent).toContain("pH 7.28");
-    expect(container.textContent).toContain("CO2 28");
-    expect(container.textContent).toContain("HCO3 14");
-    expect(container.querySelectorAll(".calibration-build-gas__choice.is-selected")).toHaveLength(3);
+    expect(container.querySelectorAll(".calibration-build-gas__choice")).toHaveLength(9);
+  });
+
+  it("updates the calibration progress bar as phases advance", () => {
+    renderScreen();
+
+    const progressBar = () => container.querySelector(".calibration-progress-header__bar") as HTMLElement | null;
+
+    expect(container.textContent).toContain("1 of 4");
+    expect(progressBar()?.style.width).toBe("25%");
+
+    clickButton("Temporary next");
+    expect(container.textContent).toContain("2 of 4");
+    expect(progressBar()?.style.width).toBe("50%");
   });
 
   it("shows the Compensation Check scaffold", () => {
     renderScreen();
 
-    clickButton("Start calibration");
     clickButton("Mock finish blitz");
     clickButton("Continue");
 
-    expect(container.textContent).toContain("Is the compensation appropriate?");
-    expect(container.textContent).toContain("Use the blood gas values below and pick the best fit.");
     expect(container.textContent).toContain("ABG Values");
     expect(container.textContent).toContain("Answers");
     expect(container.textContent).toContain("7.25");
@@ -171,45 +215,58 @@ describe("CalibrationScreen", () => {
     expect(container.textContent).toContain("12");
     expect(container.textContent).toContain("mmol/L");
     expect(container.textContent).toContain("Appropriate compensation");
-    expect(container.textContent).toContain("Expected PaCO2 fits the measured value");
     expect(container.textContent).toContain("Additional respiratory acidosis");
-    expect(container.textContent).toContain("PaCO2 is higher than expected");
     expect(container.textContent).toContain("Additional respiratory alkalosis");
-    expect(container.textContent).toContain("PaCO2 is lower than expected");
   });
 
   it("moves back to the previous phase", () => {
     renderScreen();
 
-    clickButton("Start calibration");
     clickButton("Mock finish blitz");
     expect(container.textContent).toContain("Build a Gas");
 
     clickButton("Back");
     expect(container.textContent).toContain("Blood Gas Blitz");
-
-    clickButton("Back");
-    expect(container.textContent).toContain("Let's find your starting level");
+    expect(container.textContent).not.toContain("Back");
   });
 
-  it("returns to practice from the result", () => {
+  it("starts an intermediate practice case from the result", () => {
+    vi.useFakeTimers();
     renderScreen();
 
-    clickButton("Start calibration");
     clickButton("Mock finish blitz");
     clickButton("Continue");
     clickButton("Continue");
     clickButton("Continue");
-    clickButton("Continue");
-    clickButton("Return to practice");
+    act(() => {
+      vi.advanceTimersByTime(3200);
+    });
+    clickButton("Start your first case");
 
     expect(container.textContent).toContain("Practice route");
+    expect(container.textContent).toContain("?difficulty=intermediate");
+  });
+
+  it("starts an easier practice case from the result", () => {
+    vi.useFakeTimers();
+    renderScreen();
+
+    clickButton("Mock finish blitz");
+    clickButton("Continue");
+    clickButton("Continue");
+    clickButton("Continue");
+    act(() => {
+      vi.advanceTimersByTime(3200);
+    });
+    clickButton("I'd rather start easier");
+
+    expect(container.textContent).toContain("Practice route");
+    expect(container.textContent).toContain("?difficulty=beginner");
   });
 
   it("accepts a Blood Gas Blitz result without advancing", () => {
     renderScreen();
 
-    clickButton("Start calibration");
     clickButton("Mock emit result");
 
     expect(container.textContent).toContain("Blood Gas Blitz");
@@ -219,7 +276,6 @@ describe("CalibrationScreen", () => {
   it("temporarily allows skipping Blood Gas Blitz during calibration development", () => {
     renderScreen();
 
-    clickButton("Start calibration");
     clickButton("Temporary next");
 
     expect(container.textContent).toContain("Build a Gas");

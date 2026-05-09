@@ -17,4 +17,9 @@ export {
   BLOOD_GAS_BLITZ_QUESTIONS,
   generateBloodGasBlitzQuestions
 } from "./bloodGasBlitzQuestionGenerator";
+export {
+  bloodGasBlitzPresets,
+  getBloodGasBlitzPreset,
+  type BloodGasBlitzPresetId
+} from "./bloodGasBlitzPresets";
 export { BloodGasBlitzGame, BloodGasBlitzGame as SpeedCheckGame, type BloodGasBlitzGameProps } from "./BloodGasBlitzGame";

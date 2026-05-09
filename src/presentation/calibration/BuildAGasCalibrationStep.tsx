@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { MetricLabel, MetricValue } from "../practice/MetricText";
 
 interface BuildAGasChoice {
@@ -45,6 +46,11 @@ const BUILD_A_GAS_ROWS: BuildAGasRow[] = [
 ];
 
 export function BuildAGasCalibrationStep() {
+  const [selectedValues, setSelectedValues] = useState<Record<string, string>>({});
+  const phValue = selectedValues.pH;
+  const paco2Value = selectedValues.PaCO2;
+  const hco3Value = selectedValues.HCO3;
+
   return (
     <section className="calibration-build-gas" aria-label="Build a Gas calibration preview">
       <div className="calibration-build-gas__rows">
@@ -58,13 +64,22 @@ export function BuildAGasCalibrationStep() {
             </div>
             <div className="calibration-build-gas__choice-grid">
               {row.choices.map(choice => {
-                const selected = choice.value === row.selectedValue;
+                const selected = selectedValues[row.label] === choice.value;
 
                 return (
                   <article
+                    role="button"
+                    tabIndex={0}
                     className={`metric-card calibration-build-gas__choice${selected ? " is-selected" : ""}`}
                     key={`${row.label}-${choice.value}`}
                     aria-label={`${row.label} ${choice.value} ${choice.status}${selected ? " selected" : ""}`}
+                    aria-pressed={selected}
+                    onClick={() => setSelectedValues(values => ({ ...values, [row.label]: choice.value }))}
+                    onKeyDown={event => {
+                      if (event.key !== "Enter" && event.key !== " ") return;
+                      event.preventDefault();
+                      setSelectedValues(values => ({ ...values, [row.label]: choice.value }));
+                    }}
                   >
                     {selected ? <span className="calibration-build-gas__check" aria-hidden="true">✓</span> : null}
                     <MetricValue renderedValue={choice.value} />
@@ -77,12 +92,14 @@ export function BuildAGasCalibrationStep() {
         ))}
       </div>
       <div className="calibration-build-gas__footer">
-        <span>Your build</span>
         <span className="calibration-build-gas__summary">
-          pH 7.28 <span aria-hidden="true">·</span> CO<sub>2</sub> 28 <span aria-hidden="true">·</span> HCO<sub>3</sub> 14
+          {phValue ? <>pH {phValue}</> : null}
+          {phValue && paco2Value ? <span aria-hidden="true"> · </span> : null}
+          {paco2Value ? <>CO<sub>2</sub> {paco2Value}</> : null}
+          {(phValue || paco2Value) && hco3Value ? <span aria-hidden="true"> · </span> : null}
+          {hco3Value ? <>HCO<sub>3</sub> {hco3Value}</> : null}
         </span>
       </div>
     </section>
   );
 }
-

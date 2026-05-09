@@ -11,13 +11,10 @@ interface CalibrationBloodGasBlitzStepProps {
 export function CalibrationBloodGasBlitzStep(props: CalibrationBloodGasBlitzStepProps) {
   return (
     <BloodGasBlitzGame
-      placement="onboarding-calibration"
+      preset="onboarding-calibration"
       versionId="ph-classification-v1"
       onResult={props.onResult}
       onComplete={props.onComplete}
-      onXpAwarded={() => undefined}
-      xpProgressLabel=""
     />
   );
 }
-

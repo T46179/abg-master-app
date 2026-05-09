@@ -2,61 +2,33 @@ import type { CalibrationPhase } from "./calibrationTypes";
 
 export interface CalibrationStepMetadata {
   phase: CalibrationPhase;
-  eyebrow: string;
-  stepLabel: string;
   title: string;
-  description: string;
 }
 
 export const calibrationSteps = [
   {
-    phase: "intro",
-    eyebrow: "Calibration",
-    stepLabel: "Intro",
-    title: "Let's find your starting level",
-    description: "Four short challenges. Two minutes. We'll estimate where you should begin so practice feels right - not too easy, not too hard."
-  },
-  {
     phase: "blood-gas-blitz",
-    eyebrow: "Calibration",
-    stepLabel: "Step 1 of 5",
-    title: "Blood Gas Blitz",
-    description: "Placeholder for pH speed check."
+    title: "Blood Gas Blitz"
   },
   {
     phase: "build-a-gas",
-    eyebrow: "Calibration",
-    stepLabel: "Step 2 of 5",
-    title: "Build a Gas",
-    description: "Placeholder for metabolic acidosis build-a-gas step."
+    title: "Build a Gas"
   },
   {
     phase: "compensation-check",
-    eyebrow: "Calibration",
-    stepLabel: "Step 3 of 5",
-    title: "Is the compensation appropriate?",
-    description: "Use the blood gas values below and pick the best fit."
+    title: "Does Compnsation Fit?"
   },
   {
     phase: "mixed-process-challenge",
-    eyebrow: "Calibration",
-    stepLabel: "Step 4 of 5",
-    title: "Mixed Process Challenge",
-    description: "Placeholder for mixed acid-base interpretation step."
+    title: "Almost There"
   },
   {
     phase: "analysing-sample",
-    eyebrow: "Calibration",
-    stepLabel: "Step 5 of 5",
-    title: "Analysing sample",
-    description: "Placeholder for analyser-style loading screen."
+    title: "Analysing sample"
   },
   {
     phase: "result",
-    eyebrow: "Calibration",
-    stepLabel: "Result",
-    title: "Calibration result",
-    description: "Placeholder for recommended starting level."
+    title: "Calibration result"
   }
 ] as const satisfies readonly CalibrationStepMetadata[];
 
@@ -76,10 +48,6 @@ export function getPreviousCalibrationPhase(phase: CalibrationPhase): Calibratio
   const currentIndex = calibrationSteps.findIndex(item => item.phase === phase);
   if (currentIndex < 0) return null;
   return calibrationSteps[currentIndex - 1]?.phase ?? null;
-}
-
-export function isIntroPhase(phase: CalibrationPhase): boolean {
-  return phase === "intro";
 }
 
 export function isResultPhase(phase: CalibrationPhase): boolean {
