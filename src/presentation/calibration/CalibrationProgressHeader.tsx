@@ -23,8 +23,6 @@ function getProgressMeta(phase: CalibrationPhase) {
 
 interface CalibrationProgressHeaderProps {
   phase: CalibrationPhase;
-  onBack: () => void;
-  showBack: boolean;
 }
 
 export function CalibrationProgressHeader(props: CalibrationProgressHeaderProps) {
@@ -33,15 +31,6 @@ export function CalibrationProgressHeader(props: CalibrationProgressHeaderProps)
   return (
     <header className="calibration-progress-header">
       <div className="calibration-progress-header__meta">
-        {props.showBack ? (
-          <button className="calibration-progress-header__back" type="button" onClick={props.onBack}>
-            <span aria-hidden="true">‹</span>
-            <span>Back</span>
-          </button>
-        ) : (
-          <span className="calibration-progress-header__back-spacer" aria-hidden="true" />
-        )}
-
         <div className="calibration-progress-header__brand">
           <svg className="calibration-progress-header__icon" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M2.5 8h2.2l1.2-4.4 2.3 8.8 1.5-4.4h3.8" />

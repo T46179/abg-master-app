@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MetricLabel, MetricValue } from "../practice/MetricText";
+import type { BuildAGasCalibrationSelection } from "./calibrationScoring";
 
 interface BuildAGasChoice {
   value: string;
@@ -45,11 +46,29 @@ const BUILD_A_GAS_ROWS: BuildAGasRow[] = [
   }
 ];
 
-export function BuildAGasCalibrationStep() {
+interface BuildAGasCalibrationStepProps {
+  onCanContinueChange?: (canContinue: boolean) => void;
+  onSelectionChange?: (selection: BuildAGasCalibrationSelection) => void;
+}
+
+export function BuildAGasCalibrationStep({ onCanContinueChange, onSelectionChange }: BuildAGasCalibrationStepProps) {
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({});
   const phValue = selectedValues.pH;
   const paco2Value = selectedValues.PaCO2;
   const hco3Value = selectedValues.HCO3;
+  const canContinue = BUILD_A_GAS_ROWS.every(row => Boolean(selectedValues[row.label]));
+
+  useEffect(() => {
+    onCanContinueChange?.(canContinue);
+  }, [canContinue, onCanContinueChange]);
+
+  useEffect(() => {
+    onSelectionChange?.({
+      pH: selectedValues.pH,
+      PaCO2: selectedValues.PaCO2,
+      HCO3: selectedValues.HCO3
+    });
+  }, [onSelectionChange, selectedValues.HCO3, selectedValues.PaCO2, selectedValues.pH]);
 
   return (
     <section className="calibration-build-gas" aria-label="Build a Gas calibration preview">

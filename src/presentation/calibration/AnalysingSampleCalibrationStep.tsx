@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
-const analyserIconUrl = "https://www.figma.com/api/mcp/asset/cc5f2881-0dd2-4606-8ed9-6a97030dd502";
-const DEFAULT_DURATION_MS = 3200;
+const DEFAULT_DURATION_MS = 4500;
 
 interface AnalysingSampleCalibrationStepProps {
   durationMs?: number;
@@ -39,8 +38,7 @@ export function AnalysingSampleCalibrationStep({
         <article className="calibration-analysis__panel">
           <header className="calibration-analysis__topbar">
             <div className="calibration-analysis__brand">
-              <img src={analyserIconUrl} alt="" aria-hidden="true" />
-              <span>ABG Analyser</span>
+              <span>ABG Master</span>
             </div>
             <div className="calibration-analysis__status">
               <span aria-hidden="true" />

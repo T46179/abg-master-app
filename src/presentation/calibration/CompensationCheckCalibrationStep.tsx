@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MetricLabel, MetricReference, MetricValue } from "../practice/MetricText";
 
 const COMPENSATION_CHECK_METRICS: Array<{ label: string; value: string; unit?: string; reference: string }> = [
@@ -13,8 +13,25 @@ const COMPENSATION_CHECK_OPTIONS = [
   { label: "Additional respiratory alkalosis" }
 ] as const;
 
-export function CompensationCheckCalibrationStep() {
+interface CompensationCheckCalibrationStepProps {
+  onCanContinueChange?: (canContinue: boolean) => void;
+  onSelectionChange?: (answer: string | null) => void;
+}
+
+export function CompensationCheckCalibrationStep({
+  onCanContinueChange,
+  onSelectionChange
+}: CompensationCheckCalibrationStepProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const canContinue = Boolean(selectedAnswer);
+
+  useEffect(() => {
+    onCanContinueChange?.(canContinue);
+  }, [canContinue, onCanContinueChange]);
+
+  useEffect(() => {
+    onSelectionChange?.(selectedAnswer);
+  }, [onSelectionChange, selectedAnswer]);
 
   return (
     <div className="calibration-compensation">

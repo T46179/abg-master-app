@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MetricLabel, MetricReference, MetricValue } from "../practice/MetricText";
 
 const MIXED_PROCESS_ABG_METRICS = [
@@ -19,8 +19,25 @@ const MIXED_PROCESS_OPTIONS = [
   "Normal anion gap metabolic acidosis"
 ] as const;
 
-export function MixedProcessCalibrationStep() {
+interface MixedProcessCalibrationStepProps {
+  onCanContinueChange?: (canContinue: boolean) => void;
+  onSelectionChange?: (answer: string | null) => void;
+}
+
+export function MixedProcessCalibrationStep({
+  onCanContinueChange,
+  onSelectionChange
+}: MixedProcessCalibrationStepProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const canContinue = Boolean(selectedAnswer);
+
+  useEffect(() => {
+    onCanContinueChange?.(canContinue);
+  }, [canContinue, onCanContinueChange]);
+
+  useEffect(() => {
+    onSelectionChange?.(selectedAnswer);
+  }, [onSelectionChange, selectedAnswer]);
 
   return (
     <div className="calibration-compensation calibration-mixed-process">
