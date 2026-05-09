@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  CalibrationCompletionRecord,
+  CalibrationPlacement,
   ProgressRow,
   ResultsExplanationPreferenceKey,
   ResultsExplanationPreferences,
@@ -18,7 +20,9 @@ const LAST_PRACTICE_DIFFICULTY_STORAGE_KEY = "abgmaster_lastPracticeDifficulty";
 const RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY = "abgmaster_resultsExplanationPreferences";
 const RESULTS_REVIEW_EXPANDED_STORAGE_KEY = "abgmaster_resultsReviewExpanded";
 const SEEN_CASES_STORAGE_KEY = "abgmaster_seenCasesByDifficulty";
+const CALIBRATION_COMPLETION_STORAGE_KEY = "abgmaster_calibrationCompletion";
 const DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced", "master"];
+const CALIBRATION_PLACEMENTS: CalibrationPlacement[] = ["beginner", "intermediate", "advanced"];
 const RESULTS_EXPLANATION_PREFERENCE_KEYS: ResultsExplanationPreferenceKey[] = [
   "primary_disorder",
   "compensation",
@@ -36,7 +40,8 @@ export const STORAGE_KEYS = {
   LAST_PRACTICE_DIFFICULTY_STORAGE_KEY,
   RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY,
   RESULTS_REVIEW_EXPANDED_STORAGE_KEY,
-  SEEN_CASES_STORAGE_KEY
+  SEEN_CASES_STORAGE_KEY,
+  CALIBRATION_COMPLETION_STORAGE_KEY
 } as const;
 
 export interface BrowserStorageLike {
@@ -130,6 +135,24 @@ export function sanitizeSeenCaseState(source: unknown): Record<string, string[]>
 export function sanitizePracticeDifficulty(source: unknown): string | null {
   const normalized = String(source ?? "").trim().toLowerCase();
   return DIFFICULTY_ORDER.includes(normalized) ? normalized : null;
+}
+
+export function sanitizeCalibrationCompletion(source: unknown): CalibrationCompletionRecord | null {
+  if (!source || typeof source !== "object") return null;
+
+  const record = source as Record<string, unknown>;
+  const placement = String(record.placement ?? "").trim().toLowerCase();
+  const version = Number(record.version);
+
+  if (record.completed !== true) return null;
+  if (!CALIBRATION_PLACEMENTS.includes(placement as CalibrationPlacement)) return null;
+  if (!Number.isFinite(version) || version < 1) return null;
+
+  return {
+    completed: true,
+    placement: placement as CalibrationPlacement,
+    version
+  };
 }
 
 export function sanitizeResultsExplanationPreferences(source: unknown): ResultsExplanationPreferences {
@@ -306,6 +329,33 @@ export function createLocalStorageAdapter(browserStorage: BrowserStorageLike): S
 
     saveResultsReviewExpandedPreference(value) {
       safeSetItem(browserStorage, RESULTS_REVIEW_EXPANDED_STORAGE_KEY, String(Boolean(value)));
+    },
+
+    loadCalibrationCompletion() {
+      const raw = safeGetItem(browserStorage, CALIBRATION_COMPLETION_STORAGE_KEY);
+      if (!raw) return null;
+
+      try {
+        const sanitized = sanitizeCalibrationCompletion(JSON.parse(raw));
+        if (!sanitized) safeRemoveItem(browserStorage, CALIBRATION_COMPLETION_STORAGE_KEY);
+        return sanitized;
+      } catch {
+        safeRemoveItem(browserStorage, CALIBRATION_COMPLETION_STORAGE_KEY);
+        return null;
+      }
+    },
+
+    saveCalibrationCompletion(value) {
+      const sanitized = sanitizeCalibrationCompletion(value);
+      if (sanitized) {
+        safeSetItem(browserStorage, CALIBRATION_COMPLETION_STORAGE_KEY, JSON.stringify(sanitized));
+      } else {
+        safeRemoveItem(browserStorage, CALIBRATION_COMPLETION_STORAGE_KEY);
+      }
+    },
+
+    clearCalibrationCompletion() {
+      safeRemoveItem(browserStorage, CALIBRATION_COMPLETION_STORAGE_KEY);
     }
   };
 }
@@ -487,6 +537,18 @@ export function createSupabaseStorageAdapter(
 
     saveResultsReviewExpandedPreference(value) {
       localAdapter.saveResultsReviewExpandedPreference(value);
+    },
+
+    loadCalibrationCompletion() {
+      return localAdapter.loadCalibrationCompletion();
+    },
+
+    saveCalibrationCompletion(value) {
+      localAdapter.saveCalibrationCompletion(value);
+    },
+
+    clearCalibrationCompletion() {
+      localAdapter.clearCalibrationCompletion();
     }
   };
 }
@@ -565,6 +627,18 @@ export function createAppStorage(options?: {
     },
     saveResultsReviewExpandedPreference(value) {
       activeAdapter.saveResultsReviewExpandedPreference(value);
+    },
+
+    loadCalibrationCompletion() {
+      return activeAdapter.loadCalibrationCompletion();
+    },
+
+    saveCalibrationCompletion(value) {
+      activeAdapter.saveCalibrationCompletion(value);
+    },
+
+    clearCalibrationCompletion() {
+      activeAdapter.clearCalibrationCompletion();
     }
   };
 }

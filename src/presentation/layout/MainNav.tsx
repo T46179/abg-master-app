@@ -23,6 +23,7 @@ interface NavItem {
 
 export function MainNav(props: MainNavProps) {
   const location = useLocation();
+  const hideNavigationItems = location.pathname.startsWith("/calibration");
   const desktopNavRef = useRef<HTMLElement | null>(null);
   const desktopLinkRefs = useRef<Record<string, HTMLSpanElement | null>>({});
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, ready: false });
@@ -31,7 +32,7 @@ export function MainNav(props: MainNavProps) {
     { to: "/learn?all=1", label: "Learn", disabled: !props.learnEnabled },
     { to: "/practice", label: "Practice" }
   ];
-  const activeItem = navItems.find(item => {
+  const activeItem = hideNavigationItems ? undefined : navItems.find(item => {
     if (item.disabled) return false;
     if (item.end) return location.pathname === item.to;
     const normalizedTo = item.to.split("?")[0];
@@ -80,7 +81,7 @@ export function MainNav(props: MainNavProps) {
       window.removeEventListener("resize", updateIndicator);
       resizeObserver?.disconnect();
     };
-  }, [activeItem?.to, props.learnEnabled]);
+  }, [activeItem?.to, hideNavigationItems, props.learnEnabled]);
 
   return (
     <header className={cn("main-nav", props.wideShell && "main-nav--wide-shell")}>
@@ -92,37 +93,39 @@ export function MainNav(props: MainNavProps) {
           </div>
         </NavLink>
 
-        <nav className="main-nav__desktop" aria-label="Primary" ref={desktopNavRef}>
-          {navItems.map(item => {
-            return item.disabled ? (
-              <span key={item.to} className="main-nav__link is-disabled" aria-disabled="true">
-                <span>{item.label}</span>
-              </span>
-            ) : (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) => cn("main-nav__link", isActive && "is-active")}
-                onClick={() => {
-                  if (item.to.startsWith("/learn") || item.to.startsWith("/practice")) {
-                    props.onCoreFlowLinkClick?.(item.label, item.to);
-                  }
-                }}
-              >
-                <span ref={node => { desktopLinkRefs.current[item.to] = node; }}>{item.label}</span>
-              </NavLink>
-            );
-          })}
-          <span
-            className={cn("main-nav__active-indicator", indicatorStyle.ready && "is-ready")}
-            aria-hidden="true"
-            style={{
-              transform: `translateX(${indicatorStyle.left}px)`,
-              width: `${indicatorStyle.width}px`
-            }}
-          />
-        </nav>
+        {!hideNavigationItems ? (
+          <nav className="main-nav__desktop" aria-label="Primary" ref={desktopNavRef}>
+            {navItems.map(item => {
+              return item.disabled ? (
+                <span key={item.to} className="main-nav__link is-disabled" aria-disabled="true">
+                  <span>{item.label}</span>
+                </span>
+              ) : (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) => cn("main-nav__link", isActive && "is-active")}
+                  onClick={() => {
+                    if (item.to.startsWith("/learn") || item.to.startsWith("/practice")) {
+                      props.onCoreFlowLinkClick?.(item.label, item.to);
+                    }
+                  }}
+                >
+                  <span ref={node => { desktopLinkRefs.current[item.to] = node; }}>{item.label}</span>
+                </NavLink>
+              );
+            })}
+            <span
+              className={cn("main-nav__active-indicator", indicatorStyle.ready && "is-ready")}
+              aria-hidden="true"
+              style={{
+                transform: `translateX(${indicatorStyle.left}px)`,
+                width: `${indicatorStyle.width}px`
+              }}
+            />
+          </nav>
+        ) : null}
 
         <div className="main-nav__controls">
           <button className="main-nav__stay-updated" type="button" onClick={props.onOpenStayUpdated}>
@@ -139,41 +142,45 @@ export function MainNav(props: MainNavProps) {
             <span className="main-nav__bell-icon" aria-hidden="true" />
           </button>
 
-          <button
-            className="main-nav__toggle"
-            type="button"
-            aria-label={props.mobileOpen ? "Close navigation menu" : "Open navigation menu"}
-            aria-expanded={props.mobileOpen}
-            onClick={props.onToggleMobile}
-          >
-            {props.mobileOpen ? <X /> : <Menu />}
-          </button>
+          {!hideNavigationItems ? (
+            <button
+              className="main-nav__toggle"
+              type="button"
+              aria-label={props.mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-expanded={props.mobileOpen}
+              onClick={props.onToggleMobile}
+            >
+              {props.mobileOpen ? <X /> : <Menu />}
+            </button>
+          ) : null}
         </div>
 
-        <nav className={cn("main-nav__mobile", props.mobileOpen && "is-open")} aria-label="Mobile navigation">
-          {navItems.map(item => {
-            return item.disabled ? (
-              <span key={item.to} className="main-nav__mobile-link is-disabled" aria-disabled="true">
-                <span>{item.label}</span>
-              </span>
-            ) : (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) => cn("main-nav__mobile-link", isActive && "is-active")}
-                onClick={() => {
-                  if (item.to.startsWith("/learn") || item.to.startsWith("/practice")) {
-                    props.onCoreFlowLinkClick?.(item.label, item.to);
-                  }
-                  props.onCloseMobile();
-                }}
-              >
-                <span>{item.label}</span>
-              </NavLink>
-            );
-          })}
-        </nav>
+        {!hideNavigationItems ? (
+          <nav className={cn("main-nav__mobile", props.mobileOpen && "is-open")} aria-label="Mobile navigation">
+            {navItems.map(item => {
+              return item.disabled ? (
+                <span key={item.to} className="main-nav__mobile-link is-disabled" aria-disabled="true">
+                  <span>{item.label}</span>
+                </span>
+              ) : (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) => cn("main-nav__mobile-link", isActive && "is-active")}
+                  onClick={() => {
+                    if (item.to.startsWith("/learn") || item.to.startsWith("/practice")) {
+                      props.onCoreFlowLinkClick?.(item.label, item.to);
+                    }
+                    props.onCloseMobile();
+                  }}
+                >
+                  <span>{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </nav>
+        ) : null}
       </div>
     </header>
   );

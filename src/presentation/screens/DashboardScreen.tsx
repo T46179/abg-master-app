@@ -61,6 +61,7 @@ export function DashboardScreen() {
     state.storage.savePracticeIntroSeen(false);
     state.storage.saveAppAreaVisited(false);
     state.storage.saveAdvancedRangesPreference(false);
+    state.storage.clearCalibrationCompletion();
     clearLearnModuleResumeState();
     window.location.assign("/practice");
   }

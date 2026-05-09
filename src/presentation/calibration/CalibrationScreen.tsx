@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAppContext } from "../../app/AppProvider";
 import {
   getCalibrationStep,
   getNextCalibrationPhase,
@@ -22,7 +23,10 @@ import {
 } from "./calibrationScoring";
 import type { BloodGasBlitzAttemptResult } from "../minigames/BloodGasBlitz";
 
+const CALIBRATION_COMPLETION_VERSION = 1;
+
 export function CalibrationScreen() {
+  const { state } = useAppContext();
   const navigate = useNavigate();
   const [phase, setPhase] = useState<CalibrationPhase>("blood-gas-blitz");
   const [canContinueCurrentStep, setCanContinueCurrentStep] = useState(false);
@@ -50,6 +54,12 @@ export function CalibrationScreen() {
     setCanContinueCurrentStep(false);
     setPhaseStartedAt(Date.now());
   }, [phase]);
+
+  useEffect(() => {
+    const completion = state.storage?.loadCalibrationCompletion();
+    if (!completion) return;
+    navigate(`/practice?difficulty=${completion.placement}`, { replace: true });
+  }, [navigate, state.storage]);
 
   function handleContinue() {
     const elapsedMs = Date.now() - phaseStartedAt;
@@ -84,8 +94,15 @@ export function CalibrationScreen() {
         }
       };
 
+      const nextPlacement = scoreCalibration(nextResults).placement;
+
       setCalibrationResults(nextResults);
-      setPlacement(scoreCalibration(nextResults).placement);
+      setPlacement(nextPlacement);
+      state.storage?.saveCalibrationCompletion({
+        completed: true,
+        placement: nextPlacement,
+        version: CALIBRATION_COMPLETION_VERSION
+      });
     }
 
     if (nextPhase) setPhase(nextPhase);

@@ -1,10 +1,11 @@
 import { getVisibleCaseMetrics, renderMetricValue } from "../core/metrics";
 import {
   canAccessDifficulty,
+  DIFFICULTY_ORDER,
   normalizeDifficultyKey,
   type ProgressionStateInput
 } from "../core/progression";
-import type { CaseData } from "../core/types";
+import type { CalibrationCompletionRecord, CalibrationPlacement, CaseData } from "../core/types";
 
 const PRIMARY_METRIC_LABELS = new Set(["pH", "PaCO2", "HCO3"]);
 
@@ -87,4 +88,71 @@ export function getDefaultPracticeDifficulty(
   }
 
   return normalizeDifficultyKey(progressionInput, "intermediate");
+}
+
+const CALIBRATION_ALLOWED_DIFFICULTIES: Record<CalibrationPlacement, string[]> = {
+  beginner: ["beginner"],
+  intermediate: ["beginner", "intermediate"],
+  advanced: ["beginner", "intermediate", "advanced"]
+};
+
+function isKnownDifficulty(value: string): boolean {
+  return DIFFICULTY_ORDER.includes(value as (typeof DIFFICULTY_ORDER)[number]);
+}
+
+export function hasCompletedCalibration(record: CalibrationCompletionRecord | null | undefined): record is CalibrationCompletionRecord {
+  return Boolean(record?.completed && record.placement);
+}
+
+export function getCalibrationAllowedDifficulties(placement: CalibrationPlacement): string[] {
+  return CALIBRATION_ALLOWED_DIFFICULTIES[placement] ?? ["beginner"];
+}
+
+export function getHighestCalibrationDifficulty(placement: CalibrationPlacement): string {
+  const allowed = getCalibrationAllowedDifficulties(placement);
+  return allowed[allowed.length - 1] ?? "beginner";
+}
+
+export interface PracticeDifficultyResolutionInput {
+  requestedDifficulty: string | null | undefined;
+  hasExplicitDifficultyParam: boolean;
+  calibrationRecord: CalibrationCompletionRecord | null | undefined;
+  progressionInput: ProgressionStateInput;
+  lastPracticeDifficulty: string | null | undefined;
+  enableCalibrationAccessGuard: boolean;
+}
+
+export interface PracticeDifficultyResolution {
+  resolvedDifficulty: string;
+  shouldRedirect: boolean;
+}
+
+export function resolvePracticeDifficulty(input: PracticeDifficultyResolutionInput): PracticeDifficultyResolution {
+  const existingDefault = getDefaultPracticeDifficulty(input.progressionInput, input.lastPracticeDifficulty);
+
+  if (input.enableCalibrationAccessGuard && hasCompletedCalibration(input.calibrationRecord)) {
+    const allowed = getCalibrationAllowedDifficulties(input.calibrationRecord.placement);
+    const highestAllowed = getHighestCalibrationDifficulty(input.calibrationRecord.placement);
+    const requested = String(input.requestedDifficulty ?? "").trim().toLowerCase();
+
+    if (input.hasExplicitDifficultyParam && isKnownDifficulty(requested) && allowed.includes(requested)) {
+      return {
+        resolvedDifficulty: requested,
+        shouldRedirect: requested !== input.requestedDifficulty
+      };
+    }
+
+    return {
+      resolvedDifficulty: highestAllowed,
+      shouldRedirect: input.hasExplicitDifficultyParam && requested !== highestAllowed
+    };
+  }
+
+  const requested = input.requestedDifficulty ?? existingDefault;
+  const resolvedDifficulty = normalizeDifficultyKey(input.progressionInput, requested) || "beginner";
+
+  return {
+    resolvedDifficulty,
+    shouldRedirect: false
+  };
 }

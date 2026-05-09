@@ -34,7 +34,8 @@ export function getReleaseFlags(progressionConfig: ProgressionConfig | null): Re
     enable_unlimited_cases: Boolean(flags.enable_unlimited_cases),
     enable_learn_preview: Boolean(flags.enable_learn_preview),
     xp_multiplier: Number(flags.xp_multiplier) || 1,
-    enable_beta_badge: Boolean(flags.enable_beta_badge)
+    enable_beta_badge: Boolean(flags.enable_beta_badge),
+    enableCalibrationAccessGuard: Boolean(flags.enableCalibrationAccessGuard)
   };
 }
 

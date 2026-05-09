@@ -8,8 +8,10 @@ import {
 } from "../../app/protectedPracticeSlots";
 import { PROTECTED_PRACTICE_MESSAGES, getProtectedPracticeUnavailableMessage } from "../../app/protectedPracticeMessages";
 import {
-  getDefaultPracticeDifficulty,
+  getCalibrationAllowedDifficulties,
   getPracticeDifficultyMismatchAction,
+  hasCompletedCalibration,
+  resolvePracticeDifficulty,
   shouldConfirmDifficultySwitch,
   shouldShowPracticeIntro
 } from "../../app/viewHelpers";
@@ -43,6 +45,7 @@ import {
   getDifficultyLabel,
   getDifficultyMeta,
   getLevelProgress,
+  getReleaseFlags,
   normalizeDifficultyKey,
   syncUserStateDerivedFields
 } from "../../core/progression";
@@ -61,6 +64,8 @@ import { CalibrationIntroModal } from "../practice/CalibrationIntroModal";
 import { PracticeDifficultyRail } from "../practice/PracticeDifficultyRail";
 import { ResultsSummaryCard, ResultsSummaryHeader } from "../practice/ResultsSummaryCard";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
+
+const SKIPPED_CALIBRATION_VERSION = 1;
 
 export function ProtectedPracticeScreen() {
   const { state, setUserState, patchPracticeState, patchSessionState } = useAppContext();
@@ -87,16 +92,24 @@ export function ProtectedPracticeScreen() {
     userState: state.userState,
     cases: []
   };
-  const defaultDifficulty = getDefaultPracticeDifficulty(
-    progressionInput,
-    state.storage?.loadLastPracticeDifficulty() ?? null
-  );
   const hasExplicitDifficultyParam = searchParams.has("difficulty");
-  const requestedDifficulty = searchParams.get("difficulty") ?? defaultDifficulty;
-  const normalizedDifficulty = normalizeDifficultyKey(progressionInput, requestedDifficulty);
+  const requestedDifficultyParam = searchParams.get("difficulty");
+  const calibrationRecord = state.storage?.loadCalibrationCompletion() ?? null;
+  const releaseFlags = getReleaseFlags(payload?.progressionConfig ?? null);
+  const difficultyResolution = resolvePracticeDifficulty({
+    requestedDifficulty: requestedDifficultyParam,
+    hasExplicitDifficultyParam,
+    calibrationRecord,
+    progressionInput,
+    lastPracticeDifficulty: state.storage?.loadLastPracticeDifficulty() ?? null,
+    enableCalibrationAccessGuard: releaseFlags.enableCalibrationAccessGuard
+  });
+  const normalizedDifficulty = difficultyResolution.resolvedDifficulty;
   const analyticsSource = searchParams.get("source") ?? undefined;
   const difficultyMeta = getDifficultyMeta(progressionInput);
-  const accessibleDifficulties = getAccessibleDifficultyKeys(progressionInput);
+  const accessibleDifficulties = releaseFlags.enableCalibrationAccessGuard && hasCompletedCalibration(calibrationRecord)
+    ? getCalibrationAllowedDifficulties(calibrationRecord.placement)
+    : getAccessibleDifficultyKeys(progressionInput);
   const canLoadCase = canStartNewCase(progressionInput);
   const currentCase = state.practiceState.currentCase;
   const summary = state.practiceState.lastCaseSummary;
@@ -204,10 +217,10 @@ export function ProtectedPracticeScreen() {
   }
 
   useEffect(() => {
-    if (requestedDifficulty !== normalizedDifficulty) {
+    if (difficultyResolution.shouldRedirect) {
       setSearchParams({ difficulty: normalizedDifficulty }, { replace: true });
     }
-  }, [normalizedDifficulty, requestedDifficulty, setSearchParams]);
+  }, [difficultyResolution.shouldRedirect, normalizedDifficulty, setSearchParams]);
 
   useEffect(() => {
     if (state.status !== "ready") return;
@@ -520,6 +533,21 @@ export function ProtectedPracticeScreen() {
     setIntroOpen(false);
     setPendingDifficulty(null);
     navigate("/calibration");
+  }
+
+  function handleSkipCalibrationIntro() {
+    state.storage?.savePracticeIntroSeen(true);
+    state.storage?.saveAppAreaVisited(true);
+    state.storage?.saveCalibrationCompletion({
+      completed: true,
+      placement: "beginner",
+      version: SKIPPED_CALIBRATION_VERSION
+    });
+    introAcceptedRef.current = true;
+    setIntroOpen(false);
+    setPendingDifficulty(null);
+    setSearchParams({ difficulty: "beginner" }, { replace: true });
+    void beginCase("beginner", { confirmAbandon: false });
   }
 
   async function handleDifficultyChange(nextDifficulty: string) {
@@ -914,6 +942,7 @@ export function ProtectedPracticeScreen() {
       <CalibrationIntroModal
         open={introOpen}
         onContinue={handleContinueFromIntro}
+        onSkip={handleSkipCalibrationIntro}
       />
 
       <main className="app-shell__page practice-screen">

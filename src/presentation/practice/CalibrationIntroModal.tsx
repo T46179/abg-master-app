@@ -1,6 +1,7 @@
 interface CalibrationIntroModalProps {
   open: boolean;
   onContinue: () => void;
+  onSkip: () => void;
 }
 
 const CALIBRATION_INTRO_COPY = {
@@ -30,9 +31,9 @@ export function CalibrationIntroModal(props: CalibrationIntroModalProps) {
             {CALIBRATION_INTRO_COPY.cta}
           </button>
         </div>
-        <span className="calibration-intro-modal__skip" aria-disabled="true">
+        <button className="calibration-intro-modal__skip" type="button" onClick={props.onSkip}>
           {CALIBRATION_INTRO_COPY.skip}
-        </span>
+        </button>
       </div>
     </div>
   );

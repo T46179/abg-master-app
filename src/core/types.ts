@@ -9,6 +9,15 @@ export interface ReleaseFlags {
   enable_learn_preview: boolean;
   xp_multiplier: number;
   enable_beta_badge: boolean;
+  enableCalibrationAccessGuard: boolean;
+}
+
+export type CalibrationPlacement = "beginner" | "intermediate" | "advanced";
+
+export interface CalibrationCompletionRecord {
+  completed: true;
+  placement: CalibrationPlacement;
+  version: number;
 }
 
 export interface SpeedBonusTier {
@@ -351,6 +360,9 @@ export interface StorageAdapter {
   saveResultsExplanationPreferences(value: ResultsExplanationPreferences): void;
   loadResultsReviewExpandedPreference(): boolean;
   saveResultsReviewExpandedPreference(value: boolean): void;
+  loadCalibrationCompletion(): CalibrationCompletionRecord | null;
+  saveCalibrationCompletion(value: CalibrationCompletionRecord): void;
+  clearCalibrationCompletion(): void;
 }
 
 export interface SupabaseSyncAdapter {

@@ -94,6 +94,9 @@ function createStorageAdapter(overrides: Partial<StorageAdapter> = {}): StorageA
     saveResultsExplanationPreferences: vi.fn(),
     loadResultsReviewExpandedPreference: vi.fn(() => false),
     saveResultsReviewExpandedPreference: vi.fn(),
+    loadCalibrationCompletion: vi.fn(() => null),
+    saveCalibrationCompletion: vi.fn(),
+    clearCalibrationCompletion: vi.fn(),
     ...overrides
   };
 }
