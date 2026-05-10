@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { X } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
+import listIconUrl from "../../assets/icons/list.svg";
 import { cn } from "../utils";
 
 interface MainNavProps {
@@ -154,7 +155,7 @@ export function MainNav(props: MainNavProps) {
               aria-expanded={props.mobileOpen}
               onClick={props.onToggleMobile}
             >
-              {props.mobileOpen ? <X /> : <Menu />}
+              {props.mobileOpen ? <X /> : <img src={listIconUrl} alt="" aria-hidden="true" />}
             </button>
           ) : null}
         </div>

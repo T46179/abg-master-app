@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import lockIconUrl from "../../assets/icons/lock.svg";
 import type { CalibrationPlacement } from "./calibrationScoring";
 
-const sparkleIconUrl = "https://www.figma.com/api/mcp/asset/489e73c4-4143-42e2-9d63-db7898c05ffa";
 const arrowIconUrl = "https://www.figma.com/api/mcp/asset/97bc370c-4188-4b03-ab6c-59dda1fa9a48";
 
 type CalibrationDifficultyKey = "beginner" | "intermediate" | "advanced" | "master";
@@ -84,7 +83,6 @@ export function CalibrationSummaryStep(props: CalibrationSummaryStepProps) {
     <section className="calibration-summary-page" aria-labelledby="calibration-summary-title">
       <div className="calibration-summary-page__header">
         <span className="calibration-summary-page__eyebrow">
-          <img src={sparkleIconUrl} alt="" aria-hidden="true" />
           <span>Calibration complete</span>
         </span>
         <h1 id="calibration-summary-title">{copy.title}</h1>

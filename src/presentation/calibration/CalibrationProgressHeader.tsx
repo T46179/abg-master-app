@@ -32,9 +32,6 @@ export function CalibrationProgressHeader(props: CalibrationProgressHeaderProps)
     <header className="calibration-progress-header">
       <div className="calibration-progress-header__meta">
         <div className="calibration-progress-header__brand">
-          <svg className="calibration-progress-header__icon" viewBox="0 0 16 16" aria-hidden="true">
-            <path d="M2.5 8h2.2l1.2-4.4 2.3 8.8 1.5-4.4h3.8" />
-          </svg>
           <span>Calibration</span>
         </div>
 

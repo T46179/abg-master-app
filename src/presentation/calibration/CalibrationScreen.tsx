@@ -187,7 +187,7 @@ export function CalibrationScreen() {
         {phase === "mixed-process-challenge" ? (
           <p className="calibration-screen__subtitle">Use the values below to choose the best answer</p>
         ) : null}
-        <CalibrationStepShell>
+        <CalibrationStepShell className={phase === "blood-gas-blitz" ? "calibration-step-shell--blood-gas-blitz" : undefined}>
           {renderStepContent()}
           <div className="calibration-screen__actions">
             {phase !== "blood-gas-blitz" ? (

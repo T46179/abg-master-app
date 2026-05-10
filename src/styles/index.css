@@ -298,9 +298,14 @@ button:disabled {
 }
 
 .main-nav__mobile-stay-updated svg,
-.main-nav__toggle svg {
+.main-nav__toggle svg,
+.main-nav__toggle img {
   width: 1.2rem;
   height: 1.2rem;
+}
+
+.main-nav__toggle img {
+  filter: brightness(0) saturate(100%);
 }
 
 .main-nav__mobile {
@@ -1871,9 +1876,32 @@ button:disabled {
 
 .calibration-compensation__metric-grid .metric-card {
   position: relative;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  align-content: start;
   border: 0;
   background: var(--color-surface-raised);
   transition: box-shadow 180ms ease, transform 180ms ease;
+}
+
+.calibration-compensation__metric-grid .metric-card__label {
+  min-height: 1.35rem;
+  line-height: 1.2;
+}
+
+.calibration-compensation__metric-grid .metric-card__label sub,
+.calibration-compensation__metric-grid .metric-card__label sup {
+  line-height: 0;
+}
+
+.calibration-compensation__metric-grid .metric-card__value {
+  min-height: 2.6rem;
+  align-items: baseline;
+  line-height: 1;
+}
+
+.calibration-compensation__metric-grid .metric-card__reference {
+  line-height: 1.25;
 }
 
 .calibration-compensation__metric-grid .metric-card:hover,
@@ -2892,7 +2920,7 @@ button:disabled {
 }
 
 .modal-card .calibration-intro-modal__eyebrow {
-  margin-top: 1.65rem;
+  margin-top: 0;
   color: var(--color-navy);
   font-size: 0.95rem;
   font-weight: 400;
@@ -2914,6 +2942,14 @@ button:disabled {
   color: var(--color-copy-soft);
   font-weight: 300;
   line-height: 1.65;
+}
+
+.calibration-intro-modal__body span {
+  display: block;
+}
+
+.calibration-intro-modal__body span + span {
+  margin-top: 0.35em;
 }
 
 .modal-card__actions {
@@ -2952,6 +2988,12 @@ button:disabled {
   font-size: 0.9rem;
   font-weight: 300;
   text-align: center;
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.calibration-intro-modal__skip:hover {
+  color: var(--color-navy);
+  transform: translateY(-1px);
 }
 
 .learn-unlock-modal {
@@ -3489,6 +3531,26 @@ button:disabled {
     padding-inline: 0.45rem;
   }
 
+  .calibration-compensation__metric-grid .metric-card__label {
+    margin-bottom: 1.05rem;
+  }
+
+  .calibration-compensation__metric-grid .metric-card__value {
+    min-height: 2.15rem;
+    gap: 0.2rem;
+    font-size: clamp(1.5rem, 6vw, 1.84rem);
+  }
+
+  .calibration-compensation__metric-grid .metric-card__value small {
+    font-size: 0.68rem;
+  }
+
+  .calibration-compensation__metric-grid .metric-card__reference {
+    margin-top: 0.32rem;
+    font-size: 0.73rem;
+    line-height: 1.2;
+  }
+
   .calibration-build-gas__choice {
     min-height: 4.6rem;
     padding-inline: 0.45rem;
@@ -3512,7 +3574,7 @@ button:disabled {
   }
 
   .modal-card .calibration-intro-modal__eyebrow {
-    margin-top: 1.35rem;
+    margin-top: 0;
     font-size: 0.9rem;
   }
 
@@ -8885,6 +8947,27 @@ button.learn-progress-dots__dot:focus-visible {
 
   .speed-check.is-playing {
     padding-top: clamp(1.1rem, 3vw, 1.6rem);
+  }
+
+  .calibration-step-shell--blood-gas-blitz {
+    padding: 0.95rem;
+  }
+
+  .speed-check--onboarding-calibration.is-playing {
+    min-height: 28rem;
+    height: auto;
+    padding: 0;
+    overflow: visible;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .speed-check--onboarding-calibration.is-playing .speed-check__question {
+    padding-right: 0;
+    padding-left: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
   }
 
   .speed-check.is-playing .speed-check__toolbar {
