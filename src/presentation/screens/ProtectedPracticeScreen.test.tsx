@@ -143,6 +143,7 @@ vi.mock("../../core/practice", () => ({
 
 vi.mock("../../core/progression", () => ({
   canStartNewCase: () => mockCanStartNewCase(),
+  getCalibrationCompletionFromUserState: () => null,
   getAccessibleDifficultyKeys: () => [],
   getAwardableXp: vi.fn(),
   getDifficultyLabel: () => "beginner",
@@ -150,8 +151,13 @@ vi.mock("../../core/progression", () => ({
   getHighestAccessibleDifficultyKey: () => "beginner",
   getLevelProgress: () => ({ xpIntoLevel: 0, xpForNextLevel: 0, progressPercent: 0 }),
   getReleaseFlags: () => ({ enableCalibrationAccessGuard: false }),
+  mapProgressRowToUserState: () => null,
   normalizeDifficultyKey: (_input: unknown, requestedDifficulty: string) => requestedDifficulty || "beginner",
   syncUserStateDerivedFields: <T,>(value: T) => value
+}));
+
+vi.mock("../../core/progressionSync", () => ({
+  completeCalibrationProgress: vi.fn()
 }));
 
 vi.mock("../../core/selection", () => ({

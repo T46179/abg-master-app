@@ -26,12 +26,19 @@ export interface SpeedBonusTier {
 }
 
 export interface ProgressionConfig {
+  version?: string;
+  beta_release_number?: number;
   release_flags?: Partial<ReleaseFlags>;
   base_xp_by_difficulty?: Record<string, number>;
   perfect_case_bonus_percent?: number;
   speed_bonus_tiers?: SpeedBonusTier[];
   xp_required_per_level?: Record<string, number>;
   difficulty_unlock_levels?: Record<string, number>;
+  performance_unlock_requirements?: Record<string, {
+    lastCases?: number;
+    minStepAccuracyPercent?: number;
+    requiredDifficulty?: string;
+  }>;
   free_daily_case_limit?: number;
   difficulty_labels?: Record<string, string>;
 }
@@ -223,6 +230,15 @@ export interface UserState {
   appliedProtectedCaseTokens: string[];
   learnProgress?: Record<string, LearnModuleProgress>;
   longestStreak?: number;
+  progressionVersion?: string | null;
+  betaReleaseNumber?: number | null;
+  calibrationCompleted?: boolean;
+  calibrationPlacement?: CalibrationPlacement | null;
+  calibrationCompletedAt?: string | null;
+  intermediateUnlockedAt?: string | null;
+  advancedUnlockedAt?: string | null;
+  masterUnlockedAt?: string | null;
+  resetAt?: string | null;
 }
 
 export interface LearnModuleProgress {
@@ -326,6 +342,8 @@ export interface PracticeFlowState {
 
 export interface StorageInitOptions {
   releaseSignature?: string | null;
+  progressionVersion?: string | null;
+  betaReleaseNumber?: number | null;
   userId?: string | null;
   fallbackUserState?: UserState | null;
   onSyncUnavailable?: (error?: unknown) => void;
@@ -336,6 +354,8 @@ export type SaveFailureKind = "save" | "progress";
 
 export interface ProgressRow {
   user_id: string;
+  progression_version?: string | null;
+  beta_release_number?: number | null;
   xp: number;
   level: number;
   streak: number;
@@ -343,6 +363,14 @@ export interface ProgressRow {
   correct_answers: number;
   total_answers: number;
   last_case_date: string | null;
+  calibration_completed?: boolean | null;
+  calibration_placement?: CalibrationPlacement | null;
+  calibration_completed_at?: string | null;
+  intermediate_unlocked_at?: string | null;
+  advanced_unlocked_at?: string | null;
+  master_unlocked_at?: string | null;
+  reset_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface StorageAdapter {
@@ -417,6 +445,7 @@ export interface ProtectedPracticeSubmitResponse {
   stepResults: StepResult[];
   explanation: StructuredExplanation;
   replacementSlot: Omit<IssuedPracticeSlot, "difficultyKey" | "contentVersion"> & { difficultyKey?: string; contentVersion?: string };
+  progress?: Partial<ProgressRow> | null;
 }
 
 export interface ProtectedPracticeErrorResponse {

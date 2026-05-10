@@ -129,25 +129,6 @@ export interface PracticeDifficultyResolution {
 
 export function resolvePracticeDifficulty(input: PracticeDifficultyResolutionInput): PracticeDifficultyResolution {
   const existingDefault = getDefaultPracticeDifficulty(input.progressionInput, input.lastPracticeDifficulty);
-
-  if (input.enableCalibrationAccessGuard && hasCompletedCalibration(input.calibrationRecord)) {
-    const allowed = getCalibrationAllowedDifficulties(input.calibrationRecord.placement);
-    const highestAllowed = getHighestCalibrationDifficulty(input.calibrationRecord.placement);
-    const requested = String(input.requestedDifficulty ?? "").trim().toLowerCase();
-
-    if (input.hasExplicitDifficultyParam && isKnownDifficulty(requested) && allowed.includes(requested)) {
-      return {
-        resolvedDifficulty: requested,
-        shouldRedirect: requested !== input.requestedDifficulty
-      };
-    }
-
-    return {
-      resolvedDifficulty: highestAllowed,
-      shouldRedirect: input.hasExplicitDifficultyParam && requested !== highestAllowed
-    };
-  }
-
   const requested = input.requestedDifficulty ?? existingDefault;
   const resolvedDifficulty = normalizeDifficultyKey(input.progressionInput, requested) || "beginner";
 

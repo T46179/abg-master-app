@@ -151,7 +151,7 @@ export async function submitProtectedPracticeCase(
   config: RuntimeConfig,
   supabase: SupabaseClient,
   request: ProtectedPracticeSubmitRequest
-): Promise<{ summary: CaseSummary; replacementSlot: IssuedPracticeSlot }> {
+): Promise<{ summary: CaseSummary; replacementSlot: IssuedPracticeSlot; progress?: ProtectedPracticeSubmitResponse["progress"] }> {
   const response = await invokeProtectedFunction<ProtectedPracticeSubmitResponse>(
     config,
     supabase,
@@ -189,7 +189,8 @@ export async function submitProtectedPracticeCase(
 
   return {
     summary,
-    replacementSlot
+    replacementSlot,
+    progress: response.progress ?? null
   };
 }
 

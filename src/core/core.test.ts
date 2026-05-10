@@ -22,10 +22,13 @@ import {
   slotMatchesDifficultyKey
 } from "./protectedPracticeCache";
 import {
+  canAccessDifficulty,
+  getAccessibleDifficultyKeys,
   getAwardableXp,
   getHighestAccessibleDifficultyKey,
   getLevelProgress,
   getMaxReachableLevel,
+  getReleaseSignature,
   mapDefaultUserState
 } from "./progression";
 import { createMemoryStorage } from "./storage";
@@ -207,6 +210,9 @@ function createFakeSupabase(remoteProgress: Record<string, unknown> | null) {
       };
 
       return query;
+    },
+    async rpc() {
+      return { data: null, error: null };
     }
   };
 
@@ -385,11 +391,54 @@ describe("progression helpers", () => {
         xp: 200,
         level: 10,
         unlockedDifficulties: ["beginner", "intermediate", "advanced"],
-        isPremium: true
+        isPremium: true,
+        advancedUnlockedAt: "2026-05-10T00:00:00Z"
       })
     });
 
     expect(highestDifficulty).toBe("advanced");
+  });
+
+  it("derives access from calibration placement and unlock timestamps", () => {
+    const progressionConfig = {
+      difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" },
+      difficulty_unlock_levels: { 1: 1, 2: 5, 3: 10, 4: 15 }
+    };
+    const advancedPlacement = createUserState({
+      calibrationCompleted: true,
+      calibrationPlacement: "advanced",
+      xp: 0,
+      level: 1
+    });
+    const masterEarned = createUserState({
+      calibrationCompleted: true,
+      calibrationPlacement: "beginner",
+      masterUnlockedAt: "2026-05-10T00:00:00Z"
+    });
+
+    expect(getAccessibleDifficultyKeys({ progressionConfig, userState: advancedPlacement })).toEqual([
+      "beginner",
+      "intermediate",
+      "advanced"
+    ]);
+    expect(canAccessDifficulty({ progressionConfig, userState: advancedPlacement }, "master")).toBe(false);
+    expect(getAccessibleDifficultyKeys({ progressionConfig, userState: masterEarned })).toEqual([
+      "beginner",
+      "intermediate",
+      "advanced",
+      "master"
+    ]);
+  });
+
+  it("builds the release signature from version and beta release only", () => {
+    expect(getReleaseSignature({
+      version: "v2",
+      beta_release_number: 2,
+      release_flags: {
+        enable_all_difficulties: false,
+        enable_beta_badge: true
+      }
+    })).toBe(JSON.stringify({ progressionVersion: "v2", betaReleaseNumber: 2 }));
   });
 });
 
@@ -1007,7 +1056,7 @@ describe("storage adapters", () => {
       badges: ["First case complete"],
       recentResults: [true]
     });
-    expect(calls.upserts[0]?.table).toBe("user_progress");
+    expect(calls.upserts).toHaveLength(0);
   });
 
   it("does not expose browser-side attempt writes", async () => {

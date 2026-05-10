@@ -8,9 +8,7 @@ import {
 } from "../../app/protectedPracticeSlots";
 import { PROTECTED_PRACTICE_MESSAGES, getProtectedPracticeUnavailableMessage } from "../../app/protectedPracticeMessages";
 import {
-  getCalibrationAllowedDifficulties,
   getPracticeDifficultyMismatchAction,
-  hasCompletedCalibration,
   resolvePracticeDifficulty,
   shouldConfirmDifficultySwitch,
   shouldShowPracticeIntro
@@ -40,15 +38,18 @@ import {
 } from "../../core/practice";
 import {
   canStartNewCase,
+  getCalibrationCompletionFromUserState,
   getAccessibleDifficultyKeys,
   getAwardableXp,
   getDifficultyLabel,
   getDifficultyMeta,
   getLevelProgress,
   getReleaseFlags,
+  mapProgressRowToUserState,
   normalizeDifficultyKey,
   syncUserStateDerivedFields
 } from "../../core/progression";
+import { completeCalibrationProgress } from "../../core/progressionSync";
 import {
   buildStepOptionOverrides,
   createEmptySeenCasesState,
@@ -94,7 +95,7 @@ export function ProtectedPracticeScreen() {
   };
   const hasExplicitDifficultyParam = searchParams.has("difficulty");
   const requestedDifficultyParam = searchParams.get("difficulty");
-  const calibrationRecord = state.storage?.loadCalibrationCompletion() ?? null;
+  const calibrationRecord = getCalibrationCompletionFromUserState(state.userState) ?? state.storage?.loadCalibrationCompletion() ?? null;
   const releaseFlags = getReleaseFlags(payload?.progressionConfig ?? null);
   const difficultyResolution = resolvePracticeDifficulty({
     requestedDifficulty: requestedDifficultyParam,
@@ -107,9 +108,7 @@ export function ProtectedPracticeScreen() {
   const normalizedDifficulty = difficultyResolution.resolvedDifficulty;
   const analyticsSource = searchParams.get("source") ?? undefined;
   const difficultyMeta = getDifficultyMeta(progressionInput);
-  const accessibleDifficulties = releaseFlags.enableCalibrationAccessGuard && hasCompletedCalibration(calibrationRecord)
-    ? getCalibrationAllowedDifficulties(calibrationRecord.placement)
-    : getAccessibleDifficultyKeys(progressionInput);
+  const accessibleDifficulties = getAccessibleDifficultyKeys(progressionInput);
   const canLoadCase = canStartNewCase(progressionInput);
   const currentCase = state.practiceState.currentCase;
   const summary = state.practiceState.lastCaseSummary;
@@ -535,14 +534,35 @@ export function ProtectedPracticeScreen() {
     navigate("/calibration");
   }
 
-  function handleSkipCalibrationIntro() {
+  async function handleSkipCalibrationIntro() {
     state.storage?.savePracticeIntroSeen(true);
     state.storage?.saveAppAreaVisited(true);
-    state.storage?.saveCalibrationCompletion({
+    const completion = {
       completed: true,
       placement: "beginner",
       version: SKIPPED_CALIBRATION_VERSION
-    });
+    } as const;
+    state.storage?.saveCalibrationCompletion(completion);
+    if (state.supabase) {
+      try {
+        const progress = await completeCalibrationProgress({
+          supabase: state.supabase,
+          progressionConfig: payload?.progressionConfig ?? null,
+          placement: "beginner",
+          completion,
+          attemptPayload: { source: "skip_intro" }
+        });
+        const progressPatch = mapProgressRowToUserState(progress);
+        if (progressPatch) {
+          await persistUserState(syncUserStateDerivedFields({
+            ...state.userState,
+            ...progressPatch
+          }, payload?.progressionConfig ?? null));
+        }
+      } catch {
+        // Local completion remains as a fallback if Supabase sync is unavailable.
+      }
+    }
     introAcceptedRef.current = true;
     setIntroOpen(false);
     setPendingDifficulty(null);
@@ -733,6 +753,7 @@ export function ProtectedPracticeScreen() {
 
     try {
       const result = await submitProtectedPracticeCase(state.runtimeConfig, state.supabase, pendingSubmission);
+      const progressPatch = mapProgressRowToUserState(result.progress);
       const reconciledSummary = reconcileProtectedSummaryWithLockedStepResults({
         summary: {
           ...result.summary,
@@ -743,13 +764,20 @@ export function ProtectedPracticeScreen() {
       });
       const cappedSummary = {
         ...reconciledSummary,
-        totalXpAward: getAwardableXp(payload.progressionConfig ?? null, state.userState.xp, reconciledSummary.totalXpAward)
+        totalXpAward: result.progress
+          ? reconciledSummary.totalXpAward
+          : getAwardableXp(payload.progressionConfig ?? null, state.userState.xp, reconciledSummary.totalXpAward)
       };
-      const nextUserState = applyProtectedCaseCompletion({
-        userState: state.userState,
-        summary: cappedSummary,
-        progressionConfig: payload.progressionConfig
-      });
+      const nextUserState = progressPatch
+        ? syncUserStateDerivedFields({
+          ...state.userState,
+          ...progressPatch
+        }, payload.progressionConfig)
+        : applyProtectedCaseCompletion({
+          userState: state.userState,
+          summary: cappedSummary,
+          progressionConfig: payload.progressionConfig
+        });
       if (nextUserState !== state.userState) {
         await persistUserState(nextUserState);
       }

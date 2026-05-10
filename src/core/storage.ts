@@ -10,6 +10,7 @@ import type {
   StorageInitOptions,
   UserState
 } from "./types";
+import { mapProgressRowToUserState as mapRemoteProgressRowToUserState } from "./progression";
 
 const USER_STATE_STORAGE_KEY = "abgmaster_userState";
 const USER_STATE_MODE_STORAGE_KEY = "abgmaster_userState_mode";
@@ -194,6 +195,8 @@ export function mapUserStateToProgressRow(source: UserState, userId: string): Pr
   const core = getCoreUserState(source);
   return {
     user_id: userId,
+    progression_version: source.progressionVersion ?? null,
+    beta_release_number: source.betaReleaseNumber ?? null,
     xp: core.xp,
     level: core.level,
     streak: core.streak,
@@ -205,21 +208,19 @@ export function mapUserStateToProgressRow(source: UserState, userId: string): Pr
 }
 
 export function mapProgressRowToUserState(source: Partial<ProgressRow> | null | undefined): Partial<UserState> | null {
-  if (!source || typeof source !== "object") return null;
-
-  return {
-    xp: Number(source.xp ?? 0),
-    level: Number(source.level ?? 1),
-    streak: Number(source.streak ?? 0),
-    casesCompleted: Number(source.cases_completed ?? 0),
-    correctAnswers: Number(source.correct_answers ?? 0),
-    totalAnswers: Number(source.total_answers ?? 0),
-    lastCaseDate: source.last_case_date ?? null
-  };
+  return mapRemoteProgressRowToUserState(source);
 }
 
 function isEmptyRemoteProgress(source: Partial<ProgressRow> | null | undefined): boolean {
-  return !hasMeaningfulCoreProgress(mapProgressRowToUserState(source));
+  return !Boolean(
+    source?.calibration_completed ||
+    source?.calibration_placement ||
+    source?.intermediate_unlocked_at ||
+    source?.advanced_unlocked_at ||
+    source?.master_unlocked_at ||
+    source?.reset_at ||
+    hasMeaningfulCoreProgress(mapProgressRowToUserState(source))
+  );
 }
 
 export function createLocalStorageAdapter(browserStorage: BrowserStorageLike): StorageAdapter {
@@ -234,6 +235,7 @@ export function createLocalStorageAdapter(browserStorage: BrowserStorageLike): S
 
       if (persistedReleaseSignature !== state.releaseSignature) {
         safeRemoveItem(browserStorage, USER_STATE_STORAGE_KEY);
+        safeRemoveItem(browserStorage, CALIBRATION_COMPLETION_STORAGE_KEY);
         safeSetItem(browserStorage, USER_STATE_MODE_STORAGE_KEY, String(state.releaseSignature ?? ""));
       }
     },
@@ -370,7 +372,9 @@ export function createSupabaseStorageAdapter(
   }
 ): StorageAdapter {
   const state = {
-    remoteDisabled: false
+    remoteDisabled: false,
+    progressionVersion: null as string | null,
+    betaReleaseNumber: null as number | null
   };
 
   function notifySyncUnavailable(error: unknown) {
@@ -404,8 +408,10 @@ export function createSupabaseStorageAdapter(
     return runRemote(async supabase => {
       const { data, error } = await supabase
         .from("user_progress")
-        .select("xp, level, streak, cases_completed, correct_answers, total_answers, last_case_date")
+        .select("xp, level, streak, cases_completed, correct_answers, total_answers, last_case_date, progression_version, beta_release_number, calibration_completed, calibration_placement, calibration_completed_at, intermediate_unlocked_at, advanced_unlocked_at, master_unlocked_at, reset_at, updated_at")
         .eq("user_id", options.userId)
+        .eq("progression_version", state.progressionVersion ?? "v2")
+        .eq("beta_release_number", state.betaReleaseNumber ?? 2)
         .maybeSingle();
 
       if (error) throw error;
@@ -413,44 +419,11 @@ export function createSupabaseStorageAdapter(
     }, null);
   }
 
-  async function saveRemoteCoreFields(userState: UserState) {
-    return runRemote(async supabase => {
-      const { error } = await supabase
-        .from("user_progress")
-        .upsert(mapUserStateToProgressRow(userState, options.userId), { onConflict: "user_id" });
-
-      if (error) throw error;
-      return true;
-    }, false, {
-      notifySaveFailure: true,
-      failureKind: "progress"
-    });
-  }
-
   return {
     async init(initOptions) {
       await localAdapter.init(initOptions);
-
-      await runRemote(async supabase => {
-        const { error } = await supabase
-          .from("user_progress")
-          .upsert(
-            {
-              user_id: options.userId,
-              xp: 0,
-              level: 1,
-              streak: 0,
-              cases_completed: 0,
-              correct_answers: 0,
-              total_answers: 0,
-              last_case_date: null
-            },
-            { onConflict: "user_id" }
-          );
-
-        if (error) throw error;
-        return true;
-      }, false);
+      state.progressionVersion = initOptions?.progressionVersion ?? "v2";
+      state.betaReleaseNumber = initOptions?.betaReleaseNumber ?? 2;
     },
 
     async loadUserState() {
@@ -462,9 +435,6 @@ export function createSupabaseStorageAdapter(
       }
 
       if (isEmptyRemoteProgress(remoteRow)) {
-        if (localUserState && hasMeaningfulCoreProgress(localUserState)) {
-          await saveRemoteCoreFields(localUserState);
-        }
         return localUserState;
       }
 
@@ -476,11 +446,22 @@ export function createSupabaseStorageAdapter(
 
     async saveUserState(userState) {
       await localAdapter.saveUserState(userState);
-      await saveRemoteCoreFields(userState);
     },
 
     async resetUserState() {
       await localAdapter.resetUserState();
+      await runRemote(async supabase => {
+        const { error } = await supabase.rpc("reset_progress", {
+          p_progression_version: state.progressionVersion ?? "v2",
+          p_beta_release_number: state.betaReleaseNumber ?? 2
+        });
+
+        if (error) throw error;
+        return true;
+      }, false, {
+        notifySaveFailure: true,
+        failureKind: "progress"
+      });
     },
 
     loadSeenCaseState() {

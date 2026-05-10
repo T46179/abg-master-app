@@ -1,12 +1,23 @@
 import type {
+  CalibrationCompletionRecord,
+  CalibrationPlacement,
   DashboardState,
   DefaultUserStateSnapshot,
+  ProgressRow,
   ProgressionConfig,
   ReleaseFlags,
   UserState
 } from "./types";
 
 export const DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced", "master"] as const;
+export const DEFAULT_PROGRESSION_VERSION = "v2";
+export const DEFAULT_BETA_RELEASE_NUMBER = 2;
+
+const CALIBRATION_GRANTED_ACCESS: Record<CalibrationPlacement, string[]> = {
+  beginner: ["beginner"],
+  intermediate: ["beginner", "intermediate"],
+  advanced: ["beginner", "intermediate", "advanced"]
+};
 
 export interface ProgressionStateInput {
   progressionConfig: ProgressionConfig | null;
@@ -37,6 +48,15 @@ export function getReleaseFlags(progressionConfig: ProgressionConfig | null): Re
     enable_beta_badge: Boolean(flags.enable_beta_badge),
     enableCalibrationAccessGuard: Boolean(flags.enableCalibrationAccessGuard)
   };
+}
+
+export function getProgressionVersion(progressionConfig: ProgressionConfig | null): string {
+  return String(progressionConfig?.version ?? DEFAULT_PROGRESSION_VERSION);
+}
+
+export function getBetaReleaseNumber(progressionConfig: ProgressionConfig | null): number {
+  const configured = Number(progressionConfig?.beta_release_number ?? DEFAULT_BETA_RELEASE_NUMBER);
+  return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_BETA_RELEASE_NUMBER;
 }
 
 export function getDifficultyLabel(progressionConfig: ProgressionConfig | null, level: number): string {
@@ -83,6 +103,49 @@ export function sanitizeUnlockedDifficulties(difficulties: unknown): string[] {
   const allowed = new Set(DIFFICULTY_ORDER);
   const unique = normalized.filter((item, index) => allowed.has(item as (typeof DIFFICULTY_ORDER)[number]) && normalized.indexOf(item) === index);
   return unique.length ? unique : ["beginner"];
+}
+
+export function getDifficultyRank(difficultyKey: string | null | undefined): number {
+  const normalized = String(difficultyKey ?? "").toLowerCase();
+  const index = DIFFICULTY_ORDER.indexOf(normalized as (typeof DIFFICULTY_ORDER)[number]);
+  return index >= 0 ? index + 1 : 1;
+}
+
+export function getDifficultyKeyForRank(rank: number): string {
+  const index = Math.max(0, Math.min(DIFFICULTY_ORDER.length - 1, Math.round(rank) - 1));
+  return DIFFICULTY_ORDER[index] ?? "beginner";
+}
+
+export function getCalibrationGrantedDifficulties(placement: CalibrationPlacement | null | undefined): string[] {
+  return placement ? CALIBRATION_GRANTED_ACCESS[placement] ?? ["beginner"] : ["beginner"];
+}
+
+export function getEarnedUnlockDifficulties(source: Pick<UserState, "intermediateUnlockedAt" | "advancedUnlockedAt" | "masterUnlockedAt"> | null | undefined): string[] {
+  const earned = ["beginner"];
+  if (source?.intermediateUnlockedAt) earned.push("intermediate");
+  if (source?.advancedUnlockedAt) earned.push("advanced");
+  if (source?.masterUnlockedAt) earned.push("master");
+  return earned;
+}
+
+export function getSkillEligibleDifficultyKeys(userState: UserState | null | undefined): string[] {
+  const calibrationGrantedAccess = getCalibrationGrantedDifficulties(userState?.calibrationPlacement ?? null);
+  const earnedUnlockAccess = getEarnedUnlockDifficulties(userState);
+  const highestRank = Math.max(
+    ...calibrationGrantedAccess.map(getDifficultyRank),
+    ...earnedUnlockAccess.map(getDifficultyRank),
+    1
+  );
+  return DIFFICULTY_ORDER.slice(0, highestRank);
+}
+
+export function getCalibrationCompletionFromUserState(userState: UserState | null | undefined): CalibrationCompletionRecord | null {
+  if (!userState?.calibrationCompleted || !userState.calibrationPlacement) return null;
+  return {
+    completed: true,
+    placement: userState.calibrationPlacement,
+    version: 2
+  };
 }
 
 export function getXpRequiredForLevel(progressionConfig: ProgressionConfig | null, level: number): number {
@@ -227,11 +290,7 @@ export function getEffectiveUnlockedDifficulty(input: ProgressionStateInput): nu
     return DIFFICULTY_ORDER.length;
   }
 
-  if (subscriptionTier === "premium") {
-    return getUnlockedDifficultyKeys(input, userState?.level ?? 1).length;
-  }
-
-  return 1;
+  return getSkillEligibleDifficultyKeys(userState ?? createEmptyUserState()).length;
 }
 
 export function canAccessLearn(input: ProgressionStateInput): boolean {
@@ -290,13 +349,41 @@ export function getCasesRemainingToday(progressionConfig: ProgressionConfig | nu
 }
 
 export function getReleaseSignature(progressionConfig: ProgressionConfig | null): string {
-  const releaseFlags = getReleaseFlags(progressionConfig);
   return JSON.stringify({
-    enable_all_difficulties: releaseFlags.enable_all_difficulties,
-    enable_unlimited_cases: releaseFlags.enable_unlimited_cases,
-    enable_learn_preview: releaseFlags.enable_learn_preview,
-    xp_multiplier: releaseFlags.xp_multiplier
+    progressionVersion: getProgressionVersion(progressionConfig),
+    betaReleaseNumber: getBetaReleaseNumber(progressionConfig)
   });
+}
+
+export function mapProgressRowToUserState(source: Partial<ProgressRow> | null | undefined): Partial<UserState> | null {
+  if (!source || typeof source !== "object") return null;
+
+  return {
+    xp: Number(source.xp ?? 0),
+    level: Number(source.level ?? 1),
+    streak: Number(source.streak ?? 0),
+    casesCompleted: Number(source.cases_completed ?? 0),
+    correctAnswers: Number(source.correct_answers ?? 0),
+    totalAnswers: Number(source.total_answers ?? 0),
+    lastCaseDate: source.last_case_date ?? null,
+    progressionVersion: source.progression_version ?? null,
+    betaReleaseNumber: source.beta_release_number == null ? null : Number(source.beta_release_number),
+    calibrationCompleted: Boolean(source.calibration_completed),
+    calibrationPlacement: source.calibration_placement ?? null,
+    calibrationCompletedAt: source.calibration_completed_at ?? null,
+    intermediateUnlockedAt: source.intermediate_unlocked_at ?? null,
+    advancedUnlockedAt: source.advanced_unlocked_at ?? null,
+    masterUnlockedAt: source.master_unlocked_at ?? null,
+    resetAt: source.reset_at ?? null,
+    unlockedDifficulties: sanitizeUnlockedDifficulties([
+      ...getCalibrationGrantedDifficulties(source.calibration_placement ?? null),
+      ...getEarnedUnlockDifficulties({
+        intermediateUnlockedAt: source.intermediate_unlocked_at ?? null,
+        advancedUnlockedAt: source.advanced_unlocked_at ?? null,
+        masterUnlockedAt: source.master_unlocked_at ?? null
+      })
+    ])
+  };
 }
 
 export function mapDefaultUserState(
@@ -350,10 +437,7 @@ export function syncUserStateDerivedFields(userState: UserState, progressionConf
     ...userState,
     xp: cappedXp,
     level: nextLevel,
-    unlockedDifficulties: sanitizeUnlockedDifficulties([
-      ...userState.unlockedDifficulties,
-      ...getUnlockedDifficultyKeys({ progressionConfig }, nextLevel)
-    ])
+    unlockedDifficulties: sanitizeUnlockedDifficulties(getSkillEligibleDifficultyKeys(userState))
   };
 }
 

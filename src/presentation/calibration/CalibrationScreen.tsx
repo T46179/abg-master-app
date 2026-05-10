@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
+import { mapProgressRowToUserState, syncUserStateDerivedFields } from "../../core/progression";
+import { completeCalibrationProgress } from "../../core/progressionSync";
 import {
   getCalibrationStep,
   getNextCalibrationPhase
@@ -25,7 +27,7 @@ import type { BloodGasBlitzAttemptResult } from "../minigames/BloodGasBlitz";
 const CALIBRATION_COMPLETION_VERSION = 1;
 
 export function CalibrationScreen() {
-  const { state } = useAppContext();
+  const { state, setUserState } = useAppContext();
   const navigate = useNavigate();
   const [phase, setPhase] = useState<CalibrationPhase>("blood-gas-blitz");
   const [canContinueCurrentStep, setCanContinueCurrentStep] = useState(false);
@@ -59,6 +61,41 @@ export function CalibrationScreen() {
     if (!completion) return;
     navigate(`/practice?difficulty=${completion.placement}`, { replace: true });
   }, [navigate, state.storage]);
+
+  async function syncCalibrationCompletion(nextPlacement: CalibrationPlacement, nextResults: CalibrationScoringInput) {
+    const completion = {
+      completed: true,
+      placement: nextPlacement,
+      version: CALIBRATION_COMPLETION_VERSION
+    } as const;
+
+    state.storage?.saveCalibrationCompletion(completion);
+    if (!state.supabase) return;
+
+    try {
+      const progress = await completeCalibrationProgress({
+        supabase: state.supabase,
+        progressionConfig: state.payload?.progressionConfig ?? null,
+        placement: nextPlacement,
+        completion,
+        attemptPayload: {
+          bloodGasBlitz: nextResults.bloodGasBlitz,
+          buildAGas: nextResults.buildAGas,
+          compensationFit: nextResults.compensationFit,
+          finalDiagnosis: nextResults.finalDiagnosis
+        }
+      });
+      const progressPatch = mapProgressRowToUserState(progress);
+      if (progressPatch) {
+        await setUserState(syncUserStateDerivedFields({
+          ...state.userState,
+          ...progressPatch
+        }, state.payload?.progressionConfig ?? null));
+      }
+    } catch {
+      // Keep the local calibration completion so users can continue if sync is temporarily unavailable.
+    }
+  }
 
   function handleContinue() {
     const elapsedMs = Date.now() - phaseStartedAt;
@@ -97,11 +134,7 @@ export function CalibrationScreen() {
 
       setCalibrationResults(nextResults);
       setPlacement(nextPlacement);
-      state.storage?.saveCalibrationCompletion({
-        completed: true,
-        placement: nextPlacement,
-        version: CALIBRATION_COMPLETION_VERSION
-      });
+      void syncCalibrationCompletion(nextPlacement, nextResults);
     }
 
     if (nextPhase) setPhase(nextPhase);

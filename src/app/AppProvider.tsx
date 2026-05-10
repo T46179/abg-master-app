@@ -15,9 +15,12 @@ import {
 import type { PracticeFlowState, SessionState, UserState } from "../core/types";
 import {
   createEmptyUserState,
+  getBetaReleaseNumber,
+  getProgressionVersion,
   getAwardableXp,
   getReleaseSignature,
   mapDefaultUserState,
+  mapProgressRowToUserState,
   sanitizeUnlockedDifficulties,
   syncUserStateDerivedFields
 } from "../core/progression";
@@ -70,6 +73,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await storage.init({
           userId,
           releaseSignature: getReleaseSignature(payload.progressionConfig),
+          progressionVersion: getProgressionVersion(payload.progressionConfig),
+          betaReleaseNumber: getBetaReleaseNumber(payload.progressionConfig),
           fallbackUserState
         });
 
@@ -257,16 +262,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!state.runtimeConfig || !state.payload || !state.supabase || typeof window === "undefined") return;
 
     const result = await submitProtectedPracticeCase(state.runtimeConfig, state.supabase, pendingSubmission);
+    const progressPatch = mapProgressRowToUserState(result.progress);
     const cappedSummary = {
       ...result.summary,
       caseToken: pendingSubmission.caseToken,
-      totalXpAward: getAwardableXp(state.payload.progressionConfig, state.userState.xp, result.summary.totalXpAward)
+      totalXpAward: result.progress
+        ? result.summary.totalXpAward
+        : getAwardableXp(state.payload.progressionConfig, state.userState.xp, result.summary.totalXpAward)
     };
-    const nextUserState = applyProtectedCaseCompletion({
-      userState: state.userState,
-      summary: cappedSummary,
-      progressionConfig: state.payload.progressionConfig
-    });
+    const nextUserState = progressPatch
+      ? syncUserStateDerivedFields({
+        ...state.userState,
+        ...progressPatch
+      }, state.payload.progressionConfig)
+      : applyProtectedCaseCompletion({
+        userState: state.userState,
+        summary: cappedSummary,
+        progressionConfig: state.payload.progressionConfig
+      });
 
     if (nextUserState !== state.userState) {
       await setUserState(nextUserState);

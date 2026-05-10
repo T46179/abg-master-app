@@ -233,7 +233,8 @@ describe("LandingScreen", () => {
       userState: {
         ...(currentState.userState as Record<string, unknown>),
         isPremium: true,
-        level: 10
+        level: 10,
+        advancedUnlockedAt: "2026-05-10T00:00:00Z"
       }
     };
 
