@@ -31,10 +31,10 @@ describe("MainNav", () => {
     container.remove();
   });
 
-  function renderNav() {
+  function renderNav(initialEntries = ["/dashboard"]) {
     act(() => {
       root.render(
-        <MemoryRouter>
+        <MemoryRouter initialEntries={initialEntries}>
           <MainNav
             mobileOpen={false}
             onToggleMobile={onToggleMobile}
@@ -114,5 +114,15 @@ describe("MainNav", () => {
 
     expect(learnLink).toBeUndefined();
     expect(disabledLearnItem?.className).toContain("is-disabled");
+  });
+
+  it("keeps only stay updated visible in the calibration nav", () => {
+    renderNav(["/calibration"]);
+
+    expect(container.querySelector(".main-nav")?.className).toContain("main-nav--minimal");
+    expect(container.textContent).not.toContain("Learn");
+    expect(container.textContent).not.toContain("Practice");
+    expect(container.textContent).toContain("Stay Updated");
+    expect(container.querySelector(".main-nav__toggle")).toBeNull();
   });
 });

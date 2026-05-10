@@ -16,7 +16,7 @@ export const calibrationSteps = [
   },
   {
     phase: "compensation-check",
-    title: "Does Compnsation Fit?"
+    title: "Does Compensation Fit?"
   },
   {
     phase: "mixed-process-challenge",
@@ -42,14 +42,4 @@ export function getNextCalibrationPhase(phase: CalibrationPhase): CalibrationPha
   const currentIndex = calibrationSteps.findIndex(item => item.phase === phase);
   if (currentIndex < 0) return null;
   return calibrationSteps[currentIndex + 1]?.phase ?? null;
-}
-
-export function getPreviousCalibrationPhase(phase: CalibrationPhase): CalibrationPhase | null {
-  const currentIndex = calibrationSteps.findIndex(item => item.phase === phase);
-  if (currentIndex < 0) return null;
-  return calibrationSteps[currentIndex - 1]?.phase ?? null;
-}
-
-export function isResultPhase(phase: CalibrationPhase): boolean {
-  return phase === "result";
 }

@@ -14,6 +14,7 @@ const mockStorage = vi.hoisted(() => ({
   savePracticeIntroSeen: vi.fn(),
   saveAppAreaVisited: vi.fn(),
   saveAdvancedRangesPreference: vi.fn(),
+  clearCalibrationCompletion: vi.fn(),
   loadLastPracticeDifficulty: vi.fn((): string | null => null),
   saveLastPracticeDifficulty: vi.fn()
 }));
@@ -71,6 +72,7 @@ describe("DashboardScreen", () => {
     mockStorage.savePracticeIntroSeen.mockClear();
     mockStorage.saveAppAreaVisited.mockClear();
     mockStorage.saveAdvancedRangesPreference.mockClear();
+    mockStorage.clearCalibrationCompletion.mockClear();
     mockStorage.loadLastPracticeDifficulty.mockClear();
     mockStorage.loadLastPracticeDifficulty.mockReturnValue(null);
     mockStorage.saveLastPracticeDifficulty.mockClear();

@@ -250,6 +250,39 @@ describe("ResultsSummaryCard", () => {
     expect(container.querySelectorAll(".results-card__detail-card")).toHaveLength(0);
   });
 
+  it("uses authored diagnosis summary display before falling back to archetype mappings", () => {
+    const summary = buildSummary([
+      { key: "clinical_context", title: "Clinical Context", body: "Clinical context body.", order: 1 }
+    ]);
+    const caseItem = {
+      ...buildCaseItem("unmapped_triple_disorder"),
+      source_type: "authored" as const,
+      display: {
+        diagnosis_summary: {
+          main: "Triple Disorder",
+          sub: "HAGMA + NAGMA + Respiratory Acidosis"
+        }
+      }
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={caseItem}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          onOpenFeedback={() => {}}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("Triple Disorder");
+    expect(container.textContent).toContain("HAGMA + NAGMA + Respiratory Acidosis");
+    expect(container.textContent).not.toContain("Unknown");
+  });
+
   it("collapses only the targeted explanation card body and persists the setting", () => {
     const preferences: ResultsExplanationPreferences = {
       primary_disorder: true,

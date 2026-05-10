@@ -84,7 +84,11 @@ export function MainNav(props: MainNavProps) {
   }, [activeItem?.to, hideNavigationItems, props.learnEnabled]);
 
   return (
-    <header className={cn("main-nav", props.wideShell && "main-nav--wide-shell")}>
+    <header className={cn(
+      "main-nav",
+      hideNavigationItems && "main-nav--minimal",
+      props.wideShell && "main-nav--wide-shell"
+    )}>
       <div className="main-nav__inner">
         <NavLink className="main-nav__brand" to="/dashboard" end>
           <div className="main-nav__brand-copy">

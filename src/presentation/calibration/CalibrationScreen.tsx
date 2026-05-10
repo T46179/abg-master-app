@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import {
   getCalibrationStep,
-  getNextCalibrationPhase,
-  isResultPhase
+  getNextCalibrationPhase
 } from "./calibrationConfig";
 import { AnalysingSampleCalibrationStep } from "./AnalysingSampleCalibrationStep";
 import { BuildAGasCalibrationStep } from "./BuildAGasCalibrationStep";
@@ -108,10 +107,6 @@ export function CalibrationScreen() {
     if (nextPhase) setPhase(nextPhase);
   }
 
-  function handleReturnToPractice() {
-    navigate("/practice");
-  }
-
   function handleStartDifficulty(difficulty: string) {
     navigate(`/practice?difficulty=${difficulty}`);
   }
@@ -195,7 +190,7 @@ export function CalibrationScreen() {
         <CalibrationStepShell>
           {renderStepContent()}
           <div className="calibration-screen__actions">
-            {!isResultPhase(phase) && phase !== "blood-gas-blitz" ? (
+            {phase !== "blood-gas-blitz" ? (
               <button
                 className="figma-button calibration-screen__button"
                 type="button"
@@ -203,16 +198,6 @@ export function CalibrationScreen() {
                 onClick={handleContinue}
               >
                 Continue
-              </button>
-            ) : null}
-            {phase === "blood-gas-blitz" ? (
-              <button className="figma-button calibration-screen__button" type="button" onClick={handleContinue}>
-                Temporary next
-              </button>
-            ) : null}
-            {isResultPhase(phase) ? (
-              <button className="figma-button calibration-screen__button" type="button" onClick={handleReturnToPractice}>
-                Return to practice
               </button>
             ) : null}
           </div>

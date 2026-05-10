@@ -21,6 +21,19 @@ const latestBloodGasBlitzProps = vi.hoisted(() => ({
   }
 }));
 
+const storageAdapter = vi.hoisted(() => ({
+  loadCalibrationCompletion: vi.fn(() => null),
+  saveCalibrationCompletion: vi.fn()
+}));
+
+vi.mock("../../app/AppProvider", () => ({
+  useAppContext: () => ({
+    state: {
+      storage: storageAdapter
+    }
+  })
+}));
+
 vi.mock("../minigames/BloodGasBlitz", () => ({
   BloodGasBlitzGame: (props: typeof latestBloodGasBlitzProps.value) => {
     latestBloodGasBlitzProps.value = props;
@@ -58,6 +71,8 @@ describe("CalibrationScreen", () => {
 
   beforeEach(() => {
     latestBloodGasBlitzProps.value = null;
+    storageAdapter.loadCalibrationCompletion.mockReturnValue(null);
+    storageAdapter.saveCalibrationCompletion.mockClear();
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -127,7 +142,6 @@ describe("CalibrationScreen", () => {
     expect(container.textContent).not.toContain("Back");
     expect(container.textContent).toContain("1 of 4");
     expect(container.textContent).not.toContain("Continue");
-    expect(container.textContent).toContain("Temporary next");
     expect(latestBloodGasBlitzProps.value).toMatchObject({
       preset: "onboarding-calibration",
       versionId: "ph-classification-v1"
@@ -167,12 +181,12 @@ describe("CalibrationScreen", () => {
       vi.advanceTimersByTime(20000);
     });
     expect(container.textContent).toContain("Calibration complete");
-    expect(container.textContent).toContain("Intermediate unlocked");
+    expect(container.textContent).toContain("Advanced unlocked");
     expect(container.textContent).toContain("Beginner");
     expect(container.textContent).toContain("Intermediate");
     expect(container.textContent).toContain("Advanced");
     expect(container.textContent).toContain("Master");
-    expect(container.textContent).toContain("Start intermediate");
+    expect(container.textContent).toContain("Start advanced");
     expect(container.textContent).toContain("Requires level 15 and consistent performance in Advanced cases");
   });
 
@@ -203,8 +217,8 @@ describe("CalibrationScreen", () => {
     });
 
     expect(container.textContent).toContain("Calibration complete");
-    expect(container.textContent).toContain("Intermediate unlocked");
-    expect(container.textContent).toContain("Start intermediate");
+    expect(container.textContent).toContain("Advanced unlocked");
+    expect(container.textContent).toContain("Start advanced");
   });
 
   it("shows the Build a Gas metabolic acidosis scaffold", () => {
@@ -239,7 +253,7 @@ describe("CalibrationScreen", () => {
     expect(container.textContent).toContain("1 of 4");
     expect(progressBar()?.style.width).toBe("25%");
 
-    clickButton("Temporary next");
+    clickButton("Mock finish blitz");
     expect(container.textContent).toContain("2 of 4");
     expect(progressBar()?.style.width).toBe("50%");
   });
@@ -275,7 +289,7 @@ describe("CalibrationScreen", () => {
     expect(container.textContent).not.toContain("Back");
   });
 
-  it("starts an intermediate practice case from the result", () => {
+  it("starts the calibrated practice case from the result", () => {
     vi.useFakeTimers();
     renderScreen();
 
@@ -289,10 +303,10 @@ describe("CalibrationScreen", () => {
     act(() => {
       vi.advanceTimersByTime(20000);
     });
-    clickButton("Start intermediate");
+    clickButton("Start advanced");
 
     expect(container.textContent).toContain("Practice route");
-    expect(container.textContent).toContain("?difficulty=intermediate");
+    expect(container.textContent).toContain("?difficulty=advanced");
   });
 
   it("starts the selected easier practice case from the result", () => {
@@ -323,13 +337,5 @@ describe("CalibrationScreen", () => {
 
     expect(container.textContent).toContain("Blood Gas Blitz");
     expect(container.textContent).toContain("Mock Blood Gas Blitz Game");
-  });
-
-  it("temporarily allows skipping Blood Gas Blitz during calibration development", () => {
-    renderScreen();
-
-    clickButton("Temporary next");
-
-    expect(container.textContent).toContain("Build a Gas");
   });
 });

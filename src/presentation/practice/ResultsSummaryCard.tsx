@@ -48,7 +48,19 @@ const DIAGNOSIS_DISPLAY = {
   respiratory_acidosis_hagma: { main: "Mixed Disorder", sub: "Respiratory Acidosis + HAGMA" }
 } as const satisfies Record<string, { main: string; sub: string }>;
 
-function getDiagnosisDisplay(archetype: string) {
+function getDiagnosisDisplay(caseItem: CaseData) {
+  const summaryOverride = caseItem.display?.diagnosis_summary;
+  const overrideMain = String(summaryOverride?.main ?? "").trim();
+  const overrideSub = String(summaryOverride?.sub ?? "").trim();
+
+  if (overrideMain || overrideSub) {
+    return {
+      main: overrideMain || "Authored Case",
+      sub: overrideSub
+    };
+  }
+
+  const archetype = caseItem.archetype ?? "";
   return DIAGNOSIS_DISPLAY[archetype as keyof typeof DIAGNOSIS_DISPLAY] ?? { main: "Unknown", sub: "" };
 }
 
@@ -196,8 +208,7 @@ export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
 
 export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
   const metrics = splitMetrics(props.caseItem);
-  const archetype = props.caseItem.archetype ?? "";
-  const { main, sub } = getDiagnosisDisplay(archetype);
+  const { main, sub } = getDiagnosisDisplay(props.caseItem);
   const explanationSections = getRenderedExplanationSections(props.summary);
   const difficultyLevel = Number(props.caseItem.difficulty_level ?? 1);
   const [expandedByKey, setExpandedByKey] = useState<ResultsExplanationPreferences>(() => getExpandedPreferences(props.storage));

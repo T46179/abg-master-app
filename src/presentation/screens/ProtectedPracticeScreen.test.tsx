@@ -66,6 +66,7 @@ let currentState: {
     syncMessage: string | null;
   };
   storage: {
+    loadCalibrationCompletion: () => null;
     loadPracticeIntroSeen: () => boolean;
     savePracticeIntroSeen: ReturnType<typeof vi.fn>;
     loadAppAreaVisited: () => boolean;
@@ -88,8 +89,14 @@ vi.mock("../../app/AppProvider", () => ({
 }));
 
 vi.mock("../../app/viewHelpers", () => ({
+  getCalibrationAllowedDifficulties: () => ["beginner"],
   getDefaultPracticeDifficulty: () => "beginner",
   getPracticeDifficultyMismatchAction: () => null,
+  hasCompletedCalibration: () => false,
+  resolvePracticeDifficulty: ({ requestedDifficulty }: { requestedDifficulty?: string | null }) => ({
+    resolvedDifficulty: requestedDifficulty || "beginner",
+    shouldRedirect: false
+  }),
   shouldConfirmDifficultySwitch: () => false,
   shouldShowPracticeIntro: () => false
 }));
@@ -142,6 +149,7 @@ vi.mock("../../core/progression", () => ({
   getDifficultyMeta: () => [],
   getHighestAccessibleDifficultyKey: () => "beginner",
   getLevelProgress: () => ({ xpIntoLevel: 0, xpForNextLevel: 0, progressPercent: 0 }),
+  getReleaseFlags: () => ({ enableCalibrationAccessGuard: false }),
   normalizeDifficultyKey: (_input: unknown, requestedDifficulty: string) => requestedDifficulty || "beginner",
   syncUserStateDerivedFields: <T,>(value: T) => value
 }));
@@ -335,6 +343,7 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
         syncMessage: null
       },
       storage: {
+        loadCalibrationCompletion: () => null,
         loadPracticeIntroSeen: () => true,
         savePracticeIntroSeen: vi.fn(),
         loadAppAreaVisited: () => true,

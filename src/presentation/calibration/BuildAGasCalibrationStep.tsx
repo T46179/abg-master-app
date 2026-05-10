@@ -10,14 +10,12 @@ interface BuildAGasChoice {
 interface BuildAGasRow {
   label: string;
   unit?: string;
-  selectedValue: string;
   choices: BuildAGasChoice[];
 }
 
 const BUILD_A_GAS_ROWS: BuildAGasRow[] = [
   {
     label: "pH",
-    selectedValue: "7.28",
     choices: [
       { value: "7.28", status: "low" },
       { value: "7.40", status: "normal" },
@@ -27,7 +25,6 @@ const BUILD_A_GAS_ROWS: BuildAGasRow[] = [
   {
     label: "PaCO2",
     unit: "mmHg",
-    selectedValue: "28",
     choices: [
       { value: "28", status: "low" },
       { value: "40", status: "normal" },
@@ -37,7 +34,6 @@ const BUILD_A_GAS_ROWS: BuildAGasRow[] = [
   {
     label: "HCO3",
     unit: "mmol/L",
-    selectedValue: "14",
     choices: [
       { value: "14", status: "low" },
       { value: "24", status: "normal" },

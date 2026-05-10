@@ -3344,6 +3344,7 @@ button:disabled {
   }
 
   .main-nav__controls {
+    grid-column: 3;
     width: 100%;
     justify-self: stretch;
     justify-content: flex-end;

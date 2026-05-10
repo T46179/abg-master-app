@@ -181,6 +181,10 @@ export interface CaseData {
   explanation?: string | StructuredExplanation;
   display?: {
     hidden_inputs?: string[];
+    diagnosis_summary?: {
+      main?: string;
+      sub?: string;
+    };
     [key: string]: unknown;
   };
   contributor?: {
