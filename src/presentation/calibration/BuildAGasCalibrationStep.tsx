@@ -1,46 +1,7 @@
 import { useEffect, useState } from "react";
 import { MetricLabel, MetricValue } from "../practice/MetricText";
-import type { BuildAGasCalibrationSelection } from "./calibrationScoring";
-
-interface BuildAGasChoice {
-  value: string;
-  status: "low" | "normal" | "high";
-}
-
-interface BuildAGasRow {
-  label: string;
-  unit?: string;
-  choices: BuildAGasChoice[];
-}
-
-const BUILD_A_GAS_ROWS: BuildAGasRow[] = [
-  {
-    label: "pH",
-    choices: [
-      { value: "7.28", status: "low" },
-      { value: "7.40", status: "normal" },
-      { value: "7.52", status: "high" }
-    ]
-  },
-  {
-    label: "PaCO2",
-    unit: "mmHg",
-    choices: [
-      { value: "28", status: "low" },
-      { value: "40", status: "normal" },
-      { value: "52", status: "high" }
-    ]
-  },
-  {
-    label: "HCO3",
-    unit: "mmol/L",
-    choices: [
-      { value: "14", status: "low" },
-      { value: "24", status: "normal" },
-      { value: "32", status: "high" }
-    ]
-  }
-];
+import { buildAGasRows } from "./calibrationConfig";
+import type { BuildAGasCalibrationSelection } from "./calibrationTypes";
 
 interface BuildAGasCalibrationStepProps {
   onCanContinueChange?: (canContinue: boolean) => void;
@@ -52,7 +13,7 @@ export function BuildAGasCalibrationStep({ onCanContinueChange, onSelectionChang
   const phValue = selectedValues.pH;
   const paco2Value = selectedValues.PaCO2;
   const hco3Value = selectedValues.HCO3;
-  const canContinue = BUILD_A_GAS_ROWS.every(row => Boolean(selectedValues[row.label]));
+  const canContinue = buildAGasRows.every(row => Boolean(selectedValues[row.label]));
 
   useEffect(() => {
     onCanContinueChange?.(canContinue);
@@ -69,7 +30,7 @@ export function BuildAGasCalibrationStep({ onCanContinueChange, onSelectionChang
   return (
     <section className="calibration-build-gas" aria-label="Build a Gas calibration preview">
       <div className="calibration-build-gas__rows">
-        {BUILD_A_GAS_ROWS.map(row => (
+        {buildAGasRows.map(row => (
           <div className="calibration-build-gas__row" key={row.label}>
             <div className="calibration-build-gas__row-header">
               <span className="calibration-build-gas__row-label">

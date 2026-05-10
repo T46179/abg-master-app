@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import lockIconUrl from "../../assets/icons/lock.svg";
-import type { CalibrationPlacement } from "./calibrationScoring";
+import type { CalibrationPlacement } from "../../core/types";
 
 const arrowIconUrl = "https://www.figma.com/api/mcp/asset/97bc370c-4188-4b03-ab6c-59dda1fa9a48";
 

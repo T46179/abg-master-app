@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { evaluateBadges, normalizeStructuredExplanation, updateDailyStreak } from "./practice";
-import { getAwardableXp, syncUserStateDerivedFields } from "./progression";
+import {
+  appendPracticeAttemptSummary,
+  applyDifficultyUnlocks,
+  getAwardableXpWithReadinessGates,
+  syncUserStateDerivedFields
+} from "./progression";
 import type {
   CaseSummary,
   AnswerValue,
@@ -234,7 +239,19 @@ export function applyProtectedCaseCompletion(input: {
     return input.userState;
   }
 
-  const totalXpAward = getAwardableXp(input.progressionConfig, input.userState.xp, input.summary.totalXpAward);
+  const currentAttempt = {
+    difficulty: String(input.summary.difficulty || input.summary.caseData.difficulty_label || "").toLowerCase(),
+    correctSteps: input.summary.correctSteps,
+    totalSteps: input.summary.totalSteps,
+    completedAt: input.now?.toISOString() ?? new Date().toISOString()
+  };
+  const nextRecentPracticeAttempts = appendPracticeAttemptSummary(input.userState, currentAttempt);
+  const totalXpAward = getAwardableXpWithReadinessGates({
+    progressionConfig: input.progressionConfig,
+    userState: input.userState,
+    requestedXp: input.summary.totalXpAward,
+    attemptsIncludingCurrent: nextRecentPracticeAttempts
+  });
   let nextUserState: UserState = {
     ...input.userState,
     xp: input.userState.xp + totalXpAward,
@@ -242,6 +259,7 @@ export function applyProtectedCaseCompletion(input: {
     correctAnswers: input.userState.correctAnswers + input.summary.correctSteps,
     totalAnswers: input.userState.totalAnswers + input.summary.totalSteps,
     recentResults: [...input.userState.recentResults, input.summary.correctSteps === input.summary.totalSteps].slice(-20),
+    recentPracticeAttempts: nextRecentPracticeAttempts,
     appliedProtectedCaseTokens: [
       ...input.userState.appliedProtectedCaseTokens,
       input.summary.caseToken
@@ -250,6 +268,12 @@ export function applyProtectedCaseCompletion(input: {
 
   nextUserState = updateDailyStreak(nextUserState, input.now);
   nextUserState = syncUserStateDerivedFields(nextUserState, input.progressionConfig);
+  nextUserState = applyDifficultyUnlocks({
+    progressionConfig: input.progressionConfig,
+    userState: nextUserState,
+    attempts: nextRecentPracticeAttempts,
+    now: input.now
+  });
   nextUserState = evaluateBadges(nextUserState);
   return nextUserState;
 }

@@ -557,6 +557,24 @@ describe("ResultsSummaryCard", () => {
     expect(container.querySelector(".progress-bar__fill")).not.toBeNull();
   });
 
+  it("marks the summary XP bar as blocked when readiness gates cap progress", () => {
+    const summary = buildSummary([]);
+
+    act(() => {
+      root.render(
+        <ResultsSummaryHeader
+          summary={summary}
+          level={9}
+          xpProgressLabel="129 / 130 XP"
+          progressValue={99}
+          xpProgressBlocked
+        />
+      );
+    });
+
+    expect(container.querySelector(".progress-bar__fill--blocked")).not.toBeNull();
+  });
+
   it("renders authored case metadata on the combined summary header", () => {
     const summary = {
       ...buildSummary([]),

@@ -443,6 +443,22 @@ button:disabled {
   background: linear-gradient(90deg, #16a34a 0%, #34d399 100%);
 }
 
+.progress-bar__fill--blocked {
+  animation: xp-gate-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes xp-gate-pulse {
+  0%, 100% {
+    filter: brightness(1);
+    opacity: 1;
+  }
+
+  50% {
+    filter: brightness(1.25);
+    opacity: 0.68;
+  }
+}
+
 .figma-button {
   display: inline-flex;
   align-items: center;

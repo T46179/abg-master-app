@@ -8,12 +8,14 @@ import {
 } from "../../app/protectedPracticeSlots";
 import { PROTECTED_PRACTICE_MESSAGES, getProtectedPracticeUnavailableMessage } from "../../app/protectedPracticeMessages";
 import {
+  getCalibrationAllowedDifficulties,
   getPracticeDifficultyMismatchAction,
   resolvePracticeDifficulty,
   shouldConfirmDifficultySwitch,
   shouldShowPracticeIntro
 } from "../../app/viewHelpers";
 import { trackEvent } from "../../core/analytics";
+import { createCalibrationCompletionRecord } from "../../core/calibration";
 import { openCaseFeedbackForm } from "../../core/feedback";
 import { shouldShowMetricReferences } from "../../core/metrics";
 import { buildConciseStepFeedback } from "../../core/explanations";
@@ -24,6 +26,7 @@ import {
   submitProtectedPracticeCase
 } from "../../core/protectedPractice";
 import {
+  clearPracticeSlotCache,
   clearPendingPracticeSubmission,
   slotMatchesDifficultyKey,
   savePendingPracticeSubmission,
@@ -40,7 +43,8 @@ import {
   canStartNewCase,
   getCalibrationCompletionFromUserState,
   getAccessibleDifficultyKeys,
-  getAwardableXp,
+  appendPracticeAttemptSummary,
+  getAwardableXpWithReadinessGates,
   getDifficultyLabel,
   getDifficultyMeta,
   getLevelProgress,
@@ -65,8 +69,6 @@ import { CalibrationIntroModal } from "../practice/CalibrationIntroModal";
 import { PracticeDifficultyRail } from "../practice/PracticeDifficultyRail";
 import { ResultsSummaryCard, ResultsSummaryHeader } from "../practice/ResultsSummaryCard";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
-
-const SKIPPED_CALIBRATION_VERSION = 1;
 
 export function ProtectedPracticeScreen() {
   const { state, setUserState, patchPracticeState, patchSessionState } = useAppContext();
@@ -172,8 +174,23 @@ export function ProtectedPracticeScreen() {
     : state.userState;
   const startingLevelProgress = getLevelProgress(payload?.progressionConfig ?? null, preAwardUserState);
   const resultsStartProgress = summary && preAwardUserState.level !== state.userState.level ? 0 : startingLevelProgress.progressPercent;
-  const learnUnlockMilestone = summary
+  const nextAccessibleDifficulties = summary ? accessibleDifficulties : [];
+  const calibrationAccessibleDifficulties = calibrationRecord
+    ? getCalibrationAllowedDifficulties(calibrationRecord.placement)
+    : [];
+  const hasNewlyAccessibleDifficulty = (difficultyKey: string, unlockLevel: number) => (
+    preAwardUserState.level < unlockLevel &&
+    !calibrationAccessibleDifficulties.includes(difficultyKey) &&
+    nextAccessibleDifficulties.includes(difficultyKey)
+  );
+  const levelUnlockMilestone = summary
     ? getLearnUnlockMilestoneForLevelTransition(preAwardUserState.level, state.userState.level)
+    : null;
+  const learnUnlockMilestone = levelUnlockMilestone && (
+    !["advanced", "master"].includes(levelUnlockMilestone.slug) ||
+    hasNewlyAccessibleDifficulty(levelUnlockMilestone.slug, levelUnlockMilestone.unlockLevel)
+  )
+    ? levelUnlockMilestone
     : null;
   const learnUnlockKey = summary && learnUnlockMilestone
     ? `${summary.caseToken ?? summary.caseId}-${learnUnlockMilestone.unlockLevel}`
@@ -537,11 +554,7 @@ export function ProtectedPracticeScreen() {
   async function handleSkipCalibrationIntro() {
     state.storage?.savePracticeIntroSeen(true);
     state.storage?.saveAppAreaVisited(true);
-    const completion = {
-      completed: true,
-      placement: "beginner",
-      version: SKIPPED_CALIBRATION_VERSION
-    } as const;
+    const completion = createCalibrationCompletionRecord("beginner");
     state.storage?.saveCalibrationCompletion(completion);
     if (state.supabase) {
       try {
@@ -766,7 +779,17 @@ export function ProtectedPracticeScreen() {
         ...reconciledSummary,
         totalXpAward: result.progress
           ? reconciledSummary.totalXpAward
-          : getAwardableXp(payload.progressionConfig ?? null, state.userState.xp, reconciledSummary.totalXpAward)
+          : getAwardableXpWithReadinessGates({
+              progressionConfig: payload.progressionConfig ?? null,
+              userState: state.userState,
+              requestedXp: reconciledSummary.totalXpAward,
+              attemptsIncludingCurrent: appendPracticeAttemptSummary(state.userState, {
+                difficulty: normalizedDifficulty,
+                correctSteps: reconciledSummary.correctSteps,
+                totalSteps: reconciledSummary.totalSteps,
+                completedAt: pendingSubmission.clientCompletedAt
+              })
+            })
       };
       const nextUserState = progressPatch
         ? syncUserStateDerivedFields({
@@ -823,11 +846,17 @@ export function ProtectedPracticeScreen() {
         completed: true
       }));
     } catch (error) {
-      if (isProtectedPracticeError(error) && error.code === "CASE_TOKEN_EXPIRED") {
-        const nextSlots = {
-          ...state.practiceState.practiceSlotsByDifficulty,
-          [normalizedDifficulty]: null
-        };
+      if (
+        isProtectedPracticeError(error) &&
+        (error.code === "CASE_TOKEN_EXPIRED" || (error.code === "CASE_SLOT_UNAVAILABLE" && error.status === 404))
+      ) {
+        const nextSlots = clearPracticeSlotCache(
+          window.localStorage,
+          state.practiceState.practiceSlotsByDifficulty,
+          normalizedDifficulty,
+          pendingSubmission.caseToken,
+          state.userId
+        );
         savePracticeSlotsCache(window.localStorage, nextSlots, state.userId);
         clearPendingPracticeSubmission(window.localStorage);
         patchPracticeState({
@@ -981,6 +1010,7 @@ export function ProtectedPracticeScreen() {
               level={state.userState.level}
               xpProgressLabel={`${finalLevelProgress.xpIntoLevel} / ${finalLevelProgress.xpForNextLevel || finalLevelProgress.xpIntoLevel} XP`}
               progressValue={displayedResultsProgress ?? resultsStartProgress}
+              xpProgressBlocked={finalLevelProgress.isBlockedByReadinessGate}
             />
           ) : (
             <PracticeDifficultyRail items={difficultyItems} />

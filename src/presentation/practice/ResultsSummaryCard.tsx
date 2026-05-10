@@ -172,6 +172,7 @@ interface ResultsSummaryHeaderProps {
   level: number;
   xpProgressLabel: string;
   progressValue: number;
+  xpProgressBlocked?: boolean;
 }
 
 export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
@@ -197,7 +198,7 @@ export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
         </div>
         <div className="progress-bar">
           <div
-            className="progress-bar__fill progress-bar__fill--animated"
+            className={`progress-bar__fill progress-bar__fill--animated${props.xpProgressBlocked ? " progress-bar__fill--blocked" : ""}`}
             style={{ width: `${Math.max(0, Math.min(100, props.progressValue))}%` }}
           />
         </div>

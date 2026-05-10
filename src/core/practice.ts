@@ -1,5 +1,7 @@
 import {
-  getAwardableXp,
+  appendPracticeAttemptSummary,
+  applyDifficultyUnlocks,
+  getAwardableXpWithReadinessGates,
   getBaseXp,
   getDifficultyLabel,
   getEffectiveXpMultiplier,
@@ -329,7 +331,20 @@ export function applyPracticeOutcome(input: {
   const perfectBonus = perfectCase ? getPerfectBonus(input.progressionConfig, difficultyLevel) : 0;
   const speedBonus = input.timedMode ? getTimeBonus(input.progressionConfig, input.elapsedSeconds) : 0;
   const requestedXpAward = Math.round((baseXp + perfectBonus + speedBonus) * getEffectiveXpMultiplier(input.progressionConfig));
-  const totalXpAward = getAwardableXp(input.progressionConfig, input.userState.xp, requestedXpAward);
+  const difficultyLabel = getDifficultyLabel(input.progressionConfig, difficultyLevel);
+  const currentAttempt = {
+    difficulty: difficultyLabel,
+    correctSteps,
+    totalSteps,
+    completedAt: (input.now ?? new Date()).toISOString()
+  };
+  const nextRecentPracticeAttempts = appendPracticeAttemptSummary(input.userState, currentAttempt);
+  const totalXpAward = getAwardableXpWithReadinessGates({
+    progressionConfig: input.progressionConfig,
+    userState: input.userState,
+    requestedXp: requestedXpAward,
+    attemptsIncludingCurrent: nextRecentPracticeAttempts
+  });
 
   let nextUserState: UserState = {
     ...input.userState,
@@ -337,15 +352,21 @@ export function applyPracticeOutcome(input: {
     casesCompleted: input.userState.casesCompleted + 1,
     correctAnswers: input.userState.correctAnswers + correctSteps,
     totalAnswers: input.userState.totalAnswers + totalSteps,
-    recentResults: [...input.userState.recentResults, correctSteps === totalSteps].slice(-20)
+    recentResults: [...input.userState.recentResults, correctSteps === totalSteps].slice(-20),
+    recentPracticeAttempts: nextRecentPracticeAttempts
   };
 
   nextUserState = updateDailyStreak(nextUserState, input.now);
   nextUserState = syncUserStateDerivedFields(nextUserState, input.progressionConfig);
+  nextUserState = applyDifficultyUnlocks({
+    progressionConfig: input.progressionConfig,
+    userState: nextUserState,
+    attempts: nextRecentPracticeAttempts,
+    now: input.now
+  });
   nextUserState = evaluateBadges(nextUserState);
 
   const nextSeenCases = markCaseSeen(input.seenCasesByDifficulty, input.caseItem, input.progressionConfig);
-  const difficultyLabel = getDifficultyLabel(input.progressionConfig, difficultyLevel);
   const summary = createCaseSummary({
     caseItem: input.caseItem,
     stepResults: input.stepResults,

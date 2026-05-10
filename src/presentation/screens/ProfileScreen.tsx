@@ -74,7 +74,7 @@ export function ProfileScreen() {
               <span>{hasReachedMaxLevel ? "Max level reached" : `Progress to Level ${state.userState.level + 1}`}</span>
               <span>{formatLevelProgressText(levelProgress, state.userState.xp)}</span>
             </div>
-            <ProgressBar value={levelProgress.progressPercent} />
+            <ProgressBar value={levelProgress.progressPercent} blocked={levelProgress.isBlockedByReadinessGate} />
           </div>
         </Surface>
 

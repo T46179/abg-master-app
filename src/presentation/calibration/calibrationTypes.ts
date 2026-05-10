@@ -5,3 +5,9 @@ export type CalibrationPhase =
   | "mixed-process-challenge"
   | "analysing-sample"
   | "result";
+
+export interface BuildAGasCalibrationSelection {
+  pH?: string;
+  PaCO2?: string;
+  HCO3?: string;
+}

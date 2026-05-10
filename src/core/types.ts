@@ -227,6 +227,7 @@ export interface UserState {
   isPremium: boolean;
   badges: string[];
   recentResults: boolean[];
+  recentPracticeAttempts?: PracticeAttemptSummary[];
   appliedProtectedCaseTokens: string[];
   learnProgress?: Record<string, LearnModuleProgress>;
   longestStreak?: number;
@@ -239,6 +240,13 @@ export interface UserState {
   advancedUnlockedAt?: string | null;
   masterUnlockedAt?: string | null;
   resetAt?: string | null;
+}
+
+export interface PracticeAttemptSummary {
+  difficulty: string;
+  correctSteps: number;
+  totalSteps: number;
+  completedAt?: string | null;
 }
 
 export interface LearnModuleProgress {

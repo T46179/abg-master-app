@@ -5,6 +5,7 @@ import type {
   DefaultUserStateSnapshot,
   ProgressRow,
   ProgressionConfig,
+  PracticeAttemptSummary,
   ReleaseFlags,
   UserState
 } from "./types";
@@ -196,6 +197,186 @@ export function getAwardableXp(progressionConfig: ProgressionConfig | null, curr
   return Math.max(0, Math.min(normalizedAward, maxXp - cappedCurrentXp));
 }
 
+function getTotalXpRequiredBeforeLevel(progressionConfig: ProgressionConfig | null, level: number): number {
+  let total = 0;
+  for (let currentLevel = 1; currentLevel < level; currentLevel += 1) {
+    total += getXpRequiredForLevel(progressionConfig, currentLevel);
+  }
+  return total;
+}
+
+function getDifficultyUnlockLevel(progressionConfig: ProgressionConfig | null, difficultyKey: string): number | null {
+  const difficultyLevel = getDifficultyLevel(progressionConfig, difficultyKey);
+  const fallbackUnlockLevel = difficultyKey === "intermediate"
+    ? 5
+    : difficultyKey === "advanced"
+      ? 10
+      : difficultyKey === "master"
+        ? 15
+        : difficultyLevel;
+  const unlockLevel = Number(progressionConfig?.difficulty_unlock_levels?.[difficultyLevel] ?? fallbackUnlockLevel);
+  return Number.isFinite(unlockLevel) && unlockLevel > 1 ? unlockLevel : null;
+}
+
+function getGateCapXp(progressionConfig: ProgressionConfig | null, unlockLevel: number): number | null {
+  const previousLevel = Math.max(1, unlockLevel - 1);
+  const previousLevelRequirement = getXpRequiredForLevel(progressionConfig, previousLevel);
+  if (!previousLevelRequirement) return null;
+
+  return getTotalXpRequiredBeforeLevel(progressionConfig, previousLevel) + Math.max(0, Math.floor(previousLevelRequirement * 0.99));
+}
+
+function hasCalibrationGrantedDifficulty(userState: UserState, difficulty: string): boolean {
+  return getCalibrationGrantedDifficulties(userState.calibrationPlacement ?? null).includes(difficulty);
+}
+
+export function normalizePracticeAttemptSummaries(source: unknown): PracticeAttemptSummary[] {
+  if (!Array.isArray(source)) return [];
+
+  const normalized: PracticeAttemptSummary[] = [];
+  source.forEach(item => {
+      const attempt = item && typeof item === "object" ? item as Record<string, unknown> : {};
+      const difficulty = String(attempt.difficulty ?? "").trim().toLowerCase();
+      const correctSteps = Math.max(0, Math.round(Number(attempt.correctSteps ?? 0) || 0));
+      const totalSteps = Math.max(0, Math.round(Number(attempt.totalSteps ?? 0) || 0));
+      if (!difficulty || totalSteps <= 0) return;
+      normalized.push({
+        difficulty,
+        correctSteps: Math.min(correctSteps, totalSteps),
+        totalSteps,
+        completedAt: attempt.completedAt == null ? null : String(attempt.completedAt)
+      });
+    });
+
+  return normalized.slice(-20);
+}
+
+export function appendPracticeAttemptSummary(
+  userState: UserState,
+  attempt: PracticeAttemptSummary
+): PracticeAttemptSummary[] {
+  return normalizePracticeAttemptSummaries([
+    ...normalizePracticeAttemptSummaries(userState.recentPracticeAttempts),
+    attempt
+  ]);
+}
+
+function getPerformanceRequirement(progressionConfig: ProgressionConfig | null, difficultyKey: string) {
+  const configured = progressionConfig?.performance_unlock_requirements?.[difficultyKey];
+  return {
+    lastCases: Math.max(1, Math.round(Number(configured?.lastCases ?? 5) || 5)),
+    minStepAccuracyPercent: Math.max(0, Math.min(100, Number(configured?.minStepAccuracyPercent ?? 75) || 75)),
+    requiredDifficulty: String(configured?.requiredDifficulty ?? (difficultyKey === "master" ? "advanced" : "any_practice")).toLowerCase()
+  };
+}
+
+function isAttemptEligibleForRequirement(attempt: PracticeAttemptSummary, requiredDifficulty: string): boolean {
+  if (requiredDifficulty === "any_practice" || requiredDifficulty === "any" || !requiredDifficulty) return true;
+  return attempt.difficulty === requiredDifficulty;
+}
+
+export function isPerformanceGateReady(
+  progressionConfig: ProgressionConfig | null,
+  difficultyKey: "advanced" | "master",
+  attempts: PracticeAttemptSummary[]
+): boolean {
+  const requirement = getPerformanceRequirement(progressionConfig, difficultyKey);
+  const recentEligibleAttempts = normalizePracticeAttemptSummaries(attempts)
+    .filter(attempt => isAttemptEligibleForRequirement(attempt, requirement.requiredDifficulty))
+    .slice(-requirement.lastCases);
+
+  if (recentEligibleAttempts.length < requirement.lastCases) return false;
+
+  const totalSteps = recentEligibleAttempts.reduce((sum, attempt) => sum + attempt.totalSteps, 0);
+  const correctSteps = recentEligibleAttempts.reduce((sum, attempt) => sum + attempt.correctSteps, 0);
+  if (totalSteps <= 0) return false;
+
+  return (correctSteps / totalSteps) * 100 >= requirement.minStepAccuracyPercent;
+}
+
+export function getBlockedXpGate(
+  progressionConfig: ProgressionConfig | null,
+  userState: UserState
+): { difficulty: "advanced" | "master"; capXp: number; unlockLevel: number } | null {
+  const normalizedAttempts = normalizePracticeAttemptSummaries(userState.recentPracticeAttempts);
+
+  for (const difficulty of ["advanced", "master"] as const) {
+    if (getEarnedUnlockDifficulties(userState).includes(difficulty)) continue;
+    if (hasCalibrationGrantedDifficulty(userState, difficulty)) continue;
+    const unlockLevel = getDifficultyUnlockLevel(progressionConfig, difficulty);
+    if (!unlockLevel) continue;
+    const thresholdXp = getTotalXpRequiredBeforeLevel(progressionConfig, unlockLevel);
+    if (userState.xp < thresholdXp && getLevelFromXp(progressionConfig, userState.xp, userState.level) < unlockLevel) {
+      const capXp = getGateCapXp(progressionConfig, unlockLevel);
+      if (capXp != null && userState.xp >= capXp && !isPerformanceGateReady(progressionConfig, difficulty, normalizedAttempts)) {
+        return { difficulty, capXp, unlockLevel };
+      }
+    }
+  }
+
+  return null;
+}
+
+export function getAwardableXpWithReadinessGates(input: {
+  progressionConfig: ProgressionConfig | null;
+  userState: UserState;
+  requestedXp: number;
+  attemptsIncludingCurrent: PracticeAttemptSummary[];
+}): number {
+  const normalizedAward = getAwardableXp(input.progressionConfig, input.userState.xp, input.requestedXp);
+  if (normalizedAward <= 0) return 0;
+
+  const maxAllowedXp = (["advanced", "master"] as const).reduce<number | null>((currentCap, difficulty) => {
+    if (getEarnedUnlockDifficulties(input.userState).includes(difficulty)) return currentCap;
+    if (hasCalibrationGrantedDifficulty(input.userState, difficulty)) return currentCap;
+    const unlockLevel = getDifficultyUnlockLevel(input.progressionConfig, difficulty);
+    if (!unlockLevel) return currentCap;
+    const thresholdXp = getTotalXpRequiredBeforeLevel(input.progressionConfig, unlockLevel);
+    if (input.userState.xp >= thresholdXp || input.userState.xp + normalizedAward < thresholdXp) return currentCap;
+    if (isPerformanceGateReady(input.progressionConfig, difficulty, input.attemptsIncludingCurrent)) return currentCap;
+
+    const gateCap = getGateCapXp(input.progressionConfig, unlockLevel);
+    if (gateCap == null) return currentCap;
+    return currentCap == null ? gateCap : Math.min(currentCap, gateCap);
+  }, null);
+
+  if (maxAllowedXp == null) return normalizedAward;
+  return Math.max(0, Math.min(normalizedAward, maxAllowedXp - input.userState.xp));
+}
+
+export function applyDifficultyUnlocks(input: {
+  progressionConfig: ProgressionConfig | null;
+  userState: UserState;
+  attempts: PracticeAttemptSummary[];
+  now?: Date;
+}): UserState {
+  const nowIso = (input.now ?? new Date()).toISOString();
+  let nextUserState = { ...input.userState };
+
+  const intermediateLevel = getDifficultyUnlockLevel(input.progressionConfig, "intermediate") ?? 5;
+  if (!nextUserState.intermediateUnlockedAt && nextUserState.level >= intermediateLevel) {
+    nextUserState.intermediateUnlockedAt = nowIso;
+  }
+
+  if (
+    !nextUserState.advancedUnlockedAt &&
+    nextUserState.level >= (getDifficultyUnlockLevel(input.progressionConfig, "advanced") ?? 10) &&
+    isPerformanceGateReady(input.progressionConfig, "advanced", input.attempts)
+  ) {
+    nextUserState.advancedUnlockedAt = nowIso;
+  }
+
+  if (
+    !nextUserState.masterUnlockedAt &&
+    nextUserState.level >= (getDifficultyUnlockLevel(input.progressionConfig, "master") ?? 15) &&
+    isPerformanceGateReady(input.progressionConfig, "master", input.attempts)
+  ) {
+    nextUserState.masterUnlockedAt = nowIso;
+  }
+
+  return syncUserStateDerivedFields(nextUserState, input.progressionConfig);
+}
+
 export function getLevelFromXp(progressionConfig: ProgressionConfig | null, xp: number, fallbackLevel = 1): number {
   const configured = progressionConfig?.xp_required_per_level;
   if (!configured) return Math.max(1, fallbackLevel);
@@ -233,10 +414,14 @@ export function getLevelProgress(progressionConfig: ProgressionConfig | null, us
     progressPercent = 100;
   }
 
+  const blockedGate = getBlockedXpGate(progressionConfig, { ...userState, xp: cappedXp });
+
   return {
     xpIntoLevel,
     xpForNextLevel,
-    progressPercent,
+    progressPercent: blockedGate ? 99 : progressPercent,
+    isBlockedByReadinessGate: Boolean(blockedGate),
+    blockedDifficulty: blockedGate?.difficulty ?? null,
     isMaxLevel
   };
 }
@@ -425,6 +610,7 @@ export function mapDefaultUserState(
         ? [...source.badges]
         : [],
     recentResults: [],
+    recentPracticeAttempts: [],
     appliedProtectedCaseTokens: [],
     learnProgress: {}
   }, input.progressionConfig);
@@ -437,6 +623,7 @@ export function syncUserStateDerivedFields(userState: UserState, progressionConf
     ...userState,
     xp: cappedXp,
     level: nextLevel,
+    recentPracticeAttempts: normalizePracticeAttemptSummaries(userState.recentPracticeAttempts),
     unlockedDifficulties: sanitizeUnlockedDifficulties(getSkillEligibleDifficultyKeys(userState))
   };
 }
@@ -456,6 +643,7 @@ export function createEmptyUserState(): UserState {
     isPremium: false,
     badges: [],
     recentResults: [],
+    recentPracticeAttempts: [],
     appliedProtectedCaseTokens: [],
     learnProgress: {}
   };

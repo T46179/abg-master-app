@@ -1,32 +1,12 @@
 import type { CalibrationPhase } from "./calibrationTypes";
-
-const CALIBRATION_PROGRESS_PHASES: CalibrationPhase[] = [
-  "blood-gas-blitz",
-  "build-a-gas",
-  "compensation-check",
-  "mixed-process-challenge"
-];
-
-function getProgressMeta(phase: CalibrationPhase) {
-  const phaseIndex = CALIBRATION_PROGRESS_PHASES.indexOf(phase);
-  const total = CALIBRATION_PROGRESS_PHASES.length;
-
-  if (phaseIndex >= 0) {
-    return {
-      label: `${phaseIndex + 1} of ${total}`,
-      percent: ((phaseIndex + 1) / total) * 100
-    };
-  }
-
-  return { label: `${total} of ${total}`, percent: 100 };
-}
+import { getCalibrationProgressMeta } from "./calibrationConfig";
 
 interface CalibrationProgressHeaderProps {
   phase: CalibrationPhase;
 }
 
 export function CalibrationProgressHeader(props: CalibrationProgressHeaderProps) {
-  const progress = getProgressMeta(props.phase);
+  const progress = getCalibrationProgressMeta(props.phase);
 
   return (
     <header className="calibration-progress-header">

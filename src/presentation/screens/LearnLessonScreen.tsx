@@ -322,6 +322,7 @@ export function LearnLessonScreen() {
                 xpIntoLevel={levelProgress.xpIntoLevel}
                 xpProgressLabel={`${levelProgress.xpIntoLevel} / ${levelProgress.xpForNextLevel || levelProgress.xpIntoLevel} XP`}
                 xpProgressValue={levelProgress.progressPercent}
+                xpProgressBlocked={levelProgress.isBlockedByReadinessGate}
                 resetKey={speedCheckResetKey}
               />
             ) : (

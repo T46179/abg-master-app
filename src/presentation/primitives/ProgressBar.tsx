@@ -5,6 +5,7 @@ interface ProgressBarProps {
   className?: string;
   fillClassName?: string;
   animate?: boolean;
+  blocked?: boolean;
 }
 
 export function ProgressBar(props: ProgressBarProps) {
@@ -13,7 +14,12 @@ export function ProgressBar(props: ProgressBarProps) {
   return (
     <div className={cn("progress-bar", props.className)}>
       <div
-        className={cn("progress-bar__fill", props.fillClassName, props.animate && "progress-bar__fill--animated")}
+        className={cn(
+          "progress-bar__fill",
+          props.fillClassName,
+          props.animate && "progress-bar__fill--animated",
+          props.blocked && "progress-bar__fill--blocked"
+        )}
         style={{ width: `${clamped}%` }}
       />
     </div>

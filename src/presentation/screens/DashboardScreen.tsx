@@ -91,7 +91,7 @@ export function DashboardScreen() {
             <span>Level {state.userState.level}</span>
             <span>{levelProgress.xpIntoLevel} / {levelProgress.xpForNextLevel || levelProgress.xpIntoLevel} XP</span>
           </div>
-          <ProgressBar value={levelProgress.progressPercent} />
+          <ProgressBar value={levelProgress.progressPercent} blocked={levelProgress.isBlockedByReadinessGate} />
         </Surface>
 
         <Surface className="dashboard-card dashboard-card--continue">

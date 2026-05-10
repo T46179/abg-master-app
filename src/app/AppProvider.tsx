@@ -17,7 +17,8 @@ import {
   createEmptyUserState,
   getBetaReleaseNumber,
   getProgressionVersion,
-  getAwardableXp,
+  appendPracticeAttemptSummary,
+  getAwardableXpWithReadinessGates,
   getReleaseSignature,
   mapDefaultUserState,
   mapProgressRowToUserState,
@@ -268,7 +269,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       caseToken: pendingSubmission.caseToken,
       totalXpAward: result.progress
         ? result.summary.totalXpAward
-        : getAwardableXp(state.payload.progressionConfig, state.userState.xp, result.summary.totalXpAward)
+        : getAwardableXpWithReadinessGates({
+            progressionConfig: state.payload.progressionConfig,
+            userState: state.userState,
+            requestedXp: result.summary.totalXpAward,
+            attemptsIncludingCurrent: appendPracticeAttemptSummary(state.userState, {
+              difficulty: pendingSubmission.difficultyKey,
+              correctSteps: result.summary.correctSteps,
+              totalSteps: result.summary.totalSteps,
+              completedAt: pendingSubmission.clientCompletedAt
+            })
+          })
     };
     const nextUserState = progressPatch
       ? syncUserStateDerivedFields({
@@ -355,7 +366,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     void completePendingSubmissionSuccess(pendingSubmission)
       .catch((error) => {
-        if (isProtectedPracticeError(error) && error.code === "CASE_TOKEN_EXPIRED") {
+        if (
+          isProtectedPracticeError(error) &&
+          (error.code === "CASE_TOKEN_EXPIRED" || (error.code === "CASE_SLOT_UNAVAILABLE" && error.status === 404))
+        ) {
           clearPendingSubmissionState(pendingSubmission, PROTECTED_PRACTICE_MESSAGES.caseExpiredBeforeCheck);
           return;
         }

@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
+import { createCalibrationCompletionRecord } from "../../core/calibration";
 import { mapProgressRowToUserState, syncUserStateDerivedFields } from "../../core/progression";
 import { completeCalibrationProgress } from "../../core/progressionSync";
-import {
-  getCalibrationStep,
-  getNextCalibrationPhase
-} from "./calibrationConfig";
+import type { CalibrationPlacement } from "../../core/types";
+import { getCalibrationSubtitle } from "./calibrationConfig";
 import { AnalysingSampleCalibrationStep } from "./AnalysingSampleCalibrationStep";
 import { BuildAGasCalibrationStep } from "./BuildAGasCalibrationStep";
 import { CalibrationBloodGasBlitzStep } from "./CalibrationBloodGasBlitzStep";
@@ -15,46 +14,15 @@ import { CalibrationStepShell } from "./CalibrationStepShell";
 import { CalibrationSummaryStep } from "./CalibrationSummaryStep";
 import { CompensationCheckCalibrationStep } from "./CompensationCheckCalibrationStep";
 import { MixedProcessCalibrationStep } from "./MixedProcessCalibrationStep";
-import type { CalibrationPhase } from "./calibrationTypes";
-import {
-  scoreCalibration,
-  type BuildAGasCalibrationSelection,
-  type CalibrationPlacement,
-  type CalibrationScoringInput
-} from "./calibrationScoring";
-import type { BloodGasBlitzAttemptResult } from "../minigames/BloodGasBlitz";
-
-const CALIBRATION_COMPLETION_VERSION = 1;
+import type { CalibrationScoringInput } from "./calibrationScoring";
+import { useCalibrationFlow } from "./useCalibrationFlow";
 
 export function CalibrationScreen() {
   const { state, setUserState } = useAppContext();
   const navigate = useNavigate();
-  const [phase, setPhase] = useState<CalibrationPhase>("blood-gas-blitz");
-  const [canContinueCurrentStep, setCanContinueCurrentStep] = useState(false);
-  const [bloodGasBlitzResult, setBloodGasBlitzResult] = useState<BloodGasBlitzAttemptResult | null>(null);
-  const [buildAGasSelection, setBuildAGasSelection] = useState<BuildAGasCalibrationSelection>({});
-  const [compensationFitSelection, setCompensationFitSelection] = useState<string | null>(null);
-  const [finalDiagnosisSelection, setFinalDiagnosisSelection] = useState<string | null>(null);
-  const [calibrationResults, setCalibrationResults] = useState<CalibrationScoringInput>({});
-  const [placement, setPlacement] = useState<CalibrationPlacement>("intermediate");
-  const [phaseStartedAt, setPhaseStartedAt] = useState(() => Date.now());
-  const step = getCalibrationStep(phase);
-  const nextPhase = getNextCalibrationPhase(phase);
-  const requiresAnswerToContinue = (
-    phase === "build-a-gas" ||
-    phase === "compensation-check" ||
-    phase === "mixed-process-challenge"
-  );
-  const canUseContinueCta = !requiresAnswerToContinue || canContinueCurrentStep;
-
-  const handleCanContinueChange = useCallback((canContinue: boolean) => {
-    setCanContinueCurrentStep(canContinue);
-  }, []);
-
-  useEffect(() => {
-    setCanContinueCurrentStep(false);
-    setPhaseStartedAt(Date.now());
-  }, [phase]);
+  const calibrationFlow = useCalibrationFlow();
+  const { phase, placement, step, canUseContinueCta } = calibrationFlow;
+  const subtitle = getCalibrationSubtitle(phase);
 
   useEffect(() => {
     const completion = state.storage?.loadCalibrationCompletion();
@@ -63,11 +31,7 @@ export function CalibrationScreen() {
   }, [navigate, state.storage]);
 
   async function syncCalibrationCompletion(nextPlacement: CalibrationPlacement, nextResults: CalibrationScoringInput) {
-    const completion = {
-      completed: true,
-      placement: nextPlacement,
-      version: CALIBRATION_COMPLETION_VERSION
-    } as const;
+    const completion = createCalibrationCompletionRecord(nextPlacement);
 
     state.storage?.saveCalibrationCompletion(completion);
     if (!state.supabase) return;
@@ -98,46 +62,8 @@ export function CalibrationScreen() {
   }
 
   function handleContinue() {
-    const elapsedMs = Date.now() - phaseStartedAt;
-
-    if (phase === "build-a-gas") {
-      setCalibrationResults(results => ({
-        ...results,
-        buildAGas: {
-          selectedValues: buildAGasSelection,
-          elapsedMs
-        }
-      }));
-    }
-
-    if (phase === "compensation-check" && compensationFitSelection) {
-      setCalibrationResults(results => ({
-        ...results,
-        compensationFit: {
-          selectedAnswer: compensationFitSelection,
-          elapsedMs
-        }
-      }));
-    }
-
-    if (phase === "mixed-process-challenge" && finalDiagnosisSelection) {
-      const nextResults: CalibrationScoringInput = {
-        ...calibrationResults,
-        bloodGasBlitz: bloodGasBlitzResult,
-        finalDiagnosis: {
-          selectedAnswer: finalDiagnosisSelection,
-          elapsedMs
-        }
-      };
-
-      const nextPlacement = scoreCalibration(nextResults).placement;
-
-      setCalibrationResults(nextResults);
-      setPlacement(nextPlacement);
-      void syncCalibrationCompletion(nextPlacement, nextResults);
-    }
-
-    if (nextPhase) setPhase(nextPhase);
+    const completion = calibrationFlow.continueCurrentPhase();
+    if (completion) void syncCalibrationCompletion(completion.placement, completion.results);
   }
 
   function handleStartDifficulty(difficulty: string) {
@@ -168,11 +94,7 @@ export function CalibrationScreen() {
       return (
         <CalibrationBloodGasBlitzStep
           onResult={(result) => {
-            setBloodGasBlitzResult(result);
-            setCalibrationResults(results => ({
-              ...results,
-              bloodGasBlitz: result
-            }));
+            calibrationFlow.recordBloodGasBlitzResult(result);
           }}
           onComplete={handleContinue}
         />
@@ -182,24 +104,24 @@ export function CalibrationScreen() {
     if (phase === "build-a-gas") {
       return (
         <BuildAGasCalibrationStep
-          onCanContinueChange={handleCanContinueChange}
-          onSelectionChange={setBuildAGasSelection}
+          onCanContinueChange={calibrationFlow.setCanContinueCurrentStep}
+          onSelectionChange={calibrationFlow.setBuildAGasSelection}
         />
       );
     }
     if (phase === "compensation-check") {
       return (
         <CompensationCheckCalibrationStep
-          onCanContinueChange={handleCanContinueChange}
-          onSelectionChange={setCompensationFitSelection}
+          onCanContinueChange={calibrationFlow.setCanContinueCurrentStep}
+          onSelectionChange={calibrationFlow.setCompensationFitSelection}
         />
       );
     }
     if (phase === "mixed-process-challenge") {
       return (
         <MixedProcessCalibrationStep
-          onCanContinueChange={handleCanContinueChange}
-          onSelectionChange={setFinalDiagnosisSelection}
+          onCanContinueChange={calibrationFlow.setCanContinueCurrentStep}
+          onSelectionChange={calibrationFlow.setFinalDiagnosisSelection}
         />
       );
     }
@@ -214,12 +136,7 @@ export function CalibrationScreen() {
           phase={phase}
         />
         <h1 className="calibration-screen__title">{step.title}</h1>
-        {phase === "build-a-gas" ? (
-          <p className="calibration-screen__subtitle">Select the cards below to build a Metabolic Acidosis</p>
-        ) : null}
-        {phase === "mixed-process-challenge" ? (
-          <p className="calibration-screen__subtitle">Use the values below to choose the best answer</p>
-        ) : null}
+        {subtitle ? <p className="calibration-screen__subtitle">{subtitle}</p> : null}
         <CalibrationStepShell className={phase === "blood-gas-blitz" ? "calibration-step-shell--blood-gas-blitz" : undefined}>
           {renderStepContent()}
           <div className="calibration-screen__actions">

@@ -42,6 +42,25 @@ import {
 } from "./storage";
 import type { CaseData, UserState } from "./types";
 
+const gateProgressionConfig = {
+  xp_required_per_level: Object.fromEntries(Array.from({ length: 20 }, (_, index) => [index + 1, 100])),
+  base_xp_by_difficulty: { 1: 10, 2: 25, 3: 65, 4: 90 },
+  difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" },
+  difficulty_unlock_levels: { 1: 1, 2: 5, 3: 10, 4: 15 },
+  performance_unlock_requirements: {
+    advanced: {
+      lastCases: 5,
+      minStepAccuracyPercent: 75,
+      requiredDifficulty: "any_practice"
+    },
+    master: {
+      lastCases: 5,
+      minStepAccuracyPercent: 75,
+      requiredDifficulty: "advanced"
+    }
+  }
+};
+
 const sampleCase: CaseData = {
   case_id: "case-1",
   title: "Sample ABG",
@@ -379,6 +398,130 @@ describe("progression helpers", () => {
   it("returns zero awardable xp once the configured cap has been reached", () => {
     expect(getAwardableXp({ xp_required_per_level: { 1: 30, 2: 40 } }, 70, 25)).toBe(0);
     expect(getAwardableXp({ xp_required_per_level: { 1: 30, 2: 40 } }, 65, 25)).toBe(5);
+  });
+
+  it("blocks level 9 to 10 at the Advanced readiness gate and discards excess xp", () => {
+    const outcome = applyPracticeOutcome({
+      caseItem: beginnerCase,
+      userState: createUserState({
+        xp: 890,
+        level: 9,
+        recentPracticeAttempts: [
+          { difficulty: "beginner", correctSteps: 1, totalSteps: 4 },
+          { difficulty: "intermediate", correctSteps: 1, totalSteps: 4 },
+          { difficulty: "beginner", correctSteps: 1, totalSteps: 4 },
+          { difficulty: "intermediate", correctSteps: 1, totalSteps: 4 }
+        ]
+      }),
+      progressionConfig: gateProgressionConfig,
+      seenCasesByDifficulty: {},
+      stepResults: [
+        { key: "ph_status", label: "pH status", chosen: "Acidaemia", correct: true, correctAnswer: "Acidaemia" },
+        { key: "final_diagnosis", label: "Diagnosis", chosen: "Sepsis", correct: true, correctAnswer: "Sepsis" }
+      ],
+      elapsedSeconds: 40,
+      timedMode: false
+    });
+
+    expect(outcome.userState.xp).toBe(899);
+    expect(outcome.userState.level).toBe(9);
+    expect(outcome.summary.totalXpAward).toBe(9);
+    expect(outcome.userState.advancedUnlockedAt).toBeUndefined();
+    expect(getLevelProgress(gateProgressionConfig, outcome.userState)).toMatchObject({
+      progressPercent: 99,
+      isBlockedByReadinessGate: true,
+      blockedDifficulty: "advanced"
+    });
+  });
+
+  it("allows level 9 at the 99 percent cap to cross when the fifth eligible case satisfies Advanced readiness", () => {
+    const outcome = applyPracticeOutcome({
+      caseItem: beginnerCase,
+      userState: createUserState({
+        xp: 899,
+        level: 9,
+        recentPracticeAttempts: [
+          { difficulty: "beginner", correctSteps: 3, totalSteps: 4 },
+          { difficulty: "intermediate", correctSteps: 3, totalSteps: 4 },
+          { difficulty: "beginner", correctSteps: 3, totalSteps: 4 },
+          { difficulty: "intermediate", correctSteps: 3, totalSteps: 4 }
+        ]
+      }),
+      progressionConfig: gateProgressionConfig,
+      seenCasesByDifficulty: {},
+      stepResults: [
+        { key: "ph_status", label: "pH status", chosen: "Acidaemia", correct: true, correctAnswer: "Acidaemia" },
+        { key: "final_diagnosis", label: "Diagnosis", chosen: "Sepsis", correct: true, correctAnswer: "Sepsis" }
+      ],
+      elapsedSeconds: 40,
+      timedMode: false
+    });
+
+    expect(outcome.userState.xp).toBe(909);
+    expect(outcome.userState.level).toBe(10);
+    expect(outcome.summary.totalXpAward).toBe(10);
+    expect(outcome.userState.advancedUnlockedAt).toEqual(expect.any(String));
+    expect(outcome.userState.unlockedDifficulties).toContain("advanced");
+  });
+
+  it("blocks and unblocks level 14 to 15 using only recent Advanced cases for Master readiness", () => {
+    const blocked = applyPracticeOutcome({
+      caseItem: { ...sampleCase, difficulty_level: 3 },
+      userState: createUserState({
+        xp: 1390,
+        level: 14,
+        advancedUnlockedAt: "2026-05-10T00:00:00.000Z",
+        recentPracticeAttempts: [
+          { difficulty: "advanced", correctSteps: 1, totalSteps: 4 },
+          { difficulty: "advanced", correctSteps: 1, totalSteps: 4 },
+          { difficulty: "advanced", correctSteps: 1, totalSteps: 4 },
+          { difficulty: "beginner", correctSteps: 4, totalSteps: 4 },
+          { difficulty: "advanced", correctSteps: 1, totalSteps: 4 }
+        ]
+      }),
+      progressionConfig: gateProgressionConfig,
+      seenCasesByDifficulty: {},
+      stepResults: [
+        { key: "ph_status", label: "pH status", chosen: "Acidaemia", correct: true, correctAnswer: "Acidaemia" },
+        { key: "final_diagnosis", label: "Diagnosis", chosen: "Sepsis", correct: true, correctAnswer: "Sepsis" }
+      ],
+      elapsedSeconds: 40,
+      timedMode: false
+    });
+
+    expect(blocked.userState.xp).toBe(1399);
+    expect(blocked.userState.level).toBe(14);
+    expect(blocked.userState.masterUnlockedAt).toBeUndefined();
+
+    const unblocked = applyPracticeOutcome({
+      caseItem: { ...sampleCase, difficulty_level: 3 },
+      userState: createUserState({
+        xp: 1399,
+        level: 14,
+        advancedUnlockedAt: "2026-05-10T00:00:00.000Z",
+        recentPracticeAttempts: [
+          { difficulty: "advanced", correctSteps: 3, totalSteps: 4 },
+          { difficulty: "advanced", correctSteps: 3, totalSteps: 4 },
+          { difficulty: "advanced", correctSteps: 3, totalSteps: 4 },
+          { difficulty: "beginner", correctSteps: 4, totalSteps: 4 },
+          { difficulty: "advanced", correctSteps: 3, totalSteps: 4 }
+        ]
+      }),
+      progressionConfig: gateProgressionConfig,
+      seenCasesByDifficulty: {},
+      stepResults: [
+        { key: "ph_status", label: "pH status", chosen: "Acidaemia", correct: true, correctAnswer: "Acidaemia" },
+        { key: "final_diagnosis", label: "Diagnosis", chosen: "Sepsis", correct: true, correctAnswer: "Sepsis" }
+      ],
+      elapsedSeconds: 40,
+      timedMode: false
+    });
+
+    expect(unblocked.userState.xp).toBe(1464);
+    expect(unblocked.userState.level).toBe(15);
+    expect(unblocked.summary.totalXpAward).toBe(65);
+    expect(unblocked.userState.masterUnlockedAt).toEqual(expect.any(String));
+    expect(unblocked.userState.unlockedDifficulties).toContain("master");
   });
 
   it("defaults practice entry to the highest accessible difficulty", () => {

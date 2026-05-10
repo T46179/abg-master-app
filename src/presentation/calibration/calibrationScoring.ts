@@ -1,10 +1,8 @@
-export type CalibrationPlacement = "beginner" | "intermediate" | "advanced";
+import type { CalibrationPlacement } from "../../core/types";
+import { calibrationScoringRules } from "./calibrationConfig";
+import type { BuildAGasCalibrationSelection } from "./calibrationTypes";
 
-export interface BuildAGasCalibrationSelection {
-  pH?: string;
-  PaCO2?: string;
-  HCO3?: string;
-}
+export type { BuildAGasCalibrationSelection };
 
 export interface CalibrationScoringInput {
   bloodGasBlitz?: {
@@ -40,16 +38,17 @@ function elapsedSeconds(elapsedMs: number): number {
 function scoreBloodGasBlitz(input: CalibrationScoringInput["bloodGasBlitz"]) {
   if (!input) return { accuracy: 0, speed: 0 };
 
+  const rules = calibrationScoringRules.bloodGasBlitz;
   const correctCount = Math.max(0, Number(input.correctCount) || 0);
   const elapsed = elapsedSeconds(input.elapsedMs);
-  const accuracy = correctCount >= 9 ? 1 : correctCount >= 7 ? 0.5 : 0;
+  const accuracy = correctCount >= rules.excellentCorrectCount ? 1 : correctCount >= rules.partialCorrectCount ? 0.5 : 0;
 
   let speed = 0;
-  if (correctCount >= 9 && elapsed <= 15) {
+  if (correctCount >= rules.excellentCorrectCount && elapsed <= elapsedSeconds(rules.fastMs)) {
     speed = 1;
-  } else if (correctCount >= 9 && elapsed <= 25) {
+  } else if (correctCount >= rules.excellentCorrectCount && elapsed <= elapsedSeconds(rules.partialMs)) {
     speed = 0.5;
-  } else if (correctCount >= 7 && elapsed <= 25) {
+  } else if (correctCount >= rules.partialCorrectCount && elapsed <= elapsedSeconds(rules.partialMs)) {
     speed = 0.5;
   }
 
@@ -59,27 +58,28 @@ function scoreBloodGasBlitz(input: CalibrationScoringInput["bloodGasBlitz"]) {
 function scoreBuildAGas(input: CalibrationScoringInput["buildAGas"]) {
   if (!input) return { accuracy: 0, speed: 0 };
 
+  const rules = calibrationScoringRules.buildAGas;
   const selections = input.selectedValues;
   const paco2 = selections.PaCO2;
   let accuracy = 0;
 
-  if (selections.pH === "7.28") accuracy += 0.75;
-  if (selections.HCO3 === "14") accuracy += 0.75;
-  if (paco2 === "28") accuracy += 0.5;
-  if (paco2 === "40") accuracy += 0.25;
+  accuracy += rules.answerAccuracy.pH[selections.pH as keyof typeof rules.answerAccuracy.pH] ?? 0;
+  accuracy += rules.answerAccuracy.HCO3[selections.HCO3 as keyof typeof rules.answerAccuracy.HCO3] ?? 0;
+  accuracy += rules.answerAccuracy.PaCO2[paco2 as keyof typeof rules.answerAccuracy.PaCO2] ?? 0;
 
   const elapsed = elapsedSeconds(input.elapsedMs);
-  const speed = elapsed <= 20 ? 1 : elapsed <= 45 ? 0.5 : 0;
+  const speed = elapsed <= elapsedSeconds(rules.fastMs) ? 1 : elapsed <= elapsedSeconds(rules.partialMs) ? 0.5 : 0;
 
-  return { accuracy: Math.min(2, accuracy), speed };
+  return { accuracy: Math.min(rules.maxAccuracy, accuracy), speed };
 }
 
 function scoreCompensationFit(input: CalibrationScoringInput["compensationFit"]) {
   if (!input) return { accuracy: 0, speed: 0 };
 
-  const accuracy = input.selectedAnswer === "Appropriate compensation" ? 2 : 0;
+  const rules = calibrationScoringRules.compensationFit;
+  const accuracy = input.selectedAnswer === rules.correctAnswer ? rules.accuracy : 0;
   const elapsed = elapsedSeconds(input.elapsedMs);
-  const speed = elapsed <= 20 ? 1 : elapsed <= 45 ? 0.5 : 0;
+  const speed = elapsed <= elapsedSeconds(rules.fastMs) ? 1 : elapsed <= elapsedSeconds(rules.partialMs) ? 0.5 : 0;
 
   return { accuracy, speed };
 }
@@ -87,15 +87,10 @@ function scoreCompensationFit(input: CalibrationScoringInput["compensationFit"])
 function scoreFinalDiagnosis(input: CalibrationScoringInput["finalDiagnosis"]) {
   if (!input) return { accuracy: 0, speed: 0 };
 
-  const accuracyByAnswer: Record<string, number> = {
-    "Raised anion gap metabolic acidosis": 3,
-    "Metabolic acidosis": 1.5,
-    "Normal anion gap metabolic acidosis": 1,
-    "Respiratory acidosis": 0
-  };
-  const accuracy = accuracyByAnswer[input.selectedAnswer] ?? 0;
+  const rules = calibrationScoringRules.finalDiagnosis;
+  const accuracy = rules.answerAccuracy[input.selectedAnswer as keyof typeof rules.answerAccuracy] ?? 0;
   const elapsed = elapsedSeconds(input.elapsedMs);
-  const speed = elapsed <= 30 ? 1 : elapsed <= 60 ? 0.5 : 0;
+  const speed = elapsed <= elapsedSeconds(rules.fastMs) ? 1 : elapsed <= elapsedSeconds(rules.partialMs) ? 0.5 : 0;
 
   return { accuracy, speed };
 }
@@ -111,9 +106,10 @@ export function scoreCalibration(input: CalibrationScoringInput): CalibrationSco
   const accuracyPoints = taskScores.reduce((sum, task) => sum + task.accuracy, 0);
   const speedPoints = taskScores.reduce((sum, task) => sum + task.speed, 0);
   const totalScore = accuracyPoints + speedPoints;
-  const placement: CalibrationPlacement = accuracyPoints <= 3 || totalScore <= 4
+  const rules = calibrationScoringRules.placement;
+  const placement: CalibrationPlacement = accuracyPoints <= rules.beginnerAccuracyMax || totalScore <= rules.beginnerTotalMax
     ? "beginner"
-    : totalScore >= 10 && accuracyPoints >= 7
+    : totalScore >= rules.advancedTotalMin && accuracyPoints >= rules.advancedAccuracyMin
       ? "advanced"
       : "intermediate";
 

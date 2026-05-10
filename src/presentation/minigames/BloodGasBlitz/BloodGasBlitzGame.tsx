@@ -36,6 +36,7 @@ export interface BloodGasBlitzGameProps {
   xpIntoLevel?: number;
   xpProgressLabel?: string;
   xpProgressValue?: number;
+  xpProgressBlocked?: boolean;
 }
 
 type StreakPillTone = "active" | "broken";
@@ -89,7 +90,8 @@ export function BloodGasBlitzGame({
   xpForNextLevel = 0,
   xpIntoLevel = 0,
   xpProgressLabel = "0 / 0 XP",
-  xpProgressValue = 0
+  xpProgressValue = 0,
+  xpProgressBlocked = false
 }: BloodGasBlitzGameProps) {
   const config = getPlayableBloodGasBlitzConfig(versionId);
   const presetConfig = getBloodGasBlitzPreset(preset);
@@ -532,7 +534,7 @@ export function BloodGasBlitzGame({
           </div>
           <div className="progress-bar">
             <div
-              className="progress-bar__fill progress-bar__fill--animated"
+              className={`progress-bar__fill progress-bar__fill--animated${xpProgressBlocked ? " progress-bar__fill--blocked" : ""}`}
               style={{ width: `${Math.max(0, Math.min(100, xpProgressValue))}%` }}
             />
           </div>

@@ -15,6 +15,7 @@ const trackEvent = vi.fn();
 const mockCanStartNewCase = vi.hoisted(() => vi.fn(() => false));
 let latestQuestionFlowCardProps: Record<string, unknown> | null = null;
 let latestResultsSummaryCardProps: Record<string, unknown> | null = null;
+let latestLearnUnlockModalProps: Record<string, unknown> | null = null;
 
 let currentState: {
   status: "ready";
@@ -126,6 +127,7 @@ vi.mock("../../core/protectedPractice", () => ({
 }));
 
 vi.mock("../../core/protectedPracticeCache", () => ({
+  clearPracticeSlotCache: vi.fn((_storage, slots) => ({ ...slots, beginner: null })),
   clearPendingPracticeSubmission: vi.fn(),
   loadPracticeSlotsCache: vi.fn(() => ({})),
   slotMatchesDifficultyKey: vi.fn(() => true),
@@ -142,18 +144,22 @@ vi.mock("../../core/practice", () => ({
 }));
 
 vi.mock("../../core/progression", () => ({
+  appendPracticeAttemptSummary: (_userState: unknown, attempt: unknown) => [attempt],
   canStartNewCase: () => mockCanStartNewCase(),
   getCalibrationCompletionFromUserState: () => null,
-  getAccessibleDifficultyKeys: () => [],
-  getAwardableXp: vi.fn(),
+  getAccessibleDifficultyKeys: (input: { userState?: { unlockedDifficulties?: string[] } }) => input.userState?.unlockedDifficulties ?? [],
+  getAwardableXpWithReadinessGates: ({ requestedXp }: { requestedXp: number }) => requestedXp,
   getDifficultyLabel: () => "beginner",
   getDifficultyMeta: () => [],
   getHighestAccessibleDifficultyKey: () => "beginner",
-  getLevelProgress: () => ({ xpIntoLevel: 0, xpForNextLevel: 0, progressPercent: 0 }),
+  getLevelProgress: () => ({ xpIntoLevel: 0, xpForNextLevel: 0, progressPercent: 0, isBlockedByReadinessGate: false }),
   getReleaseFlags: () => ({ enableCalibrationAccessGuard: false }),
   mapProgressRowToUserState: () => null,
   normalizeDifficultyKey: (_input: unknown, requestedDifficulty: string) => requestedDifficulty || "beginner",
-  syncUserStateDerivedFields: <T,>(value: T) => value
+  syncUserStateDerivedFields: <T extends { xp?: number; level?: number }>(value: T) => ({
+    ...value,
+    level: Math.max(1, Math.floor(Math.max(0, Number(value.xp ?? 0)) / 100) + 1)
+  })
 }));
 
 vi.mock("../../core/progressionSync", () => ({
@@ -190,6 +196,13 @@ vi.mock("../practice/ResultsSummaryCard", () => ({
   ResultsSummaryHeader: () => null
 }));
 
+vi.mock("../learn/LearnUnlockModal", () => ({
+  LearnUnlockModal: (props: Record<string, unknown>) => {
+    latestLearnUnlockModalProps = props;
+    return null;
+  }
+}));
+
 vi.mock("../practice/ScenarioCard", () => ({
   ScenarioCard: () => null
 }));
@@ -201,8 +214,14 @@ vi.mock("../practice/ValuePanels", () => ({
 import {
   applyProtectedCaseCompletion,
   buildPendingPracticeSubmission,
+  isProtectedPracticeError,
   submitProtectedPracticeCase
 } from "../../core/protectedPractice";
+import {
+  clearPendingPracticeSubmission,
+  clearPracticeSlotCache,
+  savePracticeSlotsCache
+} from "../../core/protectedPracticeCache";
 import { reconcileProtectedSummaryWithLockedStepResults } from "../../core/practice";
 import { ProtectedPracticeScreen } from "./ProtectedPracticeScreen";
 
@@ -265,6 +284,7 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
     mockCanStartNewCase.mockReturnValue(false);
     latestQuestionFlowCardProps = null;
     latestResultsSummaryCardProps = null;
+    latestLearnUnlockModalProps = null;
     vi.mocked(buildPendingPracticeSubmission).mockReturnValue({
       caseToken: "token-1",
       caseId: "CASE_001",
@@ -277,6 +297,9 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
     });
     vi.mocked(reconcileProtectedSummaryWithLockedStepResults).mockImplementation(({ summary }) => summary);
     vi.mocked(applyProtectedCaseCompletion).mockImplementation(({ userState }) => userState);
+    vi.mocked(isProtectedPracticeError).mockImplementation((error: unknown) => {
+      return Boolean((error as { __protectedError?: boolean } | null)?.__protectedError);
+    });
     vi.mocked(submitProtectedPracticeCase).mockResolvedValue({
       summary: makeCaseSummary({
         caseId: "CASE_005",
@@ -489,6 +512,82 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
     });
   });
 
+  it("clears stale protected practice cases when the server no longer has the case slot", async () => {
+    currentState.runtimeConfig = {
+      SUPABASE_URL: "https://example.supabase.co",
+      SUPABASE_ANON_KEY: "anon"
+    };
+    currentState.supabase = {};
+    currentState.practiceState.currentCaseToken = "stale-token";
+    currentState.practiceState.practiceSlotsByDifficulty = {
+      beginner: {
+        caseToken: "stale-token",
+        issuedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        contentVersion: "beta-1",
+        difficultyKey: "beginner",
+        caseData: {
+          case_id: "CASE_STALE",
+          archetype: "simple_nagma",
+          difficulty_level: 1,
+          questions_flow: [{ key: "ph_status", options: ["Acidaemia"] }]
+        }
+      }
+    };
+    currentState.practiceState.currentCase = {
+      case_id: "CASE_STALE",
+      archetype: "simple_nagma",
+      difficulty_level: 1,
+      questions_flow: [{ key: "ph_status", options: ["Acidaemia"] }]
+    };
+    currentState.sessionState.selectedAnswers = [
+      {
+        key: "ph_status",
+        chosen: "Acidaemia"
+      }
+    ];
+    vi.mocked(buildPendingPracticeSubmission).mockReturnValue({
+      caseToken: "stale-token",
+      caseId: "CASE_STALE",
+      contentVersion: "beta-1",
+      difficultyKey: "beginner",
+      answers: [{ key: "ph_status", chosen: "Acidaemia" }],
+      elapsedSeconds: 0,
+      timedMode: false,
+      clientCompletedAt: "2026-04-30T00:00:00.000Z"
+    });
+    vi.mocked(submitProtectedPracticeCase).mockRejectedValue({
+      __protectedError: true,
+      code: "CASE_SLOT_UNAVAILABLE",
+      status: 404
+    });
+
+    renderScreen();
+
+    await act(async () => {
+      (latestQuestionFlowCardProps?.onContinueStep as () => void)?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(clearPracticeSlotCache).toHaveBeenCalledWith(
+      window.localStorage,
+      currentState.practiceState.practiceSlotsByDifficulty,
+      "beginner",
+      "stale-token",
+      undefined
+    );
+    expect(savePracticeSlotsCache).toHaveBeenCalled();
+    expect(clearPendingPracticeSubmission).toHaveBeenCalledWith(window.localStorage);
+    expect(patchPracticeState).toHaveBeenCalledWith(expect.objectContaining({
+      currentCase: null,
+      currentCaseToken: null,
+      pendingSubmission: null,
+      syncState: "idle",
+      syncMessage: "This case is no longer available. Please start a new case."
+    }));
+  });
+
   it("tracks summary views and next-case clicks", () => {
     currentState.practiceState.lastCaseSummary = makeCaseSummary({
       caseToken: "summary-token",
@@ -532,6 +631,61 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
       next_case_id: "CASE_004",
       archetype: "simple_nagma",
       source: "case_summary"
+    });
+  });
+
+  it("does not show the Advanced unlock modal when only the level threshold is reached", () => {
+    currentState.payload.progressionConfig = {
+      xp_required_per_level: Object.fromEntries(Array.from({ length: 20 }, (_, index) => [index + 1, 100])),
+      difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" },
+      difficulty_unlock_levels: { 1: 1, 2: 5, 3: 10, 4: 15 }
+    } as never;
+    currentState.userState = {
+      ...currentState.userState,
+      xp: 900,
+      level: 10,
+      unlockedDifficulties: ["beginner", "intermediate"]
+    };
+    currentState.practiceState.lastCaseSummary = makeCaseSummary({
+      totalXpAward: 10,
+      caseData: {
+        case_id: "CASE_003",
+        archetype: "simple_nagma",
+        difficulty_level: 1
+      }
+    });
+
+    renderScreen();
+
+    expect(latestLearnUnlockModalProps?.level).toBeNull();
+  });
+
+  it("shows the Advanced unlock modal when the difficulty actually becomes accessible", () => {
+    currentState.payload.progressionConfig = {
+      xp_required_per_level: Object.fromEntries(Array.from({ length: 20 }, (_, index) => [index + 1, 100])),
+      difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" },
+      difficulty_unlock_levels: { 1: 1, 2: 5, 3: 10, 4: 15 }
+    } as never;
+    currentState.userState = {
+      ...currentState.userState,
+      xp: 900,
+      level: 10,
+      unlockedDifficulties: ["beginner", "intermediate", "advanced"]
+    };
+    (currentState.userState as typeof currentState.userState & { advancedUnlockedAt?: string }).advancedUnlockedAt = "2026-05-10T00:00:00.000Z";
+    currentState.practiceState.lastCaseSummary = makeCaseSummary({
+      totalXpAward: 10,
+      caseData: {
+        case_id: "CASE_003",
+        archetype: "simple_nagma",
+        difficulty_level: 1
+      }
+    });
+
+    renderScreen();
+
+    expect(latestLearnUnlockModalProps?.level).toMatchObject({
+      slug: "advanced"
     });
   });
 
