@@ -512,6 +512,57 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
     });
   });
 
+  it("preserves server-applied xp when locked-step reconciliation recalculates requested xp", async () => {
+    currentState.runtimeConfig = {
+      SUPABASE_URL: "https://example.supabase.co",
+      SUPABASE_ANON_KEY: "anon"
+    };
+    currentState.supabase = {};
+    currentState.practiceState.currentCaseToken = "token-locked";
+    currentState.practiceState.currentCase = {
+      case_id: "CASE_005",
+      archetype: "simple_nagma",
+      difficulty_level: 4,
+      questions_flow: [{ key: "ph_status", options: ["Acidaemia"] }]
+    };
+    currentState.sessionState.selectedAnswers = [
+      {
+        key: "ph_status",
+        chosen: "Acidaemia"
+      }
+    ];
+    vi.mocked(submitProtectedPracticeCase).mockResolvedValueOnce({
+      summary: makeCaseSummary({
+        totalXpAward: 0,
+        correctSteps: 0,
+        totalSteps: 1
+      }),
+      stepResults: [],
+      explanation: { overview: "", sections: [] },
+      replacementSlot: makePracticeSlot(),
+      progress: { xp: 1717, level: 14 }
+    });
+    vi.mocked(reconcileProtectedSummaryWithLockedStepResults).mockReturnValueOnce(makeCaseSummary({
+      totalXpAward: 65,
+      correctSteps: 0,
+      totalSteps: 1
+    }));
+
+    renderScreen();
+
+    await act(async () => {
+      (latestQuestionFlowCardProps?.onContinueStep as () => void)?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(patchPracticeState).toHaveBeenCalledWith(expect.objectContaining({
+      lastCaseSummary: expect.objectContaining({
+        totalXpAward: 0
+      })
+    }));
+  });
+
   it("clears stale protected practice cases when the server no longer has the case slot", async () => {
     currentState.runtimeConfig = {
       SUPABASE_URL: "https://example.supabase.co",

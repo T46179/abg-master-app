@@ -447,6 +447,14 @@ button:disabled {
   animation: xp-gate-pulse 1.8s ease-in-out infinite;
 }
 
+.progress-bar--level-up-flash {
+  animation: xp-level-up-track-flash 520ms ease-out;
+}
+
+.progress-bar__fill--level-up-flash {
+  animation: xp-level-up-fill-flash 520ms ease-out;
+}
+
 @keyframes xp-gate-pulse {
   0%, 100% {
     filter: brightness(1);
@@ -456,6 +464,26 @@ button:disabled {
   50% {
     filter: brightness(1.25);
     opacity: 0.68;
+  }
+}
+
+@keyframes xp-level-up-track-flash {
+  0%, 100% {
+    box-shadow: none;
+  }
+
+  42% {
+    box-shadow: 0 0 0 4px rgba(232, 149, 111, 0.18), 0 0 18px rgba(216, 111, 87, 0.32);
+  }
+}
+
+@keyframes xp-level-up-fill-flash {
+  0%, 100% {
+    filter: brightness(1);
+  }
+
+  45% {
+    filter: brightness(1.28) saturate(1.12);
   }
 }
 
@@ -1155,7 +1183,7 @@ button:disabled {
 
 .practice-scenario-card__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
 }
@@ -1164,6 +1192,10 @@ button:disabled {
 .value-panels__card .section-header__eyebrow {
   color: var(--color-navy);
   font-weight: 500;
+}
+
+.practice-scenario-card__header .section-header__eyebrow {
+  margin-bottom: 0;
 }
 
 .case-metadata-icons {
@@ -1193,6 +1225,16 @@ button:disabled {
   stroke-width: 3.4;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.practice-scenario-card .case-metadata-icon {
+  width: 1.28rem;
+  height: 1.28rem;
+}
+
+.practice-scenario-card .case-metadata-icon__svg {
+  width: 0.68rem;
+  height: 0.68rem;
 }
 
 .case-metadata-icons__tooltip {
@@ -1973,6 +2015,12 @@ button:disabled {
 
 .results-summary-card__progress {
   margin-top: 0.8rem;
+}
+
+.results-summary-card__progress-notice {
+  color: var(--color-copy-soft);
+  font-weight: 600;
+  text-align: right;
 }
 
 .value-panels,

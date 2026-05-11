@@ -60,7 +60,7 @@ import {
   markCaseSeen,
   rememberRecentArchetype
 } from "../../core/selection";
-import type { AnswerSelection, AnswerValue, CaseData, IssuedPracticeSlot, StepResult } from "../../core/types";
+import type { AnswerSelection, AnswerValue, CaseData, IssuedPracticeSlot, ProgressionConfig, StepResult } from "../../core/types";
 import { getLearnUnlockMilestoneForLevelTransition } from "../learn/content";
 import { LearnUnlockModal } from "../learn/LearnUnlockModal";
 import { Surface } from "../primitives/Surface";
@@ -69,6 +69,35 @@ import { CalibrationIntroModal } from "../practice/CalibrationIntroModal";
 import { PracticeDifficultyRail } from "../practice/PracticeDifficultyRail";
 import { ResultsSummaryCard, ResultsSummaryHeader } from "../practice/ResultsSummaryCard";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
+
+interface ResultsXpAnimationState {
+  level: number;
+  xpProgressLabel: string;
+  progressValue: number;
+  animate: boolean;
+  flash: boolean;
+}
+
+function formatResultsXpProgressLabel(xpIntoLevel: number, xpForNextLevel: number) {
+  return `${xpIntoLevel} / ${xpForNextLevel || xpIntoLevel} XP`;
+}
+
+function getResultsXpResetLabel(progressionConfig: ProgressionConfig | null, level: number) {
+  const xpForNextLevel = Number(progressionConfig?.xp_required_per_level?.[level] ?? 0);
+  return `0 / ${xpForNextLevel || 0} XP`;
+}
+
+function getResultsXpRequiredForLevel(progressionConfig: ProgressionConfig | null, level: number) {
+  return Number(progressionConfig?.xp_required_per_level?.[level] ?? 0);
+}
+
+function getReadinessGateProgressMessage(progressionConfig: ProgressionConfig | null, blockedDifficulty: string | null | undefined) {
+  if (!blockedDifficulty) return null;
+  const requirement = progressionConfig?.performance_unlock_requirements?.[blockedDifficulty];
+  const minAccuracy = Math.max(0, Math.min(100, Number(requirement?.minStepAccuracyPercent ?? 75) || 75));
+  const caseCount = Math.max(1, Math.round(Number(requirement?.lastCases ?? 5) || 5));
+  return `You must reach ${minAccuracy}% accuracy over ${caseCount} cases to progress`;
+}
 
 export function ProtectedPracticeScreen() {
   const { state, setUserState, patchPracticeState, patchSessionState } = useAppContext();
@@ -88,6 +117,7 @@ export function ProtectedPracticeScreen() {
   const summaryViewTrackedRef = useRef(new Set<string>());
 
   const payload = state.payload;
+  const calibrationRecord = getCalibrationCompletionFromUserState(state.userState) ?? state.storage?.loadCalibrationCompletion() ?? null;
   const progressionInput = {
     progressionConfig: payload?.progressionConfig ?? null,
     dashboardState: payload?.dashboardState ?? null,
@@ -97,7 +127,6 @@ export function ProtectedPracticeScreen() {
   };
   const hasExplicitDifficultyParam = searchParams.has("difficulty");
   const requestedDifficultyParam = searchParams.get("difficulty");
-  const calibrationRecord = getCalibrationCompletionFromUserState(state.userState) ?? state.storage?.loadCalibrationCompletion() ?? null;
   const releaseFlags = getReleaseFlags(payload?.progressionConfig ?? null);
   const difficultyResolution = resolvePracticeDifficulty({
     requestedDifficulty: requestedDifficultyParam,
@@ -173,7 +202,18 @@ export function ProtectedPracticeScreen() {
       )
     : state.userState;
   const startingLevelProgress = getLevelProgress(payload?.progressionConfig ?? null, preAwardUserState);
-  const resultsStartProgress = summary && preAwardUserState.level !== state.userState.level ? 0 : startingLevelProgress.progressPercent;
+  const resultsStartProgress = startingLevelProgress.progressPercent;
+  const resultsXpStartLabel = formatResultsXpProgressLabel(startingLevelProgress.xpIntoLevel, startingLevelProgress.xpForNextLevel);
+  const resultsXpFinalLabel = formatResultsXpProgressLabel(finalLevelProgress.xpIntoLevel, finalLevelProgress.xpForNextLevel);
+  const [displayedResultsXp, setDisplayedResultsXp] = useState<ResultsXpAnimationState | null>(null);
+  const shouldHoldAtReadinessGate = Boolean(
+    summary &&
+    startingLevelProgress.isBlockedByReadinessGate &&
+    finalLevelProgress.isBlockedByReadinessGate
+  );
+  const readinessGateProgressMessage = finalLevelProgress.isBlockedByReadinessGate
+    ? getReadinessGateProgressMessage(payload?.progressionConfig ?? null, finalLevelProgress.blockedDifficulty)
+    : null;
   const nextAccessibleDifficulties = summary ? accessibleDifficulties : [];
   const calibrationAccessibleDifficulties = calibrationRecord
     ? getCalibrationAllowedDifficulties(calibrationRecord.placement)
@@ -294,18 +334,117 @@ export function ProtectedPracticeScreen() {
   useEffect(() => {
     if (!summary) {
       setDisplayedResultsProgress(null);
+      setDisplayedResultsXp(null);
       return;
     }
 
-    setDisplayedResultsProgress(resultsStartProgress);
-    const timeoutId = window.setTimeout(() => {
+    const timeoutIds: number[] = [];
+    const frameIds: number[] = [];
+    const progressionConfig = payload?.progressionConfig ?? null;
+    const finalLevel = state.userState.level;
+
+    if (shouldHoldAtReadinessGate) {
       setDisplayedResultsProgress(finalLevelProgress.progressPercent);
-    }, 500);
+      setDisplayedResultsXp({
+        level: finalLevel,
+        xpProgressLabel: resultsXpFinalLabel,
+        progressValue: finalLevelProgress.progressPercent,
+        animate: false,
+        flash: true
+      });
+      return () => undefined;
+    }
+
+    setDisplayedResultsProgress(resultsStartProgress);
+    setDisplayedResultsXp({
+      level: preAwardUserState.level,
+      xpProgressLabel: resultsXpStartLabel,
+      progressValue: resultsStartProgress,
+      animate: true,
+      flash: false
+    });
+
+    if (preAwardUserState.level === finalLevel) {
+      timeoutIds.push(window.setTimeout(() => {
+        setDisplayedResultsProgress(finalLevelProgress.progressPercent);
+        setDisplayedResultsXp({
+          level: finalLevel,
+          xpProgressLabel: resultsXpFinalLabel,
+          progressValue: finalLevelProgress.progressPercent,
+          animate: true,
+          flash: false
+        });
+      }, 500));
+    } else {
+      let elapsedMs = 250;
+      for (let level = preAwardUserState.level; level < finalLevel; level += 1) {
+        const xpForNextLevel = getResultsXpRequiredForLevel(progressionConfig, level);
+        const fullLevelLabel = formatResultsXpProgressLabel(xpForNextLevel, xpForNextLevel);
+
+        timeoutIds.push(window.setTimeout(() => {
+          setDisplayedResultsProgress(100);
+          setDisplayedResultsXp({
+            level,
+            xpProgressLabel: fullLevelLabel,
+            progressValue: 100,
+            animate: true,
+            flash: false
+          });
+        }, elapsedMs));
+
+        elapsedMs += 1500;
+        timeoutIds.push(window.setTimeout(() => {
+          setDisplayedResultsXp(current => current ? { ...current, flash: true } : current);
+        }, elapsedMs));
+
+        elapsedMs += 520;
+        timeoutIds.push(window.setTimeout(() => {
+          setDisplayedResultsProgress(0);
+          setDisplayedResultsXp({
+            level: level + 1,
+            xpProgressLabel: getResultsXpResetLabel(progressionConfig, level + 1),
+            progressValue: 0,
+            animate: false,
+            flash: false
+          });
+        }, elapsedMs));
+
+        elapsedMs += 120;
+      }
+
+      timeoutIds.push(window.setTimeout(() => {
+        const frameId = window.requestAnimationFrame(() => {
+          setDisplayedResultsProgress(finalLevelProgress.progressPercent);
+          setDisplayedResultsXp({
+            level: finalLevel,
+            xpProgressLabel: resultsXpFinalLabel,
+            progressValue: finalLevelProgress.progressPercent,
+            animate: true,
+            flash: false
+          });
+        });
+        frameIds.push(frameId);
+      }, elapsedMs));
+    }
 
     return () => {
-      window.clearTimeout(timeoutId);
+      timeoutIds.forEach(timeoutId => window.clearTimeout(timeoutId));
+      frameIds.forEach(frameId => window.cancelAnimationFrame(frameId));
     };
-  }, [summary?.caseId, resultsStartProgress, finalLevelProgress.progressPercent]);
+  }, [
+    finalLevelProgress.progressPercent,
+    finalLevelProgress.xpForNextLevel,
+    finalLevelProgress.xpIntoLevel,
+    payload?.progressionConfig,
+    preAwardUserState.level,
+    resultsStartProgress,
+    resultsXpFinalLabel,
+    resultsXpStartLabel,
+    shouldHoldAtReadinessGate,
+    startingLevelProgress.xpForNextLevel,
+    state.userState.level,
+    summary?.caseId
+  ]);
 
   useEffect(() => {
     if (!summary) return;
@@ -778,7 +917,7 @@ export function ProtectedPracticeScreen() {
       const cappedSummary = {
         ...reconciledSummary,
         totalXpAward: result.progress
-          ? reconciledSummary.totalXpAward
+          ? result.summary.totalXpAward
           : getAwardableXpWithReadinessGates({
               progressionConfig: payload.progressionConfig ?? null,
               userState: state.userState,
@@ -1007,10 +1146,15 @@ export function ProtectedPracticeScreen() {
           {summary ? (
             <ResultsSummaryHeader
               summary={summary}
-              level={state.userState.level}
-              xpProgressLabel={`${finalLevelProgress.xpIntoLevel} / ${finalLevelProgress.xpForNextLevel || finalLevelProgress.xpIntoLevel} XP`}
-              progressValue={displayedResultsProgress ?? resultsStartProgress}
-              xpProgressBlocked={finalLevelProgress.isBlockedByReadinessGate}
+              level={shouldHoldAtReadinessGate ? state.userState.level : displayedResultsXp?.level ?? state.userState.level}
+              xpProgressLabel={displayedResultsXp?.xpProgressLabel ?? resultsXpFinalLabel}
+              progressValue={shouldHoldAtReadinessGate
+                ? finalLevelProgress.progressPercent
+                : displayedResultsXp?.progressValue ?? displayedResultsProgress ?? resultsStartProgress}
+              progressAnimate={shouldHoldAtReadinessGate ? false : displayedResultsXp?.animate}
+              progressFlash={shouldHoldAtReadinessGate ? true : displayedResultsXp?.flash}
+              xpProgressNotice={readinessGateProgressMessage ?? undefined}
+              xpProgressBlocked={finalLevelProgress.isBlockedByReadinessGate && !shouldHoldAtReadinessGate}
             />
           ) : (
             <PracticeDifficultyRail items={difficultyItems} />

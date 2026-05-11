@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 import { Surface } from "../primitives/Surface";
+import { ProgressBar } from "../primitives/ProgressBar";
 import timerIcon from "../../assets/icons/timer.svg";
 import type {
   CaseData,
@@ -172,6 +173,9 @@ interface ResultsSummaryHeaderProps {
   level: number;
   xpProgressLabel: string;
   progressValue: number;
+  progressAnimate?: boolean;
+  progressFlash?: boolean;
+  xpProgressNotice?: string;
   xpProgressBlocked?: boolean;
 }
 
@@ -194,14 +198,17 @@ export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
       <div className="results-summary-card__progress">
         <div className="dashboard-progress-card__meta">
           <span>Level {props.level}</span>
-          <span>{props.xpProgressLabel}</span>
+          <span className={props.xpProgressNotice ? "results-summary-card__progress-notice" : undefined}>
+            {props.xpProgressNotice ?? props.xpProgressLabel}
+          </span>
         </div>
-        <div className="progress-bar">
-          <div
-            className={`progress-bar__fill progress-bar__fill--animated${props.xpProgressBlocked ? " progress-bar__fill--blocked" : ""}`}
-            style={{ width: `${Math.max(0, Math.min(100, props.progressValue))}%` }}
-          />
-        </div>
+        <ProgressBar
+          value={props.progressValue}
+          animate={props.progressAnimate ?? true}
+          blocked={props.xpProgressBlocked}
+          className={props.progressFlash ? "progress-bar--level-up-flash" : undefined}
+          fillClassName={props.progressFlash ? "progress-bar__fill--level-up-flash" : undefined}
+        />
       </div>
     </Surface>
   );

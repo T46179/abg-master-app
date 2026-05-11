@@ -575,6 +575,26 @@ describe("ResultsSummaryCard", () => {
     expect(container.querySelector(".progress-bar__fill--blocked")).not.toBeNull();
   });
 
+  it("shows readiness gate guidance in place of the XP label", () => {
+    const summary = buildSummary([]);
+
+    act(() => {
+      root.render(
+        <ResultsSummaryHeader
+          summary={summary}
+          level={14}
+          xpProgressLabel="297 / 300 XP"
+          xpProgressNotice="You must reach 75% accuracy over 5 cases to progress"
+          progressValue={99}
+          xpProgressBlocked
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("You must reach 75% accuracy over 5 cases to progress");
+    expect(container.textContent).not.toContain("297 / 300 XP");
+  });
+
   it("renders authored case metadata on the combined summary header", () => {
     const summary = {
       ...buildSummary([]),
