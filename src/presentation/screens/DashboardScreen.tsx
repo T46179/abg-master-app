@@ -41,8 +41,10 @@ export function DashboardScreen() {
   const maxReachableLevel = getMaxReachableLevel(payload?.progressionConfig ?? null);
   const hasReachedMaxLevel = maxReachableLevel != null && state.userState.level >= maxReachableLevel;
   const difficultyMeta = getDifficultyMeta(progressionInput);
-  const recent = state.userState.recentResults ?? [];
-  const recentAccuracy = recent.length ? Math.round((recent.filter(Boolean).length / recent.length) * 100) : 100;
+  const recentAttempts = (state.userState.recentPracticeAttempts ?? []).slice(-10);
+  const recentCorrectSteps = recentAttempts.reduce((sum, attempt) => sum + Math.max(0, Number(attempt.correctSteps ?? 0)), 0);
+  const recentTotalSteps = recentAttempts.reduce((sum, attempt) => sum + Math.max(0, Number(attempt.totalSteps ?? 0)), 0);
+  const recentAccuracy = recentTotalSteps ? Math.round((recentCorrectSteps / recentTotalSteps) * 100) : 100;
   const casesRemaining = getCasesRemainingToday(payload?.progressionConfig ?? null, state.userState);
   const longestStreak = state.userState.longestStreak ?? state.userState.streak ?? 0;
   const defaultDifficulty = getDefaultPracticeDifficulty(
@@ -124,7 +126,7 @@ export function DashboardScreen() {
             label="Performance"
             value={`${recentAccuracy}%`}
             meta="Recent performance"
-            metaTooltip="performance over your last 20 cases"
+            metaTooltip="Your answer accuracy of the last 10 cases"
             icon={Target}
             tone="violet"
           />

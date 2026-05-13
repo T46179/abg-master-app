@@ -439,6 +439,10 @@ button:disabled {
   transition: width 1500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.progress-bar__fill--animated-steady {
+  transition-timing-function: linear;
+}
+
 .progress-bar__fill--success {
   background: linear-gradient(90deg, #16a34a 0%, #34d399 100%);
 }

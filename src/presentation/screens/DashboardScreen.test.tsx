@@ -47,6 +47,11 @@ vi.mock("../../app/AppProvider", () => ({
         isPremium: false,
         badges: [],
         recentResults: [],
+        recentPracticeAttempts: [
+          { difficulty: "beginner", correctSteps: 1, totalSteps: 4 },
+          { difficulty: "beginner", correctSteps: 3, totalSteps: 4 },
+          { difficulty: "intermediate", correctSteps: 4, totalSteps: 4 }
+        ],
         appliedProtectedCaseTokens: [],
         learnProgress: {
           foundations: {
@@ -140,5 +145,21 @@ describe("DashboardScreen", () => {
       .find(link => link.textContent?.includes("Next case"));
 
     expect(nextCaseLink?.getAttribute("href")).toBe("/practice?difficulty=advanced");
+  });
+
+  it("shows recent step accuracy over the last 10 cases", () => {
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <DashboardScreen />
+        </MemoryRouter>
+      );
+    });
+
+    const performanceCard = Array.from(container.querySelectorAll<HTMLElement>(".stat-card"))
+      .find(card => card.textContent?.includes("Performance"));
+
+    expect(performanceCard?.querySelector(".stat-card__value")?.textContent).toBe("67%");
+    expect(performanceCard?.textContent).toContain("Your answer accuracy of the last 10 cases");
   });
 });

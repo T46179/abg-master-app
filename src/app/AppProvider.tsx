@@ -264,6 +264,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const result = await submitProtectedPracticeCase(state.runtimeConfig, state.supabase, pendingSubmission);
     const progressPatch = mapProgressRowToUserState(result.progress);
+    const currentAttempt = {
+      difficulty: pendingSubmission.difficultyKey,
+      correctSteps: result.summary.correctSteps,
+      totalSteps: result.summary.totalSteps,
+      completedAt: pendingSubmission.clientCompletedAt
+    };
+    const nextRecentPracticeAttempts = appendPracticeAttemptSummary(state.userState, currentAttempt);
     const cappedSummary = {
       ...result.summary,
       caseToken: pendingSubmission.caseToken,
@@ -273,18 +280,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
             progressionConfig: state.payload.progressionConfig,
             userState: state.userState,
             requestedXp: result.summary.totalXpAward,
-            attemptsIncludingCurrent: appendPracticeAttemptSummary(state.userState, {
-              difficulty: pendingSubmission.difficultyKey,
-              correctSteps: result.summary.correctSteps,
-              totalSteps: result.summary.totalSteps,
-              completedAt: pendingSubmission.clientCompletedAt
-            })
+            attemptsIncludingCurrent: nextRecentPracticeAttempts
           })
     };
     const nextUserState = progressPatch
       ? syncUserStateDerivedFields({
         ...state.userState,
-        ...progressPatch
+        ...progressPatch,
+        recentResults: [...state.userState.recentResults, result.summary.correctSteps === result.summary.totalSteps].slice(-20),
+        recentPracticeAttempts: nextRecentPracticeAttempts
       }, state.payload.progressionConfig)
       : applyProtectedCaseCompletion({
         userState: state.userState,

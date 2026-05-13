@@ -175,6 +175,7 @@ interface ResultsSummaryHeaderProps {
   xpProgressLabel: string;
   progressValue: number;
   progressAnimate?: boolean;
+  progressAnimationMode?: "default" | "steady";
   progressFlash?: boolean;
   xpProgressNotice?: string;
   xpProgressBlocked?: boolean;
@@ -207,6 +208,7 @@ export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
         <ProgressBar
           value={props.progressValue}
           animate={props.progressAnimate ?? true}
+          animationMode={props.progressAnimationMode}
           blocked={props.xpProgressBlocked}
           className={props.progressFlash ? "progress-bar--level-up-flash" : undefined}
           fillClassName={props.progressFlash ? "progress-bar__fill--level-up-flash" : undefined}

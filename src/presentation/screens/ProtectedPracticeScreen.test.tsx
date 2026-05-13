@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CaseSummary, IssuedPracticeSlot } from "../../core/types";
+import { mapProgressRowToUserState } from "../../core/progression";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -36,6 +37,12 @@ let currentState: {
     level: number;
     abandonedCases: number;
     recentResults: boolean[];
+    recentPracticeAttempts?: Array<{
+      difficulty: string;
+      correctSteps: number;
+      totalSteps: number;
+      completedAt?: string | null;
+    }>;
     casesCompleted: number;
     correctAnswers: number;
     totalAnswers: number;
@@ -157,7 +164,7 @@ vi.mock("../../core/progression", () => ({
   getMaxReachableLevel: () => 20,
   getReleaseFlags: () => ({ enableCalibrationAccessGuard: false }),
   isPlacementXpBoostActive: () => false,
-  mapProgressRowToUserState: () => null,
+  mapProgressRowToUserState: vi.fn(() => null),
   normalizeDifficultyKey: (_input: unknown, requestedDifficulty: string) => requestedDifficulty || "beginner",
   syncUserStateDerivedFields: <T extends { xp?: number; level?: number }>(value: T) => ({
     ...value,
@@ -547,6 +554,7 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
       replacementSlot: makePracticeSlot(),
       progress: { xp: 1717, level: 14 }
     });
+    vi.mocked(mapProgressRowToUserState).mockReturnValueOnce({ xp: 1717, level: 14 });
     vi.mocked(reconcileProtectedSummaryWithLockedStepResults).mockReturnValueOnce(makeCaseSummary({
       totalXpAward: 65,
       correctSteps: 0,
@@ -565,6 +573,16 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
       lastCaseSummary: expect.objectContaining({
         totalXpAward: 0
       })
+    }));
+    expect(setUserState).toHaveBeenCalledWith(expect.objectContaining({
+      recentResults: [false],
+      recentPracticeAttempts: [
+        expect.objectContaining({
+          difficulty: "beginner",
+          correctSteps: 0,
+          totalSteps: 1
+        })
+      ]
     }));
   });
 

@@ -277,7 +277,19 @@ describe("AppProvider protected practice recovery", () => {
     submitProtectedPracticeCase.mockResolvedValue({
       summary: {
         caseToken: "token-1",
-        caseId: "case-1"
+        caseId: "case-1",
+        correctSteps: 3,
+        totalSteps: 4,
+        totalXpAward: 15
+      },
+      progress: {
+        xp: 15,
+        level: 1,
+        streak: 1,
+        cases_completed: 1,
+        correct_answers: 3,
+        total_answers: 4,
+        last_case_date: new Date().toISOString()
       },
       replacementSlot: {
         caseToken: "token-2",
@@ -313,6 +325,16 @@ describe("AppProvider protected practice recovery", () => {
     expect(submitProtectedPracticeCase).toHaveBeenCalledTimes(1);
     expect(syncStateText()).toBe("idle");
     expect(loadPendingPracticeSubmission(localStorage)).toBeNull();
+    expect(storageAdapter.saveUserState).toHaveBeenCalledWith(expect.objectContaining({
+      recentResults: [false],
+      recentPracticeAttempts: [
+        expect.objectContaining({
+          difficulty: "advanced",
+          correctSteps: 3,
+          totalSteps: 4
+        })
+      ]
+    }));
   });
 
   it("uses timed background retries and does not overlap in-flight submissions", async () => {

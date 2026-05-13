@@ -77,6 +77,7 @@ interface ResultsXpAnimationState {
   xpProgressLabel: string;
   progressValue: number;
   animate: boolean;
+  animationMode?: "default" | "steady";
   flash: boolean;
 }
 
@@ -433,6 +434,7 @@ export function ProtectedPracticeScreen() {
             xpProgressLabel: fullLevelLabel,
             progressValue: 100,
             animate: true,
+            animationMode: "steady",
             flash: false
           });
         }, elapsedMs));
@@ -442,7 +444,11 @@ export function ProtectedPracticeScreen() {
           setDisplayedResultsXp(current => current ? { ...current, flash: true } : current);
         }, elapsedMs));
 
-        elapsedMs += 520;
+        timeoutIds.push(window.setTimeout(() => {
+          setDisplayedResultsXp(current => current ? { ...current, flash: false } : current);
+        }, elapsedMs + 520));
+
+        elapsedMs += 80;
         timeoutIds.push(window.setTimeout(() => {
           setDisplayedResultsProgress(0);
           setDisplayedResultsXp({
@@ -450,11 +456,11 @@ export function ProtectedPracticeScreen() {
             xpProgressLabel: getResultsXpResetLabel(progressionConfig, level + 1),
             progressValue: 0,
             animate: false,
-            flash: false
+            flash: true
           });
         }, elapsedMs));
 
-        elapsedMs += 120;
+        elapsedMs += 16;
       }
 
       timeoutIds.push(window.setTimeout(() => {
@@ -960,6 +966,13 @@ export function ProtectedPracticeScreen() {
         lockedStepResults: state.sessionState.stepResults,
         progressionConfig: payload.progressionConfig ?? null
       });
+      const currentAttempt = {
+        difficulty: normalizedDifficulty,
+        correctSteps: reconciledSummary.correctSteps,
+        totalSteps: reconciledSummary.totalSteps,
+        completedAt: pendingSubmission.clientCompletedAt
+      };
+      const nextRecentPracticeAttempts = appendPracticeAttemptSummary(state.userState, currentAttempt);
       const cappedSummary = {
         ...reconciledSummary,
         totalXpAward: result.progress
@@ -968,18 +981,15 @@ export function ProtectedPracticeScreen() {
               progressionConfig: payload.progressionConfig ?? null,
               userState: state.userState,
               requestedXp: reconciledSummary.totalXpAward,
-              attemptsIncludingCurrent: appendPracticeAttemptSummary(state.userState, {
-                difficulty: normalizedDifficulty,
-                correctSteps: reconciledSummary.correctSteps,
-                totalSteps: reconciledSummary.totalSteps,
-                completedAt: pendingSubmission.clientCompletedAt
-              })
+              attemptsIncludingCurrent: nextRecentPracticeAttempts
             })
       };
       const nextUserState = progressPatch
         ? syncUserStateDerivedFields({
           ...state.userState,
-          ...progressPatch
+          ...progressPatch,
+          recentResults: [...state.userState.recentResults, reconciledSummary.correctSteps === reconciledSummary.totalSteps].slice(-20),
+          recentPracticeAttempts: nextRecentPracticeAttempts
         }, payload.progressionConfig)
         : applyProtectedCaseCompletion({
           userState: state.userState,
@@ -1210,6 +1220,7 @@ export function ProtectedPracticeScreen() {
                 ? finalLevelProgress.progressPercent
                 : displayedResultsXp?.progressValue ?? displayedResultsProgress ?? resultsStartProgress}
               progressAnimate={shouldHoldAtReadinessGate ? false : displayedResultsXp?.animate}
+              progressAnimationMode={displayedResultsXp?.animationMode}
               progressFlash={shouldHoldAtReadinessGate ? true : displayedResultsXp?.flash}
               xpProgressNotice={readinessGateProgressMessage ?? undefined}
               xpProgressBlocked={finalLevelProgress.isBlockedByReadinessGate && !shouldHoldAtReadinessGate}
