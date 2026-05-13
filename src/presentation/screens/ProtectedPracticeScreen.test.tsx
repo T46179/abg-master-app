@@ -154,6 +154,7 @@ vi.mock("../../core/progression", () => ({
   getDifficultyMeta: () => [],
   getHighestAccessibleDifficultyKey: () => "beginner",
   getLevelProgress: () => ({ xpIntoLevel: 0, xpForNextLevel: 0, progressPercent: 0, isBlockedByReadinessGate: false }),
+  getMaxReachableLevel: () => 20,
   getReleaseFlags: () => ({ enableCalibrationAccessGuard: false }),
   isPlacementXpBoostActive: () => false,
   mapProgressRowToUserState: () => null,
@@ -747,7 +748,110 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
 
     renderScreen();
 
-    expect(latestLearnUnlockModalProps?.level).toBeNull();
+    expect((latestLearnUnlockModalProps as { level?: unknown } | null)?.level).toBeNull();
+  });
+
+  it("shows the Intermediate unlock modal when the difficulty becomes accessible at level 5", () => {
+    currentState.payload.progressionConfig = {
+      xp_required_per_level: Object.fromEntries(Array.from({ length: 20 }, (_, index) => [index + 1, 100])),
+      difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" },
+      difficulty_unlock_levels: { 1: 1, 2: 5, 3: 10, 4: 15 }
+    } as never;
+    currentState.userState = {
+      ...currentState.userState,
+      xp: 400,
+      level: 5,
+      unlockedDifficulties: ["beginner", "intermediate"]
+    };
+    (currentState.userState as typeof currentState.userState & { intermediateUnlockedAt?: string }).intermediateUnlockedAt = "2026-05-10T00:00:00.000Z";
+    currentState.practiceState.lastCaseSummary = makeCaseSummary({
+      caseToken: "summary-token-intermediate-unlock",
+      totalXpAward: 10,
+      caseData: {
+        case_id: "CASE_INTERMEDIATE_UNLOCK",
+        archetype: "simple_nagma",
+        difficulty_level: 1
+      }
+    });
+
+    renderScreen();
+
+    expect((latestLearnUnlockModalProps as { level?: unknown } | null)?.level).toMatchObject({
+      slug: "intermediate"
+    });
+  });
+
+  it("does not show the Intermediate unlock modal when level 5 is reached but access is not available", () => {
+    currentState.payload.progressionConfig = {
+      xp_required_per_level: Object.fromEntries(Array.from({ length: 20 }, (_, index) => [index + 1, 100])),
+      difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" },
+      difficulty_unlock_levels: { 1: 1, 2: 5, 3: 10, 4: 15 }
+    } as never;
+    currentState.userState = {
+      ...currentState.userState,
+      xp: 400,
+      level: 5,
+      unlockedDifficulties: ["beginner"]
+    };
+    currentState.practiceState.lastCaseSummary = makeCaseSummary({
+      caseToken: "summary-token-intermediate-threshold-only",
+      totalXpAward: 10,
+      caseData: {
+        case_id: "CASE_INTERMEDIATE_THRESHOLD_ONLY",
+        archetype: "simple_nagma",
+        difficulty_level: 1
+      }
+    });
+
+    renderScreen();
+
+    expect((latestLearnUnlockModalProps as { level?: unknown } | null)?.level).toBeNull();
+  });
+
+  it("does not show the same difficulty unlock modal again after it is dismissed and remounted", () => {
+    currentState.payload.progressionConfig = {
+      xp_required_per_level: Object.fromEntries(Array.from({ length: 20 }, (_, index) => [index + 1, 100])),
+      difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" },
+      difficulty_unlock_levels: { 1: 1, 2: 5, 3: 10, 4: 15 }
+    } as never;
+    currentState.userState = {
+      ...currentState.userState,
+      xp: 400,
+      level: 5,
+      unlockedDifficulties: ["beginner", "intermediate"]
+    };
+    currentState.practiceState.lastCaseSummary = makeCaseSummary({
+      caseToken: "summary-token-intermediate-dismiss-once",
+      totalXpAward: 10,
+      caseData: {
+        case_id: "CASE_INTERMEDIATE_DISMISS_ONCE",
+        archetype: "simple_nagma",
+        difficulty_level: 1
+      }
+    });
+
+    renderScreen();
+
+    expect((latestLearnUnlockModalProps as { level?: unknown } | null)?.level).toMatchObject({
+      slug: "intermediate"
+    });
+
+    act(() => {
+      (latestLearnUnlockModalProps?.onClose as () => void)?.();
+    });
+
+    act(() => {
+      root.unmount();
+    });
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    latestLearnUnlockModalProps = null;
+
+    renderScreen();
+
+    expect((latestLearnUnlockModalProps as { level?: unknown } | null)?.level).toBeNull();
   });
 
   it("shows the Advanced unlock modal when the difficulty actually becomes accessible", () => {
@@ -774,7 +878,7 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
 
     renderScreen();
 
-    expect(latestLearnUnlockModalProps?.level).toMatchObject({
+    expect((latestLearnUnlockModalProps as { level?: unknown } | null)?.level).toMatchObject({
       slug: "advanced"
     });
   });
@@ -803,7 +907,7 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
 
     renderScreen();
 
-    expect(latestLearnUnlockModalProps?.level).toMatchObject({
+    expect((latestLearnUnlockModalProps as { level?: unknown } | null)?.level).toMatchObject({
       slug: "master"
     });
   });

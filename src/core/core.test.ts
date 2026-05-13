@@ -30,7 +30,8 @@ import {
   getMaxReachableLevel,
   getReleaseSignature,
   isPlacementXpBoostActive,
-  mapDefaultUserState
+  mapDefaultUserState,
+  syncUserStateDerivedFields
 } from "./progression";
 import { createMemoryStorage } from "./storage";
 import { getRuntimeAssetPath, isRuntimeBootstrapError, loadCasesPayload, normalizeCasesPayload } from "./runtime";
@@ -394,6 +395,21 @@ describe("progression helpers", () => {
         29: 960
       }
     })).toBe(30);
+  });
+
+  it("uses the final configured transition as the max-level full bar", () => {
+    const progressionConfig = { xp_required_per_level: { 1: 30, 2: 40 } };
+    const userState = syncUserStateDerivedFields(createUserState({ xp: 70, level: 99 }), progressionConfig);
+    const progress = getLevelProgress(progressionConfig, userState);
+
+    expect(userState.level).toBe(3);
+    expect(progress).toMatchObject({
+      xpIntoLevel: 40,
+      xpForNextLevel: 40,
+      progressPercent: 100,
+      isMaxLevel: true
+    });
+    expect(getAwardableXp(progressionConfig, userState.xp, 25)).toBe(0);
   });
 
   it("returns zero awardable xp once the configured cap has been reached", () => {

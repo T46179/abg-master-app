@@ -171,6 +171,7 @@ interface ResultsSummaryCardProps {
 interface ResultsSummaryHeaderProps {
   summary: CaseSummary;
   level: number;
+  levelLabel?: string;
   xpProgressLabel: string;
   progressValue: number;
   progressAnimate?: boolean;
@@ -198,7 +199,7 @@ export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
 
       <div className="results-summary-card__progress">
         <div className="dashboard-progress-card__meta">
-          <span>Level {props.level}</span>
+          <span>{props.levelLabel ?? `Level ${props.level}`}</span>
           <span className={props.xpProgressNotice ? "results-summary-card__progress-notice" : undefined}>
             {props.xpProgressNotice ?? props.xpProgressLabel}
           </span>

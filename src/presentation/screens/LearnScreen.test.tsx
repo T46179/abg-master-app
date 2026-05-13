@@ -69,7 +69,7 @@ describe("Learn screens", () => {
     });
   }
 
-  it("renders level 1 learn modules with intermediate available and later modules locked", () => {
+  it("renders level 1 learn modules with intermediate and later modules locked", () => {
     renderPath("/learn");
 
     expect(container.textContent).toContain("Foundations");
@@ -102,12 +102,11 @@ describe("Learn screens", () => {
 
     expect(moduleCards).toHaveLength(5);
     expect(moduleCards.every(card => card.classList.contains("is-accent-preview"))).toBe(true);
-    expect(lockedButtons).toHaveLength(2);
-    expect(unlockedLinks).toHaveLength(3);
+    expect(lockedButtons).toHaveLength(3);
+    expect(unlockedLinks).toHaveLength(2);
     expect(unlockedLinks.map(link => link.getAttribute("href"))).toEqual([
       "/learn/foundations?mode=start",
-      "/learn/beginner?mode=start",
-      "/learn/intermediate?mode=start"
+      "/learn/beginner?mode=start"
     ]);
     expect(unlockedLinks.every(link => link.textContent?.includes("Start Learning"))).toBe(true);
     expect(container.querySelectorAll(".learn-level-card__progress .progress-bar__fill")).toHaveLength(0);
@@ -303,7 +302,7 @@ describe("Learn screens", () => {
   });
 
   it("allows direct lesson routes for intermediate now that the module is available", () => {
-    mockUserLevel.value = 1;
+    mockUserLevel.value = 5;
 
     renderPath("/learn/intermediate?source=landing");
 
@@ -464,7 +463,7 @@ describe("Learn screens", () => {
   });
 
   it("resumes the stored intermediate module when it is available", () => {
-    mockUserLevel.value = 1;
+    mockUserLevel.value = 5;
     window.localStorage.setItem("abg-master:learn:last-module", "intermediate");
 
     renderPath("/learn");
@@ -474,7 +473,7 @@ describe("Learn screens", () => {
   });
 
   it("shows the requested intermediate pages in order while keeping the module chrome", () => {
-    mockUserLevel.value = 1;
+    mockUserLevel.value = 5;
     renderPath("/learn/intermediate");
 
     const expectedTitles = [
@@ -612,7 +611,7 @@ describe("Learn screens", () => {
 });
 describe("learn unlock milestone detection for practice results", () => {
   it("detects the highest newly crossed learn unlock threshold", () => {
-    expect(getLearnUnlockMilestoneForLevelTransition(4, 5)).toBeNull();
+    expect(getLearnUnlockMilestoneForLevelTransition(4, 5)?.title).toBe("Intermediate");
     expect(getLearnUnlockMilestoneForLevelTransition(9, 10)?.title).toBe("Advanced");
     expect(getLearnUnlockMilestoneForLevelTransition(14, 15)?.title).toBe("Master");
     expect(getLearnUnlockMilestoneForLevelTransition(24, 25)?.title).toBe("Master +");

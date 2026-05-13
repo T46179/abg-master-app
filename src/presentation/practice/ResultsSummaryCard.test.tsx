@@ -557,6 +557,26 @@ describe("ResultsSummaryCard", () => {
     expect(container.querySelector(".progress-bar__fill")).not.toBeNull();
   });
 
+  it("can label the summary header as max level", () => {
+    const summary = buildSummary([]);
+
+    act(() => {
+      root.render(
+        <ResultsSummaryHeader
+          summary={summary}
+          level={20}
+          levelLabel="Max Level"
+          xpProgressLabel="600 / 600 XP"
+          progressValue={100}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("Max Level");
+    expect(container.textContent).not.toContain("Level 20");
+    expect(container.textContent).toContain("600 / 600 XP");
+  });
+
   it("marks the summary XP bar as blocked when readiness gates cap progress", () => {
     const summary = buildSummary([]);
 

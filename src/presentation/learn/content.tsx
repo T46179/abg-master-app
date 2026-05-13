@@ -1577,7 +1577,7 @@ export const learnLevels: LearnLevelConfig[] = [
     subtitle: "Understand compensation",
     description: "Learn expected compensation and spot when a second disorder is hiding.",
     badge: "Module 2",
-    unlockLevel: 1,
+    unlockLevel: 5,
     unlockCopy: {
       intro: "Intermediate learning is now available",
       subtitle: "Compensation is now part of your blood gas interpretation pathway",

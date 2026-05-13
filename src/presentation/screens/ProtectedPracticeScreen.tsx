@@ -48,6 +48,7 @@ import {
   getDifficultyLabel,
   getDifficultyMeta,
   getLevelProgress,
+  getMaxReachableLevel,
   getReleaseFlags,
   isPlacementXpBoostActive,
   mapProgressRowToUserState,
@@ -80,6 +81,8 @@ interface ResultsXpAnimationState {
 }
 
 const animatedResultsSummaryKeys = new Set<string>();
+const dismissedLearnUnlockKeys = new Set<string>();
+const DIFFICULTY_UNLOCK_MODAL_SLUGS = new Set(["intermediate", "advanced", "master"]);
 
 function formatResultsXpProgressLabel(xpIntoLevel: number, xpForNextLevel: number) {
   return `${xpIntoLevel} / ${xpForNextLevel || xpIntoLevel} XP`;
@@ -200,6 +203,7 @@ export function ProtectedPracticeScreen() {
     hasExistingPracticeProgress
   );
   const finalLevelProgress = getLevelProgress(payload?.progressionConfig ?? null, state.userState);
+  const maxReachableLevel = getMaxReachableLevel(payload?.progressionConfig ?? null);
   const preAwardUserState = summary
     ? syncUserStateDerivedFields(
         {
@@ -246,7 +250,7 @@ export function ProtectedPracticeScreen() {
     ? getLearnUnlockMilestoneForLevelTransition(preAwardUserState.level, state.userState.level)
     : null;
   const learnUnlockMilestone = levelUnlockMilestone && (
-    !["advanced", "master"].includes(levelUnlockMilestone.slug) ||
+    !DIFFICULTY_UNLOCK_MODAL_SLUGS.has(levelUnlockMilestone.slug) ||
     hasNewlyAccessibleDifficulty(levelUnlockMilestone.slug, levelUnlockMilestone.unlockLevel)
   )
     ? levelUnlockMilestone
@@ -254,6 +258,12 @@ export function ProtectedPracticeScreen() {
   const learnUnlockKey = summary && learnUnlockMilestone
     ? `${summary.caseToken ?? summary.caseId}-${learnUnlockMilestone.unlockLevel}`
     : null;
+  const shouldShowLearnUnlockModal = Boolean(
+    learnUnlockKey &&
+    learnUnlockMilestone &&
+    learnUnlockKey !== dismissedLearnUnlockKey &&
+    !dismissedLearnUnlockKeys.has(learnUnlockKey)
+  );
   const interactionLocked = Boolean(
     state.practiceState.pendingSubmission &&
     state.practiceState.pendingSubmission.caseToken === state.practiceState.currentCaseToken
@@ -1161,13 +1171,24 @@ export function ProtectedPracticeScreen() {
       }
     };
   });
+  const displayedSummaryLevel = shouldHoldAtReadinessGate
+    ? state.userState.level
+    : displayedResultsXp?.level ?? state.userState.level;
+  const displayedSummaryLevelLabel = finalLevelProgress.isMaxLevel &&
+    maxReachableLevel != null &&
+    displayedSummaryLevel >= maxReachableLevel
+    ? "Max Level"
+    : undefined;
 
   return (
     <>
       <LearnUnlockModal
-        level={learnUnlockKey !== dismissedLearnUnlockKey ? learnUnlockMilestone : null}
+        level={shouldShowLearnUnlockModal ? learnUnlockMilestone : null}
         onClose={() => {
-          if (learnUnlockKey) setDismissedLearnUnlockKey(learnUnlockKey);
+          if (learnUnlockKey) {
+            dismissedLearnUnlockKeys.add(learnUnlockKey);
+            setDismissedLearnUnlockKey(learnUnlockKey);
+          }
         }}
       />
 
@@ -1182,7 +1203,8 @@ export function ProtectedPracticeScreen() {
           {summary ? (
             <ResultsSummaryHeader
               summary={summary}
-              level={shouldHoldAtReadinessGate ? state.userState.level : displayedResultsXp?.level ?? state.userState.level}
+              level={displayedSummaryLevel}
+              levelLabel={displayedSummaryLevelLabel}
               xpProgressLabel={displayedResultsXp?.xpProgressLabel ?? resultsXpFinalLabel}
               progressValue={shouldHoldAtReadinessGate
                 ? finalLevelProgress.progressPercent
