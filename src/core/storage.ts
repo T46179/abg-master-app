@@ -218,6 +218,7 @@ function isEmptyRemoteProgress(source: Partial<ProgressRow> | null | undefined):
     source?.intermediate_unlocked_at ||
     source?.advanced_unlocked_at ||
     source?.master_unlocked_at ||
+    source?.placement_boost_completed_at ||
     source?.reset_at ||
     hasMeaningfulCoreProgress(mapProgressRowToUserState(source))
   );
@@ -408,7 +409,7 @@ export function createSupabaseStorageAdapter(
     return runRemote(async supabase => {
       const { data, error } = await supabase
         .from("user_progress")
-        .select("xp, level, streak, cases_completed, correct_answers, total_answers, last_case_date, progression_version, beta_release_number, calibration_completed, calibration_placement, calibration_completed_at, intermediate_unlocked_at, advanced_unlocked_at, master_unlocked_at, reset_at, updated_at")
+        .select("xp, level, streak, cases_completed, correct_answers, total_answers, last_case_date, progression_version, beta_release_number, calibration_completed, calibration_placement, calibration_completed_at, placement_boost_completed_at, intermediate_unlocked_at, advanced_unlocked_at, master_unlocked_at, reset_at, updated_at")
         .eq("user_id", options.userId)
         .eq("progression_version", state.progressionVersion ?? "v2")
         .eq("beta_release_number", state.betaReleaseNumber ?? 2)

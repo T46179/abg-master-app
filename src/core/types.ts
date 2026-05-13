@@ -25,6 +25,12 @@ export interface SpeedBonusTier {
   bonus?: number;
 }
 
+export interface PlacementXpBoostConfig {
+  targetLevel?: number;
+  multiplier?: number;
+  eligibleDifficulties?: number[];
+}
+
 export interface ProgressionConfig {
   version?: string;
   beta_release_number?: number;
@@ -39,6 +45,7 @@ export interface ProgressionConfig {
     minStepAccuracyPercent?: number;
     requiredDifficulty?: string;
   }>;
+  placement_xp_boosts?: Partial<Record<CalibrationPlacement, PlacementXpBoostConfig | null>>;
   free_daily_case_limit?: number;
   difficulty_labels?: Record<string, string>;
 }
@@ -239,6 +246,7 @@ export interface UserState {
   intermediateUnlockedAt?: string | null;
   advancedUnlockedAt?: string | null;
   masterUnlockedAt?: string | null;
+  placementBoostCompletedAt?: string | null;
   resetAt?: string | null;
 }
 
@@ -374,6 +382,7 @@ export interface ProgressRow {
   calibration_completed?: boolean | null;
   calibration_placement?: CalibrationPlacement | null;
   calibration_completed_at?: string | null;
+  placement_boost_completed_at?: string | null;
   intermediate_unlocked_at?: string | null;
   advanced_unlocked_at?: string | null;
   master_unlocked_at?: string | null;

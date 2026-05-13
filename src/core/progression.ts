@@ -556,6 +556,7 @@ export function mapProgressRowToUserState(source: Partial<ProgressRow> | null | 
     calibrationCompleted: Boolean(source.calibration_completed),
     calibrationPlacement: source.calibration_placement ?? null,
     calibrationCompletedAt: source.calibration_completed_at ?? null,
+    placementBoostCompletedAt: source.placement_boost_completed_at ?? null,
     intermediateUnlockedAt: source.intermediate_unlocked_at ?? null,
     advancedUnlockedAt: source.advanced_unlocked_at ?? null,
     masterUnlockedAt: source.master_unlocked_at ?? null,

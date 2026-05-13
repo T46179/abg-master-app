@@ -14,27 +14,27 @@
     },
     "base_xp_by_difficulty": {
       "1": 10,
-      "2": 15,
-      "3": 25,
-      "4": 40
+      "2": 25,
+      "3": 90,
+      "4": 120
     },
-    "perfect_case_bonus_percent": 0.1,
+    "perfect_case_bonus_percent": 0.25,
     "speed_bonus_tiers": [
       {
         "max_seconds": 30,
-        "bonus": 10
+        "bonus": 3
       },
       {
         "max_seconds": 45,
-        "bonus": 7
+        "bonus": 2
       },
       {
         "max_seconds": 60,
-        "bonus": 5
+        "bonus": 1
       },
       {
         "max_seconds": 90,
-        "bonus": 3
+        "bonus": 0
       },
       {
         "max_seconds": 999999,
@@ -56,30 +56,26 @@
       }
     ],
     "xp_required_per_level": {
-      "1": 30,
-      "2": 40,
-      "3": 50,
-      "4": 60,
-      "5": 80,
-      "6": 100,
-      "7": 120,
-      "8": 140,
-      "9": 160,
-      "10": 200,
-      "11": 240,
-      "12": 280,
-      "13": 320,
-      "14": 360,
-      "15": 400,
-      "16": 440,
-      "17": 480,
-      "18": 520,
-      "19": 560,
-      "20": 600,
-      "21": 640,
-      "22": 680,
-      "23": 720,
-      "24": 760
+      "1": 20,
+      "2": 25,
+      "3": 35,
+      "4": 45,
+      "5": 60,
+      "6": 75,
+      "7": 90,
+      "8": 110,
+      "9": 130,
+      "10": 160,
+      "11": 190,
+      "12": 220,
+      "13": 260,
+      "14": 300,
+      "15": 350,
+      "16": 400,
+      "17": 450,
+      "18": 500,
+      "19": 550,
+      "20": 600
     },
     "difficulty_unlock_levels": {
       "1": 1,
@@ -89,14 +85,31 @@
     },
     "performance_unlock_requirements": {
       "advanced": {
-        "lastCases": 10,
+        "lastCases": 5,
         "minStepAccuracyPercent": 75,
         "requiredDifficulty": "any_practice"
       },
       "master": {
-        "lastCases": 10,
+        "lastCases": 5,
         "minStepAccuracyPercent": 75,
         "requiredDifficulty": "advanced"
+      }
+    },
+    "placement_xp_boosts": {
+      "beginner": null,
+      "intermediate": {
+        "targetLevel": 5,
+        "multiplier": 2.0,
+        "eligibleDifficulties": [
+          2
+        ]
+      },
+      "advanced": {
+        "targetLevel": 10,
+        "multiplier": 2.0,
+        "eligibleDifficulties": [
+          3
+        ]
       }
     },
     "free_daily_case_limit": 5,
@@ -113,9 +126,9 @@
     "level_progress": {
       "level": 1,
       "xp_into_level": 0,
-      "xp_needed_for_next_level": 30,
+      "xp_needed_for_next_level": 20,
       "current_level_start_xp": 0,
-      "next_level_total_xp": 30
+      "next_level_total_xp": 20
     },
     "unlocked_difficulty": 1,
     "unlocked_difficulty_label": "beginner",
@@ -133,9 +146,9 @@
       "level_progress": {
         "level": 1,
         "xp_into_level": 0,
-        "xp_needed_for_next_level": 30,
+        "xp_needed_for_next_level": 20,
         "current_level_start_xp": 0,
-        "next_level_total_xp": 30
+        "next_level_total_xp": 20
       },
       "unlocked_difficulty": 1,
       "unlocked_difficulty_label": "beginner",
@@ -169,7 +182,7 @@
       {
         "difficulty_level": 4,
         "label": "Master",
-        "unlock_level": 20,
+        "unlock_level": 15,
         "is_unlocked": false,
         "is_locked": true
       }

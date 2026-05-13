@@ -1,7 +1,7 @@
 {
   "delivery_mode": "protected_runtime",
   "protected_payload_mode": "practice_learning",
-  "content_version": "beta-2_2026-05-10",
+  "content_version": "beta-2_2026-05-13",
   "progression_config": {
     "version": "v2",
     "beta_release_number": 2,
@@ -15,8 +15,8 @@
     "base_xp_by_difficulty": {
       "1": 10,
       "2": 25,
-      "3": 65,
-      "4": 90
+      "3": 90,
+      "4": 120
     },
     "perfect_case_bonus_percent": 0.25,
     "speed_bonus_tiers": [
@@ -93,6 +93,23 @@
         "lastCases": 5,
         "minStepAccuracyPercent": 75,
         "requiredDifficulty": "advanced"
+      }
+    },
+    "placement_xp_boosts": {
+      "beginner": null,
+      "intermediate": {
+        "targetLevel": 5,
+        "multiplier": 2.0,
+        "eligibleDifficulties": [
+          2
+        ]
+      },
+      "advanced": {
+        "targetLevel": 10,
+        "multiplier": 2.0,
+        "eligibleDifficulties": [
+          3
+        ]
       }
     },
     "free_daily_case_limit": 5,

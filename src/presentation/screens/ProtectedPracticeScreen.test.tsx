@@ -537,8 +537,6 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
         correctSteps: 0,
         totalSteps: 1
       }),
-      stepResults: [],
-      explanation: { overview: "", sections: [] },
       replacementSlot: makePracticeSlot(),
       progress: { xp: 1717, level: 14 }
     });

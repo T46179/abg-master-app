@@ -14,7 +14,8 @@ export async function completeCalibrationProgress(input: {
     p_beta_release_number: getBetaReleaseNumber(input.progressionConfig),
     p_placement: input.placement,
     p_calibration_version: input.completion.version,
-    p_attempt_payload: input.attemptPayload ?? {}
+    p_attempt_payload: input.attemptPayload ?? {},
+    p_progression_config: input.progressionConfig ?? {}
   });
 
   if (error) throw error;
