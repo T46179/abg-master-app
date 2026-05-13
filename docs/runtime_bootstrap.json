@@ -1,7 +1,7 @@
 {
   "delivery_mode": "protected_runtime",
   "protected_payload_mode": "practice_learning",
-  "content_version": "beta-2_2026-05-10",
+  "content_version": "beta-2_2026-05-13",
   "progression_config": {
     "version": "v2",
     "beta_release_number": 2,
@@ -74,8 +74,7 @@
       "16": 400,
       "17": 450,
       "18": 500,
-      "19": 550,
-      "20": 600
+      "19": 600
     },
     "difficulty_unlock_levels": {
       "1": 1,
