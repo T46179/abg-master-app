@@ -1213,8 +1213,16 @@ button:disabled {
   width: 1.45rem;
   height: 1.45rem;
   border-radius: 999px;
+}
+
+.case-metadata-icon--authored {
   background: #ebe0ff;
   color: #8a5cf6;
+}
+
+.case-metadata-icon--boosted-xp {
+  background: #FFF7E8;
+  color: #FFE0B2;
 }
 
 .case-metadata-icon__svg {

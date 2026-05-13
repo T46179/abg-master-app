@@ -29,6 +29,7 @@ import {
   getLevelProgress,
   getMaxReachableLevel,
   getReleaseSignature,
+  isPlacementXpBoostActive,
   mapDefaultUserState
 } from "./progression";
 import { createMemoryStorage } from "./storage";
@@ -571,6 +572,36 @@ describe("progression helpers", () => {
       "advanced",
       "master"
     ]);
+  });
+
+  it("detects active placement XP boosts for eligible placement cases only", () => {
+    const progressionConfig = {
+      placement_xp_boosts: {
+        beginner: null,
+        intermediate: { targetLevel: 5, multiplier: 2, eligibleDifficulties: [2] },
+        advanced: { targetLevel: 10, multiplier: 2, eligibleDifficulties: [3] }
+      }
+    };
+
+    expect(isPlacementXpBoostActive({
+      progressionConfig,
+      userState: createUserState({ calibrationPlacement: "intermediate", level: 4 }),
+      difficultyLevel: 2
+    })).toBe(true);
+    expect(isPlacementXpBoostActive({
+      progressionConfig,
+      userState: createUserState({ calibrationPlacement: "intermediate", level: 4 }),
+      difficultyLevel: 3
+    })).toBe(false);
+    expect(isPlacementXpBoostActive({
+      progressionConfig,
+      userState: createUserState({
+        calibrationPlacement: "advanced",
+        level: 9,
+        placementBoostCompletedAt: "2026-05-10T00:00:00Z"
+      }),
+      difficultyLevel: 3
+    })).toBe(false);
   });
 
   it("builds the release signature from version and beta release only", () => {

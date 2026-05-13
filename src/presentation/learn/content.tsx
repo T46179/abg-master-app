@@ -1631,7 +1631,7 @@ export const learnLevels: LearnLevelConfig[] = [
     subtitle: "Detect mixed disorders",
     description: "Interpret ABGs that do not fit a single clean explanation.",
     badge: "Module 4",
-    unlockLevel: 20,
+    unlockLevel: 15,
     comingSoon: true,
     unlockCopy: {
       intro: "Master learning is now available.",

@@ -49,6 +49,7 @@ import {
   getDifficultyMeta,
   getLevelProgress,
   getReleaseFlags,
+  isPlacementXpBoostActive,
   mapProgressRowToUserState,
   normalizeDifficultyKey,
   syncUserStateDerivedFields
@@ -78,6 +79,8 @@ interface ResultsXpAnimationState {
   flash: boolean;
 }
 
+const animatedResultsSummaryKeys = new Set<string>();
+
 function formatResultsXpProgressLabel(xpIntoLevel: number, xpForNextLevel: number) {
   return `${xpIntoLevel} / ${xpForNextLevel || xpIntoLevel} XP`;
 }
@@ -89,6 +92,11 @@ function getResultsXpResetLabel(progressionConfig: ProgressionConfig | null, lev
 
 function getResultsXpRequiredForLevel(progressionConfig: ProgressionConfig | null, level: number) {
   return Number(progressionConfig?.xp_required_per_level?.[level] ?? 0);
+}
+
+function getResultsSummaryAnimationKey(summary: { caseToken?: string | null; caseId: string } | null | undefined) {
+  if (!summary) return null;
+  return summary.caseToken ?? summary.caseId;
 }
 
 function getReadinessGateProgressMessage(progressionConfig: ProgressionConfig | null, blockedDifficulty: string | null | undefined) {
@@ -205,6 +213,17 @@ export function ProtectedPracticeScreen() {
   const resultsStartProgress = startingLevelProgress.progressPercent;
   const resultsXpStartLabel = formatResultsXpProgressLabel(startingLevelProgress.xpIntoLevel, startingLevelProgress.xpForNextLevel);
   const resultsXpFinalLabel = formatResultsXpProgressLabel(finalLevelProgress.xpIntoLevel, finalLevelProgress.xpForNextLevel);
+  const summaryAnimationKey = getResultsSummaryAnimationKey(summary);
+  const currentCaseBoostedXp = isPlacementXpBoostActive({
+    progressionConfig: payload?.progressionConfig ?? null,
+    userState: state.userState,
+    difficultyLevel: currentCase?.difficulty_level
+  });
+  const summaryBoostedXp = isPlacementXpBoostActive({
+    progressionConfig: payload?.progressionConfig ?? null,
+    userState: preAwardUserState,
+    difficultyLevel: summary?.caseData.difficulty_level
+  });
   const [displayedResultsXp, setDisplayedResultsXp] = useState<ResultsXpAnimationState | null>(null);
   const shouldHoldAtReadinessGate = Boolean(
     summary &&
@@ -343,6 +362,22 @@ export function ProtectedPracticeScreen() {
     const progressionConfig = payload?.progressionConfig ?? null;
     const finalLevel = state.userState.level;
 
+    if (summaryAnimationKey && animatedResultsSummaryKeys.has(summaryAnimationKey)) {
+      setDisplayedResultsProgress(finalLevelProgress.progressPercent);
+      setDisplayedResultsXp({
+        level: finalLevel,
+        xpProgressLabel: resultsXpFinalLabel,
+        progressValue: finalLevelProgress.progressPercent,
+        animate: false,
+        flash: false
+      });
+      return () => undefined;
+    }
+
+    if (summaryAnimationKey) {
+      animatedResultsSummaryKeys.add(summaryAnimationKey);
+    }
+
     if (shouldHoldAtReadinessGate) {
       setDisplayedResultsProgress(finalLevelProgress.progressPercent);
       setDisplayedResultsXp({
@@ -443,6 +478,7 @@ export function ProtectedPracticeScreen() {
     shouldHoldAtReadinessGate,
     startingLevelProgress.xpForNextLevel,
     state.userState.level,
+    summaryAnimationKey,
     summary?.caseId
   ]);
 
@@ -1155,6 +1191,7 @@ export function ProtectedPracticeScreen() {
               progressFlash={shouldHoldAtReadinessGate ? true : displayedResultsXp?.flash}
               xpProgressNotice={readinessGateProgressMessage ?? undefined}
               xpProgressBlocked={finalLevelProgress.isBlockedByReadinessGate && !shouldHoldAtReadinessGate}
+              boostedXp={summaryBoostedXp}
             />
           ) : (
             <PracticeDifficultyRail items={difficultyItems} />
@@ -1209,6 +1246,7 @@ export function ProtectedPracticeScreen() {
                   : null
               }
               isSubmittingCase={isSubmittingCase}
+              boostedXp={currentCaseBoostedXp}
             />
           ) : state.practiceState.syncState === "unavailable" ? (
             <Surface className="practice-alert-card">

@@ -1,6 +1,16 @@
+import type { ReactNode } from "react";
 import type { CaseData } from "../../core/types";
+import flashIcon from "../../assets/icons/flash.svg";
 
 const AUTHORED_CASE_TOOLTIP = "This case has been adapted from a real-life clinical scenario";
+const BOOSTED_XP_TOOLTIP = "This case earns bonus XP";
+
+interface CaseMetadataIconItem {
+  key: string;
+  className: string;
+  tooltip: string;
+  icon: ReactNode;
+}
 
 function StethoscopeIcon() {
   return (
@@ -12,17 +22,43 @@ function StethoscopeIcon() {
   );
 }
 
-export function CaseMetadataIcons({ caseItem }: { caseItem?: Pick<CaseData, "source_type"> | null }) {
-  if (caseItem?.source_type !== "authored") return null;
+export function CaseMetadataIcons({
+  caseItem,
+  boostedXp = false
+}: {
+  caseItem?: Pick<CaseData, "source_type"> | null;
+  boostedXp?: boolean;
+}) {
+  const items: CaseMetadataIconItem[] = [];
 
-  return (
-    <span className="case-metadata-icons" aria-label={AUTHORED_CASE_TOOLTIP}>
-      <span className="case-metadata-icon case-metadata-icon--authored" aria-hidden="true">
-        <StethoscopeIcon />
+  if (caseItem?.source_type === "authored") {
+    items.push({
+      key: "authored",
+      className: "case-metadata-icon--authored",
+      tooltip: AUTHORED_CASE_TOOLTIP,
+      icon: <StethoscopeIcon />
+    });
+  }
+
+  if (boostedXp) {
+    items.push({
+      key: "boosted-xp",
+      className: "case-metadata-icon--boosted-xp",
+      tooltip: BOOSTED_XP_TOOLTIP,
+      icon: <img className="case-metadata-icon__svg" src={flashIcon} alt="" aria-hidden="true" />
+    });
+  }
+
+  if (!items.length) return null;
+
+  return items.map(item => (
+    <span key={item.key} className="case-metadata-icons" aria-label={item.tooltip}>
+      <span className={`case-metadata-icon ${item.className}`} aria-hidden="true">
+        {item.icon}
       </span>
       <span className="case-metadata-icons__tooltip" role="tooltip">
-        {AUTHORED_CASE_TOOLTIP}
+        {item.tooltip}
       </span>
     </span>
-  );
+  ));
 }

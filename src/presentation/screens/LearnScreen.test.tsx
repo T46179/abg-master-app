@@ -614,7 +614,7 @@ describe("learn unlock milestone detection for practice results", () => {
   it("detects the highest newly crossed learn unlock threshold", () => {
     expect(getLearnUnlockMilestoneForLevelTransition(4, 5)).toBeNull();
     expect(getLearnUnlockMilestoneForLevelTransition(9, 10)?.title).toBe("Advanced");
-    expect(getLearnUnlockMilestoneForLevelTransition(19, 20)?.title).toBe("Master");
+    expect(getLearnUnlockMilestoneForLevelTransition(14, 15)?.title).toBe("Master");
     expect(getLearnUnlockMilestoneForLevelTransition(24, 25)?.title).toBe("Master +");
   });
 

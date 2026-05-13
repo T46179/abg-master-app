@@ -15,6 +15,7 @@ const trackEvent = vi.fn();
 const mockCanStartNewCase = vi.hoisted(() => vi.fn(() => false));
 let latestQuestionFlowCardProps: Record<string, unknown> | null = null;
 let latestResultsSummaryCardProps: Record<string, unknown> | null = null;
+let latestResultsSummaryHeaderProps: Record<string, unknown> | null = null;
 let latestLearnUnlockModalProps: Record<string, unknown> | null = null;
 
 let currentState: {
@@ -154,6 +155,7 @@ vi.mock("../../core/progression", () => ({
   getHighestAccessibleDifficultyKey: () => "beginner",
   getLevelProgress: () => ({ xpIntoLevel: 0, xpForNextLevel: 0, progressPercent: 0, isBlockedByReadinessGate: false }),
   getReleaseFlags: () => ({ enableCalibrationAccessGuard: false }),
+  isPlacementXpBoostActive: () => false,
   mapProgressRowToUserState: () => null,
   normalizeDifficultyKey: (_input: unknown, requestedDifficulty: string) => requestedDifficulty || "beginner",
   syncUserStateDerivedFields: <T extends { xp?: number; level?: number }>(value: T) => ({
@@ -193,7 +195,10 @@ vi.mock("../practice/ResultsSummaryCard", () => ({
     latestResultsSummaryCardProps = props;
     return <button type="button" onClick={() => (props.onNextCase as () => void)?.()}>Next case</button>;
   },
-  ResultsSummaryHeader: () => null
+  ResultsSummaryHeader: (props: Record<string, unknown>) => {
+    latestResultsSummaryHeaderProps = props;
+    return null;
+  }
 }));
 
 vi.mock("../learn/LearnUnlockModal", () => ({
@@ -284,6 +289,7 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
     mockCanStartNewCase.mockReturnValue(false);
     latestQuestionFlowCardProps = null;
     latestResultsSummaryCardProps = null;
+    latestResultsSummaryHeaderProps = null;
     latestLearnUnlockModalProps = null;
     vi.mocked(buildPendingPracticeSubmission).mockReturnValue({
       caseToken: "token-1",
@@ -683,6 +689,41 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
     });
   });
 
+  it("does not replay the XP progress animation when an existing summary is remounted", () => {
+    currentState.userState = {
+      ...currentState.userState,
+      xp: 30,
+      level: 1
+    };
+    currentState.practiceState.lastCaseSummary = makeCaseSummary({
+      caseToken: "summary-token-animation-once",
+      caseId: "CASE_ANIMATION_ONCE",
+      totalXpAward: 10,
+      caseData: {
+        case_id: "CASE_ANIMATION_ONCE",
+        archetype: "simple_nagma",
+        difficulty_level: 1
+      }
+    });
+
+    renderScreen();
+
+    expect((latestResultsSummaryHeaderProps as { progressAnimate?: boolean } | null)?.progressAnimate).toBe(true);
+
+    act(() => {
+      root.unmount();
+    });
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    latestResultsSummaryHeaderProps = null;
+
+    renderScreen();
+
+    expect((latestResultsSummaryHeaderProps as { progressAnimate?: boolean } | null)?.progressAnimate).toBe(false);
+  });
+
   it("does not show the Advanced unlock modal when only the level threshold is reached", () => {
     currentState.payload.progressionConfig = {
       xp_required_per_level: Object.fromEntries(Array.from({ length: 20 }, (_, index) => [index + 1, 100])),
@@ -735,6 +776,35 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
 
     expect(latestLearnUnlockModalProps?.level).toMatchObject({
       slug: "advanced"
+    });
+  });
+
+  it("shows the Master unlock modal when the difficulty actually becomes accessible", () => {
+    currentState.payload.progressionConfig = {
+      xp_required_per_level: Object.fromEntries(Array.from({ length: 20 }, (_, index) => [index + 1, 100])),
+      difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" },
+      difficulty_unlock_levels: { 1: 1, 2: 5, 3: 10, 4: 15 }
+    } as never;
+    currentState.userState = {
+      ...currentState.userState,
+      xp: 1400,
+      level: 15,
+      unlockedDifficulties: ["beginner", "intermediate", "advanced", "master"]
+    };
+    (currentState.userState as typeof currentState.userState & { masterUnlockedAt?: string }).masterUnlockedAt = "2026-05-10T00:00:00.000Z";
+    currentState.practiceState.lastCaseSummary = makeCaseSummary({
+      totalXpAward: 10,
+      caseData: {
+        case_id: "CASE_003",
+        archetype: "simple_nagma",
+        difficulty_level: 3
+      }
+    });
+
+    renderScreen();
+
+    expect(latestLearnUnlockModalProps?.level).toMatchObject({
+      slug: "master"
     });
   });
 

@@ -23,6 +23,7 @@ interface ActivePracticeCaseProps {
   interactionDisabled?: boolean;
   interactionDisabledMessage?: string | null;
   isSubmittingCase?: boolean;
+  boostedXp?: boolean;
 }
 
 export function ActivePracticeCase({
@@ -43,13 +44,14 @@ export function ActivePracticeCase({
   activeStepRef,
   interactionDisabled,
   interactionDisabledMessage,
-  isSubmittingCase
+  isSubmittingCase,
+  boostedXp = false
 }: ActivePracticeCaseProps) {
   return (
     <div className="practice-stage">
       <div className="practice-stage__sidebar">
         <div className="practice-stage__sticky">
-          <ScenarioCard clinicalStem={caseItem.clinical_stem} caseItem={caseItem} />
+          <ScenarioCard clinicalStem={caseItem.clinical_stem} caseItem={caseItem} boostedXp={boostedXp} />
           <ValuePanels
             caseItem={caseItem}
             showAdvancedRanges={showAdvancedRanges}

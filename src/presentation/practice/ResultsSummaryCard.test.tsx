@@ -618,4 +618,23 @@ describe("ResultsSummaryCard", () => {
     expect(container.querySelector(".case-metadata-icon--authored")).not.toBeNull();
     expect(container.textContent).toContain("This case has been adapted from a real-life clinical scenario");
   });
+
+  it("renders boosted XP metadata on the combined summary header", () => {
+    const summary = buildSummary([]);
+
+    act(() => {
+      root.render(
+        <ResultsSummaryHeader
+          summary={summary}
+          level={5}
+          xpProgressLabel="20 / 60 XP"
+          progressValue={33}
+          boostedXp
+        />
+      );
+    });
+
+    expect(container.querySelector(".case-metadata-icon--boosted-xp")).not.toBeNull();
+    expect(container.textContent).toContain("This case earns bonus XP");
+  });
 });

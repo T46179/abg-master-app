@@ -177,6 +177,7 @@ interface ResultsSummaryHeaderProps {
   progressFlash?: boolean;
   xpProgressNotice?: string;
   xpProgressBlocked?: boolean;
+  boostedXp?: boolean;
 }
 
 export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
@@ -192,7 +193,7 @@ export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
             <p>You scored {props.summary.accuracy}% and earned {props.summary.totalXpAward} XP.</p>
           </div>
         </div>
-        <CaseMetadataIcons caseItem={props.summary.caseData} />
+        <CaseMetadataIcons caseItem={props.summary.caseData} boostedXp={props.boostedXp} />
       </div>
 
       <div className="results-summary-card__progress">

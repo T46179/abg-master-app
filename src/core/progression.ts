@@ -450,6 +450,29 @@ export function getEffectiveXpMultiplier(progressionConfig: ProgressionConfig | 
   return Math.max(1, getReleaseFlags(progressionConfig).xp_multiplier);
 }
 
+export function isPlacementXpBoostActive(input: {
+  progressionConfig: ProgressionConfig | null;
+  userState: UserState | null | undefined;
+  difficultyLevel: number | null | undefined;
+}): boolean {
+  const placement = input.userState?.calibrationPlacement;
+  if (!placement || input.userState?.placementBoostCompletedAt) return false;
+
+  const boostConfig = input.progressionConfig?.placement_xp_boosts?.[placement];
+  if (!boostConfig) return false;
+
+  const targetLevel = Number(boostConfig.targetLevel ?? 0);
+  const multiplier = Number(boostConfig.multiplier ?? 1);
+  const difficultyLevel = Number(input.difficultyLevel ?? 0);
+
+  return (
+    targetLevel > Number(input.userState?.level ?? 1) &&
+    multiplier > 1 &&
+    Array.isArray(boostConfig.eligibleDifficulties) &&
+    boostConfig.eligibleDifficulties.includes(difficultyLevel)
+  );
+}
+
 export function getDailyLimit(progressionConfig: ProgressionConfig | null): number {
   return Number(progressionConfig?.free_daily_case_limit ?? 0);
 }

@@ -48,4 +48,30 @@ describe("ScenarioCard", () => {
 
     expect(container.querySelector(".case-metadata-icon--authored")).toBeNull();
   });
+
+  it("renders boosted XP metadata only when bonus XP is active", () => {
+    act(() => {
+      root.render(
+        <ScenarioCard
+          clinicalStem="A boosted teaching stem."
+          caseItem={{ source_type: "generated" }}
+          boostedXp
+        />
+      );
+    });
+
+    expect(container.querySelector(".case-metadata-icon--boosted-xp")).not.toBeNull();
+    expect(container.textContent).toContain("This case earns bonus XP");
+
+    act(() => {
+      root.render(
+        <ScenarioCard
+          clinicalStem="A regular teaching stem."
+          caseItem={{ source_type: "generated" }}
+        />
+      );
+    });
+
+    expect(container.querySelector(".case-metadata-icon--boosted-xp")).toBeNull();
+  });
 });
