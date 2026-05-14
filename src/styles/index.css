@@ -8035,6 +8035,151 @@ button.learn-progress-dots__dot:focus-visible {
   color: var(--color-slate-faint);
 }
 
+.delta-ratio-page .comp-rules-page__header h2 {
+  max-width: 42rem;
+  margin: 0;
+  color: var(--color-slate-muted);
+  font-size: clamp(1.35rem, 3.2vw, 1.7rem);
+  font-weight: 300;
+  letter-spacing: 0;
+  line-height: 1.42;
+}
+
+.delta-ratio-page__section-icon--muted {
+  filter: brightness(0) saturate(100%) invert(28%) sepia(13%) saturate(993%) hue-rotate(176deg) brightness(92%) contrast(86%);
+}
+
+.delta-ratio-page__section-icon--warning {
+  filter: brightness(0) saturate(100%) invert(43%) sepia(61%) saturate(1024%) hue-rotate(354deg) brightness(89%) contrast(92%);
+}
+
+.delta-ratio-page__change-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.delta-ratio-page__quick-cta {
+  display: flex;
+  justify-content: center;
+  margin-top: -2.7rem;
+}
+
+.delta-ratio-page__quick-cta a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  min-height: 2.85rem;
+  padding: 0.45rem 1.15rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 999px;
+  background: var(--color-surface);
+  box-shadow: 0 0.15rem 0.25rem rgba(15, 23, 42, 0.06);
+  color: #334155;
+  font-size: 0.95rem;
+  font-weight: 350;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+.delta-ratio-page__quick-cta a > span {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #067647;
+}
+
+.delta-ratio-page__quick-cta svg {
+  width: 1rem;
+  height: 1rem;
+  color: #94a3b8;
+  transition: transform 180ms ease;
+}
+
+.delta-ratio-page__quick-cta a:hover {
+  border-color: rgba(15, 23, 42, 0.08);
+  background: #fafaf7;
+}
+
+.delta-ratio-page__quick-cta a:hover svg {
+  transform: translateX(0.18rem);
+}
+
+.delta-ratio-page__change-card {
+  display: grid;
+  gap: 1rem;
+  min-height: 0;
+  padding: 1.3rem;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  box-shadow: 0 0.12rem 0.18rem rgba(15, 23, 42, 0.05);
+}
+
+.delta-ratio-page__change-card-label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.delta-ratio-page__change-card-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+}
+
+.delta-ratio-page__change-card-icon img {
+  width: 0.76rem;
+  height: 0.76rem;
+}
+
+.delta-ratio-page__change-card.is-red .delta-ratio-page__change-card-icon {
+  background: #fee4e2;
+}
+
+.delta-ratio-page__change-card.is-red .delta-ratio-page__change-card-icon img {
+  filter: brightness(0) saturate(100%) invert(22%) sepia(74%) saturate(1664%) hue-rotate(343deg) brightness(90%) contrast(92%);
+}
+
+.delta-ratio-page__change-card.is-blue .delta-ratio-page__change-card-icon {
+  background: #e0f2fe;
+}
+
+.delta-ratio-page__change-card.is-blue .delta-ratio-page__change-card-icon img {
+  filter: brightness(0) saturate(100%) invert(34%) sepia(91%) saturate(1179%) hue-rotate(174deg) brightness(91%) contrast(97%);
+}
+
+.delta-ratio-page__change-card h3 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+.delta-ratio-page__change-card.is-red h3 {
+  color: #b42318;
+}
+
+.delta-ratio-page__change-card.is-blue h3 {
+  color: #026aa2;
+}
+
+.delta-ratio-page__change-card p {
+  margin: 0;
+  color: #334155;
+  font-size: 0.95rem;
+  font-weight: 350;
+  letter-spacing: 0;
+  line-height: 1.55;
+}
+
 .comp-rules-page__header > p,
 .comp-rules-page__section > p,
 .comp-rules-page__takeaway p,
@@ -8137,6 +8282,7 @@ button.learn-progress-dots__dot:focus-visible {
 .comp-rules-page__mini-grid article,
 .comp-rules-page__priority-grid article {
   display: grid;
+  position: relative;
   gap: 0.75rem;
   padding: 1.3rem;
   border: 1px solid rgba(15, 23, 42, 0.05);
@@ -8452,6 +8598,421 @@ button.learn-progress-dots__dot:focus-visible {
   line-height: 1.625;
 }
 
+.delta-ratio-page__formula-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
+}
+
+.delta-ratio-page__formula-card > div {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 1.25rem 1.75rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.delta-ratio-page__formula-card > div:nth-child(1),
+.delta-ratio-page__formula-card > div:nth-child(4) {
+  grid-column: 1 / -1;
+}
+
+.delta-ratio-page__formula-card > div:nth-child(2) {
+  border-right: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.delta-ratio-page__formula-card > div:last-child {
+  border-bottom: 0;
+}
+
+.delta-ratio-page__formula-card span,
+.delta-ratio-page__example-card h3,
+.delta-ratio-page__example-body > div > span {
+  color: var(--color-slate-faint);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.delta-ratio-page__formula-card code,
+.delta-ratio-page__formula-row code {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  color: var(--color-slate-strong);
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 400;
+  line-height: 1.55;
+  white-space: nowrap;
+}
+
+.delta-ratio-page__formula-card p {
+  margin: 0;
+  color: var(--color-slate-muted);
+  font-size: 0.95rem;
+  font-weight: 350;
+  line-height: 1.55;
+}
+
+.delta-ratio-page__workflow {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: delta-workflow;
+}
+
+.delta-ratio-page__workflow li {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  min-height: 3.55rem;
+  padding: 0.85rem 1.25rem;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  color: var(--color-slate-strong);
+  font-size: 0.95rem;
+  font-weight: 350;
+  line-height: 1.5;
+  counter-increment: delta-workflow;
+}
+
+.delta-ratio-page__workflow li > span {
+  min-width: 0;
+}
+
+.delta-ratio-page__workflow li::before {
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: var(--color-slate-muted);
+  content: counter(delta-workflow);
+  font-size: 0.82rem;
+}
+
+.delta-ratio-page__workflow li.is-highlighted {
+  border-color: #a7f3d0;
+  background: #dcfae6;
+  color: var(--color-slate-strong);
+}
+
+.delta-ratio-page__workflow li.is-highlighted::before {
+  background: #00875a;
+  color: var(--color-surface);
+}
+
+.delta-ratio-page__icon-link,
+.delta-ratio-page__card-icon-link {
+  display: inline-grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  color: var(--color-slate-muted);
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.delta-ratio-page__icon-link {
+  justify-self: end;
+}
+
+.delta-ratio-page__card-icon-link {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+
+.delta-ratio-page__icon-link img,
+.delta-ratio-page__card-icon-link img {
+  width: 0.82rem;
+  height: 0.82rem;
+  filter: brightness(0) saturate(100%) invert(43%) sepia(14%) saturate(719%) hue-rotate(176deg) brightness(91%) contrast(91%);
+}
+
+.delta-ratio-page__icon-link:hover,
+.delta-ratio-page__card-icon-link:hover {
+  background: #f1f5f9;
+  transform: translateY(-1px);
+}
+
+.delta-ratio-page__table-scroll {
+  overflow-x: auto;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
+}
+
+.delta-ratio-page__table {
+  width: 100%;
+  min-width: 42rem;
+  border-collapse: collapse;
+}
+
+.delta-ratio-page__table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.delta-ratio-page__table th,
+.delta-ratio-page__table td {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.delta-ratio-page__table thead th {
+  color: var(--color-slate-faint);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.delta-ratio-page__table tbody th {
+  width: 8.5rem;
+  font-weight: 350;
+  text-align: center;
+}
+
+.delta-ratio-page__table td {
+  color: var(--color-slate-muted);
+  font-size: 0.95rem;
+  font-weight: 350;
+  line-height: 1.55;
+}
+
+.delta-ratio-page__table td:first-of-type {
+  color: var(--color-slate-strong);
+  font-weight: 350;
+}
+
+.delta-ratio-page__table tbody tr:last-child th,
+.delta-ratio-page__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.delta-ratio-page__ratio-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.45rem;
+  padding: 0.32rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 350;
+  letter-spacing: 0;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.delta-ratio-page__ratio-pill.is-yellow {
+  background: #fef0c7;
+  color: #b54708;
+}
+
+.delta-ratio-page__ratio-pill.is-orange {
+  background: #ffead5;
+  color: #b93815;
+}
+
+.delta-ratio-page__ratio-pill.is-green {
+  background: #dcfae6;
+  color: #00875a;
+}
+
+.delta-ratio-page__ratio-pill.is-blue {
+  background: #dbe4ff;
+  color: #1d4ed8;
+}
+
+.delta-ratio-page__examples {
+  display: grid;
+  gap: 1rem;
+}
+
+.delta-ratio-page__example-card {
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
+}
+
+.delta-ratio-page__example-card h3 {
+  margin: 0;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.delta-ratio-page__example-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.delta-ratio-page__example-body > div {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1.25rem 1.5rem;
+}
+
+.delta-ratio-page__example-body > div:first-child {
+  border-right: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.delta-ratio-page__example-body > div:nth-child(2) {
+  align-content: start;
+}
+
+.delta-ratio-page__example-body dl {
+  display: grid;
+  gap: 0.38rem;
+  margin: 0;
+}
+
+.delta-ratio-page__example-body > div:nth-child(2) dl {
+  gap: 1.15rem;
+}
+
+.delta-ratio-page__example-body dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.delta-ratio-page__example-body > div:nth-child(2) dl div {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.delta-ratio-page__example-body > div:nth-child(2) dd {
+  text-align: left;
+}
+
+.delta-ratio-page__example-body dt,
+.delta-ratio-page__example-body dd {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 350;
+  line-height: 1.5;
+}
+
+.delta-ratio-page__example-body dt {
+  color: var(--color-slate-muted);
+}
+
+.delta-ratio-page__example-body dd {
+  color: var(--color-slate-strong);
+  text-align: right;
+}
+
+.delta-ratio-page__example-result {
+  margin: 0;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.05);
+  font-size: 0.92rem;
+  font-weight: 350;
+  line-height: 1.62;
+}
+
+.delta-ratio-page__example-result.is-green {
+  background: #dcfae6;
+  color: #067647;
+}
+
+.delta-ratio-page__example-result.is-blue {
+  background: #dbe4ff;
+  color: #1d4ed8;
+}
+
+.delta-ratio-page__example-result.is-yellow {
+  background: #fef0c7;
+  color: #b54708;
+}
+
+.delta-ratio-page__example-result.is-orange {
+  background: #ffead5;
+  color: #b93815;
+}
+
+.delta-ratio-page__formula-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.delta-ratio-page__formula-row code {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  border-radius: 1rem;
+  background: var(--color-surface);
+}
+
+.delta-ratio-page__scenario-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.delta-ratio-page__scenario-list article {
+  display: grid;
+  grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
+  gap: 2.1rem;
+  align-items: center;
+  padding: 1.15rem 1.9rem;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
+}
+
+.delta-ratio-page__scenario-list h3,
+.delta-ratio-page__scenario-list p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.delta-ratio-page__scenario-list h3 {
+  color: var(--color-slate-strong);
+  font-weight: 350;
+}
+
+.delta-ratio-page__scenario-list p {
+  color: var(--color-slate-muted);
+  font-weight: 350;
+}
+
+.delta-ratio-page a:not(.figma-button, .comp-rules-page__cta a, .delta-ratio-page__icon-link, .delta-ratio-page__card-icon-link, .delta-ratio-page__quick-cta a) {
+  color: #026aa2;
+  text-decoration: none;
+}
+
+.delta-ratio-page a:not(.figma-button, .comp-rules-page__cta a, .delta-ratio-page__icon-link, .delta-ratio-page__card-icon-link, .delta-ratio-page__quick-cta a):hover {
+  text-decoration: underline;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .speed-check__answer:hover:not(:disabled) {
     box-shadow: 0 0.85rem 1.4rem rgba(15, 23, 42, 0.12);
@@ -8754,6 +9315,58 @@ button.learn-progress-dots__dot:focus-visible {
 
   .comp-rules-page__references li {
     grid-template-columns: 1.7rem minmax(0, 1fr);
+  }
+
+  .delta-ratio-page__formula-card,
+  .delta-ratio-page__formula-row,
+  .delta-ratio-page__change-grid,
+  .delta-ratio-page__example-body,
+  .delta-ratio-page__scenario-list article {
+    grid-template-columns: 1fr;
+  }
+
+  .delta-ratio-page__change-card {
+    padding: 1.25rem;
+  }
+
+  .delta-ratio-page__change-card p {
+    font-size: 0.95rem;
+  }
+
+  .delta-ratio-page__formula-card > div,
+  .delta-ratio-page__formula-card > div:nth-child(2),
+  .delta-ratio-page__example-body > div:first-child {
+    border-right: 0;
+  }
+
+  .delta-ratio-page__formula-card > div {
+    padding: 1rem 1.25rem;
+  }
+
+  .delta-ratio-page__formula-card > div:nth-child(3),
+  .delta-ratio-page__example-body > div + div {
+    border-top: 1px solid rgba(15, 23, 42, 0.05);
+  }
+
+  .delta-ratio-page__formula-card code,
+  .delta-ratio-page__formula-row code {
+    font-size: 0.95rem;
+  }
+
+  .delta-ratio-page__workflow li {
+    padding: 0.8rem 1rem;
+  }
+
+  .delta-ratio-page__example-card h3,
+  .delta-ratio-page__example-body > div,
+  .delta-ratio-page__example-result {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .delta-ratio-page__scenario-list article {
+    gap: 0.35rem;
+    padding: 1rem 1.25rem;
   }
 
   .learn-compensation-rules {

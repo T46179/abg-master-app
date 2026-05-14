@@ -35,6 +35,13 @@ describe("app routes", () => {
     expect(getElementName(compensationRoute?.element)).toBe("BloodGasCompensationRulesScreen");
   });
 
+  it("renders the delta ratio page outside the app shell", () => {
+    const deltaRatioRoute = appRoutes.find((route) => route.path === "/delta-ratio");
+
+    expect(deltaRatioRoute?.element).toBeTruthy();
+    expect(getElementName(deltaRatioRoute?.element)).toBe("DeltaRatioScreen");
+  });
+
   it("keeps dashboard, practice, and calibration available inside the app shell", () => {
     const shellRoute = appRoutes.find((route) => route.children != null);
     const childPaths = shellRoute?.children?.map((route) => route.path);

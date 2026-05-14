@@ -10,6 +10,7 @@ import { LearnScreen } from "../presentation/screens/LearnScreen";
 import { LearnLessonScreen } from "../presentation/screens/LearnLessonScreen";
 import { PrivacyScreen } from "../presentation/screens/PrivacyScreen";
 import { BloodGasCompensationRulesScreen } from "../presentation/screens/BloodGasCompensationRulesScreen";
+import { DeltaRatioScreen } from "../presentation/screens/DeltaRatioScreen";
 import { CalibrationScreen } from "../presentation/calibration";
 import { CasePreviewScreen } from "../presentation/screens/CasePreviewScreen";
 import { AuthoredCaseGalleryScreen } from "../presentation/screens/AuthoredCaseGalleryScreen";
@@ -18,6 +19,10 @@ export const appRoutes: RouteObject[] = [
   {
     path: "/blood-gas-compensation-rules",
     element: <BloodGasCompensationRulesScreen />
+  },
+  {
+    path: "/delta-ratio",
+    element: <DeltaRatioScreen />
   },
   {
     path: "/",

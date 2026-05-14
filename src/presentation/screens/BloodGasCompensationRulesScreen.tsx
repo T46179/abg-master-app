@@ -182,7 +182,7 @@ export function BloodGasCompensationRulesScreen() {
         <header className="comp-rules-page__header">
           <div className="comp-rules-page__methodology-pill">
             <span />
-            <p>ABG Master · Acid-base Analysis</p>
+            <p>ABG Master · Methodology</p>
           </div>
           <h1>
             Blood Gas Compensation Rules Explained
@@ -290,7 +290,7 @@ export function BloodGasCompensationRulesScreen() {
         <section className="comp-rules-page__cta">
           <div>
             <span>Practice with ABG Master</span>
-            <h2>Practise compensation in context</h2>
+            <h2>Practice compensation in context</h2>
             <p>Apply these rules inside full blood gas cases, with worked explanations showing how expected and measured values compare.</p>
           </div>
           <Link to="/practice">

@@ -50,11 +50,16 @@ const SEO_BY_PATH: Record<string, SeoMetadataConfig> = {
   "/blood-gas-compensation-rules": {
     title: "Blood Gas Compensation Rules Explained | ABG Master",
     description: "Learn the blood gas compensation rules used by ABG Master, including Winter's formula, metabolic alkalosis compensation, and acute and chronic respiratory compensation."
+  },
+  "/delta-ratio": {
+    title: "Delta Ratio Explained | ABG Master",
+    description: "Learn how to calculate and interpret the delta ratio in high anion gap metabolic acidosis, with worked examples for detecting mixed metabolic disorders."
   }
 };
 
 const CANONICAL_PATH_BY_PATH: Record<string, string> = {
-  "/blood-gas-compensation-rules": "/blood-gas-compensation-rules/"
+  "/blood-gas-compensation-rules": "/blood-gas-compensation-rules/",
+  "/delta-ratio": "/delta-ratio/"
 };
 
 function normalizePathname(pathname: string) {
