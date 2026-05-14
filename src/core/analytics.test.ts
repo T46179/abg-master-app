@@ -48,6 +48,18 @@ describe("analytics", () => {
     }));
   });
 
+  it("enables automatic pageleave tracking without automatic pageviews", async () => {
+    const { initAnalytics } = await import("./analytics");
+
+    initAnalytics();
+
+    expect(posthog.init).toHaveBeenCalledWith("test-key", expect.objectContaining({
+      api_host: "https://posthog.example",
+      capture_pageview: false,
+      capture_pageleave: true
+    }));
+  });
+
   it("adds common properties to explicit pageviews", async () => {
     const { initAnalytics, trackPageView } = await import("./analytics");
 

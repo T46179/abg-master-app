@@ -25,7 +25,8 @@ export function initAnalytics() {
 
   posthog.init(apiKey, {
     api_host: apiHost,
-    capture_pageview: false
+    capture_pageview: false,
+    capture_pageleave: true
   });
 
   initialized = true;
