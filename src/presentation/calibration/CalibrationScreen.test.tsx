@@ -12,6 +12,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const latestBloodGasBlitzProps = vi.hoisted(() => ({
   value: null as null | {
     onComplete: () => void;
+    onPhaseChange?: (phase: "ready" | "countdown" | "playing" | "results") => void;
     onResult?: (result: BloodGasBlitzAttemptResult) => void;
     onXpAwarded?: (amount: number) => void;
     placement?: string;
@@ -26,6 +27,10 @@ const storageAdapter = vi.hoisted(() => ({
   saveCalibrationCompletion: vi.fn()
 }));
 
+const analytics = vi.hoisted(() => ({
+  trackEvent: vi.fn()
+}));
+
 vi.mock("../../app/AppProvider", () => ({
   useAppContext: () => ({
     state: {
@@ -34,12 +39,15 @@ vi.mock("../../app/AppProvider", () => ({
   })
 }));
 
+vi.mock("../../core/analytics", () => analytics);
+
 vi.mock("../minigames/BloodGasBlitz", () => ({
   BloodGasBlitzGame: (props: typeof latestBloodGasBlitzProps.value) => {
     latestBloodGasBlitzProps.value = props;
     return (
       <section data-testid="blood-gas-blitz-game">
         <p>Mock Blood Gas Blitz Game</p>
+        <button type="button" onClick={() => props?.onPhaseChange?.("countdown")}>Mock begin blitz</button>
         <button type="button" onClick={props?.onComplete}>Mock finish blitz</button>
         <button
           type="button"
@@ -71,6 +79,7 @@ describe("CalibrationScreen", () => {
 
   beforeEach(() => {
     latestBloodGasBlitzProps.value = null;
+    analytics.trackEvent.mockClear();
     storageAdapter.loadCalibrationCompletion.mockReturnValue(null);
     storageAdapter.saveCalibrationCompletion.mockClear();
     container = document.createElement("div");
@@ -148,6 +157,7 @@ describe("CalibrationScreen", () => {
     });
     expect(latestBloodGasBlitzProps.value?.onXpAwarded).toBeUndefined();
     expect(latestBloodGasBlitzProps.value?.xpProgressLabel).toBeUndefined();
+    expect(analytics.trackEvent).not.toHaveBeenCalledWith("calibration_started", expect.anything());
   });
 
   it("continues through the ordered calibration phases", () => {
@@ -337,5 +347,95 @@ describe("CalibrationScreen", () => {
 
     expect(container.textContent).toContain("Blood Gas Blitz");
     expect(container.textContent).toContain("Mock Blood Gas Blitz Game");
+  });
+
+  it("tracks calibration analytics milestones once with a shared attempt id", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-06T00:00:00.000Z"));
+    renderScreen();
+
+    expect(analytics.trackEvent).not.toHaveBeenCalledWith("calibration_started", expect.anything());
+
+    clickButton("Mock begin blitz");
+    clickButton("Mock begin blitz");
+    clickButton("Mock emit result");
+    clickButton("Mock emit result");
+    clickButton("Mock finish blitz");
+
+    act(() => {
+      vi.advanceTimersByTime(12000);
+    });
+    completeBuildAGasStep();
+    clickButton("Continue");
+
+    act(() => {
+      vi.advanceTimersByTime(23000);
+    });
+    clickButton("Appropriate compensation");
+    clickButton("Continue");
+
+    act(() => {
+      vi.advanceTimersByTime(34000);
+    });
+    clickButton("Raised anion gap metabolic acidosis");
+    clickButton("Continue");
+
+    const events = analytics.trackEvent.mock.calls;
+    const startedEvents = events.filter(([name]) => name === "calibration_started");
+    const stepEvents = events.filter(([name]) => name === "calibration_step_completed");
+    const completedEvents = events.filter(([name]) => name === "calibration_completed");
+
+    expect(startedEvents).toHaveLength(1);
+    expect(stepEvents).toHaveLength(4);
+    expect(completedEvents).toHaveLength(1);
+
+    const attemptIds = events.map(([, payload]) => payload.calibration_attempt_id);
+    expect(new Set(attemptIds).size).toBe(1);
+    expect(attemptIds[0]).toEqual(expect.any(String));
+
+    events.forEach(([, payload]) => {
+      expect(payload).toMatchObject({
+        version: "1",
+        placement_version: "1"
+      });
+    });
+
+    expect(stepEvents.map(([, payload]) => ({
+      step_id: payload.step_id,
+      step_number: payload.step_number,
+      score_percent: payload.score_percent,
+      time_taken_seconds: payload.time_taken_seconds
+    }))).toEqual([
+      {
+        step_id: "blood_gas_blitz",
+        step_number: 1,
+        score_percent: 90,
+        time_taken_seconds: 10
+      },
+      {
+        step_id: "build_a_gas",
+        step_number: 2,
+        score_percent: 100,
+        time_taken_seconds: 12
+      },
+      {
+        step_id: "compensation_check",
+        step_number: 3,
+        score_percent: 83,
+        time_taken_seconds: 23
+      },
+      {
+        step_id: "mixed_process",
+        step_number: 4,
+        score_percent: 88,
+        time_taken_seconds: 34
+      }
+    ]);
+
+    expect(completedEvents[0][1]).toMatchObject({
+      placement: "advanced",
+      score_total: 11,
+      score_percent: 92
+    });
   });
 });

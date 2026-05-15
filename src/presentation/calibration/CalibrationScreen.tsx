@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
-import { createCalibrationCompletionRecord } from "../../core/calibration";
+import { CALIBRATION_COMPLETION_VERSION, createCalibrationCompletionRecord } from "../../core/calibration";
+import { trackEvent } from "../../core/analytics";
 import { mapProgressRowToUserState, syncUserStateDerivedFields } from "../../core/progression";
 import { completeCalibrationProgress } from "../../core/progressionSync";
 import type { CalibrationPlacement } from "../../core/types";
@@ -14,8 +15,42 @@ import { CalibrationStepShell } from "./CalibrationStepShell";
 import { CalibrationSummaryStep } from "./CalibrationSummaryStep";
 import { CompensationCheckCalibrationStep } from "./CompensationCheckCalibrationStep";
 import { MixedProcessCalibrationStep } from "./MixedProcessCalibrationStep";
-import type { CalibrationScoringInput } from "./calibrationScoring";
+import { scoreCalibration, type CalibrationScoringInput } from "./calibrationScoring";
+import type { CalibrationPhase } from "./calibrationTypes";
 import { useCalibrationFlow } from "./useCalibrationFlow";
+
+const CALIBRATION_ANALYTICS_VERSION = "1";
+const CALIBRATION_TOTAL_SCORE_MAX = 12;
+const CALIBRATION_PLACEMENTS: CalibrationPlacement[] = ["beginner", "intermediate", "advanced"];
+
+const CALIBRATION_ANALYTICS_STEPS: Partial<Record<CalibrationPhase, {
+  stepId: string;
+  stepNumber: number;
+  maxScore: number;
+}>> = {
+  "blood-gas-blitz": { stepId: "blood_gas_blitz", stepNumber: 1, maxScore: 2 },
+  "build-a-gas": { stepId: "build_a_gas", stepNumber: 2, maxScore: 3 },
+  "compensation-check": { stepId: "compensation_check", stepNumber: 3, maxScore: 3 },
+  "mixed-process-challenge": { stepId: "mixed_process", stepNumber: 4, maxScore: 4 }
+};
+
+function createCalibrationAttemptId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `cal_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function roundPercent(value: number): number | null {
+  if (!Number.isFinite(value)) return null;
+  return Math.round(value);
+}
+
+function roundSeconds(elapsedMs: number | undefined): number | null {
+  if (typeof elapsedMs !== "number" || !Number.isFinite(elapsedMs)) return null;
+  return Math.round(Math.max(0, elapsedMs) / 10) / 100;
+}
 
 export function CalibrationScreen() {
   const { state, setUserState } = useAppContext();
@@ -23,6 +58,97 @@ export function CalibrationScreen() {
   const calibrationFlow = useCalibrationFlow();
   const { phase, placement, step, canUseContinueCta } = calibrationFlow;
   const subtitle = getCalibrationSubtitle(phase);
+  const startedEventFiredRef = useRef(false);
+  const completedStepIdsRef = useRef(new Set<string>());
+  const completedEventFiredRef = useRef(false);
+  const calibrationAttemptIdRef = useRef<string | null>(null);
+
+  function createCurrentCalibrationAttemptId() {
+    calibrationAttemptIdRef.current ??= createCalibrationAttemptId();
+    return calibrationAttemptIdRef.current;
+  }
+
+  function buildCalibrationAnalyticsPayload() {
+    const calibrationAttemptId = calibrationAttemptIdRef.current;
+    if (!calibrationAttemptId) return null;
+
+    return {
+      version: CALIBRATION_ANALYTICS_VERSION,
+      placement_version: String(CALIBRATION_COMPLETION_VERSION),
+      calibration_attempt_id: calibrationAttemptId
+    };
+  }
+
+  function trackCalibrationStarted() {
+    if (startedEventFiredRef.current) return;
+    createCurrentCalibrationAttemptId();
+    const payload = buildCalibrationAnalyticsPayload();
+    if (!payload) return;
+
+    startedEventFiredRef.current = true;
+    trackEvent("calibration_started", payload);
+  }
+
+  function trackCalibrationStepCompleted(
+    completedPhase: CalibrationPhase,
+    options: { scorePercent?: number | null; elapsedMs?: number | null } = {}
+  ) {
+    const stepMeta = CALIBRATION_ANALYTICS_STEPS[completedPhase];
+    if (!stepMeta || completedStepIdsRef.current.has(stepMeta.stepId)) return;
+
+    const payload = buildCalibrationAnalyticsPayload();
+    if (!payload) return;
+
+    const nextPayload: Record<string, unknown> = {
+      ...payload,
+      step_id: stepMeta.stepId,
+      step_number: stepMeta.stepNumber
+    };
+    const scorePercent = typeof options.scorePercent === "number" ? roundPercent(options.scorePercent) : null;
+    const timeTakenSeconds = roundSeconds(options.elapsedMs ?? undefined);
+
+    if (typeof options.scorePercent === "number") {
+      if (scorePercent === null) return;
+      nextPayload.score_percent = scorePercent;
+    }
+
+    if (typeof options.elapsedMs === "number") {
+      if (timeTakenSeconds === null) return;
+      nextPayload.time_taken_seconds = timeTakenSeconds;
+    }
+
+    completedStepIdsRef.current.add(stepMeta.stepId);
+    trackEvent("calibration_step_completed", nextPayload);
+  }
+
+  function getSingleStepScorePercent(completedPhase: CalibrationPhase, results: CalibrationScoringInput) {
+    const stepMeta = CALIBRATION_ANALYTICS_STEPS[completedPhase];
+    if (!stepMeta) return null;
+
+    const totalScore = scoreCalibration(results).totalScore;
+    if (!Number.isFinite(totalScore)) return null;
+
+    return (totalScore / stepMeta.maxScore) * 100;
+  }
+
+  function trackCalibrationCompleted(nextPlacement: CalibrationPlacement, nextResults: CalibrationScoringInput) {
+    if (completedEventFiredRef.current || !CALIBRATION_PLACEMENTS.includes(nextPlacement)) return;
+    const payload = buildCalibrationAnalyticsPayload();
+    if (!payload) return;
+
+    const score = scoreCalibration(nextResults);
+    if (!Number.isFinite(score.totalScore)) return;
+    const scorePercent = roundPercent((score.totalScore / CALIBRATION_TOTAL_SCORE_MAX) * 100);
+    if (scorePercent === null) return;
+
+    completedEventFiredRef.current = true;
+    trackEvent("calibration_completed", {
+      ...payload,
+      placement: nextPlacement,
+      score_total: score.totalScore,
+      score_percent: scorePercent
+    });
+  }
 
   useEffect(() => {
     const completion = state.storage?.loadCalibrationCompletion();
@@ -62,8 +188,37 @@ export function CalibrationScreen() {
   }
 
   function handleContinue() {
+    const completedPhase = phase;
     const completion = calibrationFlow.continueCurrentPhase();
-    if (completion) void syncCalibrationCompletion(completion.placement, completion.results);
+    if (completedPhase === "build-a-gas") {
+      const buildAGasResult = {
+        selectedValues: calibrationFlow.buildAGasSelection,
+        elapsedMs: Date.now() - calibrationFlow.phaseStartedAt
+      };
+      trackCalibrationStepCompleted(completedPhase, {
+        scorePercent: getSingleStepScorePercent(completedPhase, { buildAGas: buildAGasResult }),
+        elapsedMs: buildAGasResult.elapsedMs
+      });
+    } else if (completedPhase === "compensation-check" && calibrationFlow.compensationFitSelection) {
+      const compensationFitResult = {
+        selectedAnswer: calibrationFlow.compensationFitSelection,
+        elapsedMs: Date.now() - calibrationFlow.phaseStartedAt
+      };
+      trackCalibrationStepCompleted(completedPhase, {
+        scorePercent: getSingleStepScorePercent(completedPhase, { compensationFit: compensationFitResult }),
+        elapsedMs: compensationFitResult.elapsedMs
+      });
+    } else if (completedPhase === "mixed-process-challenge" && completion?.results.finalDiagnosis) {
+      trackCalibrationStepCompleted(completedPhase, {
+        scorePercent: getSingleStepScorePercent(completedPhase, { finalDiagnosis: completion.results.finalDiagnosis }),
+        elapsedMs: completion.results.finalDiagnosis.elapsedMs
+      });
+    }
+
+    if (completion) {
+      trackCalibrationCompleted(completion.placement, completion.results);
+      void syncCalibrationCompletion(completion.placement, completion.results);
+    }
   }
 
   function handleStartDifficulty(difficulty: string) {
@@ -93,8 +248,18 @@ export function CalibrationScreen() {
     if (phase === "blood-gas-blitz") {
       return (
         <CalibrationBloodGasBlitzStep
+          onPhaseChange={(nextPhase) => {
+            if (nextPhase === "countdown" || nextPhase === "playing") trackCalibrationStarted();
+          }}
           onResult={(result) => {
             calibrationFlow.recordBloodGasBlitzResult(result);
+            const scorePercent = result.totalQuestions > 0
+              ? (result.correctCount / result.totalQuestions) * 100
+              : null;
+            trackCalibrationStepCompleted("blood-gas-blitz", {
+              scorePercent,
+              elapsedMs: result.elapsedMs
+            });
           }}
           onComplete={handleContinue}
         />

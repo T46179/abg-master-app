@@ -1,10 +1,12 @@
 import {
   BloodGasBlitzGame,
-  type BloodGasBlitzAttemptResult
+  type BloodGasBlitzAttemptResult,
+  type BloodGasBlitzPhase
 } from "../minigames/BloodGasBlitz";
 
 interface CalibrationBloodGasBlitzStepProps {
   onComplete: () => void;
+  onPhaseChange?: (phase: BloodGasBlitzPhase) => void;
   onResult: (result: BloodGasBlitzAttemptResult) => void;
 }
 
@@ -15,6 +17,7 @@ export function CalibrationBloodGasBlitzStep(props: CalibrationBloodGasBlitzStep
       versionId="ph-classification-v1"
       onResult={props.onResult}
       onComplete={props.onComplete}
+      onPhaseChange={props.onPhaseChange}
     />
   );
 }
