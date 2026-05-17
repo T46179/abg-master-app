@@ -1643,6 +1643,11 @@ button:disabled {
 .calibration-summary-page__primary img {
   width: 1rem;
   height: 1rem;
+  transition: transform 160ms ease;
+}
+
+.calibration-summary-page__primary:hover:not(:disabled) img {
+  transform: translateX(0.18rem);
 }
 
 .calibration-summary-page__secondary {
