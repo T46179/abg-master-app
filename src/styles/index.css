@@ -9477,7 +9477,6 @@ button.learn-progress-dots__dot:focus-visible {
 
 .abg-interpretation-page__step-block header {
   display: grid;
-  grid-template-columns: 2.75rem minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
@@ -9514,49 +9513,6 @@ button.learn-progress-dots__dot:focus-visible {
   font-weight: 500;
   letter-spacing: -0.025em;
   line-height: 1.5;
-}
-
-.abg-interpretation-page__step-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 999px;
-}
-
-.abg-interpretation-page__step-icon svg {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-.abg-interpretation-page__step-icon.is-amber {
-  background: #fef0c7;
-  color: #b54708;
-}
-
-.abg-interpretation-page__step-icon.is-red {
-  background: #fee4e2;
-  color: #b42318;
-}
-
-.abg-interpretation-page__step-icon.is-orange {
-  background: #ffe6d5;
-  color: #9c2a10;
-}
-
-.abg-interpretation-page__step-icon.is-green {
-  background: #dcfae6;
-  color: #067647;
-}
-
-.abg-interpretation-page__step-icon.is-blue {
-  background: #e0f2fe;
-  color: #026aa2;
-}
-
-.abg-interpretation-page__step-icon.is-indigo {
-  background: #e0e7ff;
-  color: #3538cd;
 }
 
 .abg-interpretation-page__step-body {
@@ -9643,7 +9599,7 @@ button.learn-progress-dots__dot:focus-visible {
 }
 
 .abg-interpretation-page__corrections {
-  padding: 2.3rem;
+  padding: 1.25rem;
   border: 1px solid rgba(15, 23, 42, 0.05);
   border-radius: 1.5rem;
   background: var(--color-surface);
@@ -9830,6 +9786,9 @@ button.learn-progress-dots__dot:focus-visible {
 .abg-interpretation-page__practice-demo {
   display: grid;
   gap: 1rem;
+  align-items: stretch;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: clamp(32rem, 64vh, 40rem);
   padding: 1.35rem;
   border: 1px solid rgba(15, 23, 42, 0.05);
   border-radius: 1.5rem;
@@ -9858,7 +9817,13 @@ button.learn-progress-dots__dot:focus-visible {
   text-transform: uppercase;
 }
 
-.abg-interpretation-page__practice-demo-intro svg {
+.abg-interpretation-page__practice-demo-intro span {
+  background: #dcfae6;
+  color: #067647;
+}
+
+.abg-interpretation-page__practice-demo-intro svg,
+.abg-interpretation-page__practice-demo-intro img {
   width: 0.88rem;
   height: 0.88rem;
 }
@@ -9892,15 +9857,23 @@ button.learn-progress-dots__dot:focus-visible {
 
 .abg-interpretation-page__practice-complete {
   display: grid;
+  align-content: center;
   gap: 0.75rem;
+  justify-items: center;
+  width: 100%;
+  min-height: 100%;
   padding: 1.5rem;
   border: 1px solid rgba(15, 23, 42, 0.05);
   border-radius: 1rem;
   background: #fafaf7;
+  text-align: center;
 }
 
 .abg-interpretation-page__practice-complete .figma-button {
-  justify-self: start;
+  min-height: 3.7rem;
+  padding-inline: 1.4rem;
+  background: var(--color-navy);
+  justify-self: center;
   width: fit-content;
 }
 
@@ -10365,10 +10338,6 @@ button.learn-progress-dots__dot:focus-visible {
   .abg-interpretation-page__algorithm-item > article > span {
     justify-content: flex-start;
     width: fit-content;
-  }
-
-  .abg-interpretation-page__step-block header {
-    grid-template-columns: 2.75rem minmax(0, 1fr);
   }
 
   .abg-interpretation-page__correction-card,

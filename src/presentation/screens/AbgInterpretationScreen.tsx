@@ -2,17 +2,11 @@ import { useRef, useState, type ReactNode } from "react";
 import {
   Activity,
   ArrowRight,
-  Beaker,
   BookOpen,
   CheckCircle2,
-  Droplets,
-  FlaskConical,
   ListChecks,
-  PlayCircle,
-  Sparkles,
   Stethoscope,
   TriangleAlert,
-  Waves
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SeoMetadata } from "../../app/seo";
@@ -42,8 +36,6 @@ interface AlgorithmStep {
 
 interface StepBlock {
   number: string;
-  icon: ReactNode;
-  tone: "amber" | "red" | "orange" | "green" | "blue" | "indigo";
   title: string;
   badge?: string;
   body: ReactNode[];
@@ -56,7 +48,7 @@ interface WorkedCase {
   title: string;
   scenario: string;
   values: Array<[ReactNode, ReactNode | { pressureMmHg: number }]>;
-  interpretation: ReactNode[];
+  interpretation: (pressureUnit: PressureUnit) => ReactNode[];
   result: string;
   tone: "green" | "indigo";
 }
@@ -117,11 +109,10 @@ const algorithmSteps: AlgorithmStep[] = [
   { step: "Step 8", title: "Final synthesis", body: "One sentence that explains the whole gas in context.", tone: "dark" }
 ];
 
-const stepBlocks: StepBlock[] = [
+function getStepBlocks(pressureUnit: PressureUnit): StepBlock[] {
+  return [
   {
     number: "Step 01",
-    icon: <Waves aria-hidden="true" />,
-    tone: "amber",
     title: "Assess oxygenation",
     badge: "ABG only",
     body: [
@@ -131,34 +122,26 @@ const stepBlocks: StepBlock[] = [
   },
   {
     number: "Step 02",
-    icon: <Activity aria-hidden="true" />,
-    tone: "red",
     title: "Check the pH",
     body: ["Decide whether the patient is acidaemic (pH < 7.35), alkalaemic (pH > 7.45), or within the normal pH range. But remember — a normal pH does not necessarily mean a normal blood gas."],
     note: "Two opposing disorders can produce a near-normal pH. Don't stop here."
   },
   {
     number: "Step 03",
-    icon: <Droplets aria-hidden="true" />,
-    tone: "orange",
     title: "Identify the primary acid–base process",
     body: [<> <PaCO2Text /> is the respiratory component. <HCO3Text /> is the metabolic / base component. Use the ROME mnemonic - Respiratory Opposite, Metabolic Equal - to identify which process is driving the pH change.</>]
   },
   {
     number: "Step 04",
-    icon: <Beaker aria-hidden="true" />,
-    tone: "green",
     title: "Check whether compensation is appropriate",
     body: [
       <>Each primary acid–base disorder has its own expected compensation formula. The goal is not to ask whether a value is “normal,” but whether the compensation is appropriate for that disorder.</>,
-      <>For example, a <PaCO2Text /> of 40 mmHg may be normal on paper but inappropriate in severe metabolic acidosis — where you'd expect significant hyperventilation.</>
+      <>For example, a <PaCO2Text /> of {formatPagePressure(40, pressureUnit)} may be normal on paper but inappropriate in severe metabolic acidosis — where you'd expect significant hyperventilation.</>
     ],
     link: { to: "/blood-gas-compensation-rules/", label: "Review compensation rules" }
   },
   {
     number: "Step 05",
-    icon: <FlaskConical aria-hidden="true" />,
-    tone: "blue",
     title: "Calculate the anion gap",
     body: [
       "In metabolic acidosis, calculating the anion gap helps determine how much of the acidaemia is due to additional unmeasured acids. When elevated (AG > 16, or > 12 in some resources), it suggests processes such as lactic acidosis or ketoacidosis are contributing to the low pH.",
@@ -170,15 +153,14 @@ const stepBlocks: StepBlock[] = [
   },
   {
     number: "Step 06",
-    icon: <Sparkles aria-hidden="true" />,
-    tone: "indigo",
     title: "Look for mixed disorders",
     body: [
       "Once the anion gap and compensation have been assessed, check whether the entire gas fits a single process.",
       "Unexpected delta ratios, inappropriate compensation, or values that do not fit together physiologically may indicate a mixed disorder."
     ]
   }
-];
+  ];
+}
 
 const workedCases: WorkedCase[] = [
   {
@@ -192,10 +174,10 @@ const workedCases: WorkedCase[] = [
       [<>Na<sup>+</sup></>, "138"],
       [<>Cl<sup>-</sup></>, "100"]
     ],
-    interpretation: [
+    interpretation: (pressureUnit) => [
       "Oxygenation adequate on room air.",
       <>Acidaemic; primary process is metabolic (<HCO3Text /> low).</>,
-      <>Expected <PaCO2Text /> ≈ (1.5 × 9) + 8 = 21.5 — measured 22, compensation appropriate.</>,
+      <>Expected <PaCO2Text /> ≈ {formatPagePressure(21.5, pressureUnit)} — measured {formatPagePressure(22, pressureUnit)}, compensation appropriate.</>,
       "Anion gap = 138 − (100 + 9) = 29 → high anion gap.",
       "Single disorder: high anion gap metabolic acidosis with appropriate respiratory compensation."
     ],
@@ -213,8 +195,8 @@ const workedCases: WorkedCase[] = [
       [<>Na<sup>+</sup></>, "140"],
       [<>Cl<sup>-</sup></>, "92"]
     ],
-    interpretation: [
-      "PaO₂ 82 on 28% O₂ — impaired gas exchange.",
+    interpretation: (pressureUnit) => [
+      <>PaO<sub>2</sub> {formatPagePressure(82, pressureUnit)} on 28% O<sub>2</sub> — impaired gas exchange.</>,
       "pH looks normal — do not stop here.",
       "Anion gap = 140 − (92 + 18) = 30 → high anion gap.",
       "Delta ratio = (30 − 16) / (24 − 18) ≈ 2.3 → HAGMA + metabolic alkalosis.",
@@ -254,7 +236,8 @@ const references = [
   ["British Thoracic Society.", "Guideline for oxygen use in adults in healthcare and emergency settings.", "Thorax. 2017;72(Suppl 1):ii1–ii90."]
 ];
 
-const embeddedPracticeCase: CaseData = {
+function getEmbeddedPracticeCase(pressureUnit: PressureUnit): CaseData {
+  return {
   case_id: "ABG_INTERPRETATION_DEMO_001",
   source_type: "authored",
   practice_pool_eligible: false,
@@ -331,17 +314,18 @@ const embeddedPracticeCase: CaseData = {
     compensation: {
       key: "compensation",
       title: "Appropriate compensation",
-      body: "For metabolic acidosis, expected PaCO2 is about 32 mmHg by Winter's formula, so a measured PaCO2 of 31 mmHg is appropriate.",
+      body: `For metabolic acidosis, expected PaCO2 is about ${formatPagePressure(32, pressureUnit)} by Winter's formula, so a measured PaCO2 of ${formatPagePressure(31, pressureUnit)} is appropriate.`,
       order: 3
     },
     final_diagnosis: {
       key: "diagnosis",
       title: "GI bicarbonate loss",
-      body: "Low HCO3 with acidaemia means metabolic acidosis. PaCO2 is appropriately low by expected compensation. Lactate is normal. Relatively high chloride supports a normal-anion-gap pattern from GI bicarbonate loss.",
+      body: "The combination of low bicarbonate, relatively elevated chloride, and a normal lactate fits a hyperchloraemic (normal-anion-gap) metabolic acidosis due to gastrointestinal bicarbonate loss from diarrhoea.",
       order: 4
     }
   }
 };
+}
 
 function SectionLabel(props: SectionLabelProps) {
   return (
@@ -354,6 +338,24 @@ function SectionLabel(props: SectionLabelProps) {
 
 function SectionIcon(props: { src: string }) {
   return <img src={props.src} alt="" aria-hidden="true" />;
+}
+
+function ComposeIcon() {
+  return (
+    <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <path d="M43 21V47H5V7H26" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" />
+      <path d="M27.3 32.7L19.9 38.4L21.1 29.2L32 10.2L38.2 13.8L27.3 32.7Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" />
+      <path d="M41.2 1.5C42.9 2.5 43.5 4.7 42.5 6.4L40.4 10.1L34.2 6.5L36.4 2.7C37.3 1.1 39.5 0.499997 41.2 1.5Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <path d="M43 24L5 46V2L43 24Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" />
+    </svg>
+  );
 }
 
 function InternalPillLink(props: { to: string; children: ReactNode }) {
@@ -390,7 +392,6 @@ function StepBlockCard(props: { step: StepBlock }) {
   return (
     <article className="abg-interpretation-page__step-block">
       <header>
-        <span className={`abg-interpretation-page__step-icon is-${props.step.tone}`}>{props.step.icon}</span>
         <div>
           <p>
             {props.step.number}
@@ -454,7 +455,7 @@ function WorkedCaseCard(props: { item: WorkedCase; pressureUnit: PressureUnit })
         <section aria-label={`${props.item.title} stepwise interpretation`}>
           <span>Stepwise interpretation</span>
           <ol>
-            {props.item.interpretation.map((item, index) => <li key={index}>{item}</li>)}
+            {props.item.interpretation(props.pressureUnit).map((item, index) => <li key={index}>{item}</li>)}
           </ol>
         </section>
       </div>
@@ -470,6 +471,7 @@ function EmbeddedPracticePreview(props: { pressureUnit: PressureUnit }) {
   const [stepResults, setStepResults] = useState<StepResult[]>([]);
   const [isComplete, setIsComplete] = useState(false);
 
+  const embeddedPracticeCase = getEmbeddedPracticeCase(props.pressureUnit);
   const questions = embeddedPracticeCase.questions_flow ?? [];
   const currentStep = questions[currentStepIndex] ?? null;
   const currentSelection = selectedAnswers[currentStepIndex] ?? null;
@@ -520,10 +522,10 @@ function EmbeddedPracticePreview(props: { pressureUnit: PressureUnit }) {
   if (isComplete) {
     return (
       <div className="abg-interpretation-page__practice-complete">
-        <span>Preview complete</span>
-        <h3>Ready for the full workflow?</h3>
-        <p>Full practice includes anion gap, mixed disorders, explanations, and progression.</p>
-        <Link className="figma-button" to="/practice">Continue with full ABG practice</Link>
+        <span>Case Complete</span>
+        <h3>Ready to interpret full blood gases?</h3>
+        <p>Move on to full ABG interpretation with progressively harder cases, mixed disorders, and detailed explanations.</p>
+        <Link className="figma-button" to="/practice">Start Practising</Link>
       </div>
     );
   }
@@ -546,7 +548,7 @@ function EmbeddedPracticePreview(props: { pressureUnit: PressureUnit }) {
       onAnswer={handleAnswer}
       onContinueStep={handleContinueStep}
       activeStepRef={activeStepRef}
-      lastStepButtonLabel="Finish preview"
+      lastStepButtonLabel="Finish"
     />
   );
 }
@@ -555,6 +557,7 @@ export function AbgInterpretationScreen() {
   const [takeawayMode, setTakeawayMode] = useState<"abg" | "vbg">("abg");
   const [pressureUnit, setPressureUnit] = useState<PressureUnit>("mmHg");
   const takeawayRows = takeawayMode === "abg" ? jumpRows : vbgJumpRows;
+  const stepBlocks = getStepBlocks(pressureUnit);
 
   return (
     <main className="comp-rules-page abg-interpretation-page">
@@ -590,7 +593,7 @@ export function AbgInterpretationScreen() {
           <p className="abg-interpretation-page__byline">Last updated May 2026</p>
           <p>Most clinicians can interpret a blood gas intuitively to some extent. However once compensation, anion gap, and mixed disorders enter the picture, things get confusing.</p>
           <p>This guide will walk you through a systematic approach to blood gas interpretation — from first principles to advanced acid–base disorders.</p>
-          <p>Understanding the physiology is important, the best way to improve is through practice. Once you've finished, head over to ABG Master to apply what you've learned.</p>
+          <p>Understanding the physiology is important, but the best way to improve is through practice. Once you've finished, head over to ABG Master to apply what you've learned.</p>
         </header>
 
         <section className="comp-rules-page__takeaway abg-interpretation-page__takeaway">
@@ -684,47 +687,48 @@ export function AbgInterpretationScreen() {
           </div>
         </section>
 
-        <section className="comp-rules-page__section abg-interpretation-page__corrections">
+        <section className="comp-rules-page__section">
           <SectionLabel icon={<SectionIcon src={viewIcon} />}>At a glance</SectionLabel>
           <h2>Corrections</h2>
           <p>Blood gas interpretation is contextual. A “normal” value may become abnormal once physiology, compensation, or laboratory corrections are taken into account.</p>
-          <p> These are some of the most important corrections to know.</p>
-          <div className="abg-interpretation-page__corrections-grid">
-            <article className="abg-interpretation-page__correction-card">
-              <div className="abg-interpretation-page__correction-copy">
-                <h3>Albumin correction for anion gap</h3>
-                <p>Albumin is a major unmeasured anion. In hypoalbuminaemia, the anion gap may appear falsely normal and potentially hide a high anion gap metabolic acidosis.</p>
-              </div>
-              <div className="abg-interpretation-page__correction-formula">Corrected AG = AG + 0.25 × (40 − Albumin)</div>
-            </article>
-            <article className="abg-interpretation-page__correction-card">
-              <div className="abg-interpretation-page__correction-copy">
-                <h3>Glucose correction for sodium</h3>
-                <p>Severe hyperglycaemia causes osmotic water shift into the intravascular space, lowering measured sodium. Correcting the sodium helps estimate the true sodium level.</p>
-              </div>
-              <div className="abg-interpretation-page__correction-formula">Corrected Na<sup>+</sup> = Measured Na<sup>+</sup> + 0.3 × (Glucose − 5.5)</div>
-            </article>
-            <article className="abg-interpretation-page__correction-card">
-              <div className="abg-interpretation-page__correction-copy">
-                <h3>Potassium shift with pH</h3>
-                <p>Acidaemia shifts potassium out of cells and may increase serum potassium concentration, even when total body potassium is depleted.</p>
-              </div>
-              <div className="abg-interpretation-page__correction-formula">K<sup>+</sup> rises by ~0.6 mmol/L for every 0.1 decrease in pH</div>
-            </article>
+          <p>These are some of the most important corrections to know.</p>
+          <div className="abg-interpretation-page__corrections">
+            <div className="abg-interpretation-page__corrections-grid">
+              <article className="abg-interpretation-page__correction-card">
+                <div className="abg-interpretation-page__correction-copy">
+                  <h3>Albumin correction for anion gap</h3>
+                  <p>Albumin is a major unmeasured anion. In hypoalbuminaemia, the anion gap may appear falsely normal and potentially hide a high anion gap metabolic acidosis.</p>
+                </div>
+                <div className="abg-interpretation-page__correction-formula">Corrected AG = AG + 0.25 × (40 − Albumin)</div>
+              </article>
+              <article className="abg-interpretation-page__correction-card">
+                <div className="abg-interpretation-page__correction-copy">
+                  <h3>Glucose correction for sodium</h3>
+                  <p>Severe hyperglycaemia causes osmotic water shift into the intravascular space, lowering measured sodium. Correcting the sodium helps estimate the true sodium level.</p>
+                </div>
+                <div className="abg-interpretation-page__correction-formula">Corrected Na<sup>+</sup> = Measured Na<sup>+</sup> + 0.3 × (Glucose − 5.5)</div>
+              </article>
+              <article className="abg-interpretation-page__correction-card">
+                <div className="abg-interpretation-page__correction-copy">
+                  <h3>Potassium shift with pH</h3>
+                  <p>Acidaemia shifts potassium out of cells and may increase serum potassium concentration, even when total body potassium is depleted.</p>
+                </div>
+                <div className="abg-interpretation-page__correction-formula">K<sup>+</sup> rises by ~0.6 mmol/L for every 0.1 decrease in pH</div>
+              </article>
+            </div>
           </div>
         </section>
 
         <section className="comp-rules-page__section">
-          <SectionLabel icon={<Sparkles aria-hidden="true" />}>Worked examples</SectionLabel>
+          <SectionLabel icon={<ComposeIcon />}>Worked examples</SectionLabel>
           <h2>Two gases, two patterns</h2>
           <div className="abg-interpretation-page__cases">
             {workedCases.map((item) => <WorkedCaseCard key={item.title} item={item} pressureUnit={pressureUnit} />)}
           </div>
           <div className="abg-interpretation-page__practice-demo">
             <div className="abg-interpretation-page__practice-demo-intro">
-              <span><PlayCircle aria-hidden="true" /> Interactive</span>
+              <span><PlayIcon /> Interactive</span>
               <h3>Try it yourself</h3>
-              <p>Work through a short ABG Master preview case using the same step-by-step flow.</p>
             </div>
             <EmbeddedPracticePreview pressureUnit={pressureUnit} />
           </div>
