@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import type { PressureUnit } from "../../core/metrics";
 import type { AnswerSelection, CaseData, QuestionFlowStep, StepResult } from "../../core/types";
 import { QuestionFlowCard } from "./QuestionFlowCard";
 import { ScenarioCard } from "./ScenarioCard";
@@ -16,6 +17,7 @@ interface ActivePracticeCaseProps {
   stepResults: StepResult[];
   showAdvancedRanges: boolean;
   showAbnormalHighlighting: boolean;
+  pressureUnit?: PressureUnit;
   onToggleAdvancedRanges: () => void;
   onAnswer: (option: string) => void;
   onContinueStep: () => void;
@@ -23,6 +25,7 @@ interface ActivePracticeCaseProps {
   interactionDisabled?: boolean;
   interactionDisabledMessage?: string | null;
   isSubmittingCase?: boolean;
+  lastStepButtonLabel?: string;
   boostedXp?: boolean;
 }
 
@@ -38,6 +41,7 @@ export function ActivePracticeCase({
   stepResults,
   showAdvancedRanges,
   showAbnormalHighlighting,
+  pressureUnit,
   onToggleAdvancedRanges,
   onAnswer,
   onContinueStep,
@@ -45,6 +49,7 @@ export function ActivePracticeCase({
   interactionDisabled,
   interactionDisabledMessage,
   isSubmittingCase,
+  lastStepButtonLabel,
   boostedXp = false
 }: ActivePracticeCaseProps) {
   return (
@@ -56,6 +61,7 @@ export function ActivePracticeCase({
             caseItem={caseItem}
             showAdvancedRanges={showAdvancedRanges}
             showAbnormalHighlighting={showAbnormalHighlighting}
+            pressureUnit={pressureUnit}
             onToggleAdvancedRanges={onToggleAdvancedRanges}
           />
         </div>
@@ -78,6 +84,7 @@ export function ActivePracticeCase({
           interactionDisabled={interactionDisabled}
           interactionDisabledMessage={interactionDisabledMessage}
           isSubmittingCase={isSubmittingCase}
+          lastStepButtonLabel={lastStepButtonLabel}
         />
       </div>
     </div>

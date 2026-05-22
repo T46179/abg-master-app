@@ -1,4 +1,5 @@
 import { shouldShowMetricReferences } from "../../core/metrics";
+import type { PressureUnit } from "../../core/metrics";
 import type { CaseData } from "../../core/types";
 import { splitMetrics } from "../../app/viewHelpers";
 import { Surface } from "../primitives/Surface";
@@ -10,11 +11,12 @@ interface ValuePanelsProps {
   caseItem: CaseData;
   showAdvancedRanges: boolean;
   showAbnormalHighlighting: boolean;
+  pressureUnit?: PressureUnit;
   onToggleAdvancedRanges?: () => void;
 }
 
 export function ValuePanels(props: ValuePanelsProps) {
-  const { primary, secondary } = splitMetrics(props.caseItem);
+  const { primary, secondary } = splitMetrics(props.caseItem, { pressureUnit: props.pressureUnit });
   const showReferences = shouldShowMetricReferences(props.caseItem, props.showAdvancedRanges);
   const difficultyLevel = Number(props.caseItem.difficulty_level ?? 1);
   const secondaryScroll = useHorizontalOverflowState<HTMLDivElement>(

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { composeCaseStructuredExplanation } from "./explanations";
 import { getCaseFeedbackFormUrl } from "./feedback";
-import { getVisibleCaseMetrics } from "./metrics";
+import { getDisplayMetricDefinition, getVisibleCaseMetrics, renderMetricValue } from "./metrics";
 import {
   applyPracticeOutcome,
   buildFinalStepResults,
@@ -670,6 +670,19 @@ describe("metric visibility", () => {
 
     expect(labels).toContain("Glucose");
     expect(labels).toContain("Lactate");
+  });
+
+  it("converts pressure metric display values to kPa only when requested", () => {
+    const metrics = getVisibleCaseMetrics(sampleCase);
+    const paco2Metric = metrics.find(metric => metric.label === "PaCO2");
+    const bicarbonateMetric = metrics.find(metric => metric.label === "HCO3");
+
+    expect(paco2Metric).toBeTruthy();
+    expect(bicarbonateMetric).toBeTruthy();
+    expect(renderMetricValue(paco2Metric!)).toBe("52.0 mmHg");
+    expect(renderMetricValue(paco2Metric!, { pressureUnit: "kPa" })).toBe("6.9 kPa");
+    expect(getDisplayMetricDefinition(paco2Metric!, { pressureUnit: "kPa" }).reference).toBe("Normal: 4.7 - 6.0 kPa");
+    expect(renderMetricValue(bicarbonateMetric!, { pressureUnit: "kPa" })).toBe("18.0 mmol/L");
   });
 });
 

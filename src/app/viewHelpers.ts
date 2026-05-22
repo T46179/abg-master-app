@@ -1,4 +1,4 @@
-import { getVisibleCaseMetrics, renderMetricValue } from "../core/metrics";
+import { getDisplayMetricDefinition, getVisibleCaseMetrics, renderMetricValue, type PressureUnit } from "../core/metrics";
 import {
   canAccessDifficulty,
   DIFFICULTY_ORDER,
@@ -36,17 +36,20 @@ export function getInitialsLabel(value: string) {
     .join("");
 }
 
-export function getRenderableMetrics(caseItem: CaseData) {
+export function getRenderableMetrics(caseItem: CaseData, options?: { pressureUnit?: PressureUnit }) {
   return getVisibleCaseMetrics(caseItem)
-    .map(metric => ({
-      ...metric,
-      renderedValue: renderMetricValue(metric)
-    }))
+    .map(metric => {
+      const displayMetric = getDisplayMetricDefinition(metric, options);
+      return {
+        ...displayMetric,
+        renderedValue: renderMetricValue(metric, options)
+      };
+    })
     .filter(metric => metric.renderedValue !== "--");
 }
 
-export function splitMetrics(caseItem: CaseData) {
-  const metrics = getRenderableMetrics(caseItem);
+export function splitMetrics(caseItem: CaseData, options?: { pressureUnit?: PressureUnit }) {
+  const metrics = getRenderableMetrics(caseItem, options);
   return {
     primary: metrics.filter(metric => PRIMARY_METRIC_LABELS.has(metric.label)),
     secondary: metrics.filter(metric => !PRIMARY_METRIC_LABELS.has(metric.label))

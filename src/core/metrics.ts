@@ -1,8 +1,45 @@
 import type { CaseData, CaseMetricDefinition } from "./types";
 
+export type PressureUnit = "mmHg" | "kPa";
+
+const MMHG_TO_KPA = 0.133322;
+
 export function formatValue(value: unknown, decimals = 1): string {
   if (value == null || Number.isNaN(Number(value))) return "--";
   return Number(value).toFixed(decimals);
+}
+
+export function convertMmHgToKPa(value: unknown): number | null {
+  if (value == null || Number.isNaN(Number(value))) return null;
+  return Number(value) * MMHG_TO_KPA;
+}
+
+function formatPressureReference(reference: string, pressureUnit: PressureUnit): string {
+  if (pressureUnit === "mmHg") return reference;
+
+  return reference.replace(/(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)\s*mmHg/g, (_match, lower, upper) => {
+    const lowerKpa = convertMmHgToKPa(lower);
+    const upperKpa = convertMmHgToKPa(upper);
+    if (lowerKpa == null || upperKpa == null) return _match;
+    return `${formatValue(lowerKpa, 1)} - ${formatValue(upperKpa, 1)} kPa`;
+  });
+}
+
+export function getDisplayMetricDefinition(
+  metric: CaseMetricDefinition,
+  options?: { pressureUnit?: PressureUnit }
+): CaseMetricDefinition {
+  const pressureUnit = options?.pressureUnit ?? "mmHg";
+  if (pressureUnit === "mmHg" || metric.unit !== "mmHg") return metric;
+
+  const convertedValue = convertMmHgToKPa(metric.value);
+  return {
+    ...metric,
+    value: convertedValue,
+    decimals: 1,
+    unit: "kPa",
+    reference: formatPressureReference(metric.reference, pressureUnit)
+  };
 }
 
 export function getCaseStructuredInputs(caseItem: CaseData) {
@@ -174,9 +211,10 @@ export function getVisibleCaseMetrics(caseItem: CaseData): CaseMetricDefinition[
   });
 }
 
-export function renderMetricValue(metric: CaseMetricDefinition): string {
-  const formatted = formatValue(metric.value, metric.decimals ?? 1);
+export function renderMetricValue(metric: CaseMetricDefinition, options?: { pressureUnit?: PressureUnit }): string {
+  const displayMetric = getDisplayMetricDefinition(metric, options);
+  const formatted = formatValue(displayMetric.value, displayMetric.decimals ?? 1);
   if (formatted === "--") return "--";
-  return metric.unit ? `${formatted} ${metric.unit}` : formatted;
+  return displayMetric.unit ? `${formatted} ${displayMetric.unit}` : formatted;
 }
 

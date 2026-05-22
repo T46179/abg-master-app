@@ -54,12 +54,17 @@ const SEO_BY_PATH: Record<string, SeoMetadataConfig> = {
   "/delta-ratio": {
     title: "Delta Ratio Explained | ABG Master",
     description: "Learn how to calculate and interpret the delta ratio in high anion gap metabolic acidosis, with worked examples for detecting mixed metabolic disorders."
+  },
+  "/abg-interpretation": {
+    title: "ABG Interpretation | Step-by-Step Guide to Blood Gas Analysis",
+    description: "Learn how to interpret an ABG step by step, including oxygenation, pH, primary acid-base process, compensation, anion gap, mixed disorders, and ABG vs VBG differences."
   }
 };
 
 const CANONICAL_PATH_BY_PATH: Record<string, string> = {
   "/blood-gas-compensation-rules": "/blood-gas-compensation-rules/",
-  "/delta-ratio": "/delta-ratio/"
+  "/delta-ratio": "/delta-ratio/",
+  "/abg-interpretation": "/abg-interpretation/"
 };
 
 function normalizePathname(pathname: string) {
