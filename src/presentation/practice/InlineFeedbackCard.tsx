@@ -8,6 +8,7 @@ interface InlineFeedbackCardProps {
   onContinue: () => void;
   disabled?: boolean;
   isSubmitting?: boolean;
+  lastStepButtonLabel?: string;
 }
 
 export function InlineFeedbackCard(props: InlineFeedbackCardProps) {
@@ -40,7 +41,7 @@ export function InlineFeedbackCard(props: InlineFeedbackCardProps) {
             <span>Submitting case</span>
           </>
         ) : props.isLastStep ? (
-          "Submit Case"
+          props.lastStepButtonLabel ?? "Submit Case"
         ) : (
           "Continue"
         )}

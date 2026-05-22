@@ -23,6 +23,7 @@ interface QuestionFlowCardProps {
   interactionDisabled?: boolean;
   interactionDisabledMessage?: string | null;
   isSubmittingCase?: boolean;
+  lastStepButtonLabel?: string;
 }
 
 function getStringAnswer(value: unknown): string | null {
@@ -314,6 +315,7 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
             onContinue={props.onContinueStep}
             disabled={props.interactionDisabled}
             isSubmitting={props.isSubmittingCase}
+            lastStepButtonLabel={props.lastStepButtonLabel}
           />
         )}
       </div>

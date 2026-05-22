@@ -9,6 +9,8 @@ const compensationRulesDir = resolve(distDir, "blood-gas-compensation-rules");
 const compensationRulesPath = resolve(compensationRulesDir, "index.html");
 const deltaRatioDir = resolve(distDir, "delta-ratio");
 const deltaRatioPath = resolve(deltaRatioDir, "index.html");
+const abgInterpretationDir = resolve(distDir, "abg-interpretation");
+const abgInterpretationPath = resolve(abgInterpretationDir, "index.html");
 
 const compensationRulesMetadata = {
   title: "Blood Gas Compensation Rules Explained | ABG Master",
@@ -31,6 +33,16 @@ const staticPages = [
       description:
         "Learn how to calculate and interpret the delta ratio in high anion gap metabolic acidosis, with worked examples for detecting mixed metabolic disorders.",
       url: "https://www.abgmaster.com/delta-ratio/"
+    }
+  },
+  {
+    dir: abgInterpretationDir,
+    path: abgInterpretationPath,
+    metadata: {
+      title: "ABG Interpretation | Step-by-Step Guide to Blood Gas Analysis",
+      description:
+        "Learn how to interpret an ABG step by step, including oxygenation, pH, primary acid-base process, compensation, anion gap, mixed disorders, and ABG vs VBG differences.",
+      url: "https://www.abgmaster.com/abg-interpretation/"
     }
   }
 ];

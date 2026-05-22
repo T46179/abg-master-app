@@ -42,6 +42,13 @@ describe("app routes", () => {
     expect(getElementName(deltaRatioRoute?.element)).toBe("DeltaRatioScreen");
   });
 
+  it("renders the ABG interpretation page outside the app shell", () => {
+    const abgInterpretationRoute = appRoutes.find((route) => route.path === "/abg-interpretation");
+
+    expect(abgInterpretationRoute?.element).toBeTruthy();
+    expect(getElementName(abgInterpretationRoute?.element)).toBe("AbgInterpretationScreen");
+  });
+
   it("keeps dashboard, practice, and calibration available inside the app shell", () => {
     const shellRoute = appRoutes.find((route) => route.children != null);
     const childPaths = shellRoute?.children?.map((route) => route.path);
