@@ -5,7 +5,6 @@ import {
   BookOpen,
   CheckCircle2,
   ListChecks,
-  Stethoscope,
   TriangleAlert,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -13,6 +12,7 @@ import { SeoMetadata } from "../../app/seo";
 import { convertMmHgToKPa, type PressureUnit } from "../../core/metrics";
 import { getCorrectAnswer, isCorrectAnswer, prettyStepLabel } from "../../core/practice";
 import type { AnswerSelection, AnswerValue, CaseData, StepResult } from "../../core/types";
+import bookSearchIcon from "../../assets/icons/book_search.svg";
 import externalLinkIcon from "../../assets/icons/external_link.svg";
 import lightbulbIcon from "../../assets/icons/lightbulb.svg";
 import numbersIcon from "../../assets/icons/numbers.svg";
@@ -773,7 +773,7 @@ export function AbgInterpretationScreen() {
         </section>
 
         <section className="comp-rules-page__references">
-          <SectionLabel icon={<Stethoscope aria-hidden="true" />}>References</SectionLabel>
+          <SectionLabel icon={<SectionIcon src={bookSearchIcon} />}>References</SectionLabel>
           <h2>Further reading</h2>
           <ol>
             {references.map(([author, title, source], index) => (
