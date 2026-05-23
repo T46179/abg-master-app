@@ -5,6 +5,7 @@ import {
   BookOpen,
   CheckCircle2,
   ListChecks,
+  Stethoscope,
   TriangleAlert,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -12,7 +13,6 @@ import { SeoMetadata } from "../../app/seo";
 import { convertMmHgToKPa, type PressureUnit } from "../../core/metrics";
 import { getCorrectAnswer, isCorrectAnswer, prettyStepLabel } from "../../core/practice";
 import type { AnswerSelection, AnswerValue, CaseData, StepResult } from "../../core/types";
-import bookSearchIcon from "../../assets/icons/book_search.svg";
 import externalLinkIcon from "../../assets/icons/external_link.svg";
 import lightbulbIcon from "../../assets/icons/lightbulb.svg";
 import numbersIcon from "../../assets/icons/numbers.svg";
@@ -726,9 +726,6 @@ export function AbgInterpretationScreen() {
           <div className="abg-interpretation-page__cases">
             {workedCases.map((item) => <WorkedCaseCard key={item.title} item={item} pressureUnit={pressureUnit} />)}
           </div>
-        </section>
-
-        <section className="comp-rules-page__section">
           <SectionLabel icon={<Activity aria-hidden="true" />}>Interactive</SectionLabel>
           <h2>Try it yourself</h2>
           <div className="abg-interpretation-page__practice-demo">
@@ -776,7 +773,7 @@ export function AbgInterpretationScreen() {
         </section>
 
         <section className="comp-rules-page__references">
-          <SectionLabel icon={<SectionIcon src={bookSearchIcon} />}>References</SectionLabel>
+          <SectionLabel icon={<Stethoscope aria-hidden="true" />}>References</SectionLabel>
           <h2>Further reading</h2>
           <ol>
             {references.map(([author, title, source], index) => (
