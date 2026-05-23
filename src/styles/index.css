@@ -8070,45 +8070,41 @@ button.learn-progress-dots__dot:focus-visible {
   margin-top: -2.7rem;
 }
 
-.delta-ratio-page__quick-cta a {
+.comp-rules-page__takeaway-cta {
+  display: flex;
+  justify-content: center;
+}
+
+.comp-rules-page__practice-cta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.7rem;
-  min-height: 2.85rem;
-  padding: 0.45rem 1.15rem;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  gap: 0.55rem;
+  min-height: 2.95rem;
+  padding: 0.7rem 1.25rem;
   border-radius: 999px;
-  background: var(--color-surface);
-  box-shadow: 0 0.15rem 0.25rem rgba(15, 23, 42, 0.06);
-  color: #334155;
-  font-size: 0.95rem;
+  background: var(--color-slate-strong);
+  color: var(--color-surface);
+  font-size: 0.92rem;
   font-weight: 350;
   line-height: 1.4;
   text-decoration: none;
-  transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
+  transition: background-color 180ms ease, transform 180ms ease;
 }
 
-.delta-ratio-page__quick-cta a > span {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 999px;
-  background: #067647;
-}
-
-.delta-ratio-page__quick-cta svg {
+.comp-rules-page__practice-cta svg {
   width: 1rem;
   height: 1rem;
-  color: #94a3b8;
-  transition: transform 180ms ease;
+  transition: transform 160ms ease;
 }
 
-.delta-ratio-page__quick-cta a:hover {
-  border-color: rgba(15, 23, 42, 0.08);
-  background: #fafaf7;
+.comp-rules-page__practice-cta:hover,
+.comp-rules-page__practice-cta:focus-visible {
+  background: #1e293b;
 }
 
-.delta-ratio-page__quick-cta a:hover svg {
+.comp-rules-page__practice-cta:hover svg,
+.comp-rules-page__practice-cta:focus-visible svg {
   transform: translateX(0.18rem);
 }
 
@@ -8554,6 +8550,12 @@ button.learn-progress-dots__dot:focus-visible {
 .comp-rules-page__cta a svg {
   width: 1rem;
   height: 1rem;
+  transition: transform 160ms ease;
+}
+
+.comp-rules-page__cta a:hover svg,
+.comp-rules-page__cta a:focus-visible svg {
+  transform: translateX(0.18rem);
 }
 
 .comp-rules-page__references ol {
@@ -9009,12 +9011,12 @@ button.learn-progress-dots__dot:focus-visible {
   font-weight: 350;
 }
 
-.delta-ratio-page a:not(.figma-button, .comp-rules-page__cta a, .delta-ratio-page__icon-link, .delta-ratio-page__card-icon-link, .delta-ratio-page__quick-cta a) {
+.delta-ratio-page a:not(.figma-button, .comp-rules-page__cta a, .comp-rules-page__practice-cta, .delta-ratio-page__icon-link, .delta-ratio-page__card-icon-link, .delta-ratio-page__quick-cta a) {
   color: #026aa2;
   text-decoration: none;
 }
 
-.delta-ratio-page a:not(.figma-button, .comp-rules-page__cta a, .delta-ratio-page__icon-link, .delta-ratio-page__card-icon-link, .delta-ratio-page__quick-cta a):hover {
+.delta-ratio-page a:not(.figma-button, .comp-rules-page__cta a, .comp-rules-page__practice-cta, .delta-ratio-page__icon-link, .delta-ratio-page__card-icon-link, .delta-ratio-page__quick-cta a):hover {
   text-decoration: underline;
 }
 
@@ -9553,10 +9555,12 @@ button.learn-progress-dots__dot:focus-visible {
 .abg-interpretation-page__formula {
   display: grid;
   gap: 0.25rem;
+  justify-items: center;
   padding: 1rem 1.25rem;
   border: 1px solid rgba(15, 23, 42, 0.05);
   border-radius: 1rem;
   background: #fafaf7;
+  text-align: center;
 }
 
 .abg-interpretation-page__formula span {
@@ -9578,7 +9582,7 @@ button.learn-progress-dots__dot:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  justify-self: start;
+  justify-self: center;
   width: fit-content;
   min-height: 2.2rem;
   padding: 0.45rem 0.9rem;
@@ -9604,49 +9608,68 @@ button.learn-progress-dots__dot:focus-visible {
 }
 
 .abg-interpretation-page__corrections {
-  padding: 1.25rem;
-  border: 1px solid rgba(15, 23, 42, 0.05);
-  border-radius: 1.5rem;
-  background: var(--color-surface);
-  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
+  display: grid;
+  gap: 2rem;
 }
 
 .abg-interpretation-page__corrections-grid {
   display: grid;
-  gap: 0.75rem;
+  gap: 2rem;
 }
 
 .abg-interpretation-page__correction-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.92fr);
+  grid-template-columns: 1fr;
   align-content: start;
-  align-items: center;
   gap: 1rem;
   min-width: 0;
-  padding: 1rem 1.1rem;
+  padding: 1.8rem;
   border: 1px solid rgba(15, 23, 42, 0.05);
   border-radius: 1rem;
-  background: #fafaf7;
+  background: var(--color-surface);
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
 }
 
 .abg-interpretation-page__correction-copy {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.72rem;
   min-width: 0;
 }
 
-.abg-interpretation-page__correction-card h3,
+.abg-interpretation-page__correction-pill,
 .abg-interpretation-page__correction-card p,
 .abg-interpretation-page__correction-formula {
   margin: 0;
 }
 
-.abg-interpretation-page__correction-card h3 {
-  color: var(--color-slate-strong);
-  font-size: 0.98rem;
-  font-weight: 500;
-  letter-spacing: -0.025em;
-  line-height: 1.35;
+.abg-interpretation-page__correction-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  min-height: 1.45rem;
+  padding: 0.24rem 0.62rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 400;
+  letter-spacing: 0.13em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.abg-interpretation-page__correction-pill.is-green {
+  background: #dcfae6;
+  color: #067647;
+}
+
+.abg-interpretation-page__correction-pill.is-yellow {
+  background: #fef0c7;
+  color: #b54708;
+}
+
+.abg-interpretation-page__correction-pill.is-blue {
+  background: #e0e7ff;
+  color: #3538cd;
 }
 
 .abg-interpretation-page__correction-card p {
@@ -9657,16 +9680,31 @@ button.learn-progress-dots__dot:focus-visible {
 }
 
 .abg-interpretation-page__correction-formula {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
   min-width: 0;
-  padding: 0.7rem 0.75rem;
-  border: 1px solid rgba(100, 116, 139, 0.12);
-  border-radius: 0.85rem;
-  background: var(--color-surface);
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  border-radius: 1rem;
+  background: #fafaf7;
   color: var(--color-slate-strong);
-  font-size: 0.9rem;
+  font-size: 1.05rem;
   font-weight: 450;
   line-height: 1.45;
+  text-align: center;
   overflow-wrap: anywhere;
+}
+
+.abg-interpretation-page__correction-formula strong {
+  font: inherit;
+}
+
+.abg-interpretation-page__correction-formula span {
+  color: var(--color-slate-muted);
+  font-size: 0.86rem;
+  font-weight: 350;
+  line-height: 1.45;
 }
 
 .abg-interpretation-page__cases {
@@ -9790,9 +9828,7 @@ button.learn-progress-dots__dot:focus-visible {
 
 .abg-interpretation-page__practice-demo {
   display: grid;
-  gap: 1rem;
   align-items: stretch;
-  grid-template-rows: auto minmax(0, 1fr);
   min-height: clamp(32rem, 64vh, 40rem);
   padding: 1.35rem;
   border: 1px solid rgba(15, 23, 42, 0.05);
@@ -9820,11 +9856,6 @@ button.learn-progress-dots__dot:focus-visible {
   letter-spacing: 0.14em;
   line-height: 1.5;
   text-transform: uppercase;
-}
-
-.abg-interpretation-page__practice-demo-intro span {
-  background: #dcfae6;
-  color: #067647;
 }
 
 .abg-interpretation-page__practice-demo-intro svg,
@@ -10310,7 +10341,6 @@ button.learn-progress-dots__dot:focus-visible {
 
   .abg-interpretation-page__takeaway .comp-rules-page__card,
   .abg-interpretation-page__step-block,
-  .abg-interpretation-page__corrections,
   .abg-interpretation-page__algorithm,
   .abg-interpretation-page__practice-demo {
     padding: 1.25rem;

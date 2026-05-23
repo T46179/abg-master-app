@@ -5,7 +5,6 @@ import {
   BookOpen,
   CheckCircle2,
   ListChecks,
-  Stethoscope,
   TriangleAlert,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -13,6 +12,7 @@ import { SeoMetadata } from "../../app/seo";
 import { convertMmHgToKPa, type PressureUnit } from "../../core/metrics";
 import { getCorrectAnswer, isCorrectAnswer, prettyStepLabel } from "../../core/practice";
 import type { AnswerSelection, AnswerValue, CaseData, StepResult } from "../../core/types";
+import bookSearchIcon from "../../assets/icons/book_search.svg";
 import externalLinkIcon from "../../assets/icons/external_link.svg";
 import lightbulbIcon from "../../assets/icons/lightbulb.svg";
 import numbersIcon from "../../assets/icons/numbers.svg";
@@ -116,7 +116,7 @@ function getStepBlocks(pressureUnit: PressureUnit): StepBlock[] {
     title: "Assess oxygenation",
     badge: "ABG only",
     body: [
-      "Start by assessing oxygenation using the PaO₂, SpO₂, and the FiO₂ the patient is on. Oxygenation is primarily an ABG question — venous PO₂ is not useful for this.",
+      "Start by assessing oxygenation using the PaO₂, SpO₂, and the FiO₂. Oxygenation is primarily an ABG question — venous PO₂ is not useful for this.",
       "For unexplained hypoxaemia or respiratory failure classification, the A–a gradient can be calculated."
     ]
   },
@@ -346,14 +346,6 @@ function ComposeIcon() {
       <path d="M43 21V47H5V7H26" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" />
       <path d="M27.3 32.7L19.9 38.4L21.1 29.2L32 10.2L38.2 13.8L27.3 32.7Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" />
       <path d="M41.2 1.5C42.9 2.5 43.5 4.7 42.5 6.4L40.4 10.1L34.2 6.5L36.4 2.7C37.3 1.1 39.5 0.499997 41.2 1.5Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" />
-    </svg>
-  );
-}
-
-function PlayIcon() {
-  return (
-    <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
-      <path d="M43 24L5 46V2L43 24Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" />
     </svg>
   );
 }
@@ -691,29 +683,38 @@ export function AbgInterpretationScreen() {
           <SectionLabel icon={<SectionIcon src={viewIcon} />}>At a glance</SectionLabel>
           <h2>Corrections</h2>
           <p>Blood gas interpretation is contextual. A “normal” value may become abnormal once physiology, compensation, or laboratory corrections are taken into account.</p>
-          <p>These are some of the most important corrections to know.</p>
+          <p>These are some of the important corrections that you should know.</p>
           <div className="abg-interpretation-page__corrections">
             <div className="abg-interpretation-page__corrections-grid">
               <article className="abg-interpretation-page__correction-card">
                 <div className="abg-interpretation-page__correction-copy">
-                  <h3>Albumin correction for anion gap</h3>
-                  <p>Albumin is a major unmeasured anion. In hypoalbuminaemia, the anion gap may appear falsely normal and potentially hide a high anion gap metabolic acidosis.</p>
+                  <span className="abg-interpretation-page__correction-pill is-green">Anion gap</span>
+                  <p>Albumin is a major unmeasured anion. Low albumin can make the anion gap appear falsely normal and mask a HAGMA.</p>
                 </div>
-                <div className="abg-interpretation-page__correction-formula">Corrected AG = AG + 0.25 × (40 − Albumin)</div>
+                <div className="abg-interpretation-page__correction-formula">
+                  <strong>Corrected AG = AG + 0.25 × (40 − Albumin)</strong>
+                  <span>Add ~2.5 to the AG for every 10 g/L albumin below 40</span>
+                </div>
               </article>
               <article className="abg-interpretation-page__correction-card">
                 <div className="abg-interpretation-page__correction-copy">
-                  <h3>Glucose correction for sodium</h3>
-                  <p>Severe hyperglycaemia causes osmotic water shift into the intravascular space, lowering measured sodium. Correcting the sodium helps estimate the true sodium level.</p>
+                  <span className="abg-interpretation-page__correction-pill is-yellow">Sodium</span>
+                  <p>Hyperglycaemia pulls water into the intravascular space, lowering measured sodium. Severe hyperglycaemia might hide an underlying hypernatraemia.</p>
                 </div>
-                <div className="abg-interpretation-page__correction-formula">Corrected Na<sup>+</sup> = Measured Na<sup>+</sup> + 0.3 × (Glucose − 5.5)</div>
+                <div className="abg-interpretation-page__correction-formula">
+                  <strong>Corrected Na<sup>+</sup> = Measured Na<sup>+</sup> + 0.3 × (Glucose − 5.5)</strong>
+                  <span>Na<sup>+</sup> falls by ~3 mmol/L for every 10 mmol/L rise in glucose.</span>
+                </div>
               </article>
               <article className="abg-interpretation-page__correction-card">
                 <div className="abg-interpretation-page__correction-copy">
-                  <h3>Potassium shift with pH</h3>
-                  <p>Acidaemia shifts potassium out of cells and may increase serum potassium concentration, even when total body potassium is depleted.</p>
+                  <span className="abg-interpretation-page__correction-pill is-blue">Potassium</span>
+                  <p>Acidaemia shifts potassium out of cells, increasing serum K⁺ even when total body potassium is low.</p>
                 </div>
-                <div className="abg-interpretation-page__correction-formula">K<sup>+</sup> rises by ~0.6 mmol/L for every 0.1 decrease in pH</div>
+                <div className="abg-interpretation-page__correction-formula">
+                  <strong>Corrected K<sup>+</sup> = Measured K<sup>+</sup> − [0.6 × ((7.4 − pH) ÷ 0.1)]</strong>
+                  <span>K<sup>+</sup> rises by ~0.6 mmol/L for every 0.1 decrease in pH</span>
+                </div>
               </article>
             </div>
           </div>
@@ -725,11 +726,12 @@ export function AbgInterpretationScreen() {
           <div className="abg-interpretation-page__cases">
             {workedCases.map((item) => <WorkedCaseCard key={item.title} item={item} pressureUnit={pressureUnit} />)}
           </div>
+        </section>
+
+        <section className="comp-rules-page__section">
+          <SectionLabel icon={<Activity aria-hidden="true" />}>Interactive</SectionLabel>
+          <h2>Try it yourself</h2>
           <div className="abg-interpretation-page__practice-demo">
-            <div className="abg-interpretation-page__practice-demo-intro">
-              <span><PlayIcon /> Interactive</span>
-              <h3>Try it yourself</h3>
-            </div>
             <EmbeddedPracticePreview pressureUnit={pressureUnit} />
           </div>
         </section>
@@ -768,13 +770,13 @@ export function AbgInterpretationScreen() {
             <p>Work through pH, oxygenation, compensation, anion gap, and mixed disorders with instant feedback.</p>
           </div>
           <Link to="/practice">
-            Start practising ABGs
+            Start practising
             <ArrowRight aria-hidden="true" />
           </Link>
         </section>
 
         <section className="comp-rules-page__references">
-          <SectionLabel icon={<Stethoscope aria-hidden="true" />}>References</SectionLabel>
+          <SectionLabel icon={<SectionIcon src={bookSearchIcon} />}>References</SectionLabel>
           <h2>Further reading</h2>
           <ol>
             {references.map(([author, title, source], index) => (

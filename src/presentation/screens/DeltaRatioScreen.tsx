@@ -299,8 +299,7 @@ export function DeltaRatioScreen() {
         </section>
 
         <div className="delta-ratio-page__quick-cta">
-          <Link to="/practice?difficulty=advanced">
-            <span aria-hidden="true" />
+          <Link className="comp-rules-page__practice-cta" to="/practice?difficulty=advanced">
             Test your Blood Gas interpretation
             <ArrowRight aria-hidden="true" />
           </Link>

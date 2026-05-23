@@ -198,6 +198,12 @@ export function BloodGasCompensationRulesScreen() {
             <blockquote>Is the compensatory response appropriate for the primary disorder, or should I keep looking for another acid-base process?</blockquote>
             <p>The formula estimates what compensation should look like. The interpretation comes from comparing that expected response with the patient&apos;s measured value.</p>
           </div>
+          <div className="comp-rules-page__takeaway-cta">
+            <Link className="comp-rules-page__practice-cta" to="/practice">
+              Practice compensation now
+              <ArrowRight aria-hidden="true" />
+            </Link>
+          </div>
         </section>
 
         <section className="comp-rules-page__section">
