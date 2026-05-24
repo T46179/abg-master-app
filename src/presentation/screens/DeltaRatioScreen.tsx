@@ -115,7 +115,7 @@ const workedExamples: WorkedExample[] = [
       ["Anion gap", "140 - 100 - 12 = 28"],
       ["Delta ratio", "(28 - 16) / (24 - 12) = 1.0"]
     ],
-    result: <>Delta ratio fits HAGMA without an additional metabolic process, but <PaCO2Text /> is far lower than compensation alone would explain. This is why compensation should always be assessed separately from the delta ratio. <Link to="/blood-gas-compensation-rules/">Review compensation rules &rarr;</Link></>,
+    result: <>Delta ratio fits HAGMA without an additional metabolic process, but <PaCO2Text /> is far lower than compensation alone would explain. This is why compensation should always be assessed separately from the delta ratio. <Link className="delta-ratio-page__inline-icon-link" to="/blood-gas-compensation-rules/" target="_blank" rel="noopener noreferrer">Review compensation rules <img src={externalLinkIcon} alt="" aria-hidden="true" /></Link></>,
     tone: "green"
   }
 ];
@@ -299,7 +299,7 @@ export function DeltaRatioScreen() {
         </section>
 
         <div className="delta-ratio-page__quick-cta">
-          <Link className="comp-rules-page__practice-cta" to="/practice?difficulty=advanced">
+          <Link className="comp-rules-page__practice-cta" to="/practice?difficulty=advanced" target="_blank" rel="noopener noreferrer">
             Test your Blood Gas interpretation
             <ArrowRight aria-hidden="true" />
           </Link>
@@ -335,10 +335,15 @@ export function DeltaRatioScreen() {
           <p>Use the delta ratio only after you have identified a high anion gap metabolic acidosis.</p>
           <ol className="delta-ratio-page__workflow">
             <li><span>Check the pH.</span></li>
-            <li><span>Identify the primary acid-base process.</span></li>
+            <li>
+              <span>Identify the primary acid-base process.</span>
+              <Link className="delta-ratio-page__icon-link" to="/abg-interpretation/" target="_blank" rel="noopener noreferrer" aria-label="Review how to interpret a blood gas">
+                <img src={externalLinkIcon} alt="" aria-hidden="true" />
+              </Link>
+            </li>
             <li>
               <span>Check whether respiratory compensation is appropriate.</span>
-              <Link className="delta-ratio-page__icon-link" to="/blood-gas-compensation-rules/" aria-label="Review blood gas compensation rules">
+              <Link className="delta-ratio-page__icon-link" to="/blood-gas-compensation-rules/" target="_blank" rel="noopener noreferrer" aria-label="Review blood gas compensation rules">
                 <img src={externalLinkIcon} alt="" aria-hidden="true" />
               </Link>
             </li>
@@ -405,7 +410,7 @@ export function DeltaRatioScreen() {
             {commonMistakes.map(([number, title, body]) => (
               <article key={number}>
                 {number === "02" ? (
-                  <Link className="delta-ratio-page__card-icon-link" to="/blood-gas-compensation-rules/" aria-label="Review blood gas compensation rules">
+                  <Link className="delta-ratio-page__card-icon-link" to="/blood-gas-compensation-rules/" target="_blank" rel="noopener noreferrer" aria-label="Review blood gas compensation rules">
                     <img src={externalLinkIcon} alt="" aria-hidden="true" />
                   </Link>
                 ) : null}
@@ -435,7 +440,7 @@ export function DeltaRatioScreen() {
           <p>ABG Master teaches mixed metabolic disorders in a stepwise way: first identify the primary disorder, then assess compensation, then use the anion gap and delta ratio to decide whether the final diagnosis explains the whole pattern.</p>
           <p>Reference ranges and thresholds are kept internally consistent across teaching, grading, and explanations so learners can practise the same logic repeatedly.</p>
           <p>
-            For related foundations, review the <Link to="/blood-gas-compensation-rules/">blood gas compensation rules</Link>. 
+            For related foundations, review how to <Link to="/abg-interpretation/" target="_blank" rel="noopener noreferrer">interpret a blood gas</Link> or the <Link to="/blood-gas-compensation-rules/" target="_blank" rel="noopener noreferrer">blood gas compensation rules</Link>.
           </p>
         </section>
 
@@ -452,7 +457,7 @@ export function DeltaRatioScreen() {
             <h2>Apply the delta ratio with ABG Master</h2>
             <p>Practise DKA, lactic acidosis, toxic alcohols, salicylates, and mixed metabolic patterns with step-by-step feedback.</p>
           </div>
-          <Link to="/practice">
+          <Link to="/practice" target="_blank" rel="noopener noreferrer">
             Start practising
             <ArrowRight aria-hidden="true" />
           </Link>

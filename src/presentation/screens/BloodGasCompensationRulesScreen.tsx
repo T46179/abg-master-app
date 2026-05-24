@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { SeoMetadata } from "../../app/seo";
 import bookIcon from "../../assets/icons/book.svg";
 import bookSearchIcon from "../../assets/icons/book_search.svg";
+import externalLinkIcon from "../../assets/icons/external_link.svg";
 import lightbulbIcon from "../../assets/icons/lightbulb.svg";
 import numbersIcon from "../../assets/icons/numbers.svg";
 import viewIcon from "../../assets/icons/view.svg";
@@ -283,7 +284,7 @@ export function BloodGasCompensationRulesScreen() {
         <section className="comp-rules-page__section">
           <h2>How ABG Master applies these rules</h2>
           <p>In ABG Master, these rules are used to generate cases, grade compensation, and explain whether the measured response fits the expected physiologic response.</p>
-          <p>This gives learners a consistent framework before they move into more complex clinical interpretation.</p>
+          <p>This provides a consistent framework before moving into more complex <Link className="comp-rules-page__inline-icon-link" to="/abg-interpretation/" target="_blank" rel="noopener noreferrer">clinical interpretation <img src={externalLinkIcon} alt="" aria-hidden="true" /></Link>.</p>
         </section>
 
         <section className="comp-rules-page__limitation">

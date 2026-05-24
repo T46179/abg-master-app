@@ -8493,6 +8493,24 @@ button.learn-progress-dots__dot:focus-visible {
   color: #92400e;
 }
 
+.comp-rules-page__inline-icon-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  color: #026aa2;
+  text-decoration: none;
+}
+
+.comp-rules-page__inline-icon-link:hover {
+  text-decoration: underline;
+}
+
+.comp-rules-page__inline-icon-link img {
+  width: 0.82rem;
+  height: 0.82rem;
+  filter: brightness(0) saturate(100%) invert(31%) sepia(98%) saturate(1660%) hue-rotate(173deg) brightness(91%) contrast(98%);
+}
+
 .comp-rules-page__cta {
   display: flex;
   align-items: center;
@@ -8961,6 +8979,18 @@ button.learn-progress-dots__dot:focus-visible {
 .delta-ratio-page__example-result.is-orange {
   background: #ffead5;
   color: #b93815;
+}
+
+.delta-ratio-page__inline-icon-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
+.delta-ratio-page__inline-icon-link img {
+  width: 0.82rem;
+  height: 0.82rem;
+  filter: brightness(0) saturate(100%) invert(31%) sepia(98%) saturate(1660%) hue-rotate(173deg) brightness(91%) contrast(98%);
 }
 
 .delta-ratio-page__formula-row {
