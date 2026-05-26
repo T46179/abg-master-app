@@ -657,6 +657,8 @@ button:disabled {
 .practice-screen__container > .practice-stage,
 .practice-screen__container > .results-flow {
   width: min(100%, var(--practice-max));
+  max-width: 100%;
+  min-width: 0;
   margin-inline: auto;
 }
 
@@ -2045,6 +2047,16 @@ button:disabled {
 .results-flow {
   display: grid;
   gap: 1rem;
+  min-width: 0;
+}
+
+.value-panels__card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.value-panels__card.value-panels__secondary--rail {
+  padding-bottom: 0.72rem;
 }
 
 .value-panels__header,
@@ -2138,12 +2150,36 @@ button:disabled {
 }
 
 .metric-scroll {
+  max-width: 100%;
   overflow-x: auto;
   margin-top: 1rem;
 }
 
+.value-panels__secondary--rail .metric-scroll--secondary {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.value-panels__secondary--rail .metric-scroll--secondary::-webkit-scrollbar {
+  display: none;
+}
+
 .value-panels__secondary-scroll {
   position: relative;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.value-panels__secondary--fill .metric-grid.metric-grid--secondary.metric-grid--scrolling {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.value-panels__secondary--fill .metric-card--scroll-item {
+  min-width: 0;
 }
 
 .value-panels__secondary-scroll::after {
@@ -2170,6 +2206,64 @@ button:disabled {
 .value-panels__secondary-scroll[data-show-scroll-hint="true"]::after {
   opacity: 1;
   animation: value-panel-scroll-hint 3.6s ease-in-out infinite;
+}
+
+.horizontal-scroll-indicator {
+  display: none;
+}
+
+.horizontal-scroll-indicator__track {
+  position: relative;
+  width: 18rem;
+  height: 2.25rem;
+  cursor: default;
+}
+
+.horizontal-scroll-indicator__track::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 0.56rem;
+  border-radius: 999px;
+  background: #f6f8f8;
+  box-shadow: inset 1px 1px 3px rgba(9, 11, 12, 0.1);
+  transform: translateY(-50%);
+}
+
+.horizontal-scroll-indicator__thumb {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: var(--horizontal-scroll-indicator-thumb-width, 2rem);
+  height: 0.78rem;
+  border-radius: 999px;
+  background: var(--color-navy);
+  box-shadow: 0 2px 5px rgba(15, 37, 71, 0.22);
+  cursor: default;
+  touch-action: none;
+  transform: translate(var(--horizontal-scroll-indicator-thumb-left, 0), -50%);
+}
+
+.horizontal-scroll-indicator__thumb:active {
+  cursor: default;
+}
+
+.horizontal-scroll-indicator:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: 0.18rem;
+  border-radius: 999px;
+}
+
+@media (min-width: 760px) and (hover: hover) and (pointer: fine) {
+  .horizontal-scroll-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.35rem;
+    padding-top: 0.15rem;
+  }
 }
 
 @keyframes value-panel-scroll-hint {
@@ -3451,6 +3545,44 @@ button:disabled {
 }
 
 @media (min-width: 760px) {
+  .value-panels__card.value-panels__secondary--rail {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .value-panels__card.value-panels__secondary--rail > .value-panels__secondary-scroll {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .value-panels__secondary--rail .metric-scroll--secondary {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .value-panels__secondary--rail .metric-scroll--secondary::-webkit-scrollbar {
+    display: none;
+  }
+
+  .value-panels__secondary--rail .metric-grid--scrolling {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .value-panels__secondary--rail .metric-card--scroll-item {
+    flex: 0 0 13.75rem;
+    min-width: 13.75rem;
+  }
+
   .main-nav__inner {
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
@@ -3806,17 +3938,57 @@ button:disabled {
     align-items: stretch;
   }
 
-  .value-panels__card--secondary .metric-grid--scrolling {
+  .value-panels__secondary--fill .metric-grid--scrolling {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
     width: 100%;
     max-width: 100%;
     min-width: 0;
   }
 
+  .value-panels__secondary--rail .metric-grid--scrolling {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    width: max-content;
+    max-width: none;
+    min-width: 100%;
+    grid-template-columns: none;
+  }
+
   .metric-card--scroll-item {
-    flex: 0 0 auto;
-    min-width: 9.5rem;
+    min-width: 0;
     min-height: 6.95rem;
     padding: 0.82rem 0.82rem 0.76rem;
+  }
+
+  .value-panels__secondary--rail .metric-card--scroll-item {
+    flex: 0 0 auto;
+    min-width: 9.5rem;
+  }
+
+  .value-panels__secondary--rail .metric-scroll--secondary {
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .value-panels__secondary--rail .metric-scroll--secondary::-webkit-scrollbar {
+    display: none;
+  }
+
+  .value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    width: max-content;
+    max-width: none;
+    min-width: 100%;
+    grid-template-columns: none;
+  }
+
+  .value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling > .metric-card--scroll-item {
+    flex: 0 0 auto;
+    min-width: 9.5rem;
   }
 
   .value-panels__card--secondary.value-panels__card--references-hidden .metric-card--scroll-item {
@@ -10903,4 +11075,37 @@ button.learn-progress-dots__dot:focus-visible {
   margin-top: 0.28rem;
 }
 
+.value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: max-content;
+  max-width: none;
+  min-width: 100%;
+  grid-template-columns: none;
+}
+
+.value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling > .metric-card--scroll-item {
+  flex-shrink: 0;
+}
+
+@media (min-width: 760px) {
+  .value-panels__secondary--rail.value-panels__secondary--count-3 .metric-grid.metric-grid--secondary.metric-grid--scrolling {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .value-panels__secondary--rail.value-panels__secondary--count-3 .metric-grid.metric-grid--secondary.metric-grid--scrolling > .metric-card--scroll-item {
+    flex: initial;
+    min-width: 0;
+  }
+
+  .value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling > .metric-card--scroll-item {
+    flex-basis: 13.75rem;
+    min-width: 13.75rem;
+  }
+}
 

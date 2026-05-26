@@ -1,10 +1,27 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
 
-interface HorizontalOverflowState {
+export interface HorizontalOverflowState {
   overflowing: boolean;
   atStart: boolean;
   atEnd: boolean;
   movedFromStart: boolean;
+  scrollLeft: number;
+  maxScrollLeft: number;
+  clientWidth: number;
+  scrollWidth: number;
+}
+
+export interface HorizontalOverflowController<T extends HTMLElement> extends HorizontalOverflowState {
+  ref: RefObject<T | null>;
+  scrollToLeft: (value: number, behavior?: ScrollBehavior) => void;
+  scrollBy: (delta: number, behavior?: ScrollBehavior) => void;
+  scrollToStart: (behavior?: ScrollBehavior) => void;
+  scrollToEnd: (behavior?: ScrollBehavior) => void;
+}
+
+function clampScrollLeft(value: number, maxScrollLeft: number) {
+  return Math.min(Math.max(value, 0), maxScrollLeft);
 }
 
 function getOverflowState(node: HTMLElement): Omit<HorizontalOverflowState, "movedFromStart"> {
@@ -15,18 +32,49 @@ function getOverflowState(node: HTMLElement): Omit<HorizontalOverflowState, "mov
   return {
     overflowing,
     atStart: !overflowing || scrollLeft <= 1,
-    atEnd: !overflowing || scrollLeft >= maxScrollLeft - 1
+    atEnd: !overflowing || scrollLeft >= maxScrollLeft - 1,
+    scrollLeft,
+    maxScrollLeft,
+    clientWidth: node.clientWidth,
+    scrollWidth: node.scrollWidth
   };
 }
 
-export function useHorizontalOverflowState<T extends HTMLElement>(contentKey: string) {
+export function useHorizontalOverflowState<T extends HTMLElement>(contentKey: string): HorizontalOverflowController<T> {
   const ref = useRef<T | null>(null);
   const [state, setState] = useState<HorizontalOverflowState>({
     overflowing: false,
     atStart: true,
     atEnd: true,
-    movedFromStart: false
+    movedFromStart: false,
+    scrollLeft: 0,
+    maxScrollLeft: 0,
+    clientWidth: 0,
+    scrollWidth: 0
   });
+
+  const scrollToLeft = useCallback((value: number, behavior: ScrollBehavior = "auto") => {
+    const node = ref.current;
+    if (!node) return;
+    const maxScrollLeft = Math.max(node.scrollWidth - node.clientWidth, 0);
+    node.scrollTo({ left: clampScrollLeft(value, maxScrollLeft), behavior });
+  }, []);
+
+  const scrollBy = useCallback((delta: number, behavior: ScrollBehavior = "auto") => {
+    const node = ref.current;
+    if (!node) return;
+    scrollToLeft(node.scrollLeft + delta, behavior);
+  }, [scrollToLeft]);
+
+  const scrollToStart = useCallback((behavior: ScrollBehavior = "auto") => {
+    scrollToLeft(0, behavior);
+  }, [scrollToLeft]);
+
+  const scrollToEnd = useCallback((behavior: ScrollBehavior = "auto") => {
+    const node = ref.current;
+    if (!node) return;
+    scrollToLeft(Math.max(node.scrollWidth - node.clientWidth, 0), behavior);
+  }, [scrollToLeft]);
 
   useEffect(() => {
     const node = ref.current;
@@ -42,7 +90,11 @@ export function useHorizontalOverflowState<T extends HTMLElement>(contentKey: st
       overflowing: false,
       atStart: true,
       atEnd: true,
-      movedFromStart: false
+      movedFromStart: false,
+      scrollLeft: 0,
+      maxScrollLeft: 0,
+      clientWidth: node.clientWidth,
+      scrollWidth: node.scrollWidth
     });
 
     const update = () => {
@@ -53,6 +105,10 @@ export function useHorizontalOverflowState<T extends HTMLElement>(contentKey: st
           previous.overflowing === nextState.overflowing &&
           previous.atStart === nextState.atStart &&
           previous.atEnd === nextState.atEnd &&
+          previous.scrollLeft === nextState.scrollLeft &&
+          previous.maxScrollLeft === nextState.maxScrollLeft &&
+          previous.clientWidth === nextState.clientWidth &&
+          previous.scrollWidth === nextState.scrollWidth &&
           previous.movedFromStart === (previous.movedFromStart || !nextState.atStart)
             ? previous
             : {
@@ -76,7 +132,9 @@ export function useHorizontalOverflowState<T extends HTMLElement>(contentKey: st
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => update());
 
     resizeObserver?.observe(node);
-    Array.from(node.children).forEach(child => resizeObserver?.observe(child));
+    if (node.firstElementChild) {
+      resizeObserver?.observe(node.firstElementChild);
+    }
 
     return () => {
       cancelAnimationFrame(frameId);
@@ -86,5 +144,5 @@ export function useHorizontalOverflowState<T extends HTMLElement>(contentKey: st
     };
   }, [contentKey]);
 
-  return { ref, ...state };
+  return { ref, ...state, scrollToLeft, scrollBy, scrollToStart, scrollToEnd };
 }
