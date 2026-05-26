@@ -133,6 +133,18 @@ export interface PracticeDifficultyResolution {
 export function resolvePracticeDifficulty(input: PracticeDifficultyResolutionInput): PracticeDifficultyResolution {
   const existingDefault = getDefaultPracticeDifficulty(input.progressionInput, input.lastPracticeDifficulty);
   const requested = input.requestedDifficulty ?? existingDefault;
+  const requestedKey = String(requested ?? "").toLowerCase();
+
+  if (hasCompletedCalibration(input.calibrationRecord) && isKnownDifficulty(requestedKey)) {
+    const calibrationAllowedDifficulties = getCalibrationAllowedDifficulties(input.calibrationRecord.placement);
+    if (calibrationAllowedDifficulties.includes(requestedKey)) {
+      return {
+        resolvedDifficulty: requestedKey,
+        shouldRedirect: false
+      };
+    }
+  }
+
   const resolvedDifficulty = normalizeDifficultyKey(input.progressionInput, requested) || "beginner";
 
   return {
