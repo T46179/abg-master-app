@@ -99,6 +99,11 @@ export interface CaseGasInputs {
   base_excess_mEqL?: number;
 }
 
+export interface CaseOxygenationInputs {
+  fio2_fraction?: number;
+  spo2_percent?: number;
+}
+
 export interface CaseElectrolyteInputs {
   na_mmolL?: number;
   k_mmolL?: number;
@@ -109,6 +114,7 @@ export interface CaseElectrolyteInputs {
 export interface CaseInputs {
   gas?: CaseGasInputs;
   electrolytes?: CaseElectrolyteInputs;
+  oxygenation?: CaseOxygenationInputs;
   other?: Record<string, unknown>;
   lactate_mmolL?: number;
   [key: string]: unknown;
@@ -131,7 +137,10 @@ export const EXPLANATION_DOMAINS = [
   "additional_metabolic_process",
   "diagnosis",
   "clinical_context",
-  "key_takeaway"
+  "key_takeaway",
+  "oxygenation_status",
+  "pf_ratio_interpretation",
+  "aa_gradient_mechanism"
 ] as const;
 
 export type ExplanationDomain = typeof EXPLANATION_DOMAINS[number];
@@ -178,6 +187,7 @@ export interface StepFeedbackEntry {
 export interface CaseData {
   case_id: string;
   source_type?: "generated" | "authored";
+  case_features?: string[];
   practice_pool_eligible?: boolean;
   title?: string;
   archetype?: string;
@@ -479,6 +489,7 @@ export interface CaseMetricDefinition {
   decimals: number;
   unit: string;
   abnormal: boolean;
+  group?: "oxygenation";
   minDifficultyLevel?: number;
   maxDifficultyLevel?: number;
 }
