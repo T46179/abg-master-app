@@ -2225,10 +2225,10 @@ button:disabled {
   top: 50%;
   right: 0;
   left: 0;
-  height: 0.56rem;
+  height: 0.72rem;
   border-radius: 999px;
   background: #f6f8f8;
-  box-shadow: inset 1px 1px 3px rgba(9, 11, 12, 0.1);
+  box-shadow: inset 1px 1px 3px rgba(9, 11, 12, 0.1), 0 1px 2px rgba(9, 11, 12, 0.04);
   transform: translateY(-50%);
 }
 
@@ -2237,10 +2237,10 @@ button:disabled {
   top: 50%;
   left: 0;
   width: var(--horizontal-scroll-indicator-thumb-width, 2rem);
-  height: 0.78rem;
+  height: 0.5rem;
   border-radius: 999px;
   background: var(--color-navy);
-  box-shadow: 0 2px 5px rgba(15, 37, 71, 0.22);
+  box-shadow: 0 1px 3px rgba(15, 37, 71, 0.18);
   cursor: default;
   touch-action: none;
   transform: translate(var(--horizontal-scroll-indicator-thumb-left, 0), -50%);
