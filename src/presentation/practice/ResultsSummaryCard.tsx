@@ -20,6 +20,7 @@ import { cn } from "../utils";
 
 const DIAGNOSIS_DISPLAY = {
   dka: { main: "HAGMA", sub: "Diabetic Ketoacidosis" },
+  dka_inappropriate_compensation: { main: "Mixed Disorder", sub: "DKA + Respiratory Acidosis" },
   dka_vomiting: { main: "Mixed Disorder", sub: "HAGMA + Metabolic Alkalosis (DKA + Vomiting)" },
   alcoholic_ketoacidosis: { main: "HAGMA", sub: "Alcoholic Ketoacidosis" },
   starvation_ketosis: { main: "HAGMA", sub: "Starvation Ketosis" },

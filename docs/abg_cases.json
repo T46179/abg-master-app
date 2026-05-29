@@ -4633,8 +4633,8 @@
           "key": "final_diagnosis",
           "prompt": "Most likely diagnosis?",
           "options": [
-            "DKA with inadequate respiratory compensation",
-            "DKA with appropriate respiratory compensation",
+            "DKA with superimposed respiratory acidosis",
+            "Uncomplicated DKA",
             "Lactic acidosis",
             "Toxic alcohol ingestion",
             "Uraemia"
@@ -4647,7 +4647,7 @@
         "compensation": "Inappropriate",
         "anion_gap_value": 21,
         "anion_gap_category": "Raised",
-        "final_diagnosis": "DKA with inadequate respiratory compensation",
+        "final_diagnosis": "DKA with superimposed respiratory acidosis",
         "expected_compensation": {
           "rule": "Winter",
           "expected_paco2_mmHg": 30.5,
@@ -16104,8 +16104,8 @@
           "key": "final_diagnosis",
           "prompt": "Most likely diagnosis?",
           "options": [
-            "DKA with inadequate respiratory compensation",
-            "DKA with appropriate respiratory compensation",
+            "DKA with superimposed respiratory acidosis",
+            "Uncomplicated DKA",
             "Lactic acidosis",
             "Toxic alcohol ingestion",
             "Uraemia"
@@ -16118,7 +16118,7 @@
         "compensation": "Inappropriate",
         "anion_gap_value": 28,
         "anion_gap_category": "Raised",
-        "final_diagnosis": "DKA with inadequate respiratory compensation",
+        "final_diagnosis": "DKA with superimposed respiratory acidosis",
         "expected_compensation": {
           "rule": "Winter",
           "expected_paco2_mmHg": 23.0,
@@ -21071,8 +21071,8 @@
           "key": "final_diagnosis",
           "prompt": "Most likely diagnosis?",
           "options": [
-            "DKA with inadequate respiratory compensation",
-            "DKA with appropriate respiratory compensation",
+            "DKA with superimposed respiratory acidosis",
+            "Uncomplicated DKA",
             "Lactic acidosis",
             "Toxic alcohol ingestion",
             "Uraemia"
@@ -21085,7 +21085,7 @@
         "compensation": "Inappropriate",
         "anion_gap_value": 28,
         "anion_gap_category": "Raised",
-        "final_diagnosis": "DKA with inadequate respiratory compensation",
+        "final_diagnosis": "DKA with superimposed respiratory acidosis",
         "expected_compensation": {
           "rule": "Winter",
           "expected_paco2_mmHg": 20.0,
@@ -30810,8 +30810,8 @@
           "key": "final_diagnosis",
           "prompt": "Most likely diagnosis?",
           "options": [
-            "DKA with inadequate respiratory compensation",
-            "DKA with appropriate respiratory compensation",
+            "DKA with superimposed respiratory acidosis",
+            "Uncomplicated DKA",
             "Lactic acidosis",
             "Toxic alcohol ingestion",
             "Uraemia"
@@ -30824,7 +30824,7 @@
         "compensation": "Inappropriate",
         "anion_gap_value": 20,
         "anion_gap_category": "Raised",
-        "final_diagnosis": "DKA with inadequate respiratory compensation",
+        "final_diagnosis": "DKA with superimposed respiratory acidosis",
         "expected_compensation": {
           "rule": "Winter",
           "expected_paco2_mmHg": 32.0,
