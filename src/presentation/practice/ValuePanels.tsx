@@ -18,6 +18,13 @@ interface ValuePanelsProps {
   onToggleAdvancedRanges?: () => void;
 }
 
+function getMetricCardClass(metric: { group?: string }, ...classes: string[]): string {
+  return cn(
+    ...classes,
+    metric.group === "oxygenation" ? "metric-card--oxygenation" : null
+  );
+}
+
 export function ValuePanels(props: ValuePanelsProps) {
   const { primary, secondary } = splitMetrics(props.caseItem, { pressureUnit: props.pressureUnit });
   const showReferences = shouldShowMetricReferences(props.caseItem, props.showAdvancedRanges);
@@ -125,7 +132,7 @@ export function ValuePanels(props: ValuePanelsProps) {
           {primary.map(metric => (
             <article
               key={metric.label}
-              className="metric-card"
+              className={getMetricCardClass(metric, "metric-card")}
             >
               <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
               <MetricValue
@@ -171,11 +178,12 @@ export function ValuePanels(props: ValuePanelsProps) {
                 {secondary.map(metric => (
                   <article
                     key={metric.label}
-                    className={[
+                    className={getMetricCardClass(
+                      metric,
                       "metric-card",
                       "metric-card--secondary",
                       "metric-card--scroll-item"
-                    ].join(" ")}
+                    )}
                   >
                     <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
                     <MetricValue

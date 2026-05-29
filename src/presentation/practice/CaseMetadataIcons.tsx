@@ -3,6 +3,7 @@ import type { CaseData } from "../../core/types";
 import flashIcon from "../../assets/icons/flash.svg";
 
 const AUTHORED_CASE_TOOLTIP = "This case has been adapted from a real-life clinical scenario";
+const OXYGENATION_CASE_TOOLTIP = "This is an arterial blood gas and requires oxygenation interpretation. Unless stated otherwise, oxygenation calculations assume sea-level atmospheric pressure.";
 const BOOSTED_XP_TOOLTIP = "This case earns bonus XP";
 
 interface CaseMetadataIconItem {
@@ -22,11 +23,15 @@ function StethoscopeIcon() {
   );
 }
 
+function SyringeIcon() {
+  return <span className="case-metadata-icon__svg case-metadata-icon__svg--syringe" aria-hidden="true" />;
+}
+
 export function CaseMetadataIcons({
   caseItem,
   boostedXp = false
 }: {
-  caseItem?: Pick<CaseData, "source_type"> | null;
+  caseItem?: Pick<CaseData, "case_features" | "source_type"> | null;
   boostedXp?: boolean;
 }) {
   const items: CaseMetadataIconItem[] = [];
@@ -37,6 +42,15 @@ export function CaseMetadataIcons({
       className: "case-metadata-icon--authored",
       tooltip: AUTHORED_CASE_TOOLTIP,
       icon: <StethoscopeIcon />
+    });
+  }
+
+  if (caseItem?.case_features?.includes("oxygenation_focus")) {
+    items.push({
+      key: "oxygenation",
+      className: "case-metadata-icon--oxygenation",
+      tooltip: OXYGENATION_CASE_TOOLTIP,
+      icon: <SyringeIcon />
     });
   }
 
@@ -51,14 +65,18 @@ export function CaseMetadataIcons({
 
   if (!items.length) return null;
 
-  return items.map(item => (
-    <span key={item.key} className="case-metadata-icons" aria-label={item.tooltip}>
-      <span className={`case-metadata-icon ${item.className}`} aria-hidden="true">
-        {item.icon}
-      </span>
-      <span className="case-metadata-icons__tooltip" role="tooltip">
-        {item.tooltip}
-      </span>
+  return (
+    <span className="case-metadata-icons">
+      {items.map(item => (
+        <span key={item.key} className="case-metadata-icons__item" aria-label={item.tooltip}>
+          <span className={`case-metadata-icon ${item.className}`} aria-hidden="true">
+            {item.icon}
+          </span>
+          <span className="case-metadata-icons__tooltip" role="tooltip">
+            {item.tooltip}
+          </span>
+        </span>
+      ))}
     </span>
-  ));
+  );
 }

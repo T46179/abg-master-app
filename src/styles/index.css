@@ -1205,11 +1205,16 @@ button:disabled {
 }
 
 .case-metadata-icons {
-  position: relative;
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
+  gap: 0.4rem;
+}
+
+.case-metadata-icons__item {
+  position: relative;
+  display: inline-flex;
 }
 
 .case-metadata-icon {
@@ -1231,6 +1236,11 @@ button:disabled {
   color: #FFE0B2;
 }
 
+.case-metadata-icon--oxygenation {
+  background: #FFECEC;
+  color: #D85F5F;
+}
+
 .case-metadata-icon__svg {
   width: 0.78rem;
   height: 0.78rem;
@@ -1239,6 +1249,13 @@ button:disabled {
   stroke-width: 3.4;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.case-metadata-icon__svg--syringe {
+  display: block;
+  background: currentColor;
+  -webkit-mask: url("../assets/icons/syringe.svg") center / contain no-repeat;
+  mask: url("../assets/icons/syringe.svg") center / contain no-repeat;
 }
 
 .practice-scenario-card .case-metadata-icon {
@@ -1273,8 +1290,8 @@ button:disabled {
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
-.case-metadata-icons:hover .case-metadata-icons__tooltip,
-.case-metadata-icons:focus-within .case-metadata-icons__tooltip {
+.case-metadata-icons__item:hover .case-metadata-icons__tooltip,
+.case-metadata-icons__item:focus-within .case-metadata-icons__tooltip {
   opacity: 1;
   transform: translateY(0);
 }
@@ -2311,6 +2328,12 @@ button:disabled {
 
 .metric-card--secondary {
   min-width: 9rem;
+}
+
+.value-panels__card .metric-card--oxygenation,
+.results-review-card .metric-card--oxygenation {
+  background:
+    linear-gradient(145deg, rgba(255, 247, 247, 0.98), rgba(255, 236, 236, 0.72));
 }
 
 .metric-card--abnormal {

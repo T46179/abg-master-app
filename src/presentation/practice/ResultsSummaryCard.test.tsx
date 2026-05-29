@@ -284,6 +284,55 @@ describe("ResultsSummaryCard", () => {
     ]);
   });
 
+  it("preserves oxygenation metric card styling in result review", () => {
+    const storage = createStorageAdapter({
+      loadResultsReviewExpandedPreference: vi.fn(() => true)
+    });
+    const summary = {
+      ...buildSummary([
+        { key: "clinical_context", title: "Clinical Significance", body: "Clinical significance body.", order: 1 }
+      ]),
+      caseData: {
+        ...buildCaseItem("dka"),
+        inputs: {
+          ...buildCaseItem("dka").inputs,
+          gas: {
+            ...buildCaseItem("dka").inputs?.gas,
+            pao2_mmHg: 78
+          },
+          oxygenation: {
+            fio2_fraction: 1,
+            spo2_percent: 92
+          }
+        }
+      }
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={summary.caseData}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          onOpenFeedback={() => {}}
+          storage={storage}
+        />
+      );
+    });
+
+    for (const label of ["FiO2", "PaO2", "SpO2"]) {
+      const labelNode = Array.from(container.querySelectorAll(".metric-card__label"))
+        .find(node => node.textContent === label);
+      expect(labelNode?.closest(".metric-card")?.classList.contains("metric-card--oxygenation")).toBe(true);
+    }
+
+    const metricCards = Array.from(container.querySelectorAll(".metric-card"));
+    expect(metricCards.filter(card => card.classList.contains("metric-card--oxygenation"))).toHaveLength(3);
+    expect(metricCards.some(card => !card.classList.contains("metric-card--oxygenation"))).toBe(true);
+  });
+
   it("falls back to diagnosis when clinical context is absent", () => {
     const summary = buildSummary([
       { key: "diagnosis", title: "Diagnosis", body: "Diagnosis significance.", order: 3 }
@@ -721,6 +770,32 @@ describe("ResultsSummaryCard", () => {
 
     expect(container.querySelector(".case-metadata-icon--authored")).not.toBeNull();
     expect(container.textContent).toContain("This case has been adapted from a real-life clinical scenario");
+  });
+
+  it("renders oxygenation metadata on the combined summary header", () => {
+    const summary = {
+      ...buildSummary([]),
+      caseData: {
+        ...buildCaseItem("respiratory_alkalosis_hagma"),
+        source_type: "authored" as const,
+        case_features: ["true_abg", "oxygenation_focus"]
+      }
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryHeader
+          summary={summary}
+          level={21}
+          xpProgressLabel="120 / 200 XP"
+          progressValue={60}
+        />
+      );
+    });
+
+    expect(container.querySelector(".case-metadata-icon--authored")).not.toBeNull();
+    expect(container.querySelector(".case-metadata-icon--oxygenation")).not.toBeNull();
+    expect(container.textContent).toContain("This is an arterial blood gas, and requires oxygenation interpretation");
   });
 
   it("renders boosted XP metadata on the combined summary header", () => {

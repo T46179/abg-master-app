@@ -184,7 +184,7 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
       <div className="question-flow-card__body">
         <div className="question-flow-card__prompt-row">
           <p className="question-flow-card__prompt">
-            {props.currentStep?.prompt ?? "Question flow unavailable for this case."}
+            <MetricInlineText text={props.currentStep?.prompt ?? "Question flow unavailable for this case."} />
           </p>
 
           {shouldShowCompensationRuleButton ? (
@@ -238,7 +238,7 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
                       disabled={props.interactionDisabled}
                       aria-pressed={selected}
                     >
-                      {option}
+                      <MetricInlineText text={option} />
                     </button>
                   );
                 })}
@@ -303,7 +303,7 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
                   onClick={() => props.onAnswer(option)}
                   disabled={props.interactionDisabled}
                 >
-                  {option}
+                  <MetricInlineText text={option} />
                 </button>
               ))}
             </div>

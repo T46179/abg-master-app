@@ -30,7 +30,11 @@ const multiSelectStep: QuestionFlowStep = {
   ]
 };
 
-function renderQuestionFlowCard(currentSelection: AnswerSelection | null, onAnswer = vi.fn()) {
+function renderQuestionFlowCard(
+  currentSelection: AnswerSelection | null,
+  onAnswer = vi.fn(),
+  step: QuestionFlowStep = multiSelectStep
+) {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -40,12 +44,12 @@ function renderQuestionFlowCard(currentSelection: AnswerSelection | null, onAnsw
     root.render(
       <QuestionFlowCard
         caseItem={caseItem}
-        questions={[multiSelectStep]}
+        questions={[step]}
         currentStepIndex={0}
-        currentStep={multiSelectStep}
+        currentStep={step}
         currentSelection={currentSelection}
         currentResult={null}
-        currentOptions={multiSelectStep.options ?? []}
+        currentOptions={step.options ?? []}
         selectedAnswers={currentSelection ? [currentSelection] : []}
         stepResults={[]}
         onAnswer={onAnswer}
@@ -91,6 +95,34 @@ describe("QuestionFlowCard", () => {
     });
 
     expect(onAnswer).toHaveBeenCalledWith("Respiratory alkalosis");
+    act(() => root.unmount());
+  });
+
+  it("formats metric notation in prompts and answer options without changing answer values", () => {
+    const onAnswer = vi.fn();
+    const oxygenationStep: QuestionFlowStep = {
+      key: "oxygenation_status",
+      label: "Oxygenation",
+      prompt: "How should the PaO2 and FiO2 be interpreted?",
+      options: [
+        "Cannot assess from PaO2 alone",
+        "Use SpO2 as supporting data"
+      ]
+    };
+
+    const { container, root } = renderQuestionFlowCard(null, onAnswer, oxygenationStep);
+
+    const prompt = container.querySelector(".question-flow-card__prompt");
+    const firstOption = container.querySelector<HTMLButtonElement>(".answer-option");
+
+    expect(prompt?.querySelectorAll("sub")).toHaveLength(2);
+    expect(firstOption?.querySelector("sub")?.textContent).toBe("2");
+
+    act(() => {
+      firstOption?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onAnswer).toHaveBeenCalledWith("Cannot assess from PaO2 alone");
     act(() => root.unmount());
   });
 });

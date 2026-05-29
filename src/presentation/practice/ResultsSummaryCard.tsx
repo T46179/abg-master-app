@@ -126,6 +126,13 @@ function getRenderedExplanationSections(caseSummary: CaseSummary): ExplanationSe
   return renderedSections;
 }
 
+function getMetricCardClass(metric: { group?: string }, ...classes: string[]): string {
+  return cn(
+    ...classes,
+    metric.group === "oxygenation" ? "metric-card--oxygenation" : null
+  );
+}
+
 const COLLAPSIBLE_EXPLANATION_KEYS = new Set<ResultsExplanationPreferenceKey>([
   "primary_disorder",
   "compensation",
@@ -339,7 +346,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                 {metrics.primary.map(metric => (
                   <article
                     key={metric.label}
-                    className="metric-card"
+                    className={getMetricCardClass(metric, "metric-card")}
                   >
                     <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
                     <MetricValue
@@ -371,11 +378,12 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                       {metrics.secondary.map(metric => (
                         <article
                           key={metric.label}
-                          className={[
+                          className={getMetricCardClass(
+                            metric,
                             "metric-card",
                             "metric-card--secondary",
                             "metric-card--scroll-item"
-                          ].join(" ")}
+                          )}
                         >
                           <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
                           <MetricValue
