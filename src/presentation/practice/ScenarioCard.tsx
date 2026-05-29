@@ -8,7 +8,7 @@ export function ScenarioCard({
   boostedXp = false
 }: {
   clinicalStem: string | null | undefined;
-  caseItem?: Pick<CaseData, "source_type"> | null;
+  caseItem?: Pick<CaseData, "case_features" | "source_type"> | null;
   boostedXp?: boolean;
 }) {
   return (

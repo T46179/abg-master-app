@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { composeCaseStructuredExplanation } from "./explanations";
 import { getCaseFeedbackFormUrl } from "./feedback";
 import { getDisplayMetricDefinition, getVisibleCaseMetrics, renderMetricValue } from "./metrics";
+import { splitMetrics } from "../app/viewHelpers";
 import {
   applyPracticeOutcome,
   buildFinalStepResults,
@@ -170,6 +171,105 @@ const masterMultiSelectCase: CaseData = {
         "Respiratory acidosis",
         "Respiratory alkalosis"
       ]
+    }
+  ]
+};
+
+const trueAbgOxygenationCase: CaseData = {
+  ...sampleCase,
+  case_id: "true-abg-oxygenation",
+  source_type: "authored",
+  case_features: ["true_abg", "oxygenation_focus"],
+  difficulty_level: 4,
+  inputs: {
+    ...sampleCase.inputs,
+    gas: {
+      ...sampleCase.inputs?.gas,
+      pao2_mmHg: 78
+    },
+    oxygenation: {
+      fio2_fraction: 1,
+      spo2_percent: 92
+    }
+  },
+  answer_key: {
+    oxygenation_status: "Severe oxygenation failure",
+    pf_ratio_interpretation: "Severe oxygenation failure",
+    aa_gradient_mechanism: "There is impaired oxygen transfer from alveoli to arterial blood"
+  },
+  questions_flow: [
+    {
+      key: "oxygenation_status",
+      options: [
+        "Adequate oxygenation",
+        "Mild-moderate oxygenation impairment",
+        "Severe oxygenation failure",
+        "Cannot assess from PaO2 alone"
+      ]
+    },
+    {
+      key: "pf_ratio_interpretation",
+      options: [
+        "Normal or near-normal oxygen transfer",
+        "Mild-moderate oxygenation impairment",
+        "Severe oxygenation failure",
+        "Cannot calculate from the available data"
+      ]
+    },
+    {
+      key: "aa_gradient_mechanism",
+      options: [
+        "Hypoxaemia is mostly explained by reduced alveolar oxygen from hypoventilation",
+        "There is impaired oxygen transfer from alveoli to arterial blood",
+        "There is no meaningful oxygenation abnormality",
+        "Cannot assess from the available data"
+      ]
+    }
+  ],
+  explanation_blueprint: [
+    {
+      domain: "oxygenation_status",
+      variant: "master",
+      title: "Oxygenation",
+      body: "PaO2 is very low for this oxygen delivery context.",
+      order: 1,
+      kind: "core_reasoning",
+      stepKey: "oxygenation_status"
+    },
+    {
+      domain: "pf_ratio_interpretation",
+      variant: "master",
+      title: "P/F ratio",
+      body: "The PaO2/FiO2 relationship indicates severe oxygenation failure.",
+      order: 2,
+      kind: "core_reasoning",
+      stepKey: "pf_ratio_interpretation"
+    },
+    {
+      domain: "aa_gradient_mechanism",
+      variant: "master",
+      title: "A-a gradient",
+      body: "The hypoxaemia cannot be explained by hypoventilation alone.",
+      order: 3,
+      kind: "core_reasoning",
+      stepKey: "aa_gradient_mechanism"
+    },
+    {
+      domain: "acid_base_processes",
+      variant: "master",
+      title: "Acid-base processes",
+      body: "The acid-base process remains available after oxygenation sections.",
+      order: 4,
+      kind: "core_reasoning",
+      stepKey: "acid_base_processes"
+    },
+    {
+      domain: "clinical_context",
+      variant: "master",
+      title: "Clinical context",
+      body: "This is a true ABG case with oxygenation as the teaching point.",
+      order: 5,
+      kind: "clinical_context"
     }
   ]
 };
@@ -684,6 +784,63 @@ describe("metric visibility", () => {
     expect(getDisplayMetricDefinition(paco2Metric!, { pressureUnit: "kPa" }).reference).toBe("Normal: 4.7 - 6.0 kPa");
     expect(renderMetricValue(bicarbonateMetric!, { pressureUnit: "kPa" })).toBe("18.0 mmol/L");
   });
+
+  it("orders raw oxygenation metrics first in the secondary rail", () => {
+    const metrics = splitMetrics({
+      ...sampleCase,
+      case_features: ["true_abg", "oxygenation_focus"],
+      difficulty_level: 4,
+      inputs: {
+        ...sampleCase.inputs,
+        gas: {
+          ...sampleCase.inputs?.gas,
+          pao2_mmHg: 78
+        },
+        oxygenation: {
+          fio2_fraction: 1.0,
+          spo2_percent: 92
+        }
+      }
+    });
+
+    expect(metrics.primary.map(metric => metric.label)).toEqual(["pH", "PaCO2", "HCO3"]);
+    expect(metrics.secondary.map(metric => metric.label).slice(0, 3)).toEqual(["FiO2", "PaO2", "SpO2"]);
+    expect(metrics.secondary.map(metric => metric.label)).not.toContain("P/F ratio");
+    expect(metrics.secondary.map(metric => metric.label)).not.toContain("A-a gradient");
+    expect(metrics.secondary.map(metric => metric.label)).not.toContain("Oxygenation severity");
+  });
+
+  it("keeps non-oxygenation secondary metric order unchanged", () => {
+    const metrics = splitMetrics({
+      ...sampleCase,
+      difficulty_level: 4
+    });
+
+    expect(metrics.secondary.map(metric => metric.label)).toEqual(["Na", "K", "Cl", "Glucose", "Lactate"]);
+  });
+
+  it("does not convert FiO2 or SpO2 when pressure units are kPa", () => {
+    const metrics = splitMetrics({
+      ...sampleCase,
+      difficulty_level: 4,
+      inputs: {
+        ...sampleCase.inputs,
+        gas: {
+          ...sampleCase.inputs?.gas,
+          pao2_mmHg: 78
+        },
+        oxygenation: {
+          fio2_fraction: 1.0,
+          spo2_percent: 92
+        }
+      }
+    }, { pressureUnit: "kPa" });
+
+    const renderedByLabel = Object.fromEntries(metrics.secondary.map(metric => [metric.label, metric.renderedValue]));
+    expect(renderedByLabel.FiO2).toBe("1.0");
+    expect(renderedByLabel.PaO2).toBe("10.4 kPa");
+    expect(renderedByLabel.SpO2).toBe("92 %");
+  });
 });
 
 describe("selection helpers", () => {
@@ -931,6 +1088,19 @@ describe("explanations", () => {
 
     expect(explanation.sections.map(section => section.key)).toEqual(["anion_gap"]);
   });
+
+  it("includes oxygenation explanation domains for master true ABG cases", () => {
+    const explanation = composeCaseStructuredExplanation(trueAbgOxygenationCase);
+
+    expect(explanation.overview).toBe("PaO2 is very low for this oxygen delivery context.");
+    expect(explanation.sections.map(section => section.key)).toEqual([
+      "oxygenation_status",
+      "pf_ratio_interpretation",
+      "aa_gradient_mechanism",
+      "acid_base_processes",
+      "clinical_context"
+    ]);
+  });
 });
 
 describe("question flow pill status", () => {
@@ -945,6 +1115,55 @@ describe("question flow pill status", () => {
       "Respiratory alkalosis",
       "Respiratory acidosis"
     ])).toBe(false);
+  });
+
+  it("grades oxygenation question keys with exact-choice answers and readable labels", () => {
+    expect(isCorrectAnswer(trueAbgOxygenationCase, "oxygenation_status", "Severe oxygenation failure")).toBe(true);
+    expect(isCorrectAnswer(trueAbgOxygenationCase, "pf_ratio_interpretation", "Mild-moderate oxygenation impairment")).toBe(false);
+    expect(isCorrectAnswer(
+      trueAbgOxygenationCase,
+      "aa_gradient_mechanism",
+      "There is impaired oxygen transfer from alveoli to arterial blood"
+    )).toBe(true);
+
+    const stepResults = buildFinalStepResults({
+      caseItem: trueAbgOxygenationCase,
+      selectedAnswers: [
+        { key: "oxygenation_status", label: "Oxygenation", chosen: "Severe oxygenation failure" },
+        { key: "pf_ratio_interpretation", label: "P/F ratio", chosen: "Mild-moderate oxygenation impairment" },
+        {
+          key: "aa_gradient_mechanism",
+          label: "A-a gradient",
+          chosen: "There is impaired oxygen transfer from alveoli to arterial blood"
+        }
+      ]
+    });
+
+    expect(stepResults.map(result => ({
+      key: result.key,
+      label: result.label,
+      correct: result.correct,
+      correctAnswer: result.correctAnswer
+    }))).toEqual([
+      {
+        key: "oxygenation_status",
+        label: "Oxygenation",
+        correct: true,
+        correctAnswer: "Severe oxygenation failure"
+      },
+      {
+        key: "pf_ratio_interpretation",
+        label: "P/F ratio",
+        correct: false,
+        correctAnswer: "Severe oxygenation failure"
+      },
+      {
+        key: "aa_gradient_mechanism",
+        label: "A-a gradient",
+        correct: true,
+        correctAnswer: "There is impaired oxygen transfer from alveoli to arterial blood"
+      }
+    ]);
   });
 
   it("formats array answers for feedback and review text", () => {

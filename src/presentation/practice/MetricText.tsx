@@ -10,8 +10,12 @@ export function MetricLabel({ label }: MetricLabelProps) {
       return <>PaCO<sub>2</sub></>;
     case "HCO3":
       return <>HCO<sub>3</sub><sup>-</sup></>;
+    case "FiO2":
+      return <>FiO<sub>2</sub></>;
     case "PaO2":
       return <>PaO<sub>2</sub></>;
+    case "SpO2":
+      return <>SpO<sub>2</sub></>;
     case "Na":
       return <>Na<sup>+</sup></>;
     case "K":
@@ -52,7 +56,7 @@ export function MetricReference({ reference }: { reference: string }) {
   );
 }
 
-const INLINE_METRIC_PATTERN = /(PaCO2|PaO2|HCO3-?|CO2)/g;
+const INLINE_METRIC_PATTERN = /(PaCO2|PaO2|FiO2|SpO2|HCO3-?|CO2)/g;
 
 function renderInlineMetricToken(token: string) {
   switch (token) {
@@ -60,6 +64,10 @@ function renderInlineMetricToken(token: string) {
       return <>PaCO<sub>2</sub></>;
     case "PaO2":
       return <>PaO<sub>2</sub></>;
+    case "FiO2":
+      return <>FiO<sub>2</sub></>;
+    case "SpO2":
+      return <>SpO<sub>2</sub></>;
     case "HCO3":
     case "HCO3-":
       return <>HCO<sub>3</sub><sup>-</sup></>;

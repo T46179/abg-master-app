@@ -87,10 +87,35 @@ function getCompensationRuleSlug(caseItem: CaseData | null, primaryDisorder: str
   return null;
 }
 
+type FormulaPopoverType = "compensation" | "aa_gradient";
+
+function AAGradientFormulaPopover() {
+  return (
+    <>
+      <p className="question-flow-card__rule-popover-label">formula</p>
+      <h3>A-a Gradient</h3>
+      <p>
+        PAO<sub>2</sub> = FiO<sub>2</sub> &times; (Patmos &minus; PH<sub>2</sub>O) &minus; PaCO<sub>2</sub> / 0.8
+      </p>
+      <p>
+        A&ndash;a gradient = PAO<sub>2</sub> &minus; PaO<sub>2</sub>
+      </p>
+      <h3>Room-air sea-level shortcut:</h3>
+      <p>
+        PAO<sub>2</sub> &asymp; 150 &minus; PaCO<sub>2</sub> / 0.8
+      </p>
+      <p className="question-flow-card__rule-popover-label">Note:</p>
+      <p>
+        The shortcut and normal range are mainly for room air at sea level. Normal A&ndash;a gradient varies with age, FiO<sub>2</sub>, and atmospheric pressure.
+      </p>
+    </>
+  );
+}
+
 export function QuestionFlowCard(props: QuestionFlowCardProps) {
-  const iconButtonRef = useRef<HTMLButtonElement | null>(null);
+  const formulaButtonRef = useRef<HTMLButtonElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
-  const [isRulePopoverOpen, setIsRulePopoverOpen] = useState(false);
+  const [activeFormulaPopover, setActiveFormulaPopover] = useState<FormulaPopoverType | null>(null);
   const isMultiSelect = props.currentStep?.selection_mode === "multi";
   const selectedValues = Array.isArray(props.currentSelection?.chosen) ? props.currentSelection.chosen : [];
   const hasMultiSelectAnswer = selectedValues.length > 0;
@@ -106,7 +131,14 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
     const slug = getCompensationRuleSlug(props.caseItem, primaryDisorderAnswer);
     return compensationRules.find(rule => rule.slug === slug) ?? null;
   }, [primaryDisorderAnswer, props.caseItem]);
-  const showCompensationRulePopover = Boolean(isRulePopoverOpen && activeCompensationRule);
+  const shouldShowAAGradientFormulaButton = currentStepKey === "aa_gradient_mechanism";
+  const activeFormulaButtonType: FormulaPopoverType | null = shouldShowCompensationRuleButton
+    ? "compensation"
+    : shouldShowAAGradientFormulaButton
+      ? "aa_gradient"
+      : null;
+  const isFormulaButtonDisabled = activeFormulaButtonType === "compensation" && !activeCompensationRule;
+  const isFormulaPopoverOpen = Boolean(activeFormulaPopover);
   const hasWhiteAnswerCardBorder = isMasterCase && (
     currentStepKey === "acid_base_processes" ||
     currentStepKey === "diagnosis" ||
@@ -114,32 +146,32 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
   );
 
   useEffect(() => {
-    setIsRulePopoverOpen(false);
+    setActiveFormulaPopover(null);
   }, [currentStepKey, props.currentStepIndex]);
 
   useEffect(() => {
-    if (!isRulePopoverOpen) return;
+    if (!activeFormulaPopover) return;
 
     function handleDocumentClick(event: MouseEvent) {
       const target = event.target as Node | null;
       if (
         target &&
-        (iconButtonRef.current?.contains(target) || popoverRef.current?.contains(target))
+        (formulaButtonRef.current?.contains(target) || popoverRef.current?.contains(target))
       ) {
         return;
       }
-      setIsRulePopoverOpen(false);
+      setActiveFormulaPopover(null);
     }
 
     document.addEventListener("click", handleDocumentClick);
     return () => {
       document.removeEventListener("click", handleDocumentClick);
     };
-  }, [isRulePopoverOpen]);
+  }, [activeFormulaPopover]);
 
-  function toggleCompensationRulePopover() {
-    if (!activeCompensationRule) return;
-    setIsRulePopoverOpen(isOpen => !isOpen);
+  function toggleFormulaPopover() {
+    if (!activeFormulaButtonType || isFormulaButtonDisabled) return;
+    setActiveFormulaPopover(current => current === activeFormulaButtonType ? null : activeFormulaButtonType);
   }
 
   function getPillLabel(step: QuestionFlowStep) {
@@ -184,18 +216,18 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
       <div className="question-flow-card__body">
         <div className="question-flow-card__prompt-row">
           <p className="question-flow-card__prompt">
-            {props.currentStep?.prompt ?? "Question flow unavailable for this case."}
+            <MetricInlineText text={props.currentStep?.prompt ?? "Question flow unavailable for this case."} />
           </p>
 
-          {shouldShowCompensationRuleButton ? (
+          {activeFormulaButtonType ? (
             <button
-              ref={iconButtonRef}
+              ref={formulaButtonRef}
               className="question-flow-card__rule-button"
               type="button"
-              onClick={toggleCompensationRulePopover}
-              aria-label="Show compensation rule"
-              aria-expanded={showCompensationRulePopover}
-              disabled={!activeCompensationRule}
+              onClick={toggleFormulaPopover}
+              aria-label={activeFormulaButtonType === "aa_gradient" ? "Show A-a gradient formula" : "Show compensation rule"}
+              aria-expanded={isFormulaPopoverOpen}
+              disabled={isFormulaButtonDisabled}
             >
               <span
                 className="question-flow-card__rule-icon"
@@ -204,17 +236,23 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
             </button>
           ) : null}
 
-          {showCompensationRulePopover && activeCompensationRule ? (
+          {activeFormulaPopover ? (
             <div
               ref={popoverRef}
               className="question-flow-card__rule-popover"
               role="dialog"
-              aria-label="Compensation rule"
+              aria-label={activeFormulaPopover === "aa_gradient" ? "A-a gradient formula" : "Compensation rule"}
             >
-              <p className="question-flow-card__rule-popover-label">Compensation rule</p>
-              <h3>{activeCompensationRule.title}</h3>
-              <p><span>Expected </span>{activeCompensationRule.formula}</p>
-              <p>{activeCompensationRule.range}</p>
+              {activeFormulaPopover === "aa_gradient" ? (
+                <AAGradientFormulaPopover />
+              ) : activeCompensationRule ? (
+                <>
+                  <p className="question-flow-card__rule-popover-label">Compensation rule</p>
+                  <h3>{activeCompensationRule.title}</h3>
+                  <p><span>Expected </span>{activeCompensationRule.formula}</p>
+                  <p>{activeCompensationRule.range}</p>
+                </>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -238,7 +276,7 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
                       disabled={props.interactionDisabled}
                       aria-pressed={selected}
                     >
-                      {option}
+                      <MetricInlineText text={option} />
                     </button>
                   );
                 })}
@@ -303,7 +341,7 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
                   onClick={() => props.onAnswer(option)}
                   disabled={props.interactionDisabled}
                 >
-                  {option}
+                  <MetricInlineText text={option} />
                 </button>
               ))}
             </div>

@@ -49,6 +49,45 @@ describe("ScenarioCard", () => {
     expect(container.querySelector(".case-metadata-icon--authored")).toBeNull();
   });
 
+  it("renders oxygenation metadata only for oxygenation-focused cases", () => {
+    act(() => {
+      root.render(
+        <ScenarioCard
+          clinicalStem="A true ABG teaching stem."
+          caseItem={{ source_type: "generated", case_features: ["true_abg", "oxygenation_focus"] }}
+        />
+      );
+    });
+
+    expect(container.querySelector(".case-metadata-icon--oxygenation")).not.toBeNull();
+    expect(container.textContent).toContain("This is an arterial blood gas and requires oxygenation interpretation");
+
+    act(() => {
+      root.render(
+        <ScenarioCard
+          clinicalStem="A standard generated teaching stem."
+          caseItem={{ source_type: "generated", case_features: ["true_abg"] }}
+        />
+      );
+    });
+
+    expect(container.querySelector(".case-metadata-icon--oxygenation")).toBeNull();
+  });
+
+  it("renders authored and oxygenation metadata together for authored oxygenation cases", () => {
+    act(() => {
+      root.render(
+        <ScenarioCard
+          clinicalStem="An authored true ABG teaching stem."
+          caseItem={{ source_type: "authored", case_features: ["true_abg", "oxygenation_focus"] }}
+        />
+      );
+    });
+
+    expect(container.querySelector(".case-metadata-icon--authored")).not.toBeNull();
+    expect(container.querySelector(".case-metadata-icon--oxygenation")).not.toBeNull();
+  });
+
   it("renders boosted XP metadata only when bonus XP is active", () => {
     act(() => {
       root.render(

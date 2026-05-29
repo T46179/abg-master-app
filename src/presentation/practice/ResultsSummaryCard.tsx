@@ -70,13 +70,16 @@ function getTrimmedSectionBody(section: Pick<ExplanationSection, "body">) {
 }
 
 const EXPLANATION_DISPLAY_ORDER: Partial<Record<ExplanationSection["key"], number>> = {
-  primary_disorder: 0,
-  compensation: 1,
-  anion_gap: 2,
-  additional_metabolic_process: 3,
-  diagnosis: 4,
-  clinical_context: 4,
-  key_takeaway: 5
+  oxygenation_status: 0,
+  pf_ratio_interpretation: 1,
+  aa_gradient_mechanism: 2,
+  primary_disorder: 3,
+  compensation: 4,
+  anion_gap: 5,
+  additional_metabolic_process: 6,
+  diagnosis: 7,
+  clinical_context: 7,
+  key_takeaway: 8
 };
 
 function getRenderedExplanationSections(caseSummary: CaseSummary): ExplanationSection[] {
@@ -86,6 +89,9 @@ function getRenderedExplanationSections(caseSummary: CaseSummary): ExplanationSe
     "compensation",
     "clinical_context",
     "diagnosis",
+    "oxygenation_status",
+    "pf_ratio_interpretation",
+    "aa_gradient_mechanism",
     "primary_disorder",
     "key_takeaway"
   ]);
@@ -118,6 +124,13 @@ function getRenderedExplanationSections(caseSummary: CaseSummary): ExplanationSe
   }
 
   return renderedSections;
+}
+
+function getMetricCardClass(metric: { group?: string }, ...classes: string[]): string {
+  return cn(
+    ...classes,
+    metric.group === "oxygenation" ? "metric-card--oxygenation" : null
+  );
 }
 
 const COLLAPSIBLE_EXPLANATION_KEYS = new Set<ResultsExplanationPreferenceKey>([
@@ -333,7 +346,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                 {metrics.primary.map(metric => (
                   <article
                     key={metric.label}
-                    className="metric-card"
+                    className={getMetricCardClass(metric, "metric-card")}
                   >
                     <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
                     <MetricValue
@@ -365,11 +378,12 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                       {metrics.secondary.map(metric => (
                         <article
                           key={metric.label}
-                          className={[
+                          className={getMetricCardClass(
+                            metric,
                             "metric-card",
                             "metric-card--secondary",
                             "metric-card--scroll-item"
-                          ].join(" ")}
+                          )}
                         >
                           <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
                           <MetricValue

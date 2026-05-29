@@ -25,6 +25,9 @@ const BEGINNER_INTERMEDIATE_OVERVIEW_PRIORITY: ExplanationDomain[] = [
 ];
 
 const ADVANCED_MASTER_OVERVIEW_PRIORITY: ExplanationDomain[] = [
+  "oxygenation_status",
+  "pf_ratio_interpretation",
+  "aa_gradient_mechanism",
   "acid_base_processes",
   "additional_metabolic_process",
   "anion_gap",
@@ -33,6 +36,12 @@ const ADVANCED_MASTER_OVERVIEW_PRIORITY: ExplanationDomain[] = [
   "clinical_context",
   "primary_disorder",
   "ph_status"
+];
+
+const OXYGENATION_EXPLANATION_DOMAINS: ExplanationDomain[] = [
+  "oxygenation_status",
+  "pf_ratio_interpretation",
+  "aa_gradient_mechanism"
 ];
 
 function getTrimmedBody(body: unknown): string {
@@ -97,7 +106,14 @@ function getSelectedDomains(caseItem: CaseData, missedStepKeys: Set<string>): Ex
     return domains;
   }
 
-  const domains: ExplanationDomain[] = ["acid_base_processes", "compensation", "anion_gap", "diagnosis", "clinical_context"];
+  const domains: ExplanationDomain[] = [
+    ...OXYGENATION_EXPLANATION_DOMAINS.filter(domain => hasQuestionFlowStep(caseItem, domain)),
+    "acid_base_processes",
+    "compensation",
+    "anion_gap",
+    "diagnosis",
+    "clinical_context"
+  ];
   if (hasQuestionFlowStep(caseItem, "additional_metabolic_process") && additionalProcess) {
     domains.splice(3, 0, "additional_metabolic_process");
   }

@@ -4,6 +4,7 @@ import {
   formatLevelProgressText,
   getDefaultPracticeDifficulty,
   getPracticeDifficultyMismatchAction,
+  resolvePracticeDifficulty,
   shouldConfirmDifficultySwitch,
   shouldShowPracticeIntro
 } from "./viewHelpers";
@@ -137,5 +138,46 @@ describe("view helpers", () => {
         learnProgress: {}
       }
     }, "master")).toBe("beginner");
+  });
+
+  it("honors local calibration access before remote progress sync catches up", () => {
+    const result = resolvePracticeDifficulty({
+      requestedDifficulty: "advanced",
+      hasExplicitDifficultyParam: true,
+      calibrationRecord: {
+        completed: true,
+        placement: "advanced",
+        version: 2
+      },
+      progressionInput: {
+        progressionConfig: {
+          difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" }
+        },
+        userState: {
+          xp: 0,
+          level: 1,
+          casesCompleted: 0,
+          abandonedCases: 0,
+          correctAnswers: 0,
+          totalAnswers: 0,
+          streak: 0,
+          dailyCasesUsed: 0,
+          lastCaseDate: null,
+          unlockedDifficulties: ["beginner"],
+          isPremium: false,
+          badges: [],
+          recentResults: [],
+          appliedProtectedCaseTokens: [],
+          learnProgress: {}
+        }
+      },
+      lastPracticeDifficulty: null,
+      enableCalibrationAccessGuard: false
+    });
+
+    expect(result).toEqual({
+      resolvedDifficulty: "advanced",
+      shouldRedirect: false
+    });
   });
 });

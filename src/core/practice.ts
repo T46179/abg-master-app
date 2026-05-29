@@ -21,6 +21,9 @@ export function prettyStepLabel(stepKey: string): string {
     compensation: "Compensation",
     anion_gap: "Anion gap",
     additional_metabolic_process: "Additional process",
+    oxygenation_status: "Oxygenation",
+    pf_ratio_interpretation: "P/F ratio",
+    aa_gradient_mechanism: "A-a gradient",
     final_diagnosis: "Diagnosis"
   };
   return labels[stepKey] ?? stepKey.replaceAll("_", " ");

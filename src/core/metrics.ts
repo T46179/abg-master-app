@@ -47,6 +47,7 @@ export function getCaseStructuredInputs(caseItem: CaseData) {
   return {
     gas: inputs.gas ?? {},
     electrolytes: inputs.electrolytes ?? {},
+    oxygenation: inputs.oxygenation ?? {},
     other: inputs.other ?? {},
     legacyInputs: inputs
   };
@@ -59,7 +60,7 @@ export function getCaseLactateValue(caseItem: CaseData): number | null {
 }
 
 export function buildCaseMetricDefinitions(caseItem: CaseData): CaseMetricDefinition[] {
-  const { gas, electrolytes } = getCaseStructuredInputs(caseItem);
+  const { gas, electrolytes, oxygenation } = getCaseStructuredInputs(caseItem);
   const lactate = getCaseLactateValue(caseItem);
 
   return [
@@ -91,13 +92,34 @@ export function buildCaseMetricDefinitions(caseItem: CaseData): CaseMetricDefini
       abnormal: Number(gas.hco3_mmolL) < 22 || Number(gas.hco3_mmolL) > 26
     },
     {
+      label: "FiO2",
+      displayLabel: "FiO2",
+      reference: "Room air: 0.21",
+      value: oxygenation.fio2_fraction,
+      decimals: 1,
+      unit: "",
+      abnormal: false,
+      group: "oxygenation"
+    },
+    {
       label: "PaO2",
       displayLabel: "PaO2",
       reference: "Normal: 80 - 100 mmHg",
       value: gas.pao2_mmHg,
       decimals: 1,
       unit: "mmHg",
-      abnormal: Number(gas.pao2_mmHg) < 80 || Number(gas.pao2_mmHg) > 100
+      abnormal: Number(gas.pao2_mmHg) < 80 || Number(gas.pao2_mmHg) > 100,
+      group: "oxygenation"
+    },
+    {
+      label: "SpO2",
+      displayLabel: "SpO2",
+      reference: "Normal: 94 - 98%",
+      value: oxygenation.spo2_percent,
+      decimals: 0,
+      unit: "%",
+      abnormal: Number(oxygenation.spo2_percent) < 94 || Number(oxygenation.spo2_percent) > 100,
+      group: "oxygenation"
     },
     {
       label: "Base excess",
@@ -184,7 +206,9 @@ export function getVisibleCaseMetrics(caseItem: CaseData): CaseMetricDefinition[
     pH: ["ph"],
     PaCO2: ["paco2_mmHg"],
     HCO3: ["hco3_mmolL"],
+    FiO2: ["fio2_fraction"],
     PaO2: ["pao2_mmHg"],
+    SpO2: ["spo2_percent"],
     "Base excess": ["base_excess_mEqL"],
     Na: ["na_mmolL"],
     K: ["k_mmolL"],

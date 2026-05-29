@@ -200,6 +200,139 @@ describe("ResultsSummaryCard", () => {
     ]);
   });
 
+  it("renders oxygenation explanation sections and oxygenation answer review labels", () => {
+    const storage = createStorageAdapter({
+      loadResultsReviewExpandedPreference: vi.fn(() => true)
+    });
+    const summary = {
+      ...buildSummary([
+        { key: "clinical_context", title: "Clinical Significance", body: "Clinical significance body.", order: 5 },
+        { key: "aa_gradient_mechanism", title: "A-a gradient", body: "A-a body.", order: 3 },
+        { key: "oxygenation_status", title: "Oxygenation", body: "Oxygenation body.", order: 1 },
+        { key: "pf_ratio_interpretation", title: "P/F ratio", body: "P/F body.", order: 2 }
+      ]),
+      stepResults: [
+        {
+          key: "oxygenation_status",
+          label: "Oxygenation",
+          chosen: "Severe oxygenation failure",
+          correctAnswer: "Severe oxygenation failure",
+          correct: true
+        },
+        {
+          key: "pf_ratio_interpretation",
+          label: "P/F ratio",
+          chosen: "Mild-moderate oxygenation impairment",
+          correctAnswer: "Severe oxygenation failure",
+          correct: false
+        },
+        {
+          key: "aa_gradient_mechanism",
+          label: "A-a gradient",
+          chosen: "There is impaired oxygen transfer from alveoli to arterial blood",
+          correctAnswer: "There is impaired oxygen transfer from alveoli to arterial blood",
+          correct: true
+        }
+      ]
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={{
+            ...buildCaseItem("dka"),
+            case_features: ["true_abg", "oxygenation_focus"],
+            difficulty_level: 4,
+            inputs: {
+              ...buildCaseItem("dka").inputs,
+              gas: {
+                ...buildCaseItem("dka").inputs?.gas,
+                pao2_mmHg: 78
+              },
+              oxygenation: {
+                fio2_fraction: 1,
+                spo2_percent: 92
+              }
+            }
+          }}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          onOpenFeedback={() => {}}
+          storage={storage}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("Oxygenation body.");
+    expect(container.textContent).toContain("P/F body.");
+    expect(container.textContent).toContain("A-a body.");
+    expect(container.textContent).toContain("Answer Review");
+    expect(container.textContent).toContain("Oxygenation");
+    expect(container.textContent).toContain("You chose: Severe oxygenation failure");
+    expect(container.textContent).toContain("P/F ratio");
+    expect(container.textContent).toContain("You chose: Mild-moderate oxygenation impairmentCorrect answer: Severe oxygenation failure");
+    expect(container.textContent).toContain("A-a gradient");
+
+    const headings = Array.from(container.querySelectorAll(".results-card__detail-card h4")).map(node => node.textContent);
+    expect(headings).toEqual([
+      "Oxygenation",
+      "P/F ratio",
+      "A-a gradient",
+      "Clinical Significance"
+    ]);
+  });
+
+  it("preserves oxygenation metric card styling in result review", () => {
+    const storage = createStorageAdapter({
+      loadResultsReviewExpandedPreference: vi.fn(() => true)
+    });
+    const summary = {
+      ...buildSummary([
+        { key: "clinical_context", title: "Clinical Significance", body: "Clinical significance body.", order: 1 }
+      ]),
+      caseData: {
+        ...buildCaseItem("dka"),
+        inputs: {
+          ...buildCaseItem("dka").inputs,
+          gas: {
+            ...buildCaseItem("dka").inputs?.gas,
+            pao2_mmHg: 78
+          },
+          oxygenation: {
+            fio2_fraction: 1,
+            spo2_percent: 92
+          }
+        }
+      }
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={summary.caseData}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          onOpenFeedback={() => {}}
+          storage={storage}
+        />
+      );
+    });
+
+    for (const label of ["FiO2", "PaO2", "SpO2"]) {
+      const labelNode = Array.from(container.querySelectorAll(".metric-card__label"))
+        .find(node => node.textContent === label);
+      expect(labelNode?.closest(".metric-card")?.classList.contains("metric-card--oxygenation")).toBe(true);
+    }
+
+    const metricCards = Array.from(container.querySelectorAll(".metric-card"));
+    expect(metricCards.filter(card => card.classList.contains("metric-card--oxygenation"))).toHaveLength(3);
+    expect(metricCards.some(card => !card.classList.contains("metric-card--oxygenation"))).toBe(true);
+  });
+
   it("falls back to diagnosis when clinical context is absent", () => {
     const summary = buildSummary([
       { key: "diagnosis", title: "Diagnosis", body: "Diagnosis significance.", order: 3 }
@@ -637,6 +770,32 @@ describe("ResultsSummaryCard", () => {
 
     expect(container.querySelector(".case-metadata-icon--authored")).not.toBeNull();
     expect(container.textContent).toContain("This case has been adapted from a real-life clinical scenario");
+  });
+
+  it("renders oxygenation metadata on the combined summary header", () => {
+    const summary = {
+      ...buildSummary([]),
+      caseData: {
+        ...buildCaseItem("respiratory_alkalosis_hagma"),
+        source_type: "authored" as const,
+        case_features: ["true_abg", "oxygenation_focus"]
+      }
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryHeader
+          summary={summary}
+          level={21}
+          xpProgressLabel="120 / 200 XP"
+          progressValue={60}
+        />
+      );
+    });
+
+    expect(container.querySelector(".case-metadata-icon--authored")).not.toBeNull();
+    expect(container.querySelector(".case-metadata-icon--oxygenation")).not.toBeNull();
+    expect(container.textContent).toContain("This is an arterial blood gas and requires oxygenation interpretation");
   });
 
   it("renders boosted XP metadata on the combined summary header", () => {
