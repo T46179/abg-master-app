@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { SeoMetadata } from "../../app/seo";
 import { Surface } from "../primitives/Surface";
 
-const lastUpdated = "25 April 2026";
+const lastUpdated = "30 May 2026";
 
 export function PrivacyScreen() {
   return (
@@ -14,7 +14,6 @@ export function PrivacyScreen() {
           Back to ABG Master
         </Link>
         <div>
-          <span className="privacy-page__eyebrow">Privacy notice</span>
           <h1>How ABG Master handles data</h1>
           <p>
             ABG Master is an Australian-made educational app for practising blood gas interpretation. This notice
@@ -28,11 +27,11 @@ export function PrivacyScreen() {
         <Surface className="privacy-page__panel">
           <h2>Summary</h2>
 			  <ul>
-				<li>ABG Master is for education only. Do not enter real patient information.</li>
+				<li>ABG Master is for education only. It is not a clinical system.</li>
 				<li>ABG Master does not ask for, and is not designed to collect, real patient information.</li>
-				<li>Protected practice cases are delivered as needed rather than sending the full case library to your browser.</li>
-				<li>Practice attempts are submitted through protected server functions, not direct browser writes.</li>
-				<li>Some progress and pending practice data is stored in your browser to help with interrupted connectivity.</li>
+        <li>Some teaching cases may be manually written or adapted from clinical patterns, but they are changed so they are not intended to identify real patients.</li>
+				<li>When completing practice cases, ABG Master may store your progress, answers, timing, and unlocked levels.</li>
+				<li>Some information is stored in your browser so the app can remember your progress and recover from brief connection interruptions.</li>
 				<li>Update-signup emails are used only for ABG Master updates unless this notice changes.</li>
 			  </ul>
         </Surface>
@@ -41,69 +40,68 @@ export function PrivacyScreen() {
           <h2>Information collected</h2>
           <p>Depending on how you use the app, ABG Master may process:</p>
 			  <ul>
-				<li>Your email address if you ask to be notified about updates.</li>
-				<li>Anonymous session identifiers that help the app recognise your session and save progress.</li>
-				<li>Learning progress, preferences, unlocked levels, and practice results.</li>
-				<li>Practice answers and timing when you submit a protected practice case.</li>
-				<li>Technical diagnostics, such as errors, browser details, URLs, and performance context.</li>
-				<li>Product analytics events, such as page views or feature interactions, if analytics are enabled.</li>
+				<li>Your email address, if you choose to join the update list.</li>
+				<li>A temporary session ID so the app can recognise your current session and save progress.</li>
+				<li>Your learning progress, preferences, unlocked levels, practice results, answers, and timing.</li>
+				<li>Basic technical information, such as browser details, page URLs, errors, and performance information.</li>
+				<li>Product analytics, such as page views and feature interactions, if analytics are enabled.</li>
 			  </ul>
+        </Surface>
+
+        <Surface className="privacy-page__panel">
+          <h2>Teaching cases</h2>
+          <p>
+            ABG Master includes generated and manually created teaching cases. Some cases may be inspired by
+            real clinical scenarios, but they are written for education and have been modified so that they do not identify real patients.
+          </p>
+        </Surface>
+
+        <Surface className="privacy-page__panel">
+          <h2>Information stored in your browser</h2>
 			  <p>
-				ABG Master does not ask for, and is not designed to collect, real patient information.
+        ABG Master stores some information on your device so the app can remember your progress,
+        preferences, current practice state, and any practice answers that have not finished submitting.
+			  </p>
+        <p>
+        This helps the app recover if your connection briefly drops out. If you clear your browser
+        storage, you may lose local progress, preferences, or unsent practice data.
 			  </p>
         </Surface>
 
         <Surface className="privacy-page__panel">
-          <h2>Browser storage</h2>
+          <h2>Services ABG Master uses</h2>
+          <p>ABG Master uses a small number of services to run the app, collect optional feedback, monitor errors, and understand which parts of the app are useful.</p>
+        <ul>
+          <li>Supabase, to manage saved practice, progress, case delivery, and submitted answers.</li>
+          <li>Formspark or submit-form.com, to collect email addresses from people who join the update list.</li>
+          <li>Sentry, to help detect errors and improve reliability.</li>
+          <li>PostHog, to understand app usage such as page views and feature interactions, if analytics are enabled.</li>
+          <li>Google Forms, if you choose to submit optional feedback.</li>
+        </ul>
 			  <p>
-				ABG Master uses browser storage for progress, preferences, information needed to start protected practice sessions,
-				a small number of issued practice case slots, and pending submissions. This helps the app recover from brief
-				connection interruptions. Clearing browser storage may remove local progress, preferences, or unsent practice data.
-			  </p>
-        </Surface>
-
-        <Surface className="privacy-page__panel">
-          <h2>Services used</h2>
-          <p>ABG Master may use these service providers to operate the app:</p>
-			  <ul>
-				<li>Supabase for authentication, protected practice delivery, progress storage, and submissions.</li>
-				<li>Formspark or submit-form.com for update-signup email collection.</li>
-				<li>Sentry for error monitoring and reliability diagnostics.</li>
-				<li>PostHog for product analytics, such as understanding which pages and features are used, if configured.</li>
-				<li>Google Forms when you choose to submit optional feedback.</li>
-			  </ul>
-			  <p>
-				These providers may process data outside Australia. ABG Master aims to share only what is needed to run,
-				improve, and secure the app.
+        Some of these services may store or process information outside Australia. ABG Master only aims
+        to share the information needed to run, improve, and secure the app.
 			  </p>
         </Surface>
 
         <Surface className="privacy-page__panel">
           <h2>How information is used</h2>
           <ul>
-            <li>To load the app and keep practice available during short connectivity interruptions.</li>
-            <li>To save learning progress and show personalised practice state.</li>
-            <li>To score submitted practice cases and apply progress updates.</li>
-            <li>To send product updates to people who explicitly request them.</li>
-            <li>To diagnose reliability issues, prevent abuse, and understand which features are useful.</li>
+            <li>To load the app and keep practice working if your connection briefly drops out.</li>
+            <li>To save your progress, preferences, unlocked levels, and practice results.</li>
+            <li>To check submitted answers and update your learning progress.</li>
+            <li>To send ABG Master updates if you choose to join the update list.</li>
+            <li>To fix errors, prevent misuse, improve reliability, and understand which features are helpful.</li>
           </ul>
         </Surface>
 
         <Surface className="privacy-page__panel">
-          <h2>What not to enter</h2>
-          <p>
-            ABG Master is not a clinical system. Do not enter patient names, medical record numbers, dates of birth,
-            contact details, or any other real patient information into feedback forms, signup forms, or practice flows.
-          </p>
-        </Surface>
-
-        <Surface className="privacy-page__panel">
 		  <h2>Your choices</h2>	
-			  <ul>
-				<li>You can choose not to join the update list.</li>
-				<li>You can clear browser storage to remove local app data from your device.</li>
-				<li>You can request access, correction, or deletion of personal information connected to your email address.</li>
-			  </ul>
+        <ul>
+          <li>You do not have to join the update list.</li>
+          <li>You can clear your browser storage to remove local app data from your device.</li>
+          <li>You can ask to access, correct, or delete personal information connected to your email address.</li>
+        </ul>
 			  <p>
 				During the public beta, privacy requests can be sent through the feedback link in the app. A dedicated privacy
 				contact will be added before a wider public launch.
