@@ -8,6 +8,7 @@ import { ExamScreen } from "../presentation/screens/ExamScreen";
 import { LeaderboardScreen } from "../presentation/screens/LeaderboardScreen";
 import { LearnScreen } from "../presentation/screens/LearnScreen";
 import { LearnLessonScreen } from "../presentation/screens/LearnLessonScreen";
+import { InsightsScreen } from "../presentation/screens/InsightsScreen";
 import { PrivacyScreen } from "../presentation/screens/PrivacyScreen";
 import { BloodGasCompensationRulesScreen } from "../presentation/screens/BloodGasCompensationRulesScreen";
 import { DeltaRatioScreen } from "../presentation/screens/DeltaRatioScreen";
@@ -43,6 +44,7 @@ export const appRoutes: RouteObject[] = [
     children: [
       { path: "dashboard", element: <DashboardScreen /> },
       { path: "practice", element: <PracticeScreen /> },
+      { path: "insights", element: <InsightsScreen /> },
       { path: "calibration", element: <CalibrationScreen /> },
       { path: "case-preview/:caseId", element: <CasePreviewScreen /> },
       { path: "dev/authored-cases", element: <AuthoredCaseGalleryScreen /> },

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
+import { insightsRouteContract } from "../../core/insights";
 import listIconUrl from "../../assets/icons/list.svg";
 import { cn } from "../utils";
 
@@ -30,6 +31,9 @@ export function MainNav(props: MainNavProps) {
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, ready: false });
   const navItems: NavItem[] = [
     { to: "/dashboard", label: "Dashboard", end: true },
+    ...(insightsRouteContract.navEligible && insightsRouteContract.navVisible
+      ? [{ to: insightsRouteContract.route, label: insightsRouteContract.navigationLabel, end: true }]
+      : []),
     { to: "/learn?all=1", label: "Learn", disabled: !props.learnEnabled },
     { to: "/practice", label: "Practice" }
   ];

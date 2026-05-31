@@ -94,15 +94,26 @@ describe("MainNav", () => {
     expect(onOpenStayUpdated).toHaveBeenCalledTimes(2);
   });
 
-  it("points the brand and dashboard links to /dashboard", () => {
+  it("points the brand and dashboard links to /dashboard and includes insights", () => {
     renderNav();
 
     const links = Array.from(container.querySelectorAll("a"));
     const brandLink = links.find((link) => link.className.includes("main-nav__brand"));
     const dashboardLink = links.find((link) => link.textContent?.includes("Dashboard"));
+    const insightsLink = links.find((link) => link.textContent?.includes("Insights"));
 
     expect(brandLink?.getAttribute("href")).toBe("/dashboard");
     expect(dashboardLink?.getAttribute("href")).toBe("/dashboard");
+    expect(insightsLink?.getAttribute("href")).toBe("/insights");
+  });
+
+  it("marks insights active on the insights route", () => {
+    renderNav(["/insights"]);
+
+    const insightsLink = Array.from(container.querySelectorAll("a"))
+      .find((link) => link.textContent?.includes("Insights"));
+
+    expect(insightsLink?.className).toContain("is-active");
   });
 
   it("shows learn as a disabled item when learn is disabled", () => {
@@ -120,6 +131,7 @@ describe("MainNav", () => {
     renderNav(["/calibration"]);
 
     expect(container.querySelector(".main-nav")?.className).toContain("main-nav--minimal");
+    expect(container.textContent).not.toContain("Insights");
     expect(container.textContent).not.toContain("Learn");
     expect(container.textContent).not.toContain("Practice");
     expect(container.textContent).toContain("Stay Updated");
