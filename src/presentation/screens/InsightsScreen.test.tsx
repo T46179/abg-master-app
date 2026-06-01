@@ -184,6 +184,7 @@ describe("InsightsScreen", () => {
     expect(container.textContent).toContain("Pattern detected");
     expect(container.textContent).toContain("You seem more likely to miss compensation when completing metabolic acidosis cases.");
     expect(container.textContent).toContain("You answered this incorrectly 3 out of 5 times (60%) in this context.");
+    expect((container.textContent ?? "").indexOf("Pattern detected")).toBeLessThan((container.textContent ?? "").indexOf("Accuracy by Step"));
     expect(container.textContent).toContain("Case Coverage");
     expect(container.textContent).toContain("Progress by Difficulty");
     expect(container.textContent).toContain("Recent 54% · Overall 72%");
@@ -200,15 +201,15 @@ describe("InsightsScreen", () => {
     expect(container.textContent).not.toContain("Back to dashboard");
   });
 
-  it("renders the pattern detected empty state when no pattern qualifies", () => {
+  it("hides the pattern detected card when no pattern qualifies", () => {
     renderWithViewModel({
       ...readyViewModel,
       commonMissPattern: { state: "none" }
     });
 
-    expect(container.textContent).toContain("Pattern detected");
-    expect(container.textContent).toContain("No recurring patterns detected yet.");
-    expect(container.textContent).toContain("If ABG Master detects a consistent pattern of mistakes, it will appear here.");
+    expect(container.textContent).not.toContain("Pattern detected");
+    expect(container.textContent).not.toContain("No recurring patterns detected yet.");
+    expect(container.textContent).not.toContain("If ABG Master detects a consistent pattern of mistakes, it will appear here.");
     expect(container.textContent).not.toContain("No recurring miss pattern detected yet.");
   });
 
@@ -362,7 +363,7 @@ describe("InsightsScreen", () => {
     });
 
     expect(container.textContent).toContain("This is your lowest-scoring reasoning step, based on 199 answers.");
-    expect(container.textContent).toContain("Focus on identifying the main acid-base problem before checking compensation.");
+    expect(container.textContent).toContain("Use ROME to identify the primary driver of the acid-base disorder.");
     expect(container.querySelector<HTMLAnchorElement>("a[href='/learn/beginner?mode=review']")?.textContent).toContain("Review Primary Disorder");
   });
 

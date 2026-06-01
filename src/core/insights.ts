@@ -80,21 +80,21 @@ const reasoningStepLabelRegistry: Record<string, string> = {
 export const CURRENT_FOCUS_FALLBACK_EXPLANATION = "Focus on reviewing this step when you look back over recent cases.";
 
 export const currentFocusCopyRegistry: Record<string, string> = {
-  pH: "Focus on recognising whether the gas shows acidaemia, alkalaemia, or a normal pH.",
-  ph_status: "Focus on recognising whether the gas shows acidaemia, alkalaemia, or a normal pH.",
-  primary_disorder: "Focus on identifying the main acid-base problem before checking compensation.",
-  compensation: "Focus on deciding whether the respiratory or metabolic response fits the expected pattern.",
-  anion_gap: "Focus on checking whether a metabolic acidosis has a raised anion gap.",
-  additional_metabolic_process: "Focus on recognising when the numbers suggest an additional metabolic process.",
-  oxygenation: "Focus on deciding whether the oxygen level is appropriate for the clinical context.",
-  oxygenation_status: "Focus on deciding whether the oxygen level is appropriate for the clinical context.",
-  pf_ratio_interpretation: "Focus on deciding whether the oxygen level is appropriate for the clinical context.",
-  aa_gradient: "Focus on using the A-a gradient to separate hypoventilation from gas exchange problems.",
-  aa_gradient_mechanism: "Focus on using the A-a gradient to separate hypoventilation from gas exchange problems.",
-  diagnosis: "Focus on bringing the steps together into a final acid-base interpretation.",
-  final_diagnosis: "Focus on bringing the steps together into a final acid-base interpretation.",
-  osmolar_gap: "Focus on recognising when an osmolar gap may suggest an unmeasured osmole.",
-  albumin_corrected_anion_gap: "Focus on adjusting the anion gap when albumin is abnormal."
+  pH: "Start by classifying the pH: acidaemia, alkalaemia, or normal.",
+  ph_status: "Start by classifying the pH: acidaemia, alkalaemia, or normal.",
+  primary_disorder: "Use ROME to identify the primary driver of the acid-base disorder.",
+  compensation: "Each primary disorder has its own compensation rule. Learn the expected pattern, or use the 1-2-4-5 rule as a shortcut.",
+  anion_gap: "Calculate the anion gap in every metabolic acidosis.",
+  additional_metabolic_process: "Use the delta ratio to check for another metabolic process hiding in the numbers.",
+  oxygenation: "Use PaO₂, SpO₂, FiO₂, and the clinical context to judge oxygenation.",
+  oxygenation_status: "Use PaO₂, SpO₂, FiO₂, and the clinical context to judge oxygenation.",
+  pf_ratio_interpretation: "Use PaO₂, SpO₂, FiO₂, and the clinical context to judge oxygenation.",
+  aa_gradient: "Use the A-a gradient to decide whether hypoxaemia is from hypoventilation or impaired gas exchange.",
+  aa_gradient_mechanism: "Use the A-a gradient to decide whether hypoxaemia is from hypoventilation or impaired gas exchange.",
+  diagnosis: "Bring each step together into one clear acid-base interpretation.",
+  final_diagnosis: "Bring each step together into one clear acid-base interpretation.",
+  osmolar_gap: "Check whether an osmolar gap suggests an unmeasured osmole.",
+  albumin_corrected_anion_gap: "Adjust the anion gap for albumin before deciding whether it is truly raised."
 };
 
 export function getCurrentFocusExplanation(stepKey: string | null | undefined): string {

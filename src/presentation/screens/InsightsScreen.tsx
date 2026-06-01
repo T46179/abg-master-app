@@ -372,22 +372,15 @@ function CurrentFocusCard({ currentFocus }: { currentFocus: InsightsFocusModel }
 }
 
 function CommonMissPatternCard({ commonMissPattern }: { commonMissPattern: InsightsCommonMissPatternModel }) {
+  if (commonMissPattern.state !== "available") return null;
+
   return (
     <Surface className="insights-card insights-focus-card insights-focus-card--violet">
       <FocusCardHeader icon={AlertCircle} label="Pattern detected" tone="violet" />
-      {commonMissPattern.state === "available" ? (
-        <>
-          <div className="insights-focus-card__pattern">
-            {commonMissPattern.headline}
-          </div>
-          {commonMissPattern.detail ? <p>{commonMissPattern.detail}</p> : null}
-        </>
-      ) : (
-        <div className="insights-focus-card__copy">
-          <p>No recurring patterns detected yet.</p>
-          <p>If ABG Master detects a consistent pattern of mistakes, it will appear here.</p>
-        </div>
-      )}
+      <div className="insights-focus-card__pattern">
+        {commonMissPattern.headline}
+      </div>
+      {commonMissPattern.detail ? <p>{commonMissPattern.detail}</p> : null}
     </Surface>
   );
 }
@@ -704,9 +697,9 @@ function ReadyView({ data }: { data: InsightsReadyViewModel }) {
         <CurrentFocusCard currentFocus={data.currentFocus} />
       </section>
 
-      <ReasoningSteps items={data.reasoningStepAccuracy} />
-
       <CommonMissPatternCard commonMissPattern={data.commonMissPattern} />
+
+      <ReasoningSteps items={data.reasoningStepAccuracy} />
 
       <section className="insights-two-column-grid" aria-label="Progress and coverage">
         <DifficultyProgress items={data.difficultyProgress} />
