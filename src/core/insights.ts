@@ -433,6 +433,48 @@ function getClinicalPatternLabel(clinicalPatternKey: string): string {
   return clinicalPatternLabelRegistry[clinicalPatternKey] ?? CLINICAL_PATTERN_FALLBACK_LABEL;
 }
 
+function getGasSummarySubLabel(caseItem: CaseData | undefined): string | null {
+  const sub = String(caseItem?.display?.gas_summary?.sub ?? "").trim();
+  return sub || null;
+}
+
+function getCoveragePatternLabel(input: {
+  patternKey: string;
+  matchingAttempts: InsightsAttemptRow[];
+  availableCases: CaseData[] | undefined;
+  difficultyKey: string;
+}): string {
+  const caseById = new Map((input.availableCases ?? []).map(caseItem => [normalizeCaseId(caseItem.case_id), caseItem]));
+
+  for (const attempt of input.matchingAttempts) {
+    if (attempt.clinicalPatternKey !== input.patternKey) continue;
+    const exactLabel = getGasSummarySubLabel(caseById.get(normalizeCaseId(attempt.caseId)));
+    if (exactLabel) return exactLabel;
+  }
+
+  const matchingCase = (input.availableCases ?? []).find(caseItem =>
+    String(caseItem.difficulty_label ?? "").trim().toLowerCase() === input.difficultyKey &&
+    String(caseItem.archetype ?? "").trim() === input.patternKey &&
+    Boolean(getGasSummarySubLabel(caseItem))
+  );
+
+  return getGasSummarySubLabel(matchingCase) ?? getClinicalPatternLabel(input.patternKey);
+}
+
+function getPatternGasSummarySubLabel(input: {
+  patternKey: string | null;
+  difficultyKey: string;
+  availableCases: CaseData[] | undefined;
+}): string | null {
+  if (!input.patternKey) return null;
+  const matchingCase = (input.availableCases ?? []).find(caseItem =>
+    String(caseItem.difficulty_label ?? "").trim().toLowerCase() === input.difficultyKey &&
+    String(caseItem.archetype ?? "").trim() === input.patternKey &&
+    Boolean(getGasSummarySubLabel(caseItem))
+  );
+  return getGasSummarySubLabel(matchingCase);
+}
+
 function normalizeCaseId(value: string) {
   return String(value ?? "").trim().toUpperCase();
 }
@@ -741,7 +783,12 @@ function buildClinicalPatternCoverage(
   const encounteredPatterns = Array.from(attemptCounts.entries())
     .map(([patternKey, attemptsCount]) => ({
       key: clinicalPatterns.safeKeyByPatternKey.get(patternKey) ?? "clinical-pattern",
-      label: clinicalPatterns.labelByPatternKey.get(patternKey) ?? CLINICAL_PATTERN_FALLBACK_LABEL,
+      label: getCoveragePatternLabel({
+        patternKey,
+        matchingAttempts,
+        availableCases,
+        difficultyKey
+      }),
       attempts: attemptsCount
     }))
     .sort((left, right) => left.label.localeCompare(right.label));
@@ -861,7 +908,14 @@ function buildRecentCaseReview(
       totalSteps: attempt.totalSteps,
       missedSteps,
       clinicalPatternLabel: attempt.clinicalPatternKey
-        ? clinicalPatterns.labelByPatternKey.get(attempt.clinicalPatternKey) ?? CLINICAL_PATTERN_FALLBACK_LABEL
+        ? getGasSummarySubLabel(caseItem)
+          ?? getPatternGasSummarySubLabel({
+            patternKey: attempt.clinicalPatternKey,
+            difficultyKey: attempt.difficulty,
+            availableCases
+          })
+          ?? clinicalPatterns.labelByPatternKey.get(attempt.clinicalPatternKey)
+          ?? CLINICAL_PATTERN_FALLBACK_LABEL
         : undefined,
       caseMetadata: caseItem
         ? {

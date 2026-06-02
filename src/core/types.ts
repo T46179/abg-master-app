@@ -205,6 +205,10 @@ export interface CaseData {
   explanation?: string | StructuredExplanation;
   display?: {
     hidden_inputs?: string[];
+    gas_summary?: {
+      main?: string;
+      sub?: string;
+    };
     diagnosis_summary?: {
       main?: string;
       sub?: string;

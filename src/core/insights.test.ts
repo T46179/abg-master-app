@@ -593,7 +593,17 @@ describe("insights", () => {
       }))
     ], {
       availableCases: [
-        { case_id: "A", difficulty_label: "beginner", archetype: "dka_vomiting" },
+        {
+          case_id: "A",
+          difficulty_label: "beginner",
+          archetype: "dka_vomiting",
+          display: {
+            gas_summary: {
+              main: "Mixed Disorder",
+              sub: "HAGMA + Metabolic Alkalosis"
+            }
+          }
+        },
         { case_id: "B", difficulty_label: "beginner", archetype: "unseen_secret_pattern" }
       ]
     });
@@ -602,7 +612,7 @@ describe("insights", () => {
     if (viewModel.state !== "ready") return;
     expect(viewModel.clinicalPatternCoverage.totalCount).toBe(2);
     expect(viewModel.clinicalPatternCoverage.encounteredPatterns).toEqual(expect.arrayContaining([
-      expect.objectContaining({ label: "Diabetic ketoacidosis with vomiting" }),
+      expect.objectContaining({ label: "HAGMA + Metabolic Alkalosis" }),
       expect.objectContaining({ label: "Encountered clinical pattern" })
     ]));
     expect(JSON.stringify(viewModel)).not.toContain("dka_vomiting");
@@ -638,9 +648,39 @@ describe("insights", () => {
         unlockedDifficulties: ["beginner", "intermediate", "advanced"]
       },
       availableCases: [
-        { case_id: "A", difficulty_label: "advanced", archetype: "dka" },
-        { case_id: "B", difficulty_label: "advanced", archetype: "uraemia" },
-        { case_id: "C", difficulty_label: "beginner", archetype: "simple_nagma" }
+        {
+          case_id: "A",
+          difficulty_label: "advanced",
+          archetype: "dka",
+          display: {
+            gas_summary: {
+              main: "HAGMA",
+              sub: "Diabetic Ketoacidosis"
+            }
+          }
+        },
+        {
+          case_id: "B",
+          difficulty_label: "advanced",
+          archetype: "uraemia",
+          display: {
+            gas_summary: {
+              main: "HAGMA",
+              sub: "Uraemic acidosis"
+            }
+          }
+        },
+        {
+          case_id: "C",
+          difficulty_label: "beginner",
+          archetype: "simple_nagma",
+          display: {
+            gas_summary: {
+              main: "Metabolic acidosis",
+              sub: "GI bicarbonate loss"
+            }
+          }
+        }
       ]
     });
 
@@ -650,10 +690,65 @@ describe("insights", () => {
     expect(viewModel.clinicalPatternCoverage.encounteredCount).toBe(2);
     expect(viewModel.clinicalPatternCoverage.totalCount).toBe(2);
     expect(viewModel.clinicalPatternCoverage.encounteredPatterns.map(pattern => pattern.label)).toEqual([
-      "Diabetic ketoacidosis",
-      "Uraemia"
+      "Diabetic Ketoacidosis",
+      "Uraemic acidosis"
     ]);
     expect(JSON.stringify(viewModel.clinicalPatternCoverage)).not.toContain("Normal anion gap metabolic acidosis");
+  });
+
+  it("uses gas summary subheadings for recent case review labels", () => {
+    const viewModel = readyModel(Array.from({ length: 5 }, (_, index) => createAttempt({
+      id: `recent-gas-label-${index}`,
+      caseId: index === 0 ? "DKA_VOMIT_001" : `CASE_${index}`,
+      completedAt: index === 0 ? "2026-05-31T00:00:00.000Z" : `2026-05-2${index}T00:00:00.000Z`,
+      clinicalPatternKey: index === 0 ? "dka_vomiting" : "dka"
+    })), {
+      availableCases: [
+        {
+          case_id: "DKA_VOMIT_001",
+          archetype: "dka_vomiting",
+          display: {
+            gas_summary: {
+              main: "Mixed Disorder",
+              sub: "HAGMA + Metabolic Alkalosis"
+            }
+          }
+        }
+      ]
+    });
+
+    expect(viewModel.state).toBe("ready");
+    if (viewModel.state !== "ready") return;
+    expect(viewModel.recentCaseReview[0]?.clinicalPatternLabel).toBe("HAGMA + Metabolic Alkalosis");
+  });
+
+  it("uses archetype-matched gas summary subheadings for recent cases when exact case id is unavailable", () => {
+    const viewModel = readyModel(Array.from({ length: 5 }, (_, index) => createAttempt({
+      id: `recent-archetype-gas-label-${index}`,
+      caseId: index === 0 ? "RESP_ACID_HAGMA_999" : `CASE_${index}`,
+      difficulty: index === 0 ? "master" : "beginner",
+      difficultyLevel: index === 0 ? 4 : 1,
+      completedAt: index === 0 ? "2026-05-31T00:00:00.000Z" : `2026-05-2${index}T00:00:00.000Z`,
+      clinicalPatternKey: index === 0 ? "respiratory_acidosis_hagma" : "dka"
+    })), {
+      availableCases: [
+        {
+          case_id: "RESP_ACID_HAGMA_001",
+          difficulty_label: "master",
+          archetype: "respiratory_acidosis_hagma",
+          display: {
+            gas_summary: {
+              main: "Mixed Disorder",
+              sub: "HAGMA + Respiratory Acidosis"
+            }
+          }
+        }
+      ]
+    });
+
+    expect(viewModel.state).toBe("ready");
+    if (viewModel.state !== "ready") return;
+    expect(viewModel.recentCaseReview[0]?.clinicalPatternLabel).toBe("HAGMA + Respiratory Acidosis");
   });
 
   it("adds display metadata for recent authored ABG cases from the available case catalogue", () => {

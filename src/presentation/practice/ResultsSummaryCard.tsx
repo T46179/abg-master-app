@@ -49,17 +49,23 @@ const DIAGNOSIS_DISPLAY = {
   respiratory_acidosis_hagma: { main: "Mixed Disorder", sub: "Respiratory Acidosis + HAGMA" }
 } as const satisfies Record<string, { main: string; sub: string }>;
 
-function getDiagnosisDisplay(caseItem: CaseData) {
-  const summaryOverride = caseItem.display?.diagnosis_summary;
-  const overrideMain = String(summaryOverride?.main ?? "").trim();
-  const overrideSub = String(summaryOverride?.sub ?? "").trim();
+function getDisplaySummaryCandidate(summary: unknown) {
+  if (!summary || typeof summary !== "object") return null;
 
-  if (overrideMain || overrideSub) {
-    return {
-      main: overrideMain || "Authored Case",
-      sub: overrideSub
-    };
-  }
+  const candidate = summary as { main?: unknown; sub?: unknown };
+  const main = String(candidate.main ?? "").trim();
+  const sub = String(candidate.sub ?? "").trim();
+  if (!main || !sub) return null;
+
+  return { main, sub };
+}
+
+function getDiagnosisDisplay(caseItem: CaseData) {
+  const gasSummary = getDisplaySummaryCandidate(caseItem.display?.gas_summary);
+  if (gasSummary) return gasSummary;
+
+  const legacyDiagnosisSummary = getDisplaySummaryCandidate(caseItem.display?.diagnosis_summary);
+  if (legacyDiagnosisSummary) return legacyDiagnosisSummary;
 
   const archetype = caseItem.archetype ?? "";
   return DIAGNOSIS_DISPLAY[archetype as keyof typeof DIAGNOSIS_DISPLAY] ?? { main: "Unknown", sub: "" };

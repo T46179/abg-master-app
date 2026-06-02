@@ -60,7 +60,7 @@ describe("ScenarioCard", () => {
     });
 
     expect(container.querySelector(".case-metadata-icon--oxygenation")).not.toBeNull();
-    expect(container.textContent).toContain("This is an arterial blood gas, and requires oxygenation interpretation");
+    expect(container.textContent).toContain("This is an arterial blood gas and requires oxygenation interpretation");
 
     act(() => {
       root.render(
