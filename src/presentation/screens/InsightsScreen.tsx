@@ -244,12 +244,12 @@ function AccuracyHero({
           <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
             <defs>
               <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3d8a5f" stopOpacity="0.22" />
-                <stop offset="100%" stopColor="#3d8a5f" stopOpacity="0" />
+                <stop offset="0%" stopColor="#3a6ea5" stopOpacity="0.18" />
+                <stop offset="100%" stopColor="#3a6ea5" stopOpacity="0" />
               </linearGradient>
               <linearGradient id={lineId} x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#5ba87e" />
-                <stop offset="100%" stopColor="#3d8a5f" />
+                <stop offset="0%" stopColor="#8fb9df" />
+                <stop offset="100%" stopColor="#12335f" />
               </linearGradient>
             </defs>
             {[0, 0.5, 1].map(tick => (
@@ -269,7 +269,7 @@ function AccuracyHero({
                 <path
                   className={cn("insights-sparkline__line", isBuildingBaseline && "insights-sparkline__line--baseline")}
                   d={path}
-                  stroke={isBuildingBaseline ? "#9bbfaf" : `url(#${lineId})`}
+                  stroke={isBuildingBaseline ? "#9bb4cf" : `url(#${lineId})`}
                   vectorEffect="non-scaling-stroke"
                 />
                 {!isBuildingBaseline ? (
@@ -419,7 +419,7 @@ function DifficultyProgress({ items }: { items: DifficultyProgressItem[] }) {
               <span className={cn("insights-difficulty-row__accent", `insights-difficulty-row__accent--${tone}`)} />
               <div className="insights-difficulty-row__content">
                 <div className="insights-difficulty-row__topline">
-                  <span className="insights-difficulty-row__name">{item.difficulty}</span>
+                  <span className="insights-difficulty-row__name">{formatDifficultyName(item.difficulty)}</span>
                   <span className={cn("insights-chip", `insights-chip--${tone}`)}>{item.completedCount} CASES</span>
                   <span className="insights-difficulty-row__score">
                     {item.enoughData && item.recentAccuracyPercent != null ? (
@@ -451,6 +451,12 @@ function DifficultyProgress({ items }: { items: DifficultyProgressItem[] }) {
   );
 }
 
+function formatDifficultyName(difficulty: string): string {
+  const trimmed = difficulty.trim();
+  if (!trimmed) return "";
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+}
+
 function PatternCoverage({ coverage }: { coverage: InsightsCoverageModel }) {
   const [expanded, setExpanded] = useState(false);
   const tagLimit = 6;
@@ -462,7 +468,7 @@ function PatternCoverage({ coverage }: { coverage: InsightsCoverageModel }) {
   return (
     <Surface className="insights-card insights-section-card">
       <div className="insights-pattern-header">
-        <InsightsSectionTitle title="Case Coverage" subtitle="The breadth of scenarios you've encountered" />
+        <InsightsSectionTitle title="Case Coverage" subtitle="The breadth of scenarios you've encountered in your current difficulty level" />
         <div className="insights-pattern-count">
           <strong>{coverage.encounteredCount}</strong>
           {coverage.totalCount != null ? <span>/ {coverage.totalCount}</span> : null}
@@ -524,8 +530,8 @@ function RecentCaseRow({ item }: { item: RecentCaseReviewItem }) {
       </div>
       <div className="insights-case-row__body">
         <div className="insights-case-row__title">
-          <span>{item.clinicalPatternLabel ?? item.caseId}</span>
           <span className={cn("insights-chip", `insights-chip--${tone}`)}>{item.difficulty.toUpperCase()}</span>
+          <span className="insights-case-row__label">{item.clinicalPatternLabel ?? item.caseId}</span>
           <CaseMetadataIcons caseItem={item.caseMetadata} />
           {relativeTime ? <small className="insights-case-row__time">{relativeTime}</small> : null}
         </div>

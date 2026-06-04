@@ -30,14 +30,14 @@ export const insightsRouteContract = {
   navVisible: true
 } as const;
 
-const CLINICAL_PATTERN_FALLBACK_LABEL = "Encountered clinical pattern";
+const CLINICAL_PATTERN_FALLBACK_LABEL = "Featured Case";
 const TREND_STABLE_DELTA_PERCENT = 5;
 
 export const clinicalPatternLabelRegistry: Record<string, string> = {
   acute_copd_exacerbation: "Acute COPD exacerbation",
   alcoholic_ketoacidosis: "Alcoholic ketoacidosis",
   copd_chronic_retainer: "Chronic CO2 retention",
-  diarrhoea_nagma: "Diarrhoea with normal anion gap acidosis",
+  diarrhoea_nagma: "Diarrhoea with NAGMA",
   diuretic_metabolic_alkalosis: "Diuretic-associated metabolic alkalosis",
   dka: "Diabetic ketoacidosis",
   dka_vomiting: "Diabetic ketoacidosis with vomiting",
@@ -45,12 +45,12 @@ export const clinicalPatternLabelRegistry: Record<string, string> = {
   mixed_hagma_metabolic_alkalosis: "Mixed metabolic disorder",
   opioid_toxicity: "Opioid toxicity",
   panic_hyperventilation: "Hyperventilation",
-  respiratory_acidosis_hagma: "Respiratory acidosis with high anion gap acidosis",
-  respiratory_alkalosis_hagma: "Respiratory alkalosis with high anion gap acidosis",
+  respiratory_acidosis_hagma: "Respiratory acidosis with HAGMA",
+  respiratory_alkalosis_hagma: "Respiratory alkalosis with HAGMA",
   salicylate_toxicity: "Salicylate toxicity",
   sepsis_respiratory_alkalosis: "Sepsis with respiratory alkalosis",
   simple_metabolic_alkalosis: "Metabolic alkalosis",
-  simple_nagma: "Normal anion gap metabolic acidosis",
+  simple_nagma: "NAGMA",
   simple_respiratory_acidosis: "Respiratory acidosis",
   simple_respiratory_alkalosis: "Respiratory alkalosis",
   starvation_ketosis: "Starvation ketosis",

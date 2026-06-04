@@ -236,20 +236,23 @@ describe("InsightsScreen", () => {
     expect(container.textContent).not.toContain("SIMPLE_MET_ALK_001");
   });
 
-  it("renders recent case authored and ABG metadata icons after the difficulty pill", () => {
+  it("renders recent case difficulty pill before label and metadata icons", () => {
     renderWithViewModel(readyViewModel);
 
     const row = container.querySelector(".insights-case-row");
     const title = row?.querySelector(".insights-case-row__title");
     const difficultyPill = title?.querySelector(".insights-chip");
+    const label = title?.querySelector(".insights-case-row__label");
     const metadataIcons = title?.querySelector(".case-metadata-icons");
     const time = title?.querySelector(".insights-case-row__time");
+    const children = title ? Array.from(title.children) : [];
 
     expect(difficultyPill).not.toBeNull();
+    expect(label).not.toBeNull();
     expect(metadataIcons).not.toBeNull();
     expect(time).not.toBeNull();
-    expect(title ? Array.from(title.children).indexOf(metadataIcons as Element) : -1)
-      .toBeGreaterThan(title ? Array.from(title.children).indexOf(difficultyPill as Element) : -1);
+    expect(children.indexOf(difficultyPill as Element)).toBeLessThan(children.indexOf(label as Element));
+    expect(children.indexOf(label as Element)).toBeLessThan(children.indexOf(metadataIcons as Element));
     expect(container.querySelector(".case-metadata-icon--authored")).not.toBeNull();
     expect(container.querySelector(".case-metadata-icon--oxygenation")).not.toBeNull();
     expect(container.textContent).toContain("This case has been adapted from a real-life clinical scenario");

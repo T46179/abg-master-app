@@ -11182,7 +11182,7 @@ button.learn-progress-dots__dot:focus-visible {
 
 .insights-eyebrow--subtle {
   color: var(--color-text-soft);
-  font-weight: 560;
+  font-weight: 500;
 }
 
 .insights-ready-view {
@@ -11228,6 +11228,7 @@ button.learn-progress-dots__dot:focus-visible {
   margin: 0.25rem 0 0;
   color: var(--color-text-muted);
   font-size: 0.82rem;
+  font-weight: 380;
   line-height: 1.5;
 }
 
@@ -11427,13 +11428,13 @@ button.learn-progress-dots__dot:focus-visible {
 }
 
 .insights-sparkline__endpoint-halo {
-  fill: #3d8a5f;
-  fill-opacity: 0.15;
+  fill: #3a6ea5;
+  fill-opacity: 0.14;
 }
 
 .insights-sparkline__endpoint {
   fill: #ffffff;
-  stroke: #3d8a5f;
+  stroke: #12335f;
   stroke-width: 1.5;
 }
 
@@ -11549,7 +11550,7 @@ button.learn-progress-dots__dot:focus-visible {
 }
 
 .insights-focus-card--violet::before {
-  background: #e4dff0;
+  background: transparent;
 }
 
 .insights-focus-card > *:not(:first-child),
@@ -11560,7 +11561,7 @@ button.learn-progress-dots__dot:focus-visible {
 
 .insights-focus-card__header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.5rem;
   margin-top: 1.25rem;
   margin-bottom: 0.75rem;
@@ -11568,6 +11569,14 @@ button.learn-progress-dots__dot:focus-visible {
 
 .insights-focus-card__header .insights-eyebrow {
   margin: 0;
+  font-weight: 600;
+}
+
+.insights-focus-card__header .insights-icon {
+  align-self: center;
+  background: transparent;
+  width: 1rem;
+  height: 1rem;
 }
 
 .insights-icon {
@@ -11633,6 +11642,7 @@ button.learn-progress-dots__dot:focus-visible {
   margin-bottom: 1.25rem;
   color: var(--color-text-muted);
   font-size: 0.82rem;
+  font-weight: 380;
   line-height: 1.5;
 }
 
@@ -11647,10 +11657,12 @@ button.learn-progress-dots__dot:focus-visible {
   margin: 0;
 }
 
-.insights-focus-card__cta {
+.insights-focus-card > .insights-focus-card__cta {
   width: fit-content;
   margin-top: auto;
+  margin-right: auto;
   margin-bottom: 1.25rem;
+  margin-left: auto;
   background: var(--color-navy);
 }
 
@@ -11723,7 +11735,7 @@ button.learn-progress-dots__dot:focus-visible {
   padding: 0.2rem 0.5rem;
   border-radius: 999px;
   font-size: 0.68rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.06em;
 }
 
@@ -11787,7 +11799,7 @@ button.learn-progress-dots__dot:focus-visible {
   margin-top: 0.25rem;
   color: var(--color-text-muted);
   font-size: 0.68rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -11923,7 +11935,7 @@ button.learn-progress-dots__dot:focus-visible {
   gap: 0.45rem;
 }
 
-.insights-case-row__title > span:first-child {
+.insights-case-row__label {
   color: var(--color-text);
   font-size: 0.9rem;
 }
@@ -12237,7 +12249,51 @@ button.learn-progress-dots__dot:focus-visible {
   }
 
   .insights-case-row {
+    align-items: center;
     gap: 0.75rem;
+  }
+
+  .insights-case-row__score {
+    margin-top: 0;
+  }
+
+  .insights-case-row__body {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .insights-case-row__title {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    gap: 0.35rem 0.5rem;
+  }
+
+  .insights-case-row__title .insights-chip {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .insights-case-row__time {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    margin-left: 0;
+  }
+
+  .insights-case-row__label {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .insights-case-row__title .case-metadata-icons {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-self: start;
+  }
+
+  .insights-case-row__steps {
+    margin-top: 0;
   }
 
   .insights-case-row__chevron {
