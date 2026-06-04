@@ -230,7 +230,7 @@ function hasCalibrationGrantedDifficulty(userState: UserState, difficulty: strin
   return getCalibrationGrantedDifficulties(userState.calibrationPlacement ?? null).includes(difficulty);
 }
 
-export function normalizePracticeAttemptSummaries(source: unknown): PracticeAttemptSummary[] {
+function normalizePracticeAttemptSummaryItems(source: unknown): PracticeAttemptSummary[] {
   if (!Array.isArray(source)) return [];
 
   const normalized: PracticeAttemptSummary[] = [];
@@ -248,7 +248,11 @@ export function normalizePracticeAttemptSummaries(source: unknown): PracticeAtte
       });
     });
 
-  return normalized.slice(-20);
+  return normalized;
+}
+
+export function normalizePracticeAttemptSummaries(source: unknown): PracticeAttemptSummary[] {
+  return normalizePracticeAttemptSummaryItems(source).slice(-20);
 }
 
 export function appendPracticeAttemptSummary(
@@ -261,7 +265,24 @@ export function appendPracticeAttemptSummary(
   ]);
 }
 
-function getPerformanceRequirement(progressionConfig: ProgressionConfig | null, difficultyKey: string) {
+export interface PerformanceGateRequirement {
+  lastCases: number;
+  minStepAccuracyPercent: number;
+  requiredDifficulty: string;
+}
+
+export interface PerformanceReadiness {
+  correctSteps: number;
+  totalSteps: number;
+  currentPercent: number | null;
+  requiredPercent: number;
+  eligibleAttemptsUsed: number;
+  requiredAttempts: number;
+  enoughData: boolean;
+  ready: boolean;
+}
+
+export function getPerformanceRequirement(progressionConfig: ProgressionConfig | null, difficultyKey: string): PerformanceGateRequirement {
   const configured = progressionConfig?.performance_unlock_requirements?.[difficultyKey];
   return {
     lastCases: Math.max(1, Math.round(Number(configured?.lastCases ?? 5) || 5)),
@@ -275,23 +296,41 @@ function isAttemptEligibleForRequirement(attempt: PracticeAttemptSummary, requir
   return attempt.difficulty === requiredDifficulty;
 }
 
+export function getPerformanceReadiness(
+  progressionConfig: ProgressionConfig | null,
+  difficultyKey: "advanced" | "master",
+  attempts: PracticeAttemptSummary[],
+  options?: { order?: "oldest_first" | "newest_first" }
+): PerformanceReadiness {
+  const requirement = getPerformanceRequirement(progressionConfig, difficultyKey);
+  const eligibleAttempts = normalizePracticeAttemptSummaryItems(attempts)
+    .filter(attempt => isAttemptEligibleForRequirement(attempt, requirement.requiredDifficulty));
+  const recentEligibleAttempts = options?.order === "newest_first"
+    ? eligibleAttempts.slice(0, requirement.lastCases)
+    : eligibleAttempts.slice(-requirement.lastCases);
+  const totalSteps = recentEligibleAttempts.reduce((sum, attempt) => sum + attempt.totalSteps, 0);
+  const correctSteps = recentEligibleAttempts.reduce((sum, attempt) => sum + attempt.correctSteps, 0);
+  const currentPercent = totalSteps > 0 ? Math.round((correctSteps / totalSteps) * 100) : null;
+  const enoughData = recentEligibleAttempts.length >= requirement.lastCases && totalSteps > 0;
+
+  return {
+    correctSteps,
+    totalSteps,
+    currentPercent,
+    requiredPercent: requirement.minStepAccuracyPercent,
+    eligibleAttemptsUsed: recentEligibleAttempts.length,
+    requiredAttempts: requirement.lastCases,
+    enoughData,
+    ready: enoughData && currentPercent != null && currentPercent >= requirement.minStepAccuracyPercent
+  };
+}
+
 export function isPerformanceGateReady(
   progressionConfig: ProgressionConfig | null,
   difficultyKey: "advanced" | "master",
   attempts: PracticeAttemptSummary[]
 ): boolean {
-  const requirement = getPerformanceRequirement(progressionConfig, difficultyKey);
-  const recentEligibleAttempts = normalizePracticeAttemptSummaries(attempts)
-    .filter(attempt => isAttemptEligibleForRequirement(attempt, requirement.requiredDifficulty))
-    .slice(-requirement.lastCases);
-
-  if (recentEligibleAttempts.length < requirement.lastCases) return false;
-
-  const totalSteps = recentEligibleAttempts.reduce((sum, attempt) => sum + attempt.totalSteps, 0);
-  const correctSteps = recentEligibleAttempts.reduce((sum, attempt) => sum + attempt.correctSteps, 0);
-  if (totalSteps <= 0) return false;
-
-  return (correctSteps / totalSteps) * 100 >= requirement.minStepAccuracyPercent;
+  return getPerformanceReadiness(progressionConfig, difficultyKey, attempts).ready;
 }
 
 export function getBlockedXpGate(

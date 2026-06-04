@@ -383,7 +383,80 @@ describe("ResultsSummaryCard", () => {
     expect(container.querySelectorAll(".results-card__detail-card")).toHaveLength(0);
   });
 
-  it("uses authored diagnosis summary display before falling back to archetype mappings", () => {
+  it("uses gas summary display before legacy display and archetype mappings", () => {
+    const summary = buildSummary([
+      { key: "clinical_context", title: "Clinical Context", body: "Clinical context body.", order: 1 }
+    ]);
+    const caseItem = {
+      ...buildCaseItem("dka"),
+      display: {
+        gas_summary: {
+          main: "Mixed Disorder",
+          sub: "Respiratory Alkalosis + HAGMA"
+        },
+        diagnosis_summary: {
+          main: "Triple Disorder",
+          sub: "Legacy diagnosis label"
+        }
+      }
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={caseItem}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          onOpenFeedback={() => {}}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("Mixed Disorder");
+    expect(container.textContent).toContain("Respiratory Alkalosis + HAGMA");
+    expect(container.textContent).not.toContain("Legacy diagnosis label");
+    expect(container.textContent).not.toContain("Diabetic Ketoacidosis");
+  });
+
+  it("falls through to legacy diagnosis summary when gas summary is malformed", () => {
+    const summary = buildSummary([
+      { key: "clinical_context", title: "Clinical Context", body: "Clinical context body.", order: 1 }
+    ]);
+    const caseItem = {
+      ...buildCaseItem("dka"),
+      display: {
+        gas_summary: {
+          main: "",
+          sub: "Incomplete gas summary"
+        },
+        diagnosis_summary: {
+          main: "Triple Disorder",
+          sub: "Legacy diagnosis label"
+        }
+      }
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={caseItem}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          onOpenFeedback={() => {}}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("Triple Disorder");
+    expect(container.textContent).toContain("Legacy diagnosis label");
+    expect(container.textContent).not.toContain("Incomplete gas summary");
+  });
+
+  it("uses legacy diagnosis summary display before falling back to archetype mappings", () => {
     const summary = buildSummary([
       { key: "clinical_context", title: "Clinical Context", body: "Clinical context body.", order: 1 }
     ]);

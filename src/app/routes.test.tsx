@@ -49,15 +49,24 @@ describe("app routes", () => {
     expect(getElementName(abgInterpretationRoute?.element)).toBe("AbgInterpretationScreen");
   });
 
-  it("keeps dashboard, practice, and calibration available inside the app shell", () => {
+  it("keeps dashboard, practice, insights, and calibration available inside the app shell", () => {
     const shellRoute = appRoutes.find((route) => route.children != null);
     const childPaths = shellRoute?.children?.map((route) => route.path);
 
     expect(childPaths).toContain("dashboard");
     expect(childPaths).toContain("practice");
+    expect(childPaths).toContain("insights");
     expect(childPaths).toContain("calibration");
     expect(childPaths).toContain("case-preview/:caseId");
     expect(childPaths).toContain("dev/authored-cases");
+  });
+
+  it("renders the insights scaffold at /insights", () => {
+    const shellRoute = appRoutes.find((route) => route.children != null);
+    const insightsRoute = shellRoute?.children?.find((route) => route.path === "insights");
+
+    expect(insightsRoute?.element).toBeTruthy();
+    expect(getElementName(insightsRoute?.element)).toBe("InsightsScreen");
   });
 
   it("renders the calibration scaffold at /calibration", () => {
