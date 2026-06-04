@@ -176,8 +176,6 @@ const commonMissPatternPriority = [
   ["compensation", "respiratory_cases"],
   ["compensation", "metabolic_acidosis_cases"],
   ["additional_metabolic_process", "mixed_disorder_cases"],
-  ["diagnosis", "mixed_disorder_cases"],
-  ["final_diagnosis", "mixed_disorder_cases"],
   ["anion_gap", "metabolic_acidosis_cases"],
   ["anion_gap", "raised_anion_gap_metabolic_acidosis_cases"],
   ["oxygenation", "oxygenation_cases"],
@@ -189,6 +187,7 @@ const commonMissPatternPriority = [
 const commonMissPatternPriorityByPair = new Map(
   commonMissPatternPriority.map(([stepKey, contextKey], index) => [`${stepKey}::${contextKey}`, index])
 );
+const commonMissPatternEligiblePairs = new Set(commonMissPatternPriorityByPair.keys());
 
 const authoredCaseMetadataRegistry: Record<string, Pick<CaseData, "case_features" | "source_type">> = {
   AUTHORED_001: { source_type: "authored" },
@@ -705,6 +704,7 @@ function buildCommonMissPattern(attempts: InsightsAttemptRow[], availableCases: 
     contexts.forEach(contextKey => {
       stepResults.forEach(step => {
         const pairKey = `${step.stepKey}::${contextKey}`;
+        if (!commonMissPatternEligiblePairs.has(pairKey)) return;
         const current = pairs.get(pairKey) ?? {
           stepKey: step.stepKey,
           contextKey,

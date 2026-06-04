@@ -174,7 +174,7 @@ describe("insights", () => {
       expect.objectContaining({ difficulty: "beginner", completedCount: 5 })
     ]);
     expect(viewModel.clinicalPatternCoverage.encounteredPatterns).toEqual([
-      expect.objectContaining({ label: "Normal anion gap metabolic acidosis", attempts: 5 })
+      expect.objectContaining({ label: "NAGMA", attempts: 5 })
     ]);
     expect(JSON.stringify(viewModel)).not.toContain("OLD_");
     expect(JSON.stringify(viewModel)).not.toContain("Salicylate toxicity");
@@ -439,6 +439,21 @@ describe("insights", () => {
     });
   });
 
+  it("does not surface diagnosis-related common miss patterns", () => {
+    const viewModel = readyModel(Array.from({ length: MIN_COMMON_MISS_SAMPLE_SIZE }, (_, index) => createAttempt({
+      id: `diagnosis-pattern-${index}`,
+      clinicalPatternKey: "mixed_hagma_metabolic_alkalosis",
+      stepResults: [
+        { key: "diagnosis", correct: false },
+        { key: "final_diagnosis", correct: false }
+      ]
+    })));
+
+    expect(viewModel.state).toBe("ready");
+    if (viewModel.state !== "ready") return;
+    expect(viewModel.commonMissPattern.state).toBe("none");
+  });
+
   it("uses only the most recent 50 attempts for common miss patterns", () => {
     const viewModel = readyModel([
       ...Array.from({ length: 10 }, (_, index) => createAttempt({
@@ -613,7 +628,7 @@ describe("insights", () => {
     expect(viewModel.clinicalPatternCoverage.totalCount).toBe(2);
     expect(viewModel.clinicalPatternCoverage.encounteredPatterns).toEqual(expect.arrayContaining([
       expect.objectContaining({ label: "HAGMA + Metabolic Alkalosis" }),
-      expect.objectContaining({ label: "Encountered clinical pattern" })
+      expect.objectContaining({ label: "Featured Case" })
     ]));
     expect(JSON.stringify(viewModel)).not.toContain("dka_vomiting");
     expect(JSON.stringify(viewModel)).not.toContain("unmapped_secret_pattern");
