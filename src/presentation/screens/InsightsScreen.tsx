@@ -37,6 +37,9 @@ import { LoadingView } from "../shared/StatusViews";
 import { cn } from "../utils";
 
 const SPARKLINE_MIN_DOMAIN_SPAN = 40;
+const RECENT_PERFORMANCE_WINDOW_SIZE = 10;
+const PATTERN_TAG_PREVIEW_LIMIT = 6;
+const RECENT_CASE_DISPLAY_LIMIT = 5;
 const ACCURACY_TOOLTIP =
   "Tracks your step accuracy across your last 10 completed cases and compares it with the 10 cases before that. Each case is broken into reasoning steps, so this reflects your overall interpretation accuracy, not just whether the final answer was correct.";
 const STEP_ACCURACY_TOOLTIP =
@@ -64,7 +67,10 @@ function buildAccuracySparklinePoints(recentAccuracy: RecentAccuracyModel, accur
   if (end == null) return [];
 
   const start = clampPercent(accuracyTrend.previousPercent) ?? end;
-  const pointCount = Math.max(2, Math.min(10, recentAccuracy.windowSize || accuracyTrend.recentWindowSize || 10));
+  const pointCount = Math.max(2, Math.min(
+    RECENT_PERFORMANCE_WINDOW_SIZE,
+    recentAccuracy.windowSize || accuracyTrend.recentWindowSize || RECENT_PERFORMANCE_WINDOW_SIZE
+  ));
 
   return Array.from({ length: pointCount }, (_, index) => {
     const progress = index / (pointCount - 1);
@@ -196,8 +202,8 @@ function AccuracyHero({
   const delta = accuracyTrend.deltaPercent;
   const deltaSign = delta != null && delta > 0 ? "+" : "";
   const trendTone = direction === "improving" ? "positive" : direction === "declining" ? "warning" : "neutral";
-  const isBuildingBaseline = recentAccuracy.enoughData && recentAccuracy.windowSize < 10;
-  const casesNeededForRecentWindow = Math.max(10 - recentAccuracy.windowSize, 0);
+  const isBuildingBaseline = recentAccuracy.enoughData && recentAccuracy.windowSize < RECENT_PERFORMANCE_WINDOW_SIZE;
+  const casesNeededForRecentWindow = Math.max(RECENT_PERFORMANCE_WINDOW_SIZE - recentAccuracy.windowSize, 0);
 
   const width = 300;
   const height = 100;
@@ -459,11 +465,10 @@ function formatDifficultyName(difficulty: string): string {
 
 function PatternCoverage({ coverage }: { coverage: InsightsCoverageModel }) {
   const [expanded, setExpanded] = useState(false);
-  const tagLimit = 6;
-  const hasOverflow = coverage.encounteredPatterns.length > tagLimit;
+  const hasOverflow = coverage.encounteredPatterns.length > PATTERN_TAG_PREVIEW_LIMIT;
   const visiblePatterns = expanded || !hasOverflow
     ? coverage.encounteredPatterns
-    : coverage.encounteredPatterns.slice(0, tagLimit);
+    : coverage.encounteredPatterns.slice(0, PATTERN_TAG_PREVIEW_LIMIT);
 
   return (
     <Surface className="insights-card insights-section-card">
@@ -504,7 +509,7 @@ function PatternCoverage({ coverage }: { coverage: InsightsCoverageModel }) {
 }
 
 function RecentCaseReview({ items }: { items: RecentCaseReviewItem[] }) {
-  const visibleItems = items.slice(0, 5);
+  const visibleItems = items.slice(0, RECENT_CASE_DISPLAY_LIMIT);
 
   return (
     <Surface className="insights-card insights-section-card">
