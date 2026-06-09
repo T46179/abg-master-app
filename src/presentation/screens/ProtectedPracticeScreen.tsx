@@ -16,7 +16,6 @@ import {
 } from "../../app/viewHelpers";
 import { trackEvent } from "../../core/analytics";
 import { createCalibrationCompletionRecord } from "../../core/calibration";
-import { openCaseFeedbackForm } from "../../core/feedback";
 import { shouldShowMetricReferences } from "../../core/metrics";
 import { buildConciseStepFeedback } from "../../core/explanations";
 import {
@@ -1146,11 +1145,6 @@ export function ProtectedPracticeScreen() {
     void submitCase();
   }
 
-  function handleOpenFeedback() {
-    if (!summary) return;
-    openCaseFeedbackForm(summary);
-  }
-
   function handleNextCaseFromSummary() {
     if (!summary) return;
 
@@ -1252,7 +1246,6 @@ export function ProtectedPracticeScreen() {
               showSummaryReferences={showSummaryReferences}
               showAbnormalHighlighting={showAbnormalHighlighting}
               onNextCase={handleNextCaseFromSummary}
-              onOpenFeedback={handleOpenFeedback}
               storage={state.storage}
             />
           ) : currentCase ? (

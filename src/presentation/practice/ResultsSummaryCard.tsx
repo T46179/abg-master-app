@@ -184,7 +184,6 @@ interface ResultsSummaryCardProps {
   showSummaryReferences: boolean;
   showAbnormalHighlighting: boolean;
   onNextCase: () => void;
-  onOpenFeedback: () => void;
   storage?: StorageAdapter | null;
 }
 
@@ -326,9 +325,9 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
           <button className="figma-button results-card__button results-card__button--next-case" type="button" onClick={props.onNextCase}>
             Next case
           </button>
-          <button className="figma-button figma-button--secondary results-card__button results-card__button--secondary" type="button" onClick={props.onOpenFeedback}>
-            Feedback
-          </button>
+          <a className="figma-button figma-button--secondary results-card__button results-card__button--secondary" href="/insights">
+            Insights
+          </a>
         </div>
       </Surface>
 

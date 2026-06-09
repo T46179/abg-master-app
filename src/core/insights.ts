@@ -368,6 +368,11 @@ interface ParsedStepResult {
   correct: boolean;
 }
 
+interface AttemptStepTotals {
+  correctSteps: number;
+  totalSteps: number;
+}
+
 interface InsightsAttemptDbRow {
   id?: unknown;
   case_id?: unknown;
@@ -419,6 +424,23 @@ function normalizeCount(value: unknown): number {
   return Math.max(0, Math.round(Number(value ?? 0) || 0));
 }
 
+function sumAttemptStepTotals(attempts: InsightsAttemptRow[]): AttemptStepTotals {
+  return attempts.reduce<AttemptStepTotals>((totals, attempt) => ({
+    correctSteps: totals.correctSteps + attempt.correctSteps,
+    totalSteps: totals.totalSteps + attempt.totalSteps
+  }), { correctSteps: 0, totalSteps: 0 });
+}
+
+function normalizeAttemptAccuracy(attempts: InsightsAttemptRow[]): AttemptStepTotals & {
+  accuracyPercent: number | null;
+} {
+  const totals = sumAttemptStepTotals(attempts);
+  return {
+    ...totals,
+    accuracyPercent: normalizePercent(totals.correctSteps, totals.totalSteps)
+  };
+}
+
 function getStepLabel(stepKey: string): string {
   return reasoningStepLabelRegistry[stepKey] ?? stepKey.replaceAll("_", " ");
 }
@@ -437,17 +459,20 @@ function getGasSummarySubLabel(caseItem: CaseData | undefined): string | null {
   return sub || null;
 }
 
+function buildCaseById(availableCases: CaseData[] | undefined): Map<string, CaseData> {
+  return new Map((availableCases ?? []).map(caseItem => [normalizeCaseId(caseItem.case_id), caseItem]));
+}
+
 function getCoveragePatternLabel(input: {
   patternKey: string;
   matchingAttempts: InsightsAttemptRow[];
   availableCases: CaseData[] | undefined;
   difficultyKey: string;
+  caseById: Map<string, CaseData>;
 }): string {
-  const caseById = new Map((input.availableCases ?? []).map(caseItem => [normalizeCaseId(caseItem.case_id), caseItem]));
-
   for (const attempt of input.matchingAttempts) {
     if (attempt.clinicalPatternKey !== input.patternKey) continue;
-    const exactLabel = getGasSummarySubLabel(caseById.get(normalizeCaseId(attempt.caseId)));
+    const exactLabel = getGasSummarySubLabel(input.caseById.get(normalizeCaseId(attempt.caseId)));
     if (exactLabel) return exactLabel;
   }
 
@@ -505,7 +530,8 @@ function getUniqueAcidBaseContexts(contexts: AcidBaseContextKey[]): AcidBaseCont
 
 function getAcidBaseContextsForAttempt(
   attempt: InsightsAttemptRow,
-  caseById: Map<string, CaseData>
+  caseById: Map<string, CaseData>,
+  parsedStepResults = parseStepResults(attempt.stepResults)
 ): AcidBaseContextKey[] {
   const caseItem = caseById.get(normalizeCaseId(attempt.caseId));
   const contexts: AcidBaseContextKey[] = [];
@@ -523,8 +549,7 @@ function getAcidBaseContextsForAttempt(
     const normalizedFeature = String(feature ?? "").trim().toLowerCase();
     return normalizedFeature === "oxygenation_focus" || normalizedFeature === "true_abg";
   });
-  const hasOxygenationStep = parseStepResults(attempt.stepResults)
-    .some(step => oxygenationStepKeys.has(step.stepKey));
+  const hasOxygenationStep = parsedStepResults.some(step => oxygenationStepKeys.has(step.stepKey));
 
   if (hasOxygenationFeature || hasOxygenationStep) {
     contexts.push("oxygenation_cases");
@@ -545,6 +570,16 @@ export function compareInsightsAttemptsByRecency(left: Pick<InsightsAttemptRow, 
 
 export function sortInsightsAttemptsByRecency(attempts: InsightsAttemptRow[]): InsightsAttemptRow[] {
   return [...attempts].sort(compareInsightsAttemptsByRecency);
+}
+
+function sortAndFilterPostResetAttempts(attempts: InsightsAttemptRow[], userState: UserState): InsightsAttemptRow[] {
+  const resetAtMs = userState.resetAt ? Date.parse(userState.resetAt) : NaN;
+
+  return sortInsightsAttemptsByRecency(attempts).filter(attempt => {
+    if (!Number.isFinite(resetAtMs)) return true;
+    const completedAtMs = Date.parse(attempt.completedAt);
+    return Number.isFinite(completedAtMs) && completedAtMs > resetAtMs;
+  });
 }
 
 export function normalizeInsightsAttemptRow(source: InsightsAttemptDbRow): InsightsAttemptRow | null {
@@ -588,11 +623,10 @@ function buildClinicalPatternContext(attempts: InsightsAttemptRow[]): ClinicalPa
 
 function buildRecentAccuracy(attempts: InsightsAttemptRow[]): RecentAccuracyModel {
   const recentAttempts = attempts.slice(0, INSIGHTS_RECENT_WINDOW);
-  const correctSteps = recentAttempts.reduce((sum, attempt) => sum + attempt.correctSteps, 0);
-  const totalSteps = recentAttempts.reduce((sum, attempt) => sum + attempt.totalSteps, 0);
+  const { correctSteps, totalSteps, accuracyPercent } = normalizeAttemptAccuracy(recentAttempts);
 
   return {
-    valuePercent: normalizePercent(correctSteps, totalSteps),
+    valuePercent: accuracyPercent,
     correctSteps,
     totalSteps,
     windowSize: recentAttempts.length,
@@ -603,12 +637,8 @@ function buildRecentAccuracy(attempts: InsightsAttemptRow[]): RecentAccuracyMode
 function buildAccuracyTrend(attempts: InsightsAttemptRow[]): AccuracyTrendModel {
   const recentAttempts = attempts.slice(0, INSIGHTS_TREND_WINDOW);
   const previousAttempts = attempts.slice(INSIGHTS_TREND_WINDOW, INSIGHTS_TREND_WINDOW * 2);
-  const recentCorrect = recentAttempts.reduce((sum, attempt) => sum + attempt.correctSteps, 0);
-  const recentTotal = recentAttempts.reduce((sum, attempt) => sum + attempt.totalSteps, 0);
-  const previousCorrect = previousAttempts.reduce((sum, attempt) => sum + attempt.correctSteps, 0);
-  const previousTotal = previousAttempts.reduce((sum, attempt) => sum + attempt.totalSteps, 0);
-  const recentPercent = normalizePercent(recentCorrect, recentTotal);
-  const previousPercent = normalizePercent(previousCorrect, previousTotal);
+  const recentPercent = normalizeAttemptAccuracy(recentAttempts).accuracyPercent;
+  const previousPercent = normalizeAttemptAccuracy(previousAttempts).accuracyPercent;
   const deltaPercent = recentPercent == null || previousPercent == null ? null : recentPercent - previousPercent;
 
   let direction: AccuracyTrendModel["direction"] = "insufficient_data";
@@ -687,7 +717,7 @@ function buildCurrentFocus(steps: ReasoningStepAccuracyItem[]): InsightsFocusMod
 }
 
 function buildCommonMissPattern(attempts: InsightsAttemptRow[], availableCases: CaseData[] = []): InsightsCommonMissPatternModel {
-  const caseById = new Map(availableCases.map(caseItem => [normalizeCaseId(caseItem.case_id), caseItem]));
+  const caseById = buildCaseById(availableCases);
   const commonMissAttempts = attempts.slice(0, INSIGHTS_COMMON_MISS_WINDOW);
   const pairs = new Map<string, {
     stepKey: string;
@@ -697,8 +727,8 @@ function buildCommonMissPattern(attempts: InsightsAttemptRow[], availableCases: 
   }>();
 
   commonMissAttempts.forEach(attempt => {
-    const contexts = getAcidBaseContextsForAttempt(attempt, caseById);
     const stepResults = parseStepResults(attempt.stepResults);
+    const contexts = getAcidBaseContextsForAttempt(attempt, caseById, stepResults);
     if (!contexts.length || !stepResults.length) return;
 
     contexts.forEach(contextKey => {
@@ -768,6 +798,7 @@ function buildClinicalPatternCoverage(
 ): InsightsCoverageModel {
   const attemptCounts = new Map<string, number>();
   const matchingAttempts = attempts.filter(attempt => attempt.difficulty === difficultyKey);
+  const caseById = buildCaseById(availableCases);
 
   matchingAttempts.forEach(attempt => {
     if (!attempt.clinicalPatternKey) return;
@@ -787,7 +818,8 @@ function buildClinicalPatternCoverage(
         patternKey,
         matchingAttempts,
         availableCases,
-        difficultyKey
+        difficultyKey,
+        caseById
       }),
       attempts: attemptsCount
     }))
@@ -814,16 +846,14 @@ function buildDifficultyProgress(attempts: InsightsAttemptRow[]): DifficultyProg
   return Array.from(difficultyGroups.entries())
     .map(([difficulty, group]) => {
       const recent = group.slice(0, INSIGHTS_RECENT_WINDOW);
-      const recentCorrect = recent.reduce((sum, attempt) => sum + attempt.correctSteps, 0);
-      const recentTotal = recent.reduce((sum, attempt) => sum + attempt.totalSteps, 0);
-      const allCorrect = group.reduce((sum, attempt) => sum + attempt.correctSteps, 0);
-      const allTotal = group.reduce((sum, attempt) => sum + attempt.totalSteps, 0);
+      const recentAccuracy = normalizeAttemptAccuracy(recent);
+      const allTimeAccuracy = normalizeAttemptAccuracy(group);
 
       return {
         difficulty,
         completedCount: group.length,
-        recentAccuracyPercent: normalizePercent(recentCorrect, recentTotal),
-        allTimeAccuracyPercent: normalizePercent(allCorrect, allTotal),
+        recentAccuracyPercent: recentAccuracy.accuracyPercent,
+        allTimeAccuracyPercent: allTimeAccuracy.accuracyPercent,
         enoughData: group.length >= MIN_STEP_ATTEMPTS_FOR_FOCUS
       };
     })
@@ -887,7 +917,7 @@ function buildRecentCaseReview(
   clinicalPatterns: ClinicalPatternContext,
   availableCases: CaseData[] = []
 ): RecentCaseReviewItem[] {
-  const caseById = new Map(availableCases.map(caseItem => [normalizeCaseId(caseItem.case_id), caseItem]));
+  const caseById = buildCaseById(availableCases);
 
   return attempts.slice(0, INSIGHTS_RECENT_CASE_LIMIT).map(attempt => {
     const caseItem = caseById.get(normalizeCaseId(attempt.caseId));
@@ -969,12 +999,7 @@ export function buildInsightsViewModel(input: {
   progressionConfig: ProgressionConfig | null;
   availableCases?: CaseData[];
 }): InsightsViewModel {
-  const resetAtMs = input.userState.resetAt ? Date.parse(input.userState.resetAt) : NaN;
-  const attempts = sortInsightsAttemptsByRecency(input.attempts).filter(attempt => {
-    if (!Number.isFinite(resetAtMs)) return true;
-    const completedAtMs = Date.parse(attempt.completedAt);
-    return Number.isFinite(completedAtMs) && completedAtMs > resetAtMs;
-  });
+  const attempts = sortAndFilterPostResetAttempts(input.attempts, input.userState);
   const casesCompleted = attempts.length;
   const currentLevelLabel = buildCurrentLevelLabel({
     userState: input.userState,
