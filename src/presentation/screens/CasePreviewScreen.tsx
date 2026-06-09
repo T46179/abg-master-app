@@ -190,7 +190,6 @@ export function CasePreviewScreen() {
             showSummaryReferences={showSummaryReferences}
             showAbnormalHighlighting={showAbnormalHighlighting}
             onNextCase={handleRestart}
-            onOpenFeedback={() => {}}
             storage={null}
           />
         </div>

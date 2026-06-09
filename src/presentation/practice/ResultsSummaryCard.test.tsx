@@ -144,7 +144,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
           storage={storage}
         />
       );
@@ -259,7 +258,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
           storage={storage}
         />
       );
@@ -316,7 +314,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
           storage={storage}
         />
       );
@@ -346,7 +343,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
         />
       );
     });
@@ -372,7 +368,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
         />
       );
     });
@@ -409,7 +404,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
         />
       );
     });
@@ -446,7 +440,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
         />
       );
     });
@@ -479,7 +472,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
         />
       );
     });
@@ -519,7 +511,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
           storage={storage}
         />
       );
@@ -555,7 +546,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
           storage={storage}
         />
       );
@@ -595,7 +585,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
           storage={storage}
         />
       );
@@ -637,7 +626,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
         />
       );
     });
@@ -666,7 +654,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
           storage={storage}
         />
       );
@@ -707,7 +694,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
           storage={storage}
         />
       );
@@ -732,7 +718,6 @@ describe("ResultsSummaryCard", () => {
           showSummaryReferences={false}
           showAbnormalHighlighting={false}
           onNextCase={() => {}}
-          onOpenFeedback={() => {}}
         />
       );
     });
