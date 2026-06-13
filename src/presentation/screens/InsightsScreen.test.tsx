@@ -20,6 +20,10 @@ vi.mock("../../app/useInsightsData", () => ({
   }
 }));
 
+vi.mock("../layout/AppFooter", () => ({
+  AppFooter: () => <footer data-testid="app-footer">Footer</footer>
+}));
+
 const lockedViewModel: InsightsViewModel = {
   viewModelVersion: 1,
   state: "locked",

@@ -8,6 +8,7 @@ import { getVisibleLearnLevels, isLearnLevelAvailable, isLearnLevelUnlocked } fr
 import { Surface } from "../primitives/Surface";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
 import type { LearnModuleProgress } from "../../core/types";
+import { AppFooter } from "../layout/AppFooter";
 
 function getLearnModuleProgressPercent(progress: LearnModuleProgress | undefined, lessonCount: number): number {
   if (!progress || lessonCount <= 0) return 0;
@@ -128,6 +129,7 @@ export function LearnScreen() {
         </div>
 
       </div>
+      <AppFooter />
     </main>
   );
 }

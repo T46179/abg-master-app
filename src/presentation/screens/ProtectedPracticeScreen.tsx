@@ -47,6 +47,7 @@ import {
   getDifficultyLabel,
   getDifficultyMeta,
   getLevelProgress,
+  getReadinessGateProgressMessage,
   getMaxReachableLevel,
   getReleaseFlags,
   isPlacementXpBoostActive,
@@ -100,14 +101,6 @@ function getResultsXpRequiredForLevel(progressionConfig: ProgressionConfig | nul
 function getResultsSummaryAnimationKey(summary: { caseToken?: string | null; caseId: string } | null | undefined) {
   if (!summary) return null;
   return summary.caseToken ?? summary.caseId;
-}
-
-function getReadinessGateProgressMessage(progressionConfig: ProgressionConfig | null, blockedDifficulty: string | null | undefined) {
-  if (!blockedDifficulty) return null;
-  const requirement = progressionConfig?.performance_unlock_requirements?.[blockedDifficulty];
-  const minAccuracy = Math.max(0, Math.min(100, Number(requirement?.minStepAccuracyPercent ?? 75) || 75));
-  const caseCount = Math.max(1, Math.round(Number(requirement?.lastCases ?? 5) || 5));
-  return `You must reach ${minAccuracy}% accuracy over ${caseCount} cases to progress`;
 }
 
 export function ProtectedPracticeScreen() {

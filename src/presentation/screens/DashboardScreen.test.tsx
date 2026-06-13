@@ -130,7 +130,7 @@ describe("DashboardScreen", () => {
     expect(window.localStorage.getItem("abg-master:unrelated")).toBe("keep");
   });
 
-  it("links next case to the remembered practice difficulty", () => {
+  it("links resume practice to the remembered practice difficulty", () => {
     mockStorage.loadLastPracticeDifficulty.mockReturnValue("advanced");
 
     act(() => {
@@ -142,12 +142,12 @@ describe("DashboardScreen", () => {
     });
 
     const nextCaseLink = Array.from(container.querySelectorAll<HTMLAnchorElement>("a"))
-      .find(link => link.textContent?.includes("Next case"));
+      .find(link => link.textContent?.includes("Resume Practice"));
 
     expect(nextCaseLink?.getAttribute("href")).toBe("/practice?difficulty=advanced");
   });
 
-  it("shows recent step accuracy over the last 10 cases", () => {
+  it("shows live progress values and recent step accuracy", () => {
     act(() => {
       root.render(
         <MemoryRouter>
@@ -157,9 +157,54 @@ describe("DashboardScreen", () => {
     });
 
     const performanceCard = Array.from(container.querySelectorAll<HTMLElement>(".stat-card"))
-      .find(card => card.textContent?.includes("Performance"));
+      .find(card => card.textContent?.includes("Accuracy"));
 
     expect(performanceCard?.querySelector(".stat-card__value")?.textContent).toBe("67%");
-    expect(performanceCard?.textContent).toContain("Your answer accuracy of the last 10 cases");
+    expect(performanceCard?.textContent).toContain("Last 10 cases");
+    expect(performanceCard?.querySelector(".stat-card__meta-trigger")).toBeNull();
+    expect(container.textContent).toContain("Level 1");
+    expect(container.textContent).toContain("Cases Solved");
+    expect(container.textContent).toContain("Daily Streak");
+    expect(container.textContent).toContain("Beginner");
+  });
+
+  it("renders the learning path, featured cases, and clinical pearl actions", () => {
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <DashboardScreen />
+        </MemoryRouter>
+      );
+    });
+
+    expect(container.textContent).toContain("Learning Progress");
+    expect(container.textContent).toContain("Foundations");
+    expect(container.textContent).toContain("Featured Case");
+    expect(container.textContent).toContain("Clinical Pearl");
+    expect(container.textContent).toContain("Beta build · v0.4");
+    const privacyLink = container.querySelector<HTMLAnchorElement>(".dashboard-page-footer__privacy");
+    expect(privacyLink?.getAttribute("href")).toBe("/privacy");
+    expect(privacyLink?.getAttribute("target")).toBe("_blank");
+    expect(privacyLink?.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(container.textContent).toContain("Challenging and unique cases");
+    expect(container.textContent).toContain("Based on real clinical scenarios");
+    expect(container.textContent).not.toContain("Weekly themed sets");
+    expect(container.textContent).not.toContain("Notify me when this launches");
+    expect(container.querySelector<HTMLAnchorElement>('a[href="/learn/foundations?mode=continue"]')).not.toBeNull();
+    expect(container.textContent).not.toContain("Open Foundations module");
+  });
+
+  it("links all progress metric cards to insights", () => {
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <DashboardScreen />
+        </MemoryRouter>
+      );
+    });
+
+    const insightMetricLinks = container.querySelectorAll<HTMLAnchorElement>(".dashboard-stat-link");
+    expect(insightMetricLinks).toHaveLength(4);
+    insightMetricLinks.forEach(link => expect(link.getAttribute("href")).toBe("/insights"));
   });
 });

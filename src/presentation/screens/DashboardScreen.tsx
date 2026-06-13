@@ -1,4 +1,13 @@
-import { BookOpen, Flame, Megaphone, Target, TrendingUp } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  FileText,
+  Flame,
+  Lightbulb,
+  Stethoscope,
+  Target,
+  Trophy
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import {
@@ -6,21 +15,40 @@ import {
   getCasesRemainingToday,
   getDifficultyMeta,
   getLevelProgress,
-  getMaxReachableLevel
+  getReadinessGateProgressMessage
 } from "../../core/progression";
 import { getDefaultPracticeDifficulty } from "../../app/viewHelpers";
+import arrowRightIconUrl from "../../assets/icons/arrow_right.svg";
+import { AppFooter } from "../layout/AppFooter";
+import {
+  getVisibleLearnLevels,
+  isLearnLevelAvailable,
+  isLearnLevelUnlocked,
+  type LearnLevelConfig
+} from "../learn/content";
 import { ProgressBar } from "../primitives/ProgressBar";
-import { SectionHeader } from "../primitives/SectionHeader";
 import { StatCard } from "../primitives/StatCard";
 import { Surface } from "../primitives/Surface";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
+import { getDailyClinicalPearl } from "./clinicalPearls";
 
-function clearLearnModuleResumeState() {
-  if (typeof window === "undefined") return;
+const featuredCasePreviews = [
+  { icon: FileText, label: "Challenging and unique cases" },
+  { icon: Stethoscope, label: "Based on real clinical scenarios" }
+];
 
-  Object.keys(window.localStorage)
-    .filter(key => key === "abg-master:learn:last-module" || /^abg-master:learn:[^:]+:lesson-index$/.test(key))
-    .forEach(key => window.localStorage.removeItem(key));
+function formatDashboardDate(date = new Date()) {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "long"
+  }).format(date);
+}
+
+function getLearnProgressPercent(level: LearnLevelConfig, completedLessonCount: number, completed: boolean) {
+  if (completed) return 100;
+  if (!level.lessons.length) return 0;
+  return Math.min(99, Math.round((Math.min(level.lessons.length, Math.max(0, completedLessonCount)) / level.lessons.length) * 100));
 }
 
 export function DashboardScreen() {
@@ -28,7 +56,6 @@ export function DashboardScreen() {
   if (state.status === "loading" || state.status === "idle") return <LoadingView />;
   if (state.status === "error") return <ErrorView message={state.errorMessage} />;
 
-  const feedbackHref = "https://docs.google.com/forms/d/e/1FAIpQLSfmFQu6jCZxP1gPZklEZCn_aBzjRzlsR1jSuY-bqXxqXYN43w/viewform?usp=dialog";
   const payload = state.payload;
   const progressionInput = {
     progressionConfig: payload?.progressionConfig ?? null,
@@ -38,8 +65,9 @@ export function DashboardScreen() {
     cases: payload?.cases ?? []
   };
   const levelProgress = getLevelProgress(payload?.progressionConfig ?? null, state.userState);
-  const maxReachableLevel = getMaxReachableLevel(payload?.progressionConfig ?? null);
-  const hasReachedMaxLevel = maxReachableLevel != null && state.userState.level >= maxReachableLevel;
+  const readinessGateProgressMessage = levelProgress.isBlockedByReadinessGate
+    ? getReadinessGateProgressMessage(payload?.progressionConfig ?? null, levelProgress.blockedDifficulty)
+    : null;
   const difficultyMeta = getDifficultyMeta(progressionInput);
   const recentAttempts = (state.userState.recentPracticeAttempts ?? []).slice(-10);
   const recentCorrectSteps = recentAttempts.reduce((sum, attempt) => sum + Math.max(0, Number(attempt.correctSteps ?? 0)), 0);
@@ -51,131 +79,164 @@ export function DashboardScreen() {
     progressionInput,
     state.storage?.loadLastPracticeDifficulty() ?? null
   );
-
-  async function handleResetProgress() {
-    if (!state.storage) return;
-
-    const confirmed = window.confirm("Reset all progress?\n\nThis will clear your XP, level, streak, practice history, and learning module progress.\nThis cannot be undone.");
-    if (!confirmed) return;
-
-    await state.storage.resetUserState();
-    state.storage.saveSeenCaseState({});
-    state.storage.savePracticeIntroSeen(false);
-    state.storage.saveAppAreaVisited(false);
-    state.storage.saveAdvancedRangesPreference(false);
-    state.storage.clearCalibrationCompletion();
-    clearLearnModuleResumeState();
-    window.location.assign("/practice");
-  }
+  const unlockedDifficulties = difficultyMeta.filter(item => canAccessDifficulty(progressionInput, item.level));
+  const currentTier = unlockedDifficulties.at(-1)?.label ?? "Beginner";
+  const learningPath = getVisibleLearnLevels(state.userState.level).filter(level => level.slug !== "hidden");
+  const dailyClinicalPearl = getDailyClinicalPearl();
 
   return (
     <main className="app-shell__page dashboard-screen">
       <div className="dashboard-screen__container">
-        <Surface className="dashboard-feedback-banner">
-          <div className="dashboard-feedback-banner__icon" aria-hidden="true">
-            <Megaphone />
-          </div>
-          <div className="dashboard-feedback-banner__copy">
-            <p>We&apos;d love to hear what you think about the beta experience</p>
-          </div>
-          <a
-            className="dashboard-feedback-banner__action"
-            href={feedbackHref}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Share Feedback
-          </a>
-        </Surface>
-
         <Surface className="dashboard-progress-card">
           <div className="dashboard-progress-card__meta">
-            <span>Level {state.userState.level}</span>
+            <span>
+              <strong>Level {state.userState.level}</strong>
+              <span className="dashboard-progress-card__tier">{currentTier}</span>
+            </span>
             <span>{levelProgress.xpIntoLevel} / {levelProgress.xpForNextLevel || levelProgress.xpIntoLevel} XP</span>
           </div>
           <ProgressBar value={levelProgress.progressPercent} blocked={levelProgress.isBlockedByReadinessGate} />
+          <p className={`dashboard-progress-card__remaining${readinessGateProgressMessage ? " is-readiness-gate" : ""}`}>
+            {readinessGateProgressMessage ?? (levelProgress.xpForNextLevel
+              ? `${Math.max(0, levelProgress.xpForNextLevel - levelProgress.xpIntoLevel)} XP until Level ${state.userState.level + 1}`
+              : "Highest level reached")}
+          </p>
         </Surface>
 
-        <Surface className="dashboard-card dashboard-card--continue">
-          <SectionHeader
-            className="dashboard-continue-header"
-            title="Continue Learning"
-            subtitle={
-              casesRemaining == null
-                ? "Unlimited cases available today"
-                : `${casesRemaining} case${casesRemaining === 1 ? "" : "s"} remaining today.`
-            }
-          />
-          <div className="dashboard-card__actions">
-            <Link className="figma-button results-card__button" to={`/practice?difficulty=${defaultDifficulty}`}>
-              Next case
-            </Link>
-          </div>
-        </Surface>
+        <section className="dashboard-feature-grid">
+          <Surface className="dashboard-resume-card">
+            <div className="dashboard-card-glow dashboard-card-glow--lavender" aria-hidden="true" />
+            <div className="dashboard-resume-card__content">
+              <span className="dashboard-eyebrow">{formatDashboardDate()}</span>
+              <h1>Welcome back</h1>
+              <p>
+                {casesRemaining == null
+                  ? "Unlimited cases available today"
+                  : `${casesRemaining} case${casesRemaining === 1 ? "" : "s"} remaining today.`}
+              </p>
+              <div className="dashboard-resume-card__action">
+                <Link className="dashboard-resume-button" to={`/practice?difficulty=${defaultDifficulty}`}>
+                  <span>Resume Practice</span>
+                  <img src={arrowRightIconUrl} alt="" aria-hidden="true" />
+                </Link>
+              </div>
+            </div>
+          </Surface>
 
-        <section className="dashboard-stats-grid">
-          <StatCard
-            label="Level"
-            value={state.userState.level}
-            meta={hasReachedMaxLevel ? "Max level reached" : `${levelProgress.progressPercent}% to next level`}
-            icon={TrendingUp}
-            tone="blue"
-          />
-          <StatCard label="Cases" value={state.userState.casesCompleted} meta="Completed" icon={BookOpen} tone="green" />
-          <StatCard
-            label="Performance"
-            value={`${recentAccuracy}%`}
-            meta="Recent performance"
-            metaTooltip="Your answer accuracy of the last 10 cases"
-            icon={Target}
-            tone="violet"
-          />
-          <StatCard label="Streak" value={state.userState.streak} meta={`Longest: ${longestStreak} day${longestStreak === 1 ? "" : "s"}`} icon={Flame} tone="orange" />
+          <Surface className="dashboard-featured-card">
+            <div className="dashboard-featured-card__content">
+              <div className="dashboard-featured-card__header">
+                <div className="dashboard-featured-card__eyebrow">
+                  <span className="dashboard-eyebrow">Featured Case</span>
+                </div>
+                <span className="dashboard-coming-soon">Coming Soon</span>
+              </div>
+              <h2>Hand-picked cases</h2>
+              <p>A curated rotation of clinically rich gases, annotated with reasoning notes and regularly refreshed.</p>
+              <div className="dashboard-featured-card__previews">
+                {featuredCasePreviews.map(({ icon: Icon, label }) => (
+                  <div key={label}>
+                    <span className="dashboard-round-icon"><Icon aria-hidden="true" /></span>
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Surface>
         </section>
 
-        <Surface className="dashboard-card">
-          <SectionHeader
-            className="dashboard-mastery-header"
-            title="Mastery"
-            subtitle="Unlock new challenges as you progress"
-          />
-          <div className="dashboard-difficulty-grid">
-            {difficultyMeta.map(item => {
-              const unlocked = canAccessDifficulty(progressionInput, item.level);
-              return unlocked ? (
-                <Link key={item.key} className="dashboard-difficulty-card" to={`/practice?difficulty=${item.key}`}>
-                  <span className="dashboard-difficulty-card__status is-unlocked">Unlocked</span>
-                  <strong>{item.label}</strong>
-                </Link>
-              ) : (
-                <article key={item.key} className="dashboard-difficulty-card is-locked">
-                  <span className="dashboard-difficulty-card__status">Locked</span>
-                  <strong>{item.label}</strong>
-                  <p>Unlock at level {item.unlockLevel}</p>
-                </article>
-              );
-            })}
-          </div>
-        </Surface>
+        <section className="dashboard-stats-grid" aria-label="Progress summary">
+          <Link className="dashboard-stat-link" to="/insights" aria-label="View insights for cases solved">
+            <StatCard
+              label="Cases Solved"
+              value={state.userState.casesCompleted}
+              meta="Completed"
+              icon={Activity}
+              tone="blue"
+            />
+          </Link>
+          <Link className="dashboard-stat-link" to="/insights" aria-label="View accuracy insights">
+            <StatCard
+              label="Accuracy"
+              value={`${recentAccuracy}%`}
+              meta="Last 10 cases"
+              icon={Target}
+              tone="green"
+            />
+          </Link>
+          <Link className="dashboard-stat-link" to="/insights" aria-label="View current tier insights">
+            <StatCard label="Current Tier" value={currentTier} meta={`Level ${state.userState.level}`} icon={Trophy} tone="violet" />
+          </Link>
+          <Link className="dashboard-stat-link" to="/insights" aria-label="View streak insights">
+            <StatCard label="Daily Streak" value={state.userState.streak} meta={`Personal best: ${longestStreak}`} icon={Flame} tone="orange" />
+          </Link>
+        </section>
 
-        <footer className="dashboard-footer">
-          <p>&copy; 2026 ABG Master. All rights reserved.</p>
-          <p>
-            This application is for educational purposes only and should not be used as a substitute for professional
-            medical advice, diagnosis, or treatment.
-          </p>
-          <p>
-            <Link className="dashboard-footer__link" to="/privacy">
-              Privacy notice
-            </Link>
-          </p>
-          <div className="dashboard-footer__actions">
-            <button className="figma-button figma-button--secondary dashboard-footer__reset" type="button" onClick={handleResetProgress}>
-              Reset progress
-            </button>
-          </div>
-        </footer>
+        <section className="dashboard-learning-grid">
+          <Surface className="dashboard-learning-path">
+            <div className="dashboard-section-heading">
+              <div>
+                <h2>Learning Progress</h2>
+              </div>
+              <Link className="dashboard-all-modules-link" to="/learn?all=1">
+                All modules
+                <img src={arrowRightIconUrl} alt="" aria-hidden="true" />
+              </Link>
+            </div>
+            <div className="dashboard-module-list">
+              {learningPath.map((level, index) => {
+                const progress = state.userState.learnProgress?.[level.slug];
+                const progressPercent = getLearnProgressPercent(level, progress?.completedLessonCount ?? 0, Boolean(progress?.completed));
+                const unlocked = isLearnLevelUnlocked(level, state.userState.level);
+                const available = isLearnLevelAvailable(level);
+                const canOpen = unlocked && available;
+                const status = progressPercent === 100 ? "Complete" : !available ? "Coming Soon" : !unlocked ? "Locked" : `${progressPercent}%`;
+                const content = (
+                  <>
+                    <span className={`dashboard-module-row__rail dashboard-module-row__rail--${index + 1}`} aria-hidden="true" />
+                    <span className="dashboard-module-row__body">
+                      <span className="dashboard-module-row__heading">
+                        <strong>{level.title}</strong>
+                        <span>{status}</span>
+                      </span>
+                      <span className="dashboard-module-row__description">{level.subtitle}</span>
+                      <span className="dashboard-module-row__progress" aria-hidden="true">
+                        <span style={{ width: `${Math.max(progressPercent, 4)}%` }} />
+                      </span>
+                    </span>
+                  </>
+                );
+
+                return canOpen ? (
+                  <Link
+                    key={level.slug}
+                    className="dashboard-module-row"
+                    to={`/learn/${level.slug}?mode=${progress?.completed ? "review" : progress ? "continue" : "start"}`}
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <div key={level.slug} className="dashboard-module-row is-disabled" aria-disabled="true">
+                    {content}
+                  </div>
+                );
+              })}
+            </div>
+          </Surface>
+
+          <Surface className="dashboard-pearl-card">
+            <div className="dashboard-card-glow dashboard-card-glow--pearl" aria-hidden="true" />
+            <div className="dashboard-pearl-card__content">
+              <div className="dashboard-pearl-card__eyebrow">
+                <span className="dashboard-round-icon dashboard-round-icon--blue"><Lightbulb aria-hidden="true" /></span>
+                <span className="dashboard-eyebrow">Clinical Pearl</span>
+              </div>
+              <p>{dailyClinicalPearl}</p>
+            </div>
+          </Surface>
+        </section>
       </div>
+      <AppFooter />
     </main>
   );
 }

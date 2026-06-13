@@ -28,6 +28,7 @@ import {
   getAwardableXp,
   getHighestAccessibleDifficultyKey,
   getLevelProgress,
+  getReadinessGateProgressMessage,
   getMaxReachableLevel,
   getReleaseSignature,
   isPlacementXpBoostActive,
@@ -549,6 +550,14 @@ describe("progression helpers", () => {
       isBlockedByReadinessGate: true,
       blockedDifficulty: "advanced"
     });
+  });
+
+  it("formats readiness gate progress guidance from the shared progression config", () => {
+    expect(getReadinessGateProgressMessage(gateProgressionConfig, "advanced"))
+      .toBe("You must reach 75% accuracy over 5 cases to progress");
+    expect(getReadinessGateProgressMessage(null, "master"))
+      .toBe("You must reach 75% accuracy over 5 cases to progress");
+    expect(getReadinessGateProgressMessage(gateProgressionConfig, null)).toBeNull();
   });
 
   it("allows level 9 at the 99 percent cap to cross when the fifth eligible case satisfies Advanced readiness", () => {

@@ -16,6 +16,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import { useInsightsData } from "../../app/useInsightsData";
+import arrowRightIconUrl from "../../assets/icons/arrow_right.svg";
 import {
   getCurrentFocusExplanation,
   type AccuracyTrendModel,
@@ -35,6 +36,7 @@ import { CaseMetadataIcons } from "../practice/CaseMetadataIcons";
 import { Surface } from "../primitives/Surface";
 import { LoadingView } from "../shared/StatusViews";
 import { cn } from "../utils";
+import { AppFooter } from "../layout/AppFooter";
 
 const SPARKLINE_MIN_DOMAIN_SPAN = 40;
 const RECENT_PERFORMANCE_WINDOW_SIZE = 10;
@@ -355,6 +357,7 @@ function CurrentFocusCard({ currentFocus }: { currentFocus: InsightsFocusModel }
 
   return (
     <Surface className="insights-card insights-focus-card insights-focus-card--orange">
+      <div className="insights-focus-card__glow" aria-hidden="true" />
       <FocusCardHeader icon={Crosshair} label="Current focus" tone="orange" />
       {currentFocus.state === "available" ? (
         <>
@@ -366,8 +369,9 @@ function CurrentFocusCard({ currentFocus }: { currentFocus: InsightsFocusModel }
             <p>This is your lowest-scoring reasoning step, based on {currentFocus.attempts} answers.</p>
             {explanation ? <p>{explanation}</p> : null}
           </div>
-          <Link className="figma-button insights-focus-card__cta" to={ctaHref}>
-            {ctaLabel}
+          <Link className="insights-focus-card__cta" to={ctaHref}>
+            <span>{ctaLabel}</span>
+            <img src={arrowRightIconUrl} alt="" aria-hidden="true" />
           </Link>
         </>
       ) : (
@@ -729,6 +733,7 @@ function InsightsPageShell({ children, title = "Insights" }: { children: ReactNo
         <InsightsHeader title={title} />
         {children}
       </div>
+      <AppFooter />
     </main>
   );
 }
