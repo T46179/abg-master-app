@@ -16,16 +16,10 @@ export function initMonitoring() {
   if (!dsn) return;
 
   const tracesSampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE, 0);
-  const replaySessionSampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_REPLAY_SESSION_SAMPLE_RATE, 0);
-  const replayOnErrorSampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE, 0);
   const integrations = [];
 
   if (tracesSampleRate > 0) {
     integrations.push(Sentry.browserTracingIntegration());
-  }
-
-  if (replaySessionSampleRate > 0 || replayOnErrorSampleRate > 0) {
-    integrations.push(Sentry.replayIntegration());
   }
 
   Sentry.init({
@@ -34,9 +28,7 @@ export function initMonitoring() {
     release: typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : undefined,
     sendDefaultPii: false,
     integrations,
-    tracesSampleRate,
-    replaysSessionSampleRate: replaySessionSampleRate,
-    replaysOnErrorSampleRate: replayOnErrorSampleRate
+    tracesSampleRate
   });
 }
 

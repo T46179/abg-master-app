@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./routes";
 import { normalizeDevHashRoute } from "../core/authoredCasePreview";
+import { AnalyticsConsentBanner } from "../presentation/layout/AnalyticsConsentBanner";
 
 export function App() {
   if (typeof window !== "undefined") {
@@ -21,5 +22,10 @@ export function App() {
     };
   }, []);
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <AnalyticsConsentBanner />
+    </>
+  );
 }

@@ -1171,11 +1171,10 @@ export function ProtectedPracticeScreen() {
   const displayedSummaryLevel = shouldHoldAtReadinessGate
     ? state.userState.level
     : displayedResultsXp?.level ?? state.userState.level;
-  const displayedSummaryLevelLabel = finalLevelProgress.isMaxLevel &&
+  const displayedSummaryIsMaxLevel = finalLevelProgress.isMaxLevel &&
     maxReachableLevel != null &&
-    displayedSummaryLevel >= maxReachableLevel
-    ? "Max Level"
-    : undefined;
+    displayedSummaryLevel >= maxReachableLevel;
+  const displayedSummaryLevelLabel = displayedSummaryIsMaxLevel ? "Max Level" : undefined;
 
   return (
     <>
@@ -1209,7 +1208,7 @@ export function ProtectedPracticeScreen() {
               progressAnimate={shouldHoldAtReadinessGate ? false : displayedResultsXp?.animate}
               progressAnimationMode={displayedResultsXp?.animationMode}
               progressFlash={shouldHoldAtReadinessGate ? true : displayedResultsXp?.flash}
-              xpProgressNotice={readinessGateProgressMessage ?? undefined}
+              xpProgressNotice={readinessGateProgressMessage ?? (displayedSummaryIsMaxLevel ? "Max level" : undefined)}
               xpProgressBlocked={finalLevelProgress.isBlockedByReadinessGate && !shouldHoldAtReadinessGate}
               boostedXp={summaryBoostedXp}
             />

@@ -1,8 +1,9 @@
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SeoMetadata } from "../../app/seo";
+import externalLinkIcon from "../../assets/icons/external_link.svg";
 
-const lastUpdated = "13 June 2026";
+const lastUpdated = "14 June 2026";
 
 export function PrivacyScreen() {
   return (
@@ -56,6 +57,7 @@ export function PrivacyScreen() {
                 <li>Your learning progress, preferences, unlocked levels, practice results, answers, and timing.</li>
                 <li>Basic technical information, such as browser details, page URLs, errors, and performance information.</li>
                 <li>Product analytics, such as page views and feature interactions, if analytics are enabled.</li>
+                <li>With your permission, recordings of how you use the app and heatmaps showing which parts are used.</li>
               </ul>
             </div>
           </section>
@@ -96,6 +98,28 @@ export function PrivacyScreen() {
                 <li>Google Forms, if you choose to submit optional feedback.</li>
               </ul>
               <p>
+                ABG Master uses Microsoft Clarity to help us understand how people use the app. Clarity may collect
+                usage information such as clicks, scrolling, page views, device/browser information, heatmaps, and
+                session recordings.
+              </p>
+              <p>
+                We use this information to improve the app, identify confusing screens, fix usability issues, and
+                monitor site performance. This data is collected using cookies and similar technologies.
+              </p>
+              <p>
+                Microsoft may also process this data in accordance with the{" "}
+                <a
+                  className="comp-rules-page__inline-icon-link"
+                  href="https://www.microsoft.com/en-ca/privacy/privacystatement"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Microsoft Privacy Statement
+                  <img src={externalLinkIcon} alt="" aria-hidden="true" />
+                </a>
+                .
+              </p>
+              <p>
                 Some of these services may store or process information outside Australia. ABG Master only aims
                 to share the information needed to run, improve, and secure the app.
               </p>
@@ -121,6 +145,7 @@ export function PrivacyScreen() {
               <ul>
                 <li>You do not have to join the update list.</li>
                 <li>You can clear your browser storage to remove local app data from your device.</li>
+                <li>You can allow, decline, or change Microsoft Clarity analytics from the analytics choices in the app footer.</li>
                 <li>You can ask to access, correct, or delete personal information connected to your email address.</li>
               </ul>
               <p>

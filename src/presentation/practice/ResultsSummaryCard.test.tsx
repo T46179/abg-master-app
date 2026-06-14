@@ -758,6 +758,7 @@ describe("ResultsSummaryCard", () => {
           level={20}
           levelLabel="Max Level"
           xpProgressLabel="600 / 600 XP"
+          xpProgressNotice="Max level"
           progressValue={100}
         />
       );
@@ -765,7 +766,8 @@ describe("ResultsSummaryCard", () => {
 
     expect(container.textContent).toContain("Max Level");
     expect(container.textContent).not.toContain("Level 20");
-    expect(container.textContent).toContain("600 / 600 XP");
+    expect(container.textContent).toContain("Max level");
+    expect(container.textContent).not.toContain("600 / 600 XP");
   });
 
   it("marks the summary XP bar as blocked when readiness gates cap progress", () => {

@@ -1,6 +1,7 @@
-import { RotateCcw, ShieldCheck } from "lucide-react";
+import { BarChart3, RotateCcw, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
+import { OPEN_ANALYTICS_CHOICES_EVENT } from "./AnalyticsConsentBanner";
 
 function clearLearnModuleResumeState() {
   if (typeof window === "undefined") return;
@@ -42,6 +43,14 @@ export function AppFooter() {
           </div>
 
           <div className="dashboard-page-footer__actions">
+            <button
+              className="dashboard-page-footer__analytics"
+              type="button"
+              onClick={() => window.dispatchEvent(new Event(OPEN_ANALYTICS_CHOICES_EVENT))}
+            >
+              <BarChart3 aria-hidden="true" />
+              Analytics
+            </button>
             <Link className="dashboard-page-footer__privacy" to="/privacy" target="_blank" rel="noopener noreferrer">
               <ShieldCheck aria-hidden="true" />
               Privacy notice

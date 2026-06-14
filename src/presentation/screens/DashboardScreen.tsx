@@ -97,9 +97,11 @@ export function DashboardScreen() {
           </div>
           <ProgressBar value={levelProgress.progressPercent} blocked={levelProgress.isBlockedByReadinessGate} />
           <p className={`dashboard-progress-card__remaining${readinessGateProgressMessage ? " is-readiness-gate" : ""}`}>
-            {readinessGateProgressMessage ?? (levelProgress.xpForNextLevel
+            {readinessGateProgressMessage ?? (levelProgress.isMaxLevel
+              ? "Max level"
+              : levelProgress.xpForNextLevel
               ? `${Math.max(0, levelProgress.xpForNextLevel - levelProgress.xpIntoLevel)} XP until Level ${state.userState.level + 1}`
-              : "Highest level reached")}
+              : "Max level")}
           </p>
         </Surface>
 
