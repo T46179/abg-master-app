@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { isValidElement } from "react";
+import { matchRoutes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { appRoutes } from "./routes";
 
@@ -47,6 +48,38 @@ describe("app routes", () => {
 
     expect(abgInterpretationRoute?.element).toBeTruthy();
     expect(getElementName(abgInterpretationRoute?.element)).toBe("AbgInterpretationScreen");
+  });
+
+  it.each([
+    ["/about", "AboutScreen"],
+    ["/resources", "ResourcesScreen"],
+    ["/updates", "UpdatesScreen"]
+  ])("renders the public screen at %s", (path, screenName) => {
+    const route = appRoutes.find(item => item.path === path);
+
+    expect(getElementName(route?.element)).toBe(screenName);
+  });
+
+  it.each([
+    "/blood-gas-compensation-rules",
+    "/blood-gas-compensation-rules/",
+    "/delta-ratio",
+    "/delta-ratio/",
+    "/abg-interpretation",
+    "/abg-interpretation/",
+    "/anion-gap",
+    "/anion-gap/",
+    "/about",
+    "/about/",
+    "/resources",
+    "/resources/",
+    "/updates",
+    "/updates/"
+  ])("matches the static public route form %s", pathname => {
+    const expectedPath = pathname.replace(/\/+$/, "");
+    const matches = matchRoutes(appRoutes, pathname);
+
+    expect(matches?.some(match => match.route.path === expectedPath)).toBe(true);
   });
 
   it("renders the anion gap page outside the app shell", () => {

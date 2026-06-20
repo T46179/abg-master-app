@@ -17,8 +17,23 @@ import { AnionGapScreen } from "../presentation/screens/AnionGapScreen";
 import { CalibrationScreen } from "../presentation/calibration";
 import { CasePreviewScreen } from "../presentation/screens/CasePreviewScreen";
 import { AuthoredCaseGalleryScreen } from "../presentation/screens/AuthoredCaseGalleryScreen";
+import { AboutScreen } from "../presentation/screens/AboutScreen";
+import { ResourcesScreen } from "../presentation/screens/ResourcesScreen";
+import { UpdatesScreen } from "../presentation/screens/UpdatesScreen";
 
 export const appRoutes: RouteObject[] = [
+  {
+    path: "/about",
+    element: <AboutScreen />
+  },
+  {
+    path: "/resources",
+    element: <ResourcesScreen />
+  },
+  {
+    path: "/updates",
+    element: <UpdatesScreen />
+  },
   {
     path: "/blood-gas-compensation-rules",
     element: <BloodGasCompensationRulesScreen />

@@ -1,0 +1,51 @@
+[
+  {
+    "path": "/blood-gas-compensation-rules",
+    "title": "Blood Gas Compensation Rules Explained | ABG Master",
+    "description": "Learn the blood gas compensation rules used by ABG Master, including Winter's formula, metabolic alkalosis compensation, and acute and chronic respiratory compensation.",
+    "canonicalPath": "/blood-gas-compensation-rules/",
+    "outputDirectory": "blood-gas-compensation-rules"
+  },
+  {
+    "path": "/delta-ratio",
+    "title": "Delta Ratio Explained | ABG Master",
+    "description": "Learn how to calculate and interpret the delta ratio in high anion gap metabolic acidosis, with worked examples for detecting mixed metabolic disorders.",
+    "canonicalPath": "/delta-ratio/",
+    "outputDirectory": "delta-ratio"
+  },
+  {
+    "path": "/abg-interpretation",
+    "title": "ABG Interpretation | Step-by-Step Guide to Blood Gas Analysis",
+    "description": "Learn how to interpret an ABG step by step, including oxygenation, pH, primary acid-base process, compensation, anion gap, mixed disorders, and ABG vs VBG differences.",
+    "canonicalPath": "/abg-interpretation/",
+    "outputDirectory": "abg-interpretation"
+  },
+  {
+    "path": "/anion-gap",
+    "title": "Anion Gap Explained | ABG Master",
+    "description": "Learn how to calculate and interpret the anion gap, including normal ranges, albumin correction, high-gap acidosis, normal-gap acidosis, and key pitfalls.",
+    "canonicalPath": "/anion-gap/",
+    "outputDirectory": "anion-gap"
+  },
+  {
+    "path": "/about",
+    "title": "About ABG Master | Blood Gas Learning",
+    "description": "Learn why ABG Master was created: a focused educational tool for practising blood gas interpretation.",
+    "canonicalPath": "/about/",
+    "outputDirectory": "about"
+  },
+  {
+    "path": "/resources",
+    "title": "Blood Gas Interpretation Resources | ABG Master",
+    "description": "Explore ABG Master's guides to blood gas interpretation, compensation rules, anion gap, and delta ratio.",
+    "canonicalPath": "/resources/",
+    "outputDirectory": "resources"
+  },
+  {
+    "path": "/updates",
+    "title": "ABG Master Updates | Product Changelog",
+    "description": "Read concise updates about improvements to ABG Master's learning experience and educational tools.",
+    "canonicalPath": "/updates/",
+    "outputDirectory": "updates"
+  }
+]

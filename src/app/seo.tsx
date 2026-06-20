@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import staticSeoPages from "./staticSeoPages.json";
 
 const SITE_URL = "https://www.abgmaster.com";
 
@@ -8,10 +9,18 @@ interface SeoMetadataConfig {
   description: string;
 }
 
+interface StaticSeoPageConfig extends SeoMetadataConfig {
+  path: string;
+  canonicalPath: string;
+  outputDirectory: string;
+}
+
 const HOME_METADATA: SeoMetadataConfig = {
   title: "ABG Master | Learn Blood Gas Interpretation",
   description: "Learn blood gas interpretation with step-by-step lessons, interactive ABG practice cases, and exam-style questions."
 };
+
+const staticSeoPageConfigs = staticSeoPages as StaticSeoPageConfig[];
 
 const SEO_BY_PATH: Record<string, SeoMetadataConfig> = {
   "/": HOME_METADATA,
@@ -47,30 +56,12 @@ const SEO_BY_PATH: Record<string, SeoMetadataConfig> = {
     title: "Privacy Notice | ABG Master",
     description: "Read how ABG Master handles signup emails, browser storage, protected practice submissions, analytics, and diagnostics."
   },
-  "/blood-gas-compensation-rules": {
-    title: "Blood Gas Compensation Rules Explained | ABG Master",
-    description: "Learn the blood gas compensation rules used by ABG Master, including Winter's formula, metabolic alkalosis compensation, and acute and chronic respiratory compensation."
-  },
-  "/delta-ratio": {
-    title: "Delta Ratio Explained | ABG Master",
-    description: "Learn how to calculate and interpret the delta ratio in high anion gap metabolic acidosis, with worked examples for detecting mixed metabolic disorders."
-  },
-  "/abg-interpretation": {
-    title: "ABG Interpretation | Step-by-Step Guide to Blood Gas Analysis",
-    description: "Learn how to interpret an ABG step by step, including oxygenation, pH, primary acid-base process, compensation, anion gap, mixed disorders, and ABG vs VBG differences."
-  },
-  "/anion-gap": {
-    title: "Anion Gap Explained | ABG Master",
-    description: "Learn how to calculate and interpret the anion gap, including normal ranges, albumin correction, high-gap acidosis, normal-gap acidosis, and key pitfalls."
-  }
+  ...Object.fromEntries(staticSeoPageConfigs.map(({ path, title, description }) => [path, { title, description }]))
 };
 
-const CANONICAL_PATH_BY_PATH: Record<string, string> = {
-  "/blood-gas-compensation-rules": "/blood-gas-compensation-rules/",
-  "/delta-ratio": "/delta-ratio/",
-  "/abg-interpretation": "/abg-interpretation/",
-  "/anion-gap": "/anion-gap/"
-};
+const CANONICAL_PATH_BY_PATH: Record<string, string> = Object.fromEntries(
+  staticSeoPageConfigs.map(({ path, canonicalPath }) => [path, canonicalPath])
+);
 
 function normalizePathname(pathname: string) {
   if (pathname === "/") return pathname;
