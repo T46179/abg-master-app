@@ -49,6 +49,13 @@ describe("app routes", () => {
     expect(getElementName(abgInterpretationRoute?.element)).toBe("AbgInterpretationScreen");
   });
 
+  it("renders the anion gap page outside the app shell", () => {
+    const anionGapRoute = appRoutes.find((route) => route.path === "/anion-gap");
+
+    expect(anionGapRoute?.element).toBeTruthy();
+    expect(getElementName(anionGapRoute?.element)).toBe("AnionGapScreen");
+  });
+
   it("keeps dashboard, practice, insights, and calibration available inside the app shell", () => {
     const shellRoute = appRoutes.find((route) => route.children != null);
     const childPaths = shellRoute?.children?.map((route) => route.path);

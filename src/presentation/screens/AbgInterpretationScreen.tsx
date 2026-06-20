@@ -149,7 +149,7 @@ function getStepBlocks(pressureUnit: PressureUnit): StepBlock[] {
       "Because albumin is an anion, the anion gap should be corrected for in hypoalbuminaemia."
     ],
     formula: <>AG = Na<sup>+</sup> - (Cl<sup>-</sup> + HCO₃<sup>-</sup>)</>,
-    link: { to: "/delta-ratio/", label: "Review delta ratio" }
+    link: { to: "/anion-gap/", label: "Review anion gap" }
   },
   {
     number: "Step 06",

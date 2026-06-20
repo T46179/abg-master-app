@@ -13,6 +13,7 @@ import { PrivacyScreen } from "../presentation/screens/PrivacyScreen";
 import { BloodGasCompensationRulesScreen } from "../presentation/screens/BloodGasCompensationRulesScreen";
 import { DeltaRatioScreen } from "../presentation/screens/DeltaRatioScreen";
 import { AbgInterpretationScreen } from "../presentation/screens/AbgInterpretationScreen";
+import { AnionGapScreen } from "../presentation/screens/AnionGapScreen";
 import { CalibrationScreen } from "../presentation/calibration";
 import { CasePreviewScreen } from "../presentation/screens/CasePreviewScreen";
 import { AuthoredCaseGalleryScreen } from "../presentation/screens/AuthoredCaseGalleryScreen";
@@ -29,6 +30,10 @@ export const appRoutes: RouteObject[] = [
   {
     path: "/abg-interpretation",
     element: <AbgInterpretationScreen />
+  },
+  {
+    path: "/anion-gap",
+    element: <AnionGapScreen />
   },
   {
     path: "/",

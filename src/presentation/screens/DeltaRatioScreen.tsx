@@ -440,7 +440,7 @@ export function DeltaRatioScreen() {
           <p>ABG Master teaches mixed metabolic disorders in a stepwise way: first identify the primary disorder, then assess compensation, then use the anion gap and delta ratio to decide whether the final diagnosis explains the whole pattern.</p>
           <p>Reference ranges and thresholds are kept internally consistent across teaching, grading, and explanations so learners can practise the same logic repeatedly.</p>
           <p>
-            For related foundations, review how to <Link to="/abg-interpretation/" target="_blank" rel="noopener noreferrer">interpret a blood gas</Link> or the <Link to="/blood-gas-compensation-rules/" target="_blank" rel="noopener noreferrer">blood gas compensation rules</Link>.
+            For related foundations, review the <Link to="/anion-gap/" target="_blank" rel="noopener noreferrer">anion gap guide</Link>, how to <Link to="/abg-interpretation/" target="_blank" rel="noopener noreferrer">interpret a blood gas</Link>, or the <Link to="/blood-gas-compensation-rules/" target="_blank" rel="noopener noreferrer">blood gas compensation rules</Link>.
           </p>
         </section>
 

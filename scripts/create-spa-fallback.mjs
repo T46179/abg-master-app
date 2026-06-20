@@ -11,6 +11,8 @@ const deltaRatioDir = resolve(distDir, "delta-ratio");
 const deltaRatioPath = resolve(deltaRatioDir, "index.html");
 const abgInterpretationDir = resolve(distDir, "abg-interpretation");
 const abgInterpretationPath = resolve(abgInterpretationDir, "index.html");
+const anionGapDir = resolve(distDir, "anion-gap");
+const anionGapPath = resolve(anionGapDir, "index.html");
 
 const compensationRulesMetadata = {
   title: "Blood Gas Compensation Rules Explained | ABG Master",
@@ -43,6 +45,16 @@ const staticPages = [
       description:
         "Learn how to interpret an ABG step by step, including oxygenation, pH, primary acid-base process, compensation, anion gap, mixed disorders, and ABG vs VBG differences.",
       url: "https://www.abgmaster.com/abg-interpretation/"
+    }
+  },
+  {
+    dir: anionGapDir,
+    path: anionGapPath,
+    metadata: {
+      title: "Anion Gap Explained | ABG Master",
+      description:
+        "Learn how to calculate and interpret the anion gap, including normal ranges, albumin correction, high-gap acidosis, normal-gap acidosis, and key pitfalls.",
+      url: "https://www.abgmaster.com/anion-gap/"
     }
   }
 ];
