@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SeoMetadata } from "../../app/seo";
+import { PublicPageShell } from "../layout/PublicPageShell";
 import { convertMmHgToKPa, type PressureUnit } from "../../core/metrics";
 import { getCorrectAnswer, isCorrectAnswer, prettyStepLabel } from "../../core/practice";
 import type { AnswerSelection, AnswerValue, CaseData, StepResult } from "../../core/types";
@@ -552,10 +553,10 @@ export function AbgInterpretationScreen() {
   const stepBlocks = getStepBlocks(pressureUnit);
 
   return (
-    <main className="comp-rules-page abg-interpretation-page">
+    <>
       <SeoMetadata />
 
-      <article className="comp-rules-page__article">
+      <PublicPageShell pageClassName="abg-interpretation-page" showEducationalDisclaimer>
         <header className="comp-rules-page__header abg-interpretation-page__hero">
           <div className="abg-interpretation-page__hero-topline">
             <div className="comp-rules-page__methodology-pill">
@@ -789,10 +790,7 @@ export function AbgInterpretationScreen() {
           </ol>
         </section>
 
-        <footer className="comp-rules-page__footer">
-          ABG Master · Educational tool. Not a substitute for clinical judgement.
-        </footer>
-      </article>
-    </main>
+      </PublicPageShell>
+    </>
   );
 }
