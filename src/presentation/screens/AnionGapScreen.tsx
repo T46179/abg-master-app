@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ArrowRight, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SeoMetadata } from "../../app/seo";
+import { PublicPageShell } from "../layout/PublicPageShell";
 import bookSearchIcon from "../../assets/icons/book_search.svg";
 import bookCheckedIcon from "../../assets/icons/book_checked.svg";
 import checkAllAltIcon from "../../assets/icons/check_all_alt.svg";
@@ -121,10 +122,10 @@ function CauseList(props: { items: string[]; columns?: boolean }) {
 
 export function AnionGapScreen() {
   return (
-    <main className="comp-rules-page anion-gap-page">
+    <>
       <SeoMetadata />
 
-      <article className="comp-rules-page__article">
+      <PublicPageShell pageClassName="anion-gap-page" showEducationalDisclaimer>
         <header className="comp-rules-page__header anion-gap-page__hero">
           <div className="comp-rules-page__methodology-pill">
             <span />
@@ -328,10 +329,7 @@ export function AnionGapScreen() {
           </ol>
         </section>
 
-        <footer className="comp-rules-page__footer">
-          ABG Master · Educational tool. Not a substitute for clinical judgement.
-        </footer>
-      </article>
-    </main>
+      </PublicPageShell>
+    </>
   );
 }
