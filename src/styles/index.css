@@ -13621,10 +13621,6 @@ button.learn-progress-dots__dot:focus-visible {
   }
 }
 
-.public-page-shell__article {
-  gap: 3.5rem;
-}
-
 .public-page-shell__hero {
   padding-top: 1rem;
 }
@@ -13754,10 +13750,6 @@ button.learn-progress-dots__dot:focus-visible {
 }
 
 @media (max-width: 759px) {
-  .public-page-shell__article {
-    gap: 2.5rem;
-  }
-
   .public-page-shell__hero {
     padding-top: 0;
   }

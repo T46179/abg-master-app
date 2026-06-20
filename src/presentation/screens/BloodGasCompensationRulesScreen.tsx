@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SeoMetadata } from "../../app/seo";
+import { PublicPageShell } from "../layout/PublicPageShell";
 import bookIcon from "../../assets/icons/book.svg";
 import bookSearchIcon from "../../assets/icons/book_search.svg";
 import externalLinkIcon from "../../assets/icons/external_link.svg";
@@ -176,10 +177,10 @@ function EdgeCaseValueCards() {
 
 export function BloodGasCompensationRulesScreen() {
   return (
-    <main className="comp-rules-page">
+    <>
       <SeoMetadata />
 
-      <article className="comp-rules-page__article">
+      <PublicPageShell showEducationalDisclaimer>
         <header className="comp-rules-page__header">
           <div className="comp-rules-page__methodology-pill">
             <span />
@@ -323,10 +324,7 @@ export function BloodGasCompensationRulesScreen() {
           </ol>
         </section>
 
-        <footer className="comp-rules-page__footer">
-          ABG Master · Educational tool. Not a substitute for clinical judgement.
-        </footer>
-      </article>
-    </main>
+      </PublicPageShell>
+    </>
   );
 }
