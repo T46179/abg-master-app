@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SeoMetadata } from "../../app/seo";
+import { PublicPageShell } from "../layout/PublicPageShell";
 import arrowDownIcon from "../../assets/icons/arrow_down.svg";
 import arrowUpIcon from "../../assets/icons/arrow_up.svg";
 import bookSearchIcon from "../../assets/icons/book_search.svg";
@@ -274,10 +275,10 @@ function ChangeCard(props: { icon: string; tone: "red" | "blue"; title: string; 
 
 export function DeltaRatioScreen() {
   return (
-    <main className="comp-rules-page delta-ratio-page">
+    <>
       <SeoMetadata />
 
-      <article className="comp-rules-page__article">
+      <PublicPageShell pageClassName="delta-ratio-page" showEducationalDisclaimer>
         <header className="comp-rules-page__header">
           <div className="comp-rules-page__methodology-pill">
             <span />
@@ -480,10 +481,7 @@ export function DeltaRatioScreen() {
           </ol>
         </section>
 
-        <footer className="comp-rules-page__footer">
-          ABG Master · Educational tool. Not a substitute for clinical judgement.
-        </footer>
-      </article>
-    </main>
+      </PublicPageShell>
+    </>
   );
 }
