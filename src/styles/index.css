@@ -3014,16 +3014,19 @@ a.dashboard-module-row:hover {
   min-width: 0;
 }
 
-.value-panels__secondary--fill .metric-grid.metric-grid--secondary.metric-grid--scrolling {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
+.value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: max-content;
+  max-width: none;
+  min-width: 100%;
+  grid-template-columns: none;
 }
 
-.value-panels__secondary--fill .metric-card--scroll-item {
-  min-width: 0;
+.value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling > .metric-card--scroll-item {
+  flex: 1 0 9.5rem;
+  min-width: 9.5rem;
 }
 
 .value-panels__secondary-scroll::after {
@@ -4440,19 +4443,6 @@ a.dashboard-module-row:hover {
     display: none;
   }
 
-  .value-panels__secondary--rail .metric-grid--scrolling {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    width: max-content;
-    min-width: 100%;
-  }
-
-  .value-panels__secondary--rail .metric-card--scroll-item {
-    flex: 0 0 13.75rem;
-    min-width: 13.75rem;
-  }
-
   .main-nav__inner {
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
@@ -4808,33 +4798,10 @@ a.dashboard-module-row:hover {
     align-items: stretch;
   }
 
-  .value-panels__secondary--fill .metric-grid--scrolling {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
-
-  .value-panels__secondary--rail .metric-grid--scrolling {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    width: max-content;
-    max-width: none;
-    min-width: 100%;
-    grid-template-columns: none;
-  }
-
   .metric-card--scroll-item {
     min-width: 0;
     min-height: 6.95rem;
     padding: 0.82rem 0.82rem 0.76rem;
-  }
-
-  .value-panels__secondary--rail .metric-card--scroll-item {
-    flex: 0 0 auto;
-    min-width: 9.5rem;
   }
 
   .value-panels__secondary--rail .metric-scroll--secondary {
@@ -4844,21 +4811,6 @@ a.dashboard-module-row:hover {
 
   .value-panels__secondary--rail .metric-scroll--secondary::-webkit-scrollbar {
     display: none;
-  }
-
-  .value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    width: max-content;
-    max-width: none;
-    min-width: 100%;
-    grid-template-columns: none;
-  }
-
-  .value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling > .metric-card--scroll-item {
-    flex: 0 0 auto;
-    min-width: 9.5rem;
   }
 
   .value-panels__card--secondary.value-panels__card--references-hidden .metric-card--scroll-item {
@@ -12319,20 +12271,6 @@ button.learn-progress-dots__dot:focus-visible {
   }
 }
 
-.value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: stretch;
-  width: max-content;
-  max-width: none;
-  min-width: 100%;
-  grid-template-columns: none;
-}
-
-.value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling > .metric-card--scroll-item {
-  flex-shrink: 0;
-}
-
 .insights-screen {
   padding-top: clamp(1.25rem, 2.5vw, 2rem);
 }
@@ -13561,19 +13499,6 @@ button.learn-progress-dots__dot:focus-visible {
 }
 
 @media (min-width: 760px) {
-  .value-panels__secondary--rail.value-panels__secondary--count-3 .metric-grid.metric-grid--secondary.metric-grid--scrolling {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
-
-  .value-panels__secondary--rail.value-panels__secondary--count-3 .metric-grid.metric-grid--secondary.metric-grid--scrolling > .metric-card--scroll-item {
-    flex: initial;
-    min-width: 0;
-  }
-
   .value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling > .metric-card--scroll-item {
     flex-basis: 13.75rem;
     min-width: 13.75rem;

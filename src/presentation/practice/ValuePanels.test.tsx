@@ -33,6 +33,24 @@ function buildCaseItem(): CaseData {
   };
 }
 
+function buildTwoSecondaryMetricCase(): CaseData {
+  return {
+    case_id: "two-secondary-metrics",
+    difficulty_level: 1,
+    inputs: {
+      gas: {
+        ph: 7.4,
+        paco2_mmHg: 40,
+        hco3_mmolL: 24
+      },
+      electrolytes: {
+        na_mmolL: 138,
+        cl_mmolL: 104
+      }
+    }
+  };
+}
+
 describe("ValuePanels", () => {
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
@@ -72,5 +90,22 @@ describe("ValuePanels", () => {
     const metricCards = Array.from(container.querySelectorAll(".metric-card"));
     expect(metricCards.filter(card => card.classList.contains("metric-card--oxygenation"))).toHaveLength(3);
     expect(metricCards.some(card => !card.classList.contains("metric-card--oxygenation"))).toBe(true);
+  });
+
+  it("uses the non-wrapping secondary rail for two electrolyte metrics", () => {
+    act(() => {
+      root.render(
+        <ValuePanels
+          caseItem={buildTwoSecondaryMetricCase()}
+          showAdvancedRanges={false}
+          showAbnormalHighlighting={false}
+        />
+      );
+    });
+
+    const secondaryPanel = container.querySelector(".value-panels__card--secondary");
+    expect(secondaryPanel?.classList.contains("value-panels__secondary--rail")).toBe(true);
+    expect(secondaryPanel?.classList.contains("value-panels__secondary--fill")).toBe(false);
+    expect(secondaryPanel?.querySelectorAll(".metric-card--scroll-item")).toHaveLength(2);
   });
 });

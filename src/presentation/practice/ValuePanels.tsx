@@ -29,11 +29,6 @@ export function ValuePanels(props: ValuePanelsProps) {
   const { primary, secondary } = splitMetrics(props.caseItem, { pressureUnit: props.pressureUnit });
   const showReferences = shouldShowMetricReferences(props.caseItem, props.showAdvancedRanges);
   const difficultyLevel = Number(props.caseItem.difficulty_level ?? 1);
-  const shouldUseSecondaryRail = secondary.length > 2;
-  const secondaryLayoutClass = shouldUseSecondaryRail
-    ? "value-panels__secondary--rail"
-    : "value-panels__secondary--fill";
-  const secondaryCountClass = `value-panels__secondary--count-${Math.min(secondary.length, 4)}`;
   const secondaryScrollId = useId();
   const secondaryScroll = useHorizontalOverflowState<HTMLDivElement>(
     `${props.caseItem.case_id ?? "unknown-case"}-${difficultyLevel}-${secondary.map(metric => metric.label).join("|")}-${showReferences ? "refs" : "no-refs"}`
@@ -151,8 +146,7 @@ export function ValuePanels(props: ValuePanelsProps) {
           className={cn(
             "value-panels__card",
             "value-panels__card--secondary",
-            secondaryLayoutClass,
-            secondaryCountClass,
+            "value-panels__secondary--rail",
             showReferences ? "value-panels__card--references-visible" : "value-panels__card--references-hidden"
           )}
         >
@@ -162,8 +156,8 @@ export function ValuePanels(props: ValuePanelsProps) {
             </div>
           </div>
           <div
-            className={cn("value-panels__secondary-scroll", secondaryLayoutClass, secondaryCountClass)}
-            data-show-scroll-hint={shouldUseSecondaryRail && secondaryScroll.overflowing && !secondaryScroll.movedFromStart}
+            className="value-panels__secondary-scroll"
+            data-show-scroll-hint={secondaryScroll.overflowing && !secondaryScroll.movedFromStart}
           >
             <div
               id={secondaryScrollId}
@@ -172,7 +166,7 @@ export function ValuePanels(props: ValuePanelsProps) {
               data-overflowing={secondaryScroll.overflowing}
               data-at-start={secondaryScroll.atStart}
               data-at-end={secondaryScroll.atEnd}
-              onWheel={shouldUseSecondaryRail ? handleSecondaryWheel : undefined}
+              onWheel={handleSecondaryWheel}
             >
               <div className="metric-grid metric-grid--secondary metric-grid--scrolling">
                 {secondary.map(metric => (
@@ -196,7 +190,7 @@ export function ValuePanels(props: ValuePanelsProps) {
                 ))}
               </div>
             </div>
-            {shouldUseSecondaryRail && secondaryScroll.overflowing ? (
+            {secondaryScroll.overflowing ? (
               <HorizontalScrollIndicator
                 className="value-panels__secondary-indicator"
                 scrollState={secondaryScroll}
