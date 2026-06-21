@@ -1,4 +1,4 @@
-import { BarChart3, RotateCcw, ShieldCheck } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import { OPEN_ANALYTICS_CHOICES_EVENT } from "./AnalyticsConsentBanner";
@@ -42,29 +42,32 @@ export function AppFooter() {
             <p>For educational purposes only. Not a substitute for professional medical advice, diagnosis, or treatment.</p>
           </div>
 
-          <div className="dashboard-page-footer__actions">
+          <nav className="dashboard-page-footer__navigation" aria-label="Footer navigation">
+            <Link className="dashboard-page-footer__link" to="/updates">Updates</Link>
+            <Link className="dashboard-page-footer__link" to="/resources">Resources</Link>
             <button
-              className="dashboard-page-footer__analytics"
+              className="dashboard-page-footer__link dashboard-page-footer__analytics"
               type="button"
               onClick={() => window.dispatchEvent(new Event(OPEN_ANALYTICS_CHOICES_EVENT))}
             >
-              <BarChart3 aria-hidden="true" />
               Analytics
             </button>
-            <Link className="dashboard-page-footer__privacy" to="/privacy" target="_blank" rel="noopener noreferrer">
-              <ShieldCheck aria-hidden="true" />
-              Privacy notice
+            <Link className="dashboard-page-footer__link" to="/about">About</Link>
+            <Link className="dashboard-page-footer__link dashboard-page-footer__privacy" to="/privacy" target="_blank" rel="noopener noreferrer">
+              Privacy
             </Link>
-            <button className="dashboard-page-footer__reset" type="button" onClick={handleResetProgress}>
-              <RotateCcw aria-hidden="true" />
-              Reset progress
-            </button>
-          </div>
+          </nav>
         </div>
 
         <div className="dashboard-page-footer__bottom">
-          <p>&copy; 2026 ABG Master. All rights reserved.</p>
-          <p className="dashboard-page-footer__build"><span aria-hidden="true" />Beta build · v0.4</p>
+          <div className="dashboard-page-footer__build-info">
+            <p>&copy; 2026 ABG Master. All rights reserved.</p>
+            <p className="dashboard-page-footer__build"><span aria-hidden="true" />Beta build · v1.4</p>
+          </div>
+          <button className="dashboard-page-footer__reset" type="button" onClick={handleResetProgress}>
+            <RotateCcw aria-hidden="true" />
+            Reset progress
+          </button>
         </div>
       </div>
     </footer>

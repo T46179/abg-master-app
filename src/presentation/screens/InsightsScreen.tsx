@@ -36,7 +36,6 @@ import { CaseMetadataIcons } from "../practice/CaseMetadataIcons";
 import { Surface } from "../primitives/Surface";
 import { LoadingView } from "../shared/StatusViews";
 import { cn } from "../utils";
-import { AppFooter } from "../layout/AppFooter";
 
 const SPARKLINE_MIN_DOMAIN_SPAN = 40;
 const RECENT_PERFORMANCE_WINDOW_SIZE = 10;
@@ -733,7 +732,6 @@ function InsightsPageShell({ children, title = "Insights" }: { children: ReactNo
         <InsightsHeader title={title} />
         {children}
       </div>
-      <AppFooter />
     </main>
   );
 }

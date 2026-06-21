@@ -181,7 +181,14 @@ describe("DashboardScreen", () => {
     expect(container.textContent).toContain("Foundations");
     expect(container.textContent).toContain("Featured Case");
     expect(container.textContent).toContain("Clinical Pearl");
-    expect(container.textContent).toContain("Beta build · v0.4");
+    expect(container.textContent).toContain("Beta build · v1.4");
+    const footerLinks = Array.from(container.querySelectorAll<HTMLAnchorElement>(".dashboard-page-footer__navigation a"));
+    expect(footerLinks.map(link => `${link.textContent}:${link.getAttribute("href")}`)).toEqual([
+      "Updates:/updates",
+      "Resources:/resources",
+      "About:/about",
+      "Privacy:/privacy"
+    ]);
     const privacyLink = container.querySelector<HTMLAnchorElement>(".dashboard-page-footer__privacy");
     expect(privacyLink?.getAttribute("href")).toBe("/privacy");
     expect(privacyLink?.getAttribute("target")).toBe("_blank");
