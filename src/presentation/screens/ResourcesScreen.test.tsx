@@ -33,7 +33,7 @@ describe("ResourcesScreen", () => {
     });
 
     expect(container.querySelector("h1")?.textContent).toBe("ResourcesLibrary");
-    expect(container.textContent).toContain("The full collection of ABG Master concept guides and references");
+    expect(container.textContent).toContain("The full collection of ABG Master guides and references.");
 
     const cards = Array.from(container.querySelectorAll<HTMLAnchorElement>(".resources-page__card"));
 
