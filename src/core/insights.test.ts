@@ -437,7 +437,7 @@ describe("insights", () => {
       missRatePercent: Math.round((MIN_COMMON_MISS_COUNT / MIN_COMMON_MISS_SAMPLE_SIZE) * 100),
       headline: "You seem more likely to miss compensation on metabolic acidosis cases.",
       tip: commonMissPatternCopy.tipsByPattern["compensation::metabolic_acidosis_cases"],
-      detail: `You answered this incorrectly ${MIN_COMMON_MISS_COUNT} out of ${MIN_COMMON_MISS_SAMPLE_SIZE} times (${Math.round((MIN_COMMON_MISS_COUNT / MIN_COMMON_MISS_SAMPLE_SIZE) * 100)}%) in this context.`
+      detail: `Incorrect ${MIN_COMMON_MISS_COUNT}/${MIN_COMMON_MISS_SAMPLE_SIZE} (${Math.round((MIN_COMMON_MISS_COUNT / MIN_COMMON_MISS_SAMPLE_SIZE) * 100)}%) in this context`
     });
   });
 
