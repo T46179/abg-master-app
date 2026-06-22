@@ -18,6 +18,7 @@ import {
 import { useInsightsData } from "../../app/useInsightsData";
 import arrowRightIconUrl from "../../assets/icons/arrow_right.svg";
 import {
+  commonMissPatternCopy,
   getCurrentFocusExplanation,
   type AccuracyTrendModel,
   type DifficultyProgressItem,
@@ -384,11 +385,12 @@ function CommonMissPatternCard({ commonMissPattern }: { commonMissPattern: Insig
   if (commonMissPattern.state !== "available") return null;
 
   return (
-    <Surface className="insights-card insights-focus-card insights-focus-card--violet">
-      <FocusCardHeader icon={AlertCircle} label="Pattern detected" tone="violet" />
+    <Surface className="insights-card insights-focus-card insights-focus-card--amber">
+      <FocusCardHeader icon={AlertCircle} label={commonMissPatternCopy.label} tone="amber" />
       <div className="insights-focus-card__pattern">
         {commonMissPattern.headline}
       </div>
+      {commonMissPattern.tip ? <p className="insights-focus-card__tip"><strong>{commonMissPatternCopy.tipLabel}</strong> {commonMissPattern.tip}</p> : null}
       {commonMissPattern.detail ? <p>{commonMissPattern.detail}</p> : null}
     </Surface>
   );
@@ -401,7 +403,7 @@ function FocusCardHeader({
 }: {
   icon: LucideIcon;
   label: string;
-  tone: "orange" | "violet";
+  tone: "orange" | "amber";
 }) {
   return (
     <div className="insights-focus-card__header">

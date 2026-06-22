@@ -745,6 +745,7 @@ button:disabled {
 
 .practice-screen__container > .dashboard-progress-card,
 .practice-screen__container > .results-summary-card,
+.practice-screen__container > .results-pattern-tip,
 .practice-screen__container > .practice-alert-card,
 .practice-screen__container > .practice-stage,
 .practice-screen__container > .results-flow {
@@ -2863,6 +2864,7 @@ a.dashboard-module-row:hover {
 .practice-screen__container > .dashboard-progress-card,
 .practice-screen__container > .practice-alert-card,
 .practice-screen__container > .results-summary-card,
+.practice-screen__container > .results-pattern-tip,
 .calibration-screen__container > .calibration-step-shell,
 .results-flow .results-card,
 .results-flow .results-review-card,
@@ -2885,6 +2887,77 @@ a.dashboard-module-row:hover {
   color: var(--color-copy-soft);
   font-weight: 600;
   text-align: right;
+}
+
+.results-pattern-tip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: start;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(181, 71, 8, 0.16);
+  background: #fffbeb;
+}
+
+.results-pattern-tip__icon {
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.14rem;
+  color: #b54708;
+}
+
+.results-pattern-tip__copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  color: var(--color-text);
+  font-size: 0.86rem;
+  font-weight: 300;
+  line-height: 1.45;
+}
+
+.results-pattern-tip__label {
+  color: #b54708;
+  font-size: 0.76rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.results-pattern-tip__tip-label {
+  color: #b54708;
+  font-weight: 600;
+}
+
+.results-pattern-tip__copy p {
+  margin: 0.15rem 0 0;
+  color: var(--color-text-muted);
+}
+
+.results-pattern-tip__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: -0.25rem -0.3rem -0.25rem 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #9a6700;
+  cursor: pointer;
+}
+
+.results-pattern-tip__dismiss:hover,
+.results-pattern-tip__dismiss:focus-visible {
+  background: rgba(181, 71, 8, 0.1);
+  outline: none;
+}
+
+.results-pattern-tip__dismiss svg {
+  width: 1rem;
+  height: 1rem;
 }
 
 .value-panels,
@@ -12690,8 +12763,13 @@ button.learn-progress-dots__dot:focus-visible {
   display: none;
 }
 
-.insights-focus-card--violet::before {
-  background: transparent;
+.insights-focus-card--amber {
+  border-color: rgba(181, 71, 8, 0.16);
+  background: #fffbeb;
+}
+
+.insights-focus-card--amber::before {
+  display: none;
 }
 
 .insights-focus-card__glow {
@@ -12756,9 +12834,9 @@ button.learn-progress-dots__dot:focus-visible {
   color: #c66a2e;
 }
 
-.insights-icon--violet {
-  background: #efebf7;
-  color: #6c5ca3;
+.insights-icon--amber {
+  background: #fff1d6;
+  color: #b54708;
 }
 
 .insights-icon--blue {
@@ -12800,6 +12878,14 @@ button.learn-progress-dots__dot:focus-visible {
   font-size: 0.82rem;
   font-weight: 380;
   line-height: 1.5;
+}
+
+.insights-focus-card__tip {
+  color: #78350f !important;
+}
+
+.insights-focus-card__tip strong {
+  color: #b54708;
 }
 
 .insights-focus-card__copy {

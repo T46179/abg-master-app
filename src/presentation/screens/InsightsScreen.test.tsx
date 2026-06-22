@@ -78,7 +78,8 @@ const readyViewModel: InsightsViewModel = {
     missCount: 3,
     sampleSize: 5,
     missRatePercent: 60,
-    headline: "You seem more likely to miss compensation when completing metabolic acidosis cases.",
+    headline: "You seem more likely to miss compensation on metabolic acidosis cases.",
+    tip: "In metabolic acidosis, use Winter's formula to check whether the respiratory response is appropriate.",
     detail: "You answered this incorrectly 3 out of 5 times (60%) in this context."
   },
   clinicalPatternCoverage: {
@@ -181,10 +182,11 @@ describe("InsightsScreen", () => {
     expect(container.textContent).toContain("based on 5 answers");
     expect(container.textContent).toContain("Focus on deciding whether the respiratory or metabolic response fits the expected pattern.");
     expect(container.querySelector<HTMLAnchorElement>("a[href='/learn/intermediate?mode=review']")?.textContent).toContain("Review Compensation");
-    expect(container.textContent).toContain("Pattern detected");
-    expect(container.textContent).toContain("You seem more likely to miss compensation when completing metabolic acidosis cases.");
+    expect(container.textContent).toContain("Pattern Detected");
+    expect(container.textContent).toContain("You seem more likely to miss compensation on metabolic acidosis cases.");
+    expect(container.textContent).toContain("Tip: In metabolic acidosis, use Winter's formula to check whether the respiratory response is appropriate.");
     expect(container.textContent).toContain("You answered this incorrectly 3 out of 5 times (60%) in this context.");
-    expect((container.textContent ?? "").indexOf("Pattern detected")).toBeLessThan((container.textContent ?? "").indexOf("Accuracy by Step"));
+    expect((container.textContent ?? "").indexOf("Pattern Detected")).toBeLessThan((container.textContent ?? "").indexOf("Accuracy by Step"));
     expect(container.textContent).toContain("Case Coverage");
     expect(container.textContent).toContain("Progress by Difficulty");
     expect(container.textContent).toContain("Recent 54% · Overall 72%");
@@ -207,7 +209,7 @@ describe("InsightsScreen", () => {
       commonMissPattern: { state: "none" }
     });
 
-    expect(container.textContent).not.toContain("Pattern detected");
+    expect(container.textContent).not.toContain("Pattern Detected");
     expect(container.textContent).not.toContain("No recurring patterns detected yet.");
     expect(container.textContent).not.toContain("If ABG Master detects a consistent pattern of mistakes, it will appear here.");
     expect(container.textContent).not.toContain("No recurring miss pattern detected yet.");

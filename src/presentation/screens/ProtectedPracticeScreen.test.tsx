@@ -201,12 +201,16 @@ vi.mock("../practice/QuestionFlowCard", () => ({
 vi.mock("../practice/ResultsSummaryCard", () => ({
   ResultsSummaryCard: (props: Record<string, unknown>) => {
     latestResultsSummaryCardProps = props;
-    return <button type="button" onClick={() => (props.onNextCase as () => void)?.()}>Next case</button>;
+    return <button data-testid="results-summary-card" type="button" onClick={() => (props.onNextCase as () => void)?.()}>Next case</button>;
   },
   ResultsSummaryHeader: (props: Record<string, unknown>) => {
     latestResultsSummaryHeaderProps = props;
-    return null;
+    return <div data-testid="results-summary-header" />;
   }
+}));
+
+vi.mock("../practice/ResultsPatternTip", () => ({
+  ResultsPatternTip: () => <div data-testid="results-pattern-tip" />
 }));
 
 vi.mock("../learn/LearnUnlockModal", () => ({
@@ -706,6 +710,21 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
       archetype: "simple_nagma",
       source: "case_summary"
     });
+  });
+
+  it("places the pattern tip between the XP header and detailed summary", () => {
+    currentState.practiceState.lastCaseSummary = makeCaseSummary({
+      caseToken: "summary-token-pattern-tip"
+    });
+
+    renderScreen();
+
+    const header = container.querySelector("[data-testid='results-summary-header']");
+    const patternTip = container.querySelector("[data-testid='results-pattern-tip']");
+    const summaryCard = container.querySelector("[data-testid='results-summary-card']");
+
+    expect(header?.compareDocumentPosition(patternTip as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(patternTip?.compareDocumentPosition(summaryCard as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it("does not replay the XP progress animation when an existing summary is remounted", () => {

@@ -101,6 +101,50 @@ export function getCurrentFocusExplanation(stepKey: string | null | undefined): 
   return currentFocusCopyRegistry[String(stepKey ?? "")] ?? CURRENT_FOCUS_FALLBACK_EXPLANATION;
 }
 
+export const commonMissPatternCopy = {
+  label: "Pattern Detected",
+  tipLabel: "Tip:",
+  headline: ({ stepLabel, contextLabel }: { stepLabel: string; contextLabel: string }) =>
+    `You seem more likely to miss ${stepLabel.toLowerCase()} on ${contextLabel}.`,
+  detail: ({ missCount, sampleSize, missRatePercent }: { missCount: number; sampleSize: number; missRatePercent: number }) =>
+    `Incorrect ${missCount}/${sampleSize} (${missRatePercent}%) in this context`,
+  tips: {
+    compensation: "Check that you are using the appropriate compensation rule for the relevant acid-base pattern.",
+    additional_metabolic_process: "Use the delta ratio to provide clues for an additional metabolic process.",
+    anion_gap: "Anion gaps are most useful a metabolic acidosis.",
+    oxygenation: "Always interpret PaO₂ in relation to the FiO₂ the patient is receiving.",
+    oxygenation_status: "Always interpret PaO₂ in relation to the FiO₂ the patient is receiving.",
+    aa_gradient: "A raised A-a gradient suggests impaired gas exchange rather than hypoventilation alone.",
+    aa_gradient_mechanism: "A raised A-a gradient suggests impaired gas exchange rather than hypoventilation alone."
+  },
+  tipsByPattern: {
+    "compensation::respiratory_cases": "decide acute vs chronic first, then use the 1-2-4-5 rule to check the bicarbonate response.",
+    "compensation::metabolic_acidosis_cases": "Use Winter's formula to check whether the respiratory response is appropriate.",
+    "compensation::metabolic_alkalosis_cases": "In metabolic alkalosis, expected PaCO₂ = 0.7 × (HCO₃⁻ − 24) + 40, within ±3 mmHg."
+  },
+  fallbackTip: "Review this reasoning step carefully before moving on."
+} as const;
+
+export function getCommonMissPatternCopy(input: {
+  stepKey: string;
+  stepLabel: string;
+  contextKey: string;
+  contextLabel: string;
+  missCount: number;
+  sampleSize: number;
+  missRatePercent: number;
+}) {
+  const patternKey = `${input.stepKey}::${input.contextKey}`;
+
+  return {
+    headline: commonMissPatternCopy.headline(input),
+    tip: commonMissPatternCopy.tipsByPattern[patternKey as keyof typeof commonMissPatternCopy.tipsByPattern]
+      ?? commonMissPatternCopy.tips[input.stepKey as keyof typeof commonMissPatternCopy.tips]
+      ?? commonMissPatternCopy.fallbackTip,
+    detail: commonMissPatternCopy.detail(input)
+  };
+}
+
 const reasoningStepOrder = [
   "pH",
   "ph_status",
@@ -175,6 +219,7 @@ const oxygenationStepKeys = new Set(["oxygenation", "oxygenation_status", "aa_gr
 const commonMissPatternPriority = [
   ["compensation", "respiratory_cases"],
   ["compensation", "metabolic_acidosis_cases"],
+  ["compensation", "metabolic_alkalosis_cases"],
   ["additional_metabolic_process", "mixed_disorder_cases"],
   ["anion_gap", "metabolic_acidosis_cases"],
   ["anion_gap", "raised_anion_gap_metabolic_acidosis_cases"],
@@ -257,6 +302,7 @@ export interface InsightsCommonMissPatternModel {
   sampleSize?: number;
   missRatePercent?: number;
   headline?: string;
+  tip?: string;
   detail?: string;
 }
 
@@ -775,6 +821,15 @@ function buildCommonMissPattern(attempts: InsightsAttemptRow[], availableCases: 
   })[0];
   const stepLabel = getStepLabel(strongest.stepKey);
   const contextLabel = acidBaseContextRegistry[strongest.contextKey];
+  const copy = getCommonMissPatternCopy({
+    stepKey: strongest.stepKey,
+    stepLabel,
+    contextKey: strongest.contextKey,
+    contextLabel,
+    missCount: strongest.missCount,
+    sampleSize: strongest.sampleSize,
+    missRatePercent: strongest.missRatePercent
+  });
 
   return {
     state: "available",
@@ -785,8 +840,9 @@ function buildCommonMissPattern(attempts: InsightsAttemptRow[], availableCases: 
     missCount: strongest.missCount,
     sampleSize: strongest.sampleSize,
     missRatePercent: strongest.missRatePercent,
-    headline: `You seem more likely to miss ${stepLabel.toLowerCase()} when completing ${contextLabel}.`,
-    detail: `You answered this incorrectly ${strongest.missCount} out of ${strongest.sampleSize} times (${strongest.missRatePercent}%) in this context.`
+    headline: copy.headline,
+    tip: copy.tip,
+    detail: copy.detail
   };
 }
 

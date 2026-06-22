@@ -69,6 +69,7 @@ import { Surface } from "../primitives/Surface";
 import { ActivePracticeCase } from "../practice/ActivePracticeCase";
 import { CalibrationIntroModal } from "../practice/CalibrationIntroModal";
 import { PracticeDifficultyRail } from "../practice/PracticeDifficultyRail";
+import { ResultsPatternTip } from "../practice/ResultsPatternTip";
 import { ResultsSummaryCard, ResultsSummaryHeader } from "../practice/ResultsSummaryCard";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
 
@@ -112,6 +113,7 @@ export function ProtectedPracticeScreen() {
   const [pendingDifficulty, setPendingDifficulty] = useState<string | null>(null);
   const [displayedResultsProgress, setDisplayedResultsProgress] = useState<number | null>(null);
   const [dismissedLearnUnlockKey, setDismissedLearnUnlockKey] = useState<string | null>(null);
+  const [dismissedResultsPatternKey, setDismissedResultsPatternKey] = useState<string | null>(null);
   const activeStepRef = useRef<HTMLButtonElement | null>(null);
   const introAcceptedRef = useRef(false);
   const difficultyReconciledRef = useRef(false);
@@ -1232,14 +1234,20 @@ export function ProtectedPracticeScreen() {
           ) : null}
 
           {summary ? (
-            <ResultsSummaryCard
-              summary={summary}
-              caseItem={summary.caseData}
-              showSummaryReferences={showSummaryReferences}
-              showAbnormalHighlighting={showAbnormalHighlighting}
-              onNextCase={handleNextCaseFromSummary}
-              storage={state.storage}
-            />
+            <>
+              <ResultsPatternTip
+                dismissedPatternKey={dismissedResultsPatternKey}
+                onDismiss={setDismissedResultsPatternKey}
+              />
+              <ResultsSummaryCard
+                summary={summary}
+                caseItem={summary.caseData}
+                showSummaryReferences={showSummaryReferences}
+                showAbnormalHighlighting={showAbnormalHighlighting}
+                onNextCase={handleNextCaseFromSummary}
+                storage={state.storage}
+              />
+            </>
           ) : currentCase ? (
             <ActivePracticeCase
               caseItem={currentCase}

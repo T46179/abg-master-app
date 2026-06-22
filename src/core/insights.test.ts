@@ -11,6 +11,7 @@ import {
   createInsightsLoadingViewModel,
   createInsightsUnauthenticatedViewModel,
   createInsightsUnavailableViewModel,
+  commonMissPatternCopy,
   CURRENT_FOCUS_FALLBACK_EXPLANATION,
   currentFocusCopyRegistry,
   fetchInsightsAttempts,
@@ -434,8 +435,43 @@ describe("insights", () => {
       missCount: MIN_COMMON_MISS_COUNT,
       sampleSize: MIN_COMMON_MISS_SAMPLE_SIZE,
       missRatePercent: Math.round((MIN_COMMON_MISS_COUNT / MIN_COMMON_MISS_SAMPLE_SIZE) * 100),
-      headline: "You seem more likely to miss compensation when completing metabolic acidosis cases.",
+      headline: "You seem more likely to miss compensation on metabolic acidosis cases.",
+      tip: commonMissPatternCopy.tipsByPattern["compensation::metabolic_acidosis_cases"],
       detail: `You answered this incorrectly ${MIN_COMMON_MISS_COUNT} out of ${MIN_COMMON_MISS_SAMPLE_SIZE} times (${Math.round((MIN_COMMON_MISS_COUNT / MIN_COMMON_MISS_SAMPLE_SIZE) * 100)}%) in this context.`
+    });
+  });
+
+  it("uses dedicated copy for non-compensation common miss patterns", () => {
+    const viewModel = readyModel(Array.from({ length: MIN_COMMON_MISS_SAMPLE_SIZE }, (_, index) => createAttempt({
+      id: `anion-gap-pattern-${index}`,
+      clinicalPatternKey: "dka",
+      stepResults: [{ key: "anion_gap", correct: index >= MIN_COMMON_MISS_COUNT }]
+    })));
+
+    expect(viewModel.state).toBe("ready");
+    if (viewModel.state !== "ready") return;
+    expect(viewModel.commonMissPattern).toMatchObject({
+      state: "available",
+      stepKey: "anion_gap",
+      tip: commonMissPatternCopy.tips.anion_gap
+    });
+  });
+
+  it("detects compensation patterns in metabolic alkalosis cases", () => {
+    const viewModel = readyModel(Array.from({ length: MIN_COMMON_MISS_SAMPLE_SIZE }, (_, index) => createAttempt({
+      id: `metabolic-alkalosis-pattern-${index}`,
+      clinicalPatternKey: "simple_metabolic_alkalosis",
+      stepResults: [{ key: "compensation", correct: index >= MIN_COMMON_MISS_COUNT }]
+    })));
+
+    expect(viewModel.state).toBe("ready");
+    if (viewModel.state !== "ready") return;
+    expect(viewModel.commonMissPattern).toMatchObject({
+      state: "available",
+      stepKey: "compensation",
+      contextKey: "metabolic_alkalosis_cases",
+      contextLabel: "metabolic alkalosis cases",
+      tip: commonMissPatternCopy.tipsByPattern["compensation::metabolic_alkalosis_cases"]
     });
   });
 
@@ -580,7 +616,8 @@ describe("insights", () => {
     expect(viewModel.commonMissPattern).toMatchObject({
       state: "available",
       stepKey: "compensation",
-      contextLabel: "respiratory cases"
+      contextLabel: "respiratory cases",
+      tip: commonMissPatternCopy.tipsByPattern["compensation::respiratory_cases"]
     });
   });
 

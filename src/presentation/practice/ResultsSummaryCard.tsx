@@ -326,7 +326,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
             Next case
           </button>
           <a className="figma-button figma-button--secondary results-card__button results-card__button--secondary" href="/insights">
-            Insights
+            View Performance
           </a>
         </div>
       </Surface>
