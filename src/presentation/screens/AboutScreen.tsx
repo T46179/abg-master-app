@@ -20,7 +20,7 @@ const aboutContent = {
       "It is a small, independent educational project. The emphasis is on clear explanations and deliberate practice rather than shortcuts or clinical decision-making."
     ],
     stats: [
-      { value: "154", label: "Case Library" },
+      { value: "156", label: "Case Library" },
       { value: "4", label: "Guides" }
     ]
   },
