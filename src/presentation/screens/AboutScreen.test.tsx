@@ -51,7 +51,7 @@ describe("AboutScreen", () => {
     ]);
     expect(container.querySelector(".about-page__portrait")?.getAttribute("role")).toBe("img");
     expect(container.querySelectorAll(".about-page__stat")).toHaveLength(3);
-    expect(Array.from(container.querySelectorAll(".about-page__stat strong")).map(card => card.textContent)).toEqual(["546", "154", "4"]);
+    expect(Array.from(container.querySelectorAll(".about-page__stat strong")).map(card => card.textContent)).toEqual(["546", "156", "4"]);
     expect(Array.from(container.querySelectorAll(".about-page__stat span")).map(card => card.textContent)).toEqual([
       "Cases completed", "Case Library", "Guides"
     ]);
