@@ -14,6 +14,7 @@ import {
 import { createEmptySeenCasesState } from "../../core/selection";
 import { LaunchNotifyModal } from "../layout/LaunchNotifyModal";
 import { MainNav } from "../layout/MainNav";
+import { getMobileNavProgress } from "../layout/mobileNavProgress";
 import { usePublicCasesSolvedCount } from "../shared/usePublicCasesSolvedCount";
 import { MetricLabel, MetricValue } from "../practice/MetricText";
 import { Surface } from "../primitives/Surface";
@@ -289,6 +290,13 @@ export function LandingScreen() {
   const landingViewedTrackedRef = useRef(false);
   const casesSolvedLabel = useMemo(() => animatedCasesSolvedCount.toLocaleString("en-US"), [animatedCasesSolvedCount]);
   const releaseFlags = useMemo(() => getReleaseFlags(state.payload?.progressionConfig ?? null), [state.payload?.progressionConfig]);
+  const mobileProgress = getMobileNavProgress({
+    progressionConfig: state.payload?.progressionConfig ?? null,
+    dashboardState: state.payload?.dashboardState ?? null,
+    defaultUserState: state.payload?.defaultUserState ?? null,
+    userState: state.userState,
+    cases: state.payload?.cases ?? []
+  });
 
   function handleOpenStayUpdated() {
     setMobileOpen(false);
@@ -625,6 +633,7 @@ export function LandingScreen() {
         onOpenStayUpdated={handleOpenStayUpdated}
         learnEnabled
         showBetaBadge={releaseFlags.enable_beta_badge}
+        mobileProgress={mobileProgress}
         wideShell
         onCoreFlowLinkClick={handleLandingCtaClick}
       />

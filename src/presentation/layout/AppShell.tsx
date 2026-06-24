@@ -8,6 +8,7 @@ import { getReleaseFlags } from "../../core/progression";
 import { Surface } from "../primitives/Surface";
 import { LaunchNotifyModal } from "./LaunchNotifyModal";
 import { MainNav } from "./MainNav";
+import { getMobileNavProgress } from "./mobileNavProgress";
 
 export function AppShell() {
   const { state, patchSessionState, retryPendingSubmissionNow, discardPendingSubmission } = useAppContext();
@@ -19,6 +20,13 @@ export function AppShell() {
   const [launchNotifyError, setLaunchNotifyError] = useState("");
   const learnOpenedTrackedRef = useRef(false);
   const releaseFlags = getReleaseFlags(state.payload?.progressionConfig ?? null);
+  const mobileProgress = getMobileNavProgress({
+    progressionConfig: state.payload?.progressionConfig ?? null,
+    dashboardState: state.payload?.dashboardState ?? null,
+    defaultUserState: state.payload?.defaultUserState ?? null,
+    userState: state.userState,
+    cases: state.payload?.cases ?? []
+  });
 
   useEffect(() => {
     const pathSegment = location.pathname.split("/")[1] || "landing";
@@ -102,6 +110,7 @@ export function AppShell() {
         onOpenStayUpdated={handleOpenStayUpdated}
         learnEnabled
         showBetaBadge={releaseFlags.enable_beta_badge}
+        mobileProgress={mobileProgress}
       />
 
       <LaunchNotifyModal

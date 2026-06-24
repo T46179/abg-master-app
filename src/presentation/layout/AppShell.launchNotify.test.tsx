@@ -95,8 +95,8 @@ describe("AppShell launch notify flow", () => {
     return getButtons().find((button) => button.textContent?.includes("Stay Updated")) ?? null;
   }
 
-  function getMobileStayUpdatedButton() {
-    return getButtons().find((button) => button.getAttribute("aria-label") === "Stay Updated") ?? null;
+  function getDrawerStayUpdatedButton() {
+    return document.body.querySelector<HTMLButtonElement>(".mobile-nav-drawer__stay-updated");
   }
 
   function getSubmitButton() {
@@ -118,14 +118,12 @@ describe("AppShell launch notify flow", () => {
     emailInput.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
-  it("opens the modal from both nav triggers", () => {
+  it("opens the modal from the desktop trigger and mobile drawer footer", () => {
     renderShell();
 
     const desktopButton = getDesktopStayUpdatedButton();
-    const mobileButton = getMobileStayUpdatedButton();
 
     expect(desktopButton).toBeTruthy();
-    expect(mobileButton).toBeTruthy();
 
     act(() => {
       desktopButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -137,7 +135,13 @@ describe("AppShell launch notify flow", () => {
     const closeButton = getButtons().find((button) => button.getAttribute("aria-label") === "Close stay updated modal");
     act(() => {
       closeButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      mobileButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      container.querySelector<HTMLButtonElement>(".main-nav__toggle")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const drawerButton = getDrawerStayUpdatedButton();
+    expect(drawerButton).toBeTruthy();
+    act(() => {
+      drawerButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     expect(container.textContent).toContain("Stay in the Loop");

@@ -2,6 +2,7 @@ import { RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import { OPEN_ANALYTICS_CHOICES_EVENT } from "./AnalyticsConsentBanner";
+import { APP_BUILD_LABEL } from "./appBuild";
 
 function clearLearnModuleResumeState() {
   if (typeof window === "undefined") return;
@@ -63,7 +64,7 @@ export function AppFooter() {
         <div className="dashboard-page-footer__bottom">
           <div className="dashboard-page-footer__build-info">
             <p>&copy; 2026 ABG Master. All rights reserved.</p>
-            <p className="dashboard-page-footer__build"><span aria-hidden="true" />Beta build · v1.4</p>
+            <p className="dashboard-page-footer__build"><span aria-hidden="true" />{APP_BUILD_LABEL}</p>
           </div>
           <button className="dashboard-page-footer__reset" type="button" onClick={handleResetProgress}>
             <RotateCcw aria-hidden="true" />

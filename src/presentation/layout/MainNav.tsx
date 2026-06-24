@@ -1,9 +1,10 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { insightsRouteContract } from "../../core/insights";
 import listIconUrl from "../../assets/icons/list.svg";
 import { cn } from "../utils";
+import { MobileNavDrawer, type MobileNavDrawerItem } from "./MobileNavDrawer";
+import type { MobileNavProgress } from "./mobileNavProgress";
 
 interface MainNavProps {
   mobileOpen: boolean;
@@ -12,6 +13,7 @@ interface MainNavProps {
   onOpenStayUpdated: () => void;
   learnEnabled: boolean;
   showBetaBadge: boolean;
+  mobileProgress: MobileNavProgress;
   wideShell?: boolean;
   onCoreFlowLinkClick?: (label: string, destination: string) => void;
 }
@@ -19,6 +21,8 @@ interface MainNavProps {
 interface NavItem {
   to: string;
   label: string;
+  description: string;
+  icon: MobileNavDrawerItem["icon"];
   end?: boolean;
   disabled?: boolean;
 }
@@ -28,14 +32,15 @@ export function MainNav(props: MainNavProps) {
   const hideNavigationItems = location.pathname.startsWith("/calibration");
   const desktopNavRef = useRef<HTMLElement | null>(null);
   const desktopLinkRefs = useRef<Record<string, HTMLSpanElement | null>>({});
+  const mobileTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, ready: false });
   const navItems: NavItem[] = [
-    { to: "/dashboard", label: "Dashboard", end: true },
+    { to: "/dashboard", label: "Dashboard", description: "Overview & progress", icon: "dashboard", end: true },
     ...(insightsRouteContract.navEligible && insightsRouteContract.navVisible
-      ? [{ to: insightsRouteContract.route, label: insightsRouteContract.navigationLabel, end: true }]
+      ? [{ to: insightsRouteContract.route, label: insightsRouteContract.navigationLabel, description: "Trends from your cases", icon: "insights" as const, end: true }]
       : []),
-    { to: "/learn?all=1", label: "Learn", disabled: !props.learnEnabled },
-    { to: "/practice", label: "Practice" }
+    { to: "/learn?all=1", label: "Learn", description: "Modules & references", icon: "learn", disabled: !props.learnEnabled },
+    { to: "/practice", label: "Practice", description: "Clinical case sets", icon: "practice" }
   ];
   const activeItem = hideNavigationItems ? undefined : navItems.find(item => {
     if (item.disabled) return false;
@@ -89,12 +94,13 @@ export function MainNav(props: MainNavProps) {
   }, [activeItem?.to, hideNavigationItems, props.learnEnabled]);
 
   return (
-    <header className={cn(
-      "main-nav",
-      hideNavigationItems && "main-nav--minimal",
-      props.wideShell && "main-nav--wide-shell"
-    )}>
-      <div className="main-nav__inner">
+    <>
+      <header className={cn(
+        "main-nav",
+        hideNavigationItems && "main-nav--minimal",
+        props.wideShell && "main-nav--wide-shell"
+      )}>
+        <div className="main-nav__inner">
         <NavLink className="main-nav__brand" to="/dashboard" end>
           <div className="main-nav__brand-copy">
             <div className="main-nav__brand-title">ABG Master</div>
@@ -136,61 +142,41 @@ export function MainNav(props: MainNavProps) {
           </nav>
         ) : null}
 
-        <div className="main-nav__controls">
-          <button className="main-nav__stay-updated" type="button" onClick={props.onOpenStayUpdated}>
-            <span className="main-nav__link-icon main-nav__bell-icon" aria-hidden="true" />
-            <span>Stay Updated</span>
-          </button>
-
-          <button
-            className="main-nav__mobile-stay-updated"
-            type="button"
-            aria-label="Stay Updated"
-            onClick={props.onOpenStayUpdated}
-          >
-            <span className="main-nav__bell-icon" aria-hidden="true" />
-          </button>
-
-          {!hideNavigationItems ? (
-            <button
-              className="main-nav__toggle"
-              type="button"
-              aria-label={props.mobileOpen ? "Close navigation menu" : "Open navigation menu"}
-              aria-expanded={props.mobileOpen}
-              onClick={props.onToggleMobile}
-            >
-              {props.mobileOpen ? <X /> : <img src={listIconUrl} alt="" aria-hidden="true" />}
+          <div className="main-nav__controls">
+            <button className="main-nav__stay-updated" type="button" onClick={props.onOpenStayUpdated}>
+              <span className="main-nav__link-icon main-nav__bell-icon" aria-hidden="true" />
+              <span>Stay Updated</span>
             </button>
-          ) : null}
-        </div>
 
-        {!hideNavigationItems ? (
-          <nav className={cn("main-nav__mobile", props.mobileOpen && "is-open")} aria-label="Mobile navigation">
-            {navItems.map(item => {
-              return item.disabled ? (
-                <span key={item.to} className="main-nav__mobile-link is-disabled" aria-disabled="true">
-                  <span>{item.label}</span>
-                </span>
-              ) : (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) => cn("main-nav__mobile-link", isActive && "is-active")}
-                  onClick={() => {
-                    if (item.to.startsWith("/learn") || item.to.startsWith("/practice")) {
-                      props.onCoreFlowLinkClick?.(item.label, item.to);
-                    }
-                    props.onCloseMobile();
-                  }}
-                >
-                  <span>{item.label}</span>
-                </NavLink>
-              );
-            })}
-          </nav>
-        ) : null}
-      </div>
-    </header>
+            {!hideNavigationItems ? (
+              <button
+                ref={mobileTriggerRef}
+                className="main-nav__toggle"
+                type="button"
+                aria-label={props.mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+                aria-expanded={props.mobileOpen}
+                aria-controls="mobile-navigation-drawer"
+                onClick={props.onToggleMobile}
+              >
+                <img src={listIconUrl} alt="" aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </header>
+
+      {!hideNavigationItems ? (
+        <MobileNavDrawer
+          open={props.mobileOpen}
+          triggerRef={mobileTriggerRef}
+          onClose={props.onCloseMobile}
+          onOpenStayUpdated={props.onOpenStayUpdated}
+          onCoreFlowLinkClick={props.onCoreFlowLinkClick}
+          items={navItems.map(({ disabled: _disabled, ...item }) => item)}
+          progress={props.mobileProgress}
+          showBetaBadge={props.showBetaBadge}
+        />
+      ) : null}
+    </>
   );
 }
