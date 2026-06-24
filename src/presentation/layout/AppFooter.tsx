@@ -45,6 +45,7 @@ export function AppFooter() {
           <nav className="dashboard-page-footer__navigation" aria-label="Footer navigation">
             <Link className="dashboard-page-footer__link" to="/updates">Updates</Link>
             <Link className="dashboard-page-footer__link" to="/resources">Resources</Link>
+            <Link className="dashboard-page-footer__link" to="/contact">Contact</Link>
             <button
               className="dashboard-page-footer__link dashboard-page-footer__analytics"
               type="button"

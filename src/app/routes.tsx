@@ -20,6 +20,7 @@ import { AuthoredCaseGalleryScreen } from "../presentation/screens/AuthoredCaseG
 import { AboutScreen } from "../presentation/screens/AboutScreen";
 import { ResourcesScreen } from "../presentation/screens/ResourcesScreen";
 import { UpdatesScreen } from "../presentation/screens/UpdatesScreen";
+import { ContactScreen } from "../presentation/screens/ContactScreen";
 
 export const appRoutes: RouteObject[] = [
   {
@@ -33,6 +34,10 @@ export const appRoutes: RouteObject[] = [
   {
     path: "/updates",
     element: <UpdatesScreen />
+  },
+  {
+    path: "/contact",
+    element: <ContactScreen />
   },
   {
     path: "/blood-gas-compensation-rules",

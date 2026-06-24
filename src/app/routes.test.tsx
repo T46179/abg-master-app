@@ -53,7 +53,8 @@ describe("app routes", () => {
   it.each([
     ["/about", "AboutScreen"],
     ["/resources", "ResourcesScreen"],
-    ["/updates", "UpdatesScreen"]
+    ["/updates", "UpdatesScreen"],
+    ["/contact", "ContactScreen"]
   ])("renders the public screen at %s", (path, screenName) => {
     const route = appRoutes.find(item => item.path === path);
 
@@ -74,7 +75,9 @@ describe("app routes", () => {
     "/resources",
     "/resources/",
     "/updates",
-    "/updates/"
+    "/updates/",
+    "/contact",
+    "/contact/"
   ])("matches the static public route form %s", pathname => {
     const expectedPath = pathname.replace(/\/+$/, "");
     const matches = matchRoutes(appRoutes, pathname);

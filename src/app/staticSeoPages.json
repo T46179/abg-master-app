@@ -47,5 +47,12 @@
     "description": "Read concise updates about improvements to ABG Master's learning experience and educational tools.",
     "canonicalPath": "/updates/",
     "outputDirectory": "updates"
+  },
+  {
+    "path": "/contact",
+    "title": "Contact ABG Master | Feedback and Enquiries",
+    "description": "Contact ABG Master with feedback, corrections, collaboration ideas, teaching requests, or general enquiries.",
+    "canonicalPath": "/contact/",
+    "outputDirectory": "contact"
   }
 ]

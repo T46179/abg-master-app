@@ -186,6 +186,7 @@ describe("DashboardScreen", () => {
     expect(footerLinks.map(link => `${link.textContent}:${link.getAttribute("href")}`)).toEqual([
       "Updates:/updates",
       "Resources:/resources",
+      "Contact:/contact",
       "About:/about",
       "Privacy:/privacy"
     ]);

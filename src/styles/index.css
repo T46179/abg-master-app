@@ -13701,6 +13701,157 @@ button.learn-progress-dots__dot:focus-visible {
   font-weight: 500;
 }
 
+.contact-page {
+  overflow: hidden;
+  padding: 3rem 2rem 0;
+}
+
+.contact-page__article {
+  display: block;
+  width: min(100%, 68.75rem);
+}
+
+.contact-page .contact-page__hero {
+  display: grid;
+  gap: 0;
+  width: min(100%, 48rem);
+}
+
+.contact-page .contact-page__hero h1 {
+  margin-top: 2.25rem;
+  font-size: 3rem;
+  letter-spacing: -0.075rem;
+  line-height: 1.1;
+}
+
+.contact-page .contact-page__hero > p {
+  max-width: 42rem;
+  margin-top: 1.5rem;
+}
+
+.contact-page__email-card {
+  display: grid;
+  gap: 0;
+  width: min(100%, 42rem);
+  margin-top: 4rem;
+  padding: 2rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.contact-page__email-card:hover,
+.contact-page__email-card:focus-visible {
+  border-color: rgba(15, 23, 42, 0.14);
+  box-shadow: 0 0.6rem 1.5rem rgba(15, 23, 42, 0.07);
+}
+
+.contact-page__email-label,
+.contact-page__section-label {
+  margin: 0;
+  color: var(--color-slate-faint);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.contact-page__email-address {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  color: var(--color-slate-strong);
+  font-size: 1.75rem;
+  font-weight: 500;
+  letter-spacing: -0.035rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.contact-page__email-address svg {
+  flex: 0 0 auto;
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.contact-page__email-copy {
+  margin-top: 1rem;
+  color: var(--color-slate-muted);
+  font-size: 0.94rem;
+  font-weight: 400;
+  letter-spacing: 0.01rem;
+  line-height: 1.63;
+}
+
+.contact-page__topics {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 42rem);
+  gap: 0;
+  margin-top: 5rem;
+}
+
+.contact-page__topic-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.contact-page__topic-card {
+  display: grid;
+  align-content: start;
+  min-height: 12.96rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
+}
+
+.contact-page__topic-card > svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--color-slate-strong);
+}
+
+.contact-page__topic-card h2 {
+  margin: 1.25rem 0 0;
+  color: var(--color-slate-strong);
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: -0.0125rem;
+  line-height: 1.43;
+}
+
+.contact-page__topic-card p {
+  margin: 0.5rem 0 0;
+  color: var(--color-slate-muted);
+  font-size: 0.875rem;
+  font-weight: 400;
+  letter-spacing: 0.01rem;
+  line-height: 1.57;
+}
+
+.contact-page__footer {
+  width: 100vw;
+  margin: 4rem calc(50% - 50vw) 0;
+  padding: 2rem max(2rem, calc((100vw - 68.75rem) / 2));
+  border-top: 1px solid rgba(15, 23, 42, 0.04);
+}
+
+.contact-page__footer p {
+  margin: 0;
+  color: var(--color-slate-faint);
+  font-size: 0.8rem;
+  letter-spacing: 0.01rem;
+  line-height: 1.5;
+}
+
 .resources-page {
   padding: 3rem 2rem 6rem;
 }
@@ -13839,6 +13990,8 @@ button.learn-progress-dots__dot:focus-visible {
   }
 
   .public-page-shell__feature-grid,
+  .contact-page__topics,
+  .contact-page__topic-grid,
   .resources-page__grid,
   .updates-page__entry {
     grid-template-columns: 1fr;
@@ -13846,6 +13999,41 @@ button.learn-progress-dots__dot:focus-visible {
 
   .resources-page {
     padding: 3rem 1rem 4rem;
+  }
+
+  .contact-page {
+    padding: 3rem 1rem 0;
+  }
+
+  .contact-page .contact-page__hero {
+    width: 100%;
+  }
+
+  .contact-page .contact-page__hero h1 {
+    font-size: clamp(2.35rem, 10vw, 3rem);
+  }
+
+  .contact-page__email-card {
+    margin-top: 3rem;
+    padding: 1.5rem;
+  }
+
+  .contact-page__email-address {
+    font-size: clamp(1.25rem, 6vw, 1.5rem);
+  }
+
+  .contact-page__topics {
+    gap: 1.5rem;
+    margin-top: 4rem;
+  }
+
+  .contact-page__topic-card {
+    min-height: 0;
+  }
+
+  .contact-page__footer {
+    margin-top: 4rem;
+    padding: 2rem 1rem;
   }
 
   .resources-page .public-page-shell__hero {

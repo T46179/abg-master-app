@@ -75,7 +75,9 @@ describe("SeoMetadata", () => {
     ["/resources", "Blood Gas Interpretation Resources | ABG Master", "https://www.abgmaster.com/resources/"],
     ["/resources/", "Blood Gas Interpretation Resources | ABG Master", "https://www.abgmaster.com/resources/"],
     ["/updates", "ABG Master Updates | Product Changelog", "https://www.abgmaster.com/updates/"],
-    ["/updates/", "ABG Master Updates | Product Changelog", "https://www.abgmaster.com/updates/"]
+    ["/updates/", "ABG Master Updates | Product Changelog", "https://www.abgmaster.com/updates/"],
+    ["/contact", "Contact ABG Master | Feedback and Enquiries", "https://www.abgmaster.com/contact/"],
+    ["/contact/", "Contact ABG Master | Feedback and Enquiries", "https://www.abgmaster.com/contact/"]
   ])("sets the trailing-slash canonical for %s", (pathname, title, canonicalUrl) => {
     act(() => {
       root.render(
