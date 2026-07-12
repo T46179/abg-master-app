@@ -51,12 +51,26 @@ export const publicResources: PublicResource[] = [
 // corresponding change has been released, with the release date as the source of truth.
 export const publicUpdates: PublicUpdate[] = [
   {
+    date: "2026-06-28",
+    version: "v1.4",
+    category: "fixed",
+    title: "Mobile Navigation",
+    summary: "UI fixes, explanation cleanup and a new mobile navigation menu",
+    highlights: [
+      "Fixed an issue that occured when only 2-3 metric value cards were displayed on mobile devices. Metric cards should now display properly on mobile devices",
+      "Fixed summary explanations and internal consistency for some acute-on-chronic COPD cases",
+      "Added a new contact page",
+      "Improved the mobile navigation menu",
+      "General UI fixes"
+    ]
+  },
+  {
     date: "2026-06-21",
     version: "v1.4",
     category: "new",
     title: "Updates Page",
     subtitle: "A home for the changelog",
-    summary: "Added a new page outlining recent changes to ABG Master, along with dashboard and resource-page improvements.",
+    summary: "Added a new page outlining recent changes to ABG Master, along with dashboard and resource-page improvements",
     highlights: [
       "New Updates page",
       "Added a new resource page: Anion Gap",
@@ -86,10 +100,10 @@ export const publicUpdates: PublicUpdate[] = [
     summary: "Insights are now available to provide more granular detail about your progress",
     highlights: [
       "Added a new Insights page, where you can review recent performance and get personalised feedback on areas to improve.",
-      "You can now see more structured recent-case review and clearer pattern detection based on your recent performance, rather than old results lingering indefinitely.",
-      "Made practice feedback labels and summaries clearer in several places, including broader acid-base pattern wording that should be easier to interpret.",
-      "Added new Master-level cases, including the first oxygenation-focused cases. These are limited while I test and validate them. They are intentionally complex, so you’ll need to have unlocked Master level to encounter them.",
-      "Fixed a few content issues affecting some advanced DKA-related cases.",
+      "You can now see more structured recent-case review and clearer pattern detection based on your recent performance, rather than old results lingering indefinitely",
+      "Made practice feedback labels and summaries clearer in several places, including broader acid-base pattern wording that should be easier to interpret",
+      "Added new Master-level cases, including the first oxygenation-focused cases. These are limited while I test and validate them. They are intentionally complex, so you’ll need to have unlocked Master level to encounter them",
+      "Fixed a few content issues affecting some advanced DKA-related cases",
       "Privacy notice updates"
     ]
   }
