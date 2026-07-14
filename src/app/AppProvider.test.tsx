@@ -1,10 +1,16 @@
 // @vitest-environment jsdom
 
-import { act } from "react";
+import { StrictMode, act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppProvider, useAppContext } from "./AppProvider";
 import { savePendingPracticeSubmission, savePracticeSlotsCache, loadPendingPracticeSubmission } from "../core/protectedPracticeCache";
+import {
+  createPendingCalibrationCompletion,
+  loadPendingCalibrationCompletion,
+  savePendingCalibrationCompletion
+} from "../core/calibrationRecovery";
+import type { CalibrationCompletionRecord } from "../core/types";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -17,6 +23,8 @@ const submitProtectedPracticeCase = vi.fn();
 const applyProtectedCaseCompletion = vi.fn();
 const isProtectedPracticeError = vi.fn();
 const captureAppException = vi.fn();
+const loadRemoteProgressRow = vi.fn();
+const completeCalibrationProgress = vi.fn();
 
 vi.mock("../core/runtime", () => ({
   loadRuntimeConfig: (...args: unknown[]) => loadRuntimeConfig(...args),
@@ -39,6 +47,11 @@ vi.mock("../core/monitoring", () => ({
   captureAppException: (...args: unknown[]) => captureAppException(...args)
 }));
 
+vi.mock("../core/progressionSync", () => ({
+  loadRemoteProgressRow: (...args: unknown[]) => loadRemoteProgressRow(...args),
+  completeCalibrationProgress: (...args: unknown[]) => completeCalibrationProgress(...args)
+}));
+
 vi.mock("../core/protectedPractice", () => ({
   submitProtectedPracticeCase: (...args: unknown[]) => submitProtectedPracticeCase(...args),
   applyProtectedCaseCompletion: (...args: unknown[]) => applyProtectedCaseCompletion(...args),
@@ -56,13 +69,17 @@ function createDeferred<T>() {
 }
 
 function Probe() {
-  const { state, retryPendingSubmissionNow } = useAppContext();
+  const { state, retryPendingSubmissionNow, skipCalibrationOnboarding } = useAppContext();
   return (
     <div>
       <div data-testid="sync-state">{state.practiceState.syncState}</div>
       <div data-testid="sync-message">{state.practiceState.syncMessage ?? ""}</div>
       <div data-testid="error-message">{state.errorMessage ?? ""}</div>
+      <div data-testid="calibration-status">{state.calibrationState.remoteStatus}</div>
+      <div data-testid="calibration-source">{state.calibrationState.completionSource}</div>
+      <div data-testid="calibration-placement">{state.calibrationState.effectiveCompletion?.placement ?? ""}</div>
       <button type="button" onClick={retryPendingSubmissionNow}>retry</button>
+      <button type="button" onClick={() => { void skipCalibrationOnboarding(); }}>skip calibration</button>
     </div>
   );
 }
@@ -104,7 +121,10 @@ const storageAdapter = {
   loadAppAreaVisited: vi.fn(() => false),
   saveAppAreaVisited: vi.fn(),
   loadSeenCaseState: vi.fn(() => ({})),
-  saveSeenCaseState: vi.fn()
+  saveSeenCaseState: vi.fn(),
+  loadCalibrationCompletion: vi.fn<() => CalibrationCompletionRecord | null>(() => null),
+  saveCalibrationCompletion: vi.fn(),
+  clearCalibrationCompletion: vi.fn()
 };
 
 describe("AppProvider protected practice recovery", () => {
@@ -138,6 +158,13 @@ describe("AppProvider protected practice recovery", () => {
     createRuntimeSupabaseClient.mockReturnValue({ supabase: { auth: {} }, supabaseEnabled: true });
     ensureAnonymousSession.mockResolvedValue({ userId: "user-1", syncUnavailable: false });
     createAppStorage.mockReturnValue(storageAdapter);
+    storageAdapter.loadUserState.mockResolvedValue(null);
+    storageAdapter.loadCalibrationCompletion.mockReturnValue(null);
+    storageAdapter.saveCalibrationCompletion.mockClear();
+    loadRemoteProgressRow.mockReset();
+    loadRemoteProgressRow.mockResolvedValue(null);
+    completeCalibrationProgress.mockReset();
+    completeCalibrationProgress.mockResolvedValue(null);
     submitProtectedPracticeCase.mockReset();
     captureAppException.mockReset();
     applyProtectedCaseCompletion.mockImplementation(({ userState }: { userState: unknown }) => userState);
@@ -469,5 +496,153 @@ describe("AppProvider protected practice recovery", () => {
 
     expect(syncStateText()).toBe("idle");
     expect(loadPendingPracticeSubmission(localStorage)).toBeNull();
+  });
+
+  it("permits a valid local completion immediately while remote progress remains unresolved", async () => {
+    storageAdapter.loadCalibrationCompletion.mockReturnValue({
+      completed: true,
+      placement: "beginner",
+      version: 1
+    });
+    ensureAnonymousSession.mockReturnValue(new Promise(() => undefined));
+
+    act(() => {
+      root.render(<AppProvider><Probe /></AppProvider>);
+    });
+    await flush();
+
+    expect(container.querySelector("[data-testid='calibration-status']")?.textContent).toBe("loading");
+    expect(container.querySelector("[data-testid='calibration-source']")?.textContent).toBe("local");
+    expect(container.querySelector("[data-testid='calibration-placement']")?.textContent).toBe("beginner");
+  });
+
+  it("reconciles a disagreeing remote completion as authoritative", async () => {
+    storageAdapter.loadCalibrationCompletion.mockReturnValue({
+      completed: true,
+      placement: "beginner",
+      version: 1
+    });
+    loadRemoteProgressRow.mockResolvedValue({
+      calibration_completed: true,
+      calibration_placement: "advanced"
+    });
+
+    act(() => {
+      root.render(<AppProvider><Probe /></AppProvider>);
+    });
+    await flush();
+    await flush();
+
+    expect(container.querySelector("[data-testid='calibration-status']")?.textContent).toBe("loaded");
+    expect(container.querySelector("[data-testid='calibration-source']")?.textContent).toBe("remote");
+    expect(container.querySelector("[data-testid='calibration-placement']")?.textContent).toBe("advanced");
+    expect(storageAdapter.saveCalibrationCompletion).toHaveBeenLastCalledWith(expect.objectContaining({ placement: "advanced" }));
+  });
+
+  it("resolves rejected remote hydration to unavailable", async () => {
+    ensureAnonymousSession.mockRejectedValue(new Error("offline"));
+
+    act(() => {
+      root.render(<AppProvider><Probe /></AppProvider>);
+    });
+    await flush();
+    await flush();
+
+    expect(container.querySelector("[data-testid='calibration-status']")?.textContent).toBe("unavailable");
+  });
+
+  it("resolves stalled remote hydration to unavailable after ten seconds", async () => {
+    ensureAnonymousSession.mockReturnValue(new Promise(() => undefined));
+
+    act(() => {
+      root.render(<AppProvider><Probe /></AppProvider>);
+    });
+    await flush();
+    expect(container.querySelector("[data-testid='calibration-status']")?.textContent).toBe("loading");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(container.querySelector("[data-testid='calibration-status']")?.textContent).toBe("unavailable");
+  });
+
+  it("reconciles authoritative remote progress on a later reconnect", async () => {
+    storageAdapter.loadCalibrationCompletion.mockReturnValue({
+      completed: true,
+      placement: "beginner",
+      version: 1
+    });
+    ensureAnonymousSession.mockRejectedValueOnce(new Error("offline"));
+
+    act(() => {
+      root.render(<AppProvider><Probe /></AppProvider>);
+    });
+    await flush();
+    await flush();
+    expect(container.querySelector("[data-testid='calibration-status']")?.textContent).toBe("unavailable");
+
+    ensureAnonymousSession.mockResolvedValue({ userId: "user-1", syncUnavailable: false });
+    loadRemoteProgressRow.mockResolvedValue({
+      calibration_completed: true,
+      calibration_placement: "advanced"
+    });
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.querySelector("[data-testid='calibration-status']")?.textContent).toBe("loaded");
+    expect(container.querySelector("[data-testid='calibration-placement']")?.textContent).toBe("advanced");
+  });
+
+  it("deduplicates rapid Skip actions and retains one pending operation after sync failure", async () => {
+    completeCalibrationProgress.mockRejectedValue(new Error("offline"));
+
+    act(() => {
+      root.render(<AppProvider><Probe /></AppProvider>);
+    });
+    await flush();
+    await flush();
+
+    const skipButton = Array.from(container.querySelectorAll("button"))
+      .find(button => button.textContent === "skip calibration");
+    await act(async () => {
+      skipButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      skipButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(storageAdapter.saveCalibrationCompletion).toHaveBeenCalledTimes(1);
+    expect(completeCalibrationProgress).toHaveBeenCalledTimes(1);
+    expect(loadPendingCalibrationCompletion(localStorage)?.placement).toBe("beginner");
+    expect(loadPendingCalibrationCompletion(localStorage)?.operationId).toBeTruthy();
+  });
+
+  it("does not duplicate pending calibration completion calls in Strict Mode", async () => {
+    savePendingCalibrationCompletion(localStorage, createPendingCalibrationCompletion({
+      operationId: "strict-mode-skip",
+      calibrationVersion: 1,
+      progressionVersion: "v2",
+      betaReleaseNumber: 2
+    }));
+    completeCalibrationProgress.mockReturnValue(new Promise(() => undefined));
+
+    act(() => {
+      root.render(
+        <StrictMode>
+          <AppProvider><Probe /></AppProvider>
+        </StrictMode>
+      );
+    });
+    await flush();
+    await flush();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(completeCalibrationProgress).toHaveBeenCalledTimes(1);
   });
 });

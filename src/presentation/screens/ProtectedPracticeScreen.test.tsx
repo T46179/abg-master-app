@@ -106,8 +106,7 @@ vi.mock("../../app/viewHelpers", () => ({
     resolvedDifficulty: requestedDifficulty || "beginner",
     shouldRedirect: false
   }),
-  shouldConfirmDifficultySwitch: () => false,
-  shouldShowPracticeIntro: () => false
+  shouldConfirmDifficultySwitch: () => false
 }));
 
 vi.mock("../../core/analytics", () => ({
@@ -172,10 +171,6 @@ vi.mock("../../core/progression", () => ({
   })
 }));
 
-vi.mock("../../core/progressionSync", () => ({
-  completeCalibrationProgress: vi.fn()
-}));
-
 vi.mock("../../core/selection", () => ({
   buildStepOptionOverrides: vi.fn(() => ({})),
   createEmptySeenCasesState: () => ({}),
@@ -185,10 +180,6 @@ vi.mock("../../core/selection", () => ({
 
 vi.mock("../practice/PracticeDifficultyRail", () => ({
   PracticeDifficultyRail: () => null
-}));
-
-vi.mock("../practice/CalibrationIntroModal", () => ({
-  CalibrationIntroModal: () => null
 }));
 
 vi.mock("../practice/QuestionFlowCard", () => ({
@@ -981,26 +972,26 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
     });
   }
 
-  it("self-heals intro flags when existing progress is present", () => {
+  it("does not mutate onboarding flags when existing progress is present", () => {
     currentState.userState.casesCompleted = 1;
     currentState.storage.loadPracticeIntroSeen = () => false;
     currentState.storage.loadAppAreaVisited = () => false;
 
     renderScreen();
 
-    expect(currentState.storage.savePracticeIntroSeen).toHaveBeenCalledWith(true);
-    expect(currentState.storage.saveAppAreaVisited).toHaveBeenCalledWith(true);
+    expect(currentState.storage.savePracticeIntroSeen).not.toHaveBeenCalled();
+    expect(currentState.storage.saveAppAreaVisited).not.toHaveBeenCalled();
   });
 
-  it("treats stored seen cases as existing practice progress", () => {
+  it("leaves intro visibility decisions to the calibration guard when seen cases exist", () => {
     currentState.storage.loadPracticeIntroSeen = () => false;
     currentState.storage.loadAppAreaVisited = () => false;
     currentState.storage.loadSeenCaseState = () => ({ beginner: ["case-1"] });
 
     renderScreen();
 
-    expect(currentState.storage.savePracticeIntroSeen).toHaveBeenCalledWith(true);
-    expect(currentState.storage.saveAppAreaVisited).toHaveBeenCalledWith(true);
+    expect(currentState.storage.savePracticeIntroSeen).not.toHaveBeenCalled();
+    expect(currentState.storage.saveAppAreaVisited).not.toHaveBeenCalled();
   });
 
   it("passes the current non-final multi-select selection to the question flow card", () => {

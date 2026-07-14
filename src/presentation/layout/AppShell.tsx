@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import { PROTECTED_PRACTICE_MESSAGES } from "../../app/protectedPracticeMessages";
 import { SeoMetadata } from "../../app/seo";
 import { trackEvent, trackPageView } from "../../core/analytics";
+import {
+  hasMeaningfulCalibrationProgress,
+  shouldHoldLearnerRouteForCalibration,
+  shouldRedirectToCalibrationOnboarding
+} from "../../core/calibrationOnboarding";
 import { getReleaseFlags } from "../../core/progression";
 import { Surface } from "../primitives/Surface";
+import { LoadingView } from "../shared/StatusViews";
 import { LaunchNotifyModal } from "./LaunchNotifyModal";
 import { MainNav } from "./MainNav";
 import { getMobileNavProgress } from "./mobileNavProgress";
@@ -27,8 +33,27 @@ export function AppShell() {
     userState: state.userState,
     cases: state.payload?.cases ?? []
   });
+  const hasMeaningfulProgress = hasMeaningfulCalibrationProgress({
+    userState: state.userState,
+    seenCasesByDifficulty: state.storage?.loadSeenCaseState() ?? null,
+    hasActiveCase: Boolean(state.practiceState.currentCase),
+    hasSummary: Boolean(state.practiceState.lastCaseSummary),
+    hasPendingSubmission: Boolean(state.practiceState.pendingSubmission)
+  });
+  const shouldHoldLearnerRoute = shouldHoldLearnerRouteForCalibration({
+    pathname: location.pathname,
+    calibration: state.calibrationState,
+    hasMeaningfulProgress
+  });
+  const shouldRedirectToCalibration = shouldRedirectToCalibrationOnboarding({
+    pathname: location.pathname,
+    calibration: state.calibrationState,
+    hasMeaningfulProgress
+  });
 
   useEffect(() => {
+    if (shouldHoldLearnerRoute || shouldRedirectToCalibration) return;
+
     const pathSegment = location.pathname.split("/")[1] || "landing";
     const baseViewName = pathSegment === "dashboard" ? "dashboard" : pathSegment;
     const viewName = baseViewName === "practice" && state.practiceState.lastCaseSummary
@@ -48,7 +73,14 @@ export function AppShell() {
     }
     trackPageView(viewName);
     setMobileOpen(false);
-  }, [location.pathname, patchSessionState, state.practiceState.lastCaseSummary, state.storage]);
+  }, [
+    location.pathname,
+    patchSessionState,
+    shouldHoldLearnerRoute,
+    shouldRedirectToCalibration,
+    state.practiceState.lastCaseSummary,
+    state.storage
+  ]);
 
   function handleDiscardPendingCase() {
     if (typeof window === "undefined" || !state.practiceState.pendingSubmission) return;
@@ -161,6 +193,10 @@ export function AppShell() {
             <p>{state.appStatus.blocking.message ?? "The frontend could not initialize."}</p>
           </Surface>
         </main>
+      ) : shouldHoldLearnerRoute ? (
+        <LoadingView />
+      ) : shouldRedirectToCalibration ? (
+        <Navigate to="/calibration" replace />
       ) : (
         <Outlet />
       )}

@@ -1,6 +1,7 @@
 import { RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
+import { clearPendingCalibrationCompletion } from "../../core/calibrationRecovery";
 import { OPEN_ANALYTICS_CHOICES_EVENT } from "./AnalyticsConsentBanner";
 import { APP_BUILD_LABEL } from "./appBuild";
 
@@ -27,6 +28,7 @@ export function AppFooter() {
     state.storage.saveAppAreaVisited(false);
     state.storage.saveAdvancedRangesPreference(false);
     state.storage.clearCalibrationCompletion();
+    clearPendingCalibrationCompletion(window.localStorage);
     clearLearnModuleResumeState();
     window.location.assign("/practice");
   }

@@ -1,8 +1,21 @@
-import { createContext, startTransition, useCallback, useContext, useEffect, useReducer, useRef, type ReactNode } from "react";
+import { createContext, startTransition, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import { captureAppException } from "../core/monitoring";
 import { getRuntimeBootstrapUserMessage, isRuntimeBootstrapError, loadCasesPayload, loadRuntimeConfig } from "../core/runtime";
 import { createAppStorage } from "../core/storage";
 import { createRuntimeSupabaseClient, ensureAnonymousSession } from "../core/supabase";
+import { CALIBRATION_COMPLETION_VERSION, createCalibrationCompletionRecord } from "../core/calibration";
+import {
+  REMOTE_PROGRESS_TIMEOUT_MS,
+  resolveCalibrationState,
+  settleWithTimeout
+} from "../core/calibrationOnboarding";
+import {
+  clearPendingCalibrationCompletion,
+  createPendingCalibrationCompletion,
+  loadPendingCalibrationCompletion,
+  savePendingCalibrationCompletion
+} from "../core/calibrationRecovery";
+import { completeCalibrationProgress, loadRemoteProgressRow } from "../core/progressionSync";
 import { applyProtectedCaseCompletion, isProtectedPracticeError, submitProtectedPracticeCase } from "../core/protectedPractice";
 import {
   clearPracticeSlotCache,
@@ -12,7 +25,7 @@ import {
   slotMatchesDifficultyKey,
   savePracticeSlotsCache
 } from "../core/protectedPracticeCache";
-import type { PracticeFlowState, SessionState, UserState } from "../core/types";
+import type { CalibrationCompletionRecord, PracticeFlowState, SessionState, UserState } from "../core/types";
 import {
   createEmptyUserState,
   getBetaReleaseNumber,
@@ -20,6 +33,7 @@ import {
   appendPracticeAttemptSummary,
   getAwardableXpWithReadinessGates,
   getReleaseSignature,
+  getCalibrationCompletionFromUserState,
   mapDefaultUserState,
   mapProgressRowToUserState,
   sanitizeUnlockedDifficulties,
@@ -36,15 +50,29 @@ interface AppContextValue {
   patchPracticeState: (patch: Partial<PracticeFlowState>) => void;
   retryPendingSubmissionNow: () => void;
   discardPendingSubmission: () => void;
+  saveLocalCalibrationCompletion: (completion: CalibrationCompletionRecord) => Promise<void>;
+  skipCalibrationOnboarding: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
+  const [pendingCalibrationCompletion, setPendingCalibrationCompletion] = useState(() => (
+    typeof window === "undefined" ? null : loadPendingCalibrationCompletion(window.localStorage)
+  ));
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryInFlightRef = useRef(false);
   const retryAttemptCountRef = useRef(0);
+  const calibrationRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const calibrationRetryInFlightRef = useRef(false);
+  const calibrationRetryAttemptCountRef = useRef(0);
+  const calibrationSkipInFlightRef = useRef(false);
+  const remoteHydrationRetryInFlightRef = useRef(false);
+  const remoteHydrationRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runtimeSupabaseRef = useRef<ReturnType<typeof createRuntimeSupabaseClient> | null>(null);
+  const latestStateRef = useRef(state);
+  latestStateRef.current = state;
 
   useEffect(() => {
     let cancelled = false;
@@ -56,7 +84,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const runtimeConfig = await loadRuntimeConfig();
         const payload = await loadCasesPayload();
         const supabaseRuntime = createRuntimeSupabaseClient(runtimeConfig);
-        const { userId, syncUnavailable } = await ensureAnonymousSession(supabaseRuntime);
+        runtimeSupabaseRef.current = supabaseRuntime;
 
         const fallbackUserState = payload.defaultUserState
           ? mapDefaultUserState(payload.defaultUserState, {
@@ -67,23 +95,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         const storage = createAppStorage({
           browserStorage: window.localStorage,
-          supabase: supabaseRuntime.supabase,
-          supabaseEnabled: supabaseRuntime.supabaseEnabled
+          supabaseEnabled: false
         });
-
-        await storage.init({
-          userId,
+        const storageInitOptions = {
           releaseSignature: getReleaseSignature(payload.progressionConfig),
           progressionVersion: getProgressionVersion(payload.progressionConfig),
           betaReleaseNumber: getBetaReleaseNumber(payload.progressionConfig),
           fallbackUserState
-        });
+        };
+        await storage.init(storageInitOptions);
 
         const persistedUserState = await storage.loadUserState();
+        const localCompletion = storage.loadCalibrationCompletion()
+          ?? getCalibrationCompletionFromUserState(persistedUserState);
+        if (localCompletion) storage.saveCalibrationCompletion(localCompletion);
         const hydratedUserState = syncUserStateDerivedFields(
           {
             ...fallbackUserState,
             ...(persistedUserState ?? {}),
+            ...(localCompletion ? {
+              calibrationCompleted: true,
+              calibrationPlacement: localCompletion.placement
+            } : {}),
             unlockedDifficulties: sanitizeUnlockedDifficulties(
               persistedUserState?.unlockedDifficulties ?? fallbackUserState.unlockedDifficulties
             ),
@@ -102,7 +135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
 
         startTransition(() => {
-          let practiceSlotsByDifficulty = loadPracticeSlotsCache(window.localStorage, payload.contentVersion, userId);
+          let practiceSlotsByDifficulty = loadPracticeSlotsCache(window.localStorage, payload.contentVersion, null);
           let pendingSubmission = loadPendingPracticeSubmission(window.localStorage);
           let syncState: PracticeFlowState["syncState"] = pendingSubmission ? "pending_retry" : "idle";
           let syncMessage: string | null = null;
@@ -116,7 +149,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 practiceSlotsByDifficulty,
                 pendingSubmission.difficultyKey,
                 pendingSubmission.caseToken,
-                userId
+                null
               );
               pendingSubmission = null;
               syncState = "idle";
@@ -128,7 +161,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 practiceSlotsByDifficulty,
                 pendingSubmission.difficultyKey,
                 pendingSubmission.caseToken,
-                userId
+                null
               );
               pendingSubmission = null;
               syncState = "idle";
@@ -154,13 +187,108 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 syncMessage
               },
               storage,
-              supabase: supabaseRuntime.supabase,
+              supabase: null,
               supabaseEnabled: supabaseRuntime.supabaseEnabled,
-              userId,
-              syncUnavailable
+              userId: null,
+              syncUnavailable: false,
+              calibrationState: resolveCalibrationState({
+                localCompletion,
+                remoteCompletion: null,
+                remoteStatus: supabaseRuntime.supabaseEnabled ? "loading" : "unavailable"
+              })
             }
           });
         });
+
+        if (!supabaseRuntime.supabaseEnabled || !supabaseRuntime.supabase) return;
+
+        try {
+          const remoteResult = await settleWithTimeout((async () => {
+            const session = await ensureAnonymousSession(supabaseRuntime);
+            if (session.syncUnavailable || !session.userId || !supabaseRuntime.supabase) {
+              throw new Error("Remote progress is unavailable.");
+            }
+            const progress = await loadRemoteProgressRow({
+              supabase: supabaseRuntime.supabase,
+              userId: session.userId,
+              progressionConfig: payload.progressionConfig
+            });
+            return { progress, userId: session.userId };
+          })(), REMOTE_PROGRESS_TIMEOUT_MS);
+
+          if (cancelled) return;
+          if (remoteResult.status === "timeout") {
+            dispatch({
+              type: "remote_state_unavailable",
+              calibrationState: resolveCalibrationState({
+                localCompletion: latestStateRef.current.calibrationState.localCompletion ?? localCompletion,
+                remoteCompletion: null,
+                remoteStatus: "unavailable"
+              })
+            });
+            return;
+          }
+
+          const remoteStorage = createAppStorage({
+            browserStorage: window.localStorage,
+            supabase: supabaseRuntime.supabase,
+            supabaseEnabled: true
+          });
+          await remoteStorage.init({ ...storageInitOptions, userId: remoteResult.value.userId });
+
+          const remotePatch = mapProgressRowToUserState(remoteResult.value.progress);
+          const remoteCompletion = remotePatch
+            ? getCalibrationCompletionFromUserState({ ...createEmptyUserState(), ...remotePatch })
+            : null;
+          if (latestStateRef.current.calibrationState.remoteStatus === "loaded") return;
+          const currentUserState = latestStateRef.current.status === "ready"
+            ? latestStateRef.current.userState
+            : hydratedUserState;
+          const currentLocalCompletion = latestStateRef.current.calibrationState.localCompletion ?? localCompletion;
+          const remoteUserState = remotePatch
+            ? syncUserStateDerivedFields({ ...currentUserState, ...remotePatch }, payload.progressionConfig)
+            : currentUserState;
+          const reconciledUserState = !remoteCompletion && currentLocalCompletion
+            ? syncUserStateDerivedFields({
+                ...remoteUserState,
+                calibrationCompleted: true,
+                calibrationPlacement: currentLocalCompletion.placement
+              }, payload.progressionConfig)
+            : remoteUserState;
+
+          if (remoteCompletion) remoteStorage.saveCalibrationCompletion(remoteCompletion);
+          await remoteStorage.saveUserState(reconciledUserState);
+          if (remoteCompletion) {
+            clearPendingCalibrationCompletion(window.localStorage);
+            setPendingCalibrationCompletion(null);
+          }
+
+          dispatch({
+            type: "remote_state_reconciled",
+            payload: {
+              userState: reconciledUserState,
+              storage: remoteStorage,
+              supabase: supabaseRuntime.supabase,
+              userId: remoteResult.value.userId,
+              syncUnavailable: false,
+              calibrationState: resolveCalibrationState({
+                localCompletion: remoteCompletion ?? currentLocalCompletion,
+                remoteCompletion,
+                remoteStatus: remoteCompletion ? "loaded" : "absent"
+              })
+            }
+          });
+        } catch {
+          if (cancelled) return;
+          dispatch({
+            type: "remote_state_unavailable",
+            calibrationState: resolveCalibrationState({
+              localCompletion: latestStateRef.current.calibrationState.localCompletion ?? localCompletion,
+              remoteCompletion: null,
+              remoteStatus: "unavailable"
+            })
+          });
+        }
       } catch (error) {
         if (cancelled) return;
         captureAppException(error, {
@@ -209,6 +337,269 @@ export function AppProvider({ children }: { children: ReactNode }) {
       patch
     });
   }, []);
+
+  const saveLocalCalibrationCompletion = useCallback(async (completion: CalibrationCompletionRecord) => {
+    if (!state.storage) return;
+
+    const effectiveCompletion = state.calibrationState.remoteCompletion ?? completion;
+    state.storage.saveCalibrationCompletion(effectiveCompletion);
+    const nextUserState = syncUserStateDerivedFields({
+      ...state.userState,
+      calibrationCompleted: true,
+      calibrationPlacement: effectiveCompletion.placement
+    }, state.payload?.progressionConfig ?? null);
+    await state.storage.saveUserState(nextUserState);
+
+    dispatch({
+      type: "calibration_state_updated",
+      userState: nextUserState,
+      calibrationState: resolveCalibrationState({
+        localCompletion: effectiveCompletion,
+        remoteCompletion: state.calibrationState.remoteCompletion,
+        remoteStatus: state.calibrationState.remoteStatus
+      })
+    });
+  }, [state.calibrationState, state.payload, state.storage, state.userState]);
+
+  const reconcileRemoteProgress = useCallback(async (input: {
+    progress: Awaited<ReturnType<typeof loadRemoteProgressRow>>;
+    supabase: NonNullable<AppState["supabase"]>;
+    userId: string;
+  }) => {
+    if (!state.payload || typeof window === "undefined") return null;
+
+    const progressPatch = mapProgressRowToUserState(input.progress);
+    const remoteCompletion = progressPatch
+      ? getCalibrationCompletionFromUserState({ ...createEmptyUserState(), ...progressPatch })
+      : null;
+    const nextUserState = progressPatch
+      ? syncUserStateDerivedFields({ ...state.userState, ...progressPatch }, state.payload.progressionConfig)
+      : state.userState;
+    const remoteStorage = createAppStorage({
+      browserStorage: window.localStorage,
+      supabase: input.supabase,
+      supabaseEnabled: true
+    });
+    await remoteStorage.init({
+      userId: input.userId,
+      releaseSignature: getReleaseSignature(state.payload.progressionConfig),
+      progressionVersion: getProgressionVersion(state.payload.progressionConfig),
+      betaReleaseNumber: getBetaReleaseNumber(state.payload.progressionConfig),
+      fallbackUserState: state.userState
+    });
+
+    const localCompletion = remoteCompletion ?? state.calibrationState.localCompletion;
+    const reconciledUserState = !remoteCompletion && localCompletion
+      ? syncUserStateDerivedFields({
+          ...nextUserState,
+          calibrationCompleted: true,
+          calibrationPlacement: localCompletion.placement
+        }, state.payload.progressionConfig)
+      : nextUserState;
+
+    if (remoteCompletion) remoteStorage.saveCalibrationCompletion(remoteCompletion);
+    await remoteStorage.saveUserState(reconciledUserState);
+    dispatch({
+      type: "remote_state_reconciled",
+      payload: {
+        userState: reconciledUserState,
+        storage: remoteStorage,
+        supabase: input.supabase,
+        userId: input.userId,
+        syncUnavailable: false,
+        calibrationState: resolveCalibrationState({
+          localCompletion,
+          remoteCompletion,
+          remoteStatus: remoteCompletion ? "loaded" : "absent"
+        })
+      }
+    });
+    return remoteCompletion;
+  }, [state.calibrationState.localCompletion, state.payload, state.userState]);
+
+  const clearCalibrationRetryTimer = useCallback(() => {
+    if (calibrationRetryTimerRef.current != null) {
+      clearTimeout(calibrationRetryTimerRef.current);
+      calibrationRetryTimerRef.current = null;
+    }
+  }, []);
+
+  const retryRemoteHydrationNow = useCallback(() => {
+    if (
+      remoteHydrationRetryInFlightRef.current ||
+      state.status !== "ready" ||
+      state.calibrationState.remoteStatus !== "unavailable" ||
+      !state.payload
+    ) {
+      return;
+    }
+
+    const runtime = runtimeSupabaseRef.current;
+    if (!runtime?.supabaseEnabled || !runtime.supabase) return;
+    if (remoteHydrationRetryTimerRef.current != null) {
+      clearTimeout(remoteHydrationRetryTimerRef.current);
+    }
+    remoteHydrationRetryTimerRef.current = null;
+    remoteHydrationRetryInFlightRef.current = true;
+
+    void settleWithTimeout((async () => {
+      const session = await ensureAnonymousSession(runtime);
+      if (session.syncUnavailable || !session.userId || !runtime.supabase) {
+        throw new Error("Remote progress is unavailable.");
+      }
+      const progress = await loadRemoteProgressRow({
+        supabase: runtime.supabase,
+        userId: session.userId,
+        progressionConfig: state.payload?.progressionConfig ?? null
+      });
+      return { progress, supabase: runtime.supabase, userId: session.userId };
+    })(), REMOTE_PROGRESS_TIMEOUT_MS)
+      .then(result => {
+        if (result.status !== "resolved") return;
+        return reconcileRemoteProgress(result.value);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        remoteHydrationRetryInFlightRef.current = false;
+        if (
+          latestStateRef.current.calibrationState.remoteStatus === "unavailable" &&
+          remoteHydrationRetryTimerRef.current == null
+        ) {
+          remoteHydrationRetryTimerRef.current = setTimeout(retryRemoteHydrationNow, 30_000);
+        }
+      });
+  }, [reconcileRemoteProgress, state.calibrationState.remoteStatus, state.payload, state.status]);
+
+  const retryPendingCalibrationNow = useCallback(() => {
+    if (
+      calibrationRetryInFlightRef.current ||
+      !pendingCalibrationCompletion ||
+      state.status !== "ready" ||
+      !state.payload ||
+      typeof window === "undefined"
+    ) {
+      return;
+    }
+
+    const runtime = runtimeSupabaseRef.current;
+    if (!runtime?.supabaseEnabled || !runtime.supabase) return;
+    const payload = state.payload;
+
+    calibrationRetryInFlightRef.current = true;
+    clearCalibrationRetryTimer();
+    const pending = {
+      ...pendingCalibrationCompletion,
+      lastAttemptAt: new Date().toISOString()
+    };
+    savePendingCalibrationCompletion(window.localStorage, pending);
+    setPendingCalibrationCompletion(pending);
+
+    void settleWithTimeout((async () => {
+      const session = await ensureAnonymousSession(runtime);
+      if (session.syncUnavailable || !session.userId || !runtime.supabase) {
+        throw new Error("Remote progress is unavailable.");
+      }
+
+      const existingProgress = await loadRemoteProgressRow({
+        supabase: runtime.supabase,
+        userId: session.userId,
+        progressionConfig: payload.progressionConfig,
+        progressionVersion: pending.progressionVersion,
+        betaReleaseNumber: pending.betaReleaseNumber
+      });
+      const existingPatch = mapProgressRowToUserState(existingProgress);
+      const existingCompletion = existingPatch
+        ? getCalibrationCompletionFromUserState({ ...createEmptyUserState(), ...existingPatch })
+        : null;
+
+      if (existingCompletion) {
+        await reconcileRemoteProgress({
+          progress: existingProgress,
+          supabase: runtime.supabase,
+          userId: session.userId
+        });
+        return;
+      }
+
+      const completion: CalibrationCompletionRecord = {
+        completed: true,
+        placement: pending.placement,
+        version: pending.calibrationVersion
+      };
+      const completedProgress = await completeCalibrationProgress({
+        supabase: runtime.supabase,
+        progressionConfig: payload.progressionConfig,
+        placement: pending.placement,
+        completion,
+        progressionVersion: pending.progressionVersion,
+        betaReleaseNumber: pending.betaReleaseNumber,
+        attemptPayload: {
+          source: pending.source,
+          operation_id: pending.operationId
+        }
+      });
+      await reconcileRemoteProgress({
+        progress: completedProgress,
+        supabase: runtime.supabase,
+        userId: session.userId
+      });
+    })(), REMOTE_PROGRESS_TIMEOUT_MS)
+      .then(result => {
+        if (result.status === "timeout") throw new Error("Calibration reconciliation timed out.");
+        clearPendingCalibrationCompletion(window.localStorage);
+        setPendingCalibrationCompletion(null);
+        calibrationRetryAttemptCountRef.current = 0;
+      })
+      .catch(() => {
+        calibrationRetryAttemptCountRef.current += 1;
+        const retainedPending = {
+          ...pending,
+          lastAttemptAt: new Date().toISOString()
+        };
+        savePendingCalibrationCompletion(window.localStorage, retainedPending);
+        setPendingCalibrationCompletion(retainedPending);
+      })
+      .finally(() => {
+        calibrationRetryInFlightRef.current = false;
+      });
+  }, [
+    clearCalibrationRetryTimer,
+    pendingCalibrationCompletion,
+    reconcileRemoteProgress,
+    state.payload,
+    state.status
+  ]);
+
+  const skipCalibrationOnboarding = useCallback(async () => {
+    if (
+      calibrationSkipInFlightRef.current ||
+      !state.payload ||
+      !state.storage ||
+      typeof window === "undefined"
+    ) {
+      return;
+    }
+
+    calibrationSkipInFlightRef.current = true;
+    try {
+      const existingPending = loadPendingCalibrationCompletion(window.localStorage);
+      const operationId = typeof crypto?.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `calibration-skip-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const pending = existingPending ?? createPendingCalibrationCompletion({
+        operationId,
+        calibrationVersion: CALIBRATION_COMPLETION_VERSION,
+        progressionVersion: getProgressionVersion(state.payload.progressionConfig),
+        betaReleaseNumber: getBetaReleaseNumber(state.payload.progressionConfig)
+      });
+
+      if (!existingPending) savePendingCalibrationCompletion(window.localStorage, pending);
+      setPendingCalibrationCompletion(pending);
+      await saveLocalCalibrationCompletion(createCalibrationCompletionRecord("beginner"));
+    } finally {
+      calibrationSkipInFlightRef.current = false;
+    }
+  }, [saveLocalCalibrationCompletion, state.payload, state.storage]);
 
   const clearRetryTimer = useCallback(() => {
     if (retryTimerRef.current != null) {
@@ -471,6 +862,86 @@ export function AppProvider({ children }: { children: ReactNode }) {
     state.status
   ]);
 
+  useEffect(() => {
+    if (
+      state.status !== "ready" ||
+      !pendingCalibrationCompletion ||
+      typeof window === "undefined"
+    ) {
+      clearCalibrationRetryTimer();
+      return;
+    }
+
+    function handleResumeOrReconnect() {
+      retryPendingCalibrationNow();
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") retryPendingCalibrationNow();
+    }
+
+    clearCalibrationRetryTimer();
+    calibrationRetryTimerRef.current = setTimeout(
+      retryPendingCalibrationNow,
+      pendingCalibrationCompletion.lastAttemptAt
+        ? getPendingRetryDelayMs(calibrationRetryAttemptCountRef.current)
+        : 0
+    );
+
+    window.addEventListener("online", handleResumeOrReconnect);
+    window.addEventListener("focus", handleResumeOrReconnect);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearCalibrationRetryTimer();
+      window.removeEventListener("online", handleResumeOrReconnect);
+      window.removeEventListener("focus", handleResumeOrReconnect);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [
+    clearCalibrationRetryTimer,
+    pendingCalibrationCompletion,
+    retryPendingCalibrationNow,
+    state.status
+  ]);
+
+  useEffect(() => {
+    if (
+      state.status !== "ready" ||
+      state.calibrationState.remoteStatus !== "unavailable" ||
+      typeof window === "undefined"
+    ) {
+      if (remoteHydrationRetryTimerRef.current != null) {
+        clearTimeout(remoteHydrationRetryTimerRef.current);
+        remoteHydrationRetryTimerRef.current = null;
+      }
+      return;
+    }
+
+    function handleRetryOpportunity() {
+      retryRemoteHydrationNow();
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") retryRemoteHydrationNow();
+    }
+
+    remoteHydrationRetryTimerRef.current = setTimeout(retryRemoteHydrationNow, 30_000);
+    window.addEventListener("online", handleRetryOpportunity);
+    window.addEventListener("focus", handleRetryOpportunity);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      if (remoteHydrationRetryTimerRef.current != null) {
+        clearTimeout(remoteHydrationRetryTimerRef.current);
+        remoteHydrationRetryTimerRef.current = null;
+      }
+      window.removeEventListener("online", handleRetryOpportunity);
+      window.removeEventListener("focus", handleRetryOpportunity);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [retryRemoteHydrationNow, state.calibrationState.remoteStatus, state.status]);
+
   return (
     <AppContext.Provider
       value={{
@@ -479,7 +950,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         patchSessionState,
         patchPracticeState,
         retryPendingSubmissionNow,
-        discardPendingSubmission
+        discardPendingSubmission,
+        saveLocalCalibrationCompletion,
+        skipCalibrationOnboarding
       }}
     >
       {children}

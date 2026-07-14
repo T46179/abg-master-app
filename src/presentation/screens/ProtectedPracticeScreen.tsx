@@ -11,11 +11,9 @@ import {
   getCalibrationAllowedDifficulties,
   getPracticeDifficultyMismatchAction,
   resolvePracticeDifficulty,
-  shouldConfirmDifficultySwitch,
-  shouldShowPracticeIntro
+  shouldConfirmDifficultySwitch
 } from "../../app/viewHelpers";
 import { trackEvent } from "../../core/analytics";
-import { createCalibrationCompletionRecord } from "../../core/calibration";
 import { shouldShowMetricReferences } from "../../core/metrics";
 import { buildConciseStepFeedback } from "../../core/explanations";
 import {
@@ -55,7 +53,6 @@ import {
   normalizeDifficultyKey,
   syncUserStateDerivedFields
 } from "../../core/progression";
-import { completeCalibrationProgress } from "../../core/progressionSync";
 import {
   buildStepOptionOverrides,
   createEmptySeenCasesState,
@@ -67,7 +64,6 @@ import { getLearnUnlockMilestoneForLevelTransition } from "../learn/content";
 import { LearnUnlockModal } from "../learn/LearnUnlockModal";
 import { Surface } from "../primitives/Surface";
 import { ActivePracticeCase } from "../practice/ActivePracticeCase";
-import { CalibrationIntroModal } from "../practice/CalibrationIntroModal";
 import { PracticeDifficultyRail } from "../practice/PracticeDifficultyRail";
 import { ResultsPatternTip } from "../practice/ResultsPatternTip";
 import { ResultsSummaryCard, ResultsSummaryHeader } from "../practice/ResultsSummaryCard";
@@ -109,13 +105,10 @@ export function ProtectedPracticeScreen() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [recentArchetypes, setRecentArchetypes] = useState<string[]>([]);
-  const [introOpen, setIntroOpen] = useState(false);
-  const [pendingDifficulty, setPendingDifficulty] = useState<string | null>(null);
   const [displayedResultsProgress, setDisplayedResultsProgress] = useState<number | null>(null);
   const [dismissedLearnUnlockKey, setDismissedLearnUnlockKey] = useState<string | null>(null);
   const [dismissedResultsPatternKey, setDismissedResultsPatternKey] = useState<string | null>(null);
   const activeStepRef = useRef<HTMLButtonElement | null>(null);
-  const introAcceptedRef = useRef(false);
   const difficultyReconciledRef = useRef(false);
   const latestCaseLoadRequestRef = useRef(0);
   const practiceOpenedTrackedRef = useRef(false);
@@ -176,27 +169,7 @@ export function ProtectedPracticeScreen() {
   const currentDifficultyLevel = Number(currentCase?.difficulty_level ?? summary?.caseData.difficulty_level ?? 1);
   const showAbnormalHighlighting = currentDifficultyLevel <= 3;
   const shouldAutoLoadPracticeCase = !currentCase && !summary && canLoadCase;
-  const isReadyForPracticeIntroGate = state.status === "ready" && Boolean(state.storage);
-  const hasSeenPracticeIntro = state.storage?.loadPracticeIntroSeen() ?? false;
   const hasVisitedAppArea = state.storage?.loadAppAreaVisited() ?? false;
-  const hasSeenStoredCases = Object.values(state.storage?.loadSeenCaseState() ?? {}).some(caseIds => caseIds.length > 0);
-  const hasExistingPracticeProgress = Boolean(
-    state.userState.casesCompleted > 0 ||
-    state.userState.totalAnswers > 0 ||
-    state.userState.correctAnswers > 0 ||
-    state.userState.xp > 0 ||
-    state.userState.level > 1 ||
-    (Array.isArray(state.userState.appliedProtectedCaseTokens) && state.userState.appliedProtectedCaseTokens.length > 0) ||
-    (Array.isArray(state.userState.recentResults) && state.userState.recentResults.length > 0) ||
-    hasSeenStoredCases
-  );
-  const shouldOpenPracticeIntro = isReadyForPracticeIntroGate && shouldShowPracticeIntro(
-    hasSeenPracticeIntro,
-    hasVisitedAppArea,
-    Boolean(currentCase),
-    Boolean(summary),
-    hasExistingPracticeProgress
-  );
   const finalLevelProgress = getLevelProgress(payload?.progressionConfig ?? null, state.userState);
   const maxReachableLevel = getMaxReachableLevel(payload?.progressionConfig ?? null);
   const preAwardUserState = summary
@@ -307,14 +280,6 @@ export function ProtectedPracticeScreen() {
     if (!hasExplicitDifficultyParam && difficultyMismatchAction) return;
     state.storage?.saveLastPracticeDifficulty(normalizedDifficulty);
   }, [difficultyMismatchAction, hasExplicitDifficultyParam, normalizedDifficulty, state.status, state.storage]);
-
-  useEffect(() => {
-    if (!isReadyForPracticeIntroGate) return;
-    if (hasExistingPracticeProgress && (!hasSeenPracticeIntro || !hasVisitedAppArea)) {
-      if (!hasSeenPracticeIntro) state.storage?.savePracticeIntroSeen(true);
-      if (!hasVisitedAppArea) state.storage?.saveAppAreaVisited(true);
-    }
-  }, [hasExistingPracticeProgress, hasSeenPracticeIntro, hasVisitedAppArea, isReadyForPracticeIntroGate, state.storage]);
 
   useEffect(() => {
     if (difficultyReconciledRef.current) return;
@@ -605,36 +570,19 @@ export function ProtectedPracticeScreen() {
     payload?.contentVersion,
     recentArchetypes.join("|"),
     shouldAutoLoadPracticeCase,
-    state.runtimeConfig
+    state.runtimeConfig,
+    state.supabase,
+    state.userId
   ]);
 
   useEffect(() => {
-    if (!isReadyForPracticeIntroGate) return;
     if (!shouldAutoLoadPracticeCase) return;
-    if (introOpen) return;
-    if (introAcceptedRef.current) {
-      introAcceptedRef.current = false;
-      return;
-    }
-
-    if (shouldOpenPracticeIntro) {
-      state.storage?.savePracticeIntroSeen(true);
-      state.storage?.saveAppAreaVisited(true);
-      if (!introOpen || pendingDifficulty !== normalizedDifficulty) {
-        setPendingDifficulty(normalizedDifficulty);
-        setIntroOpen(true);
-      }
-      if (!currentCase) {
-        void beginCase(normalizedDifficulty, { preview: true, confirmAbandon: false });
-      }
-      return;
-    }
 
     if (!hasVisitedAppArea) {
       state.storage?.saveAppAreaVisited(true);
     }
     void beginCase(normalizedDifficulty);
-  }, [currentCase, hasVisitedAppArea, introOpen, isReadyForPracticeIntroGate, normalizedDifficulty, pendingDifficulty, shouldAutoLoadPracticeCase, shouldOpenPracticeIntro, state.storage]);
+  }, [hasVisitedAppArea, normalizedDifficulty, shouldAutoLoadPracticeCase, state.storage, state.supabase, state.userId]);
 
   async function activateSlot(difficultyKey: string, slot: IssuedPracticeSlot, options?: { preview?: boolean }) {
     if (!slotMatchesDifficultyKey(slot, difficultyKey)) {
@@ -707,65 +655,8 @@ export function ProtectedPracticeScreen() {
   }
 
   function requestCaseStart(difficultyKey: string) {
-    const shouldOpenIntro = shouldShowPracticeIntro(
-      state.storage?.loadPracticeIntroSeen() ?? false,
-      state.storage?.loadAppAreaVisited() ?? false,
-      Boolean(currentCase),
-      Boolean(summary),
-      hasExistingPracticeProgress
-    );
-
-    if (shouldOpenIntro) {
-      state.storage?.savePracticeIntroSeen(true);
-      state.storage?.saveAppAreaVisited(true);
-      setPendingDifficulty(difficultyKey);
-      setIntroOpen(true);
-      return;
-    }
-
     state.storage?.saveAppAreaVisited(true);
     void beginCase(difficultyKey);
-  }
-
-  function handleContinueFromIntro() {
-    state.storage?.savePracticeIntroSeen(true);
-    state.storage?.saveAppAreaVisited(true);
-    introAcceptedRef.current = true;
-    setIntroOpen(false);
-    setPendingDifficulty(null);
-    navigate("/calibration");
-  }
-
-  async function handleSkipCalibrationIntro() {
-    state.storage?.savePracticeIntroSeen(true);
-    state.storage?.saveAppAreaVisited(true);
-    const completion = createCalibrationCompletionRecord("beginner");
-    state.storage?.saveCalibrationCompletion(completion);
-    if (state.supabase) {
-      try {
-        const progress = await completeCalibrationProgress({
-          supabase: state.supabase,
-          progressionConfig: payload?.progressionConfig ?? null,
-          placement: "beginner",
-          completion,
-          attemptPayload: { source: "skip_intro" }
-        });
-        const progressPatch = mapProgressRowToUserState(progress);
-        if (progressPatch) {
-          await persistUserState(syncUserStateDerivedFields({
-            ...state.userState,
-            ...progressPatch
-          }, payload?.progressionConfig ?? null));
-        }
-      } catch {
-        // Local completion remains as a fallback if Supabase sync is unavailable.
-      }
-    }
-    introAcceptedRef.current = true;
-    setIntroOpen(false);
-    setPendingDifficulty(null);
-    setSearchParams({ difficulty: "beginner" }, { replace: true });
-    void beginCase("beginner", { confirmAbandon: false });
   }
 
   async function handleDifficultyChange(nextDifficulty: string) {
@@ -1188,12 +1079,6 @@ export function ProtectedPracticeScreen() {
             setDismissedLearnUnlockKey(learnUnlockKey);
           }
         }}
-      />
-
-      <CalibrationIntroModal
-        open={introOpen}
-        onContinue={handleContinueFromIntro}
-        onSkip={handleSkipCalibrationIntro}
       />
 
       <main className="app-shell__page practice-screen">

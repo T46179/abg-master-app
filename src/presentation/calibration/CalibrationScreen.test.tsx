@@ -24,18 +24,54 @@ const latestBloodGasBlitzProps = vi.hoisted(() => ({
 
 const storageAdapter = vi.hoisted(() => ({
   loadCalibrationCompletion: vi.fn(() => null),
-  saveCalibrationCompletion: vi.fn()
+  saveCalibrationCompletion: vi.fn(),
+  loadSeenCaseState: vi.fn(() => ({})),
+  loadPracticeIntroSeen: vi.fn(() => true),
+  savePracticeIntroSeen: vi.fn(),
+  loadAppAreaVisited: vi.fn(() => true),
+  saveAppAreaVisited: vi.fn()
 }));
 
 const analytics = vi.hoisted(() => ({
   trackEvent: vi.fn()
 }));
+const saveLocalCalibrationCompletion = vi.hoisted(() => vi.fn(async () => undefined));
+const skipCalibrationOnboarding = vi.hoisted(() => vi.fn(async () => undefined));
+const setUserState = vi.hoisted(() => vi.fn(async () => undefined));
 
 vi.mock("../../app/AppProvider", () => ({
   useAppContext: () => ({
     state: {
-      storage: storageAdapter
-    }
+      status: "ready",
+      storage: storageAdapter,
+      supabase: null,
+      payload: { progressionConfig: null },
+      userState: {
+        xp: 0,
+        level: 1,
+        casesCompleted: 0,
+        abandonedCases: 0,
+        correctAnswers: 0,
+        totalAnswers: 0,
+        recentResults: [],
+        appliedProtectedCaseTokens: []
+      },
+      practiceState: {
+        currentCase: null,
+        lastCaseSummary: null,
+        pendingSubmission: null
+      },
+      calibrationState: {
+        localCompletion: null,
+        remoteCompletion: null,
+        remoteStatus: "unavailable",
+        effectiveCompletion: null,
+        completionSource: "none"
+      }
+    },
+    setUserState,
+    saveLocalCalibrationCompletion,
+    skipCalibrationOnboarding
   })
 }));
 
@@ -82,6 +118,12 @@ describe("CalibrationScreen", () => {
     analytics.trackEvent.mockClear();
     storageAdapter.loadCalibrationCompletion.mockReturnValue(null);
     storageAdapter.saveCalibrationCompletion.mockClear();
+    storageAdapter.loadPracticeIntroSeen.mockReturnValue(true);
+    storageAdapter.loadAppAreaVisited.mockReturnValue(true);
+    storageAdapter.savePracticeIntroSeen.mockClear();
+    storageAdapter.saveAppAreaVisited.mockClear();
+    saveLocalCalibrationCompletion.mockClear();
+    skipCalibrationOnboarding.mockClear();
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -472,5 +514,52 @@ describe("CalibrationScreen", () => {
       score_total: 11,
       score_percent: 92
     });
+  });
+
+  it("shows the full-page introduction before Blood Gas Blitz for a genuinely new user", () => {
+    storageAdapter.loadPracticeIntroSeen.mockReturnValue(false);
+    storageAdapter.loadAppAreaVisited.mockReturnValue(false);
+    renderScreen();
+
+    expect(container.textContent).toContain("Welcome to ABG Master!");
+    expect(container.textContent).toContain("Begin Calibration");
+    expect(container.textContent).not.toContain("Mock Blood Gas Blitz Game");
+
+    clickButton("Begin Calibration");
+
+    expect(storageAdapter.savePracticeIntroSeen).toHaveBeenCalledWith(true);
+    expect(storageAdapter.saveAppAreaVisited).toHaveBeenCalledWith(true);
+    expect(container.textContent).toContain("Mock Blood Gas Blitz Game");
+  });
+
+  it("resumes at Blood Gas Blitz after Begin followed by abandonment", () => {
+    storageAdapter.loadPracticeIntroSeen.mockReturnValue(false);
+    storageAdapter.loadAppAreaVisited.mockReturnValue(false);
+    renderScreen();
+    clickButton("Begin Calibration");
+
+    act(() => root.unmount());
+    root = createRoot(container);
+    storageAdapter.loadPracticeIntroSeen.mockReturnValue(true);
+    storageAdapter.loadAppAreaVisited.mockReturnValue(true);
+    renderScreen();
+
+    expect(container.textContent).not.toContain("Welcome to ABG Master!");
+    expect(container.textContent).toContain("Mock Blood Gas Blitz Game");
+  });
+
+  it("persists Skip locally before opening Beginner Practice", async () => {
+    storageAdapter.loadPracticeIntroSeen.mockReturnValue(false);
+    storageAdapter.loadAppAreaVisited.mockReturnValue(false);
+    renderScreen();
+
+    const skipButton = getButton("Skip and start at Beginner");
+    await act(async () => {
+      skipButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(skipCalibrationOnboarding).toHaveBeenCalledTimes(1);
+    expect(container.textContent).toContain("Practice route ?difficulty=beginner");
   });
 });

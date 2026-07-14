@@ -2666,6 +2666,85 @@ a.dashboard-module-row:hover {
   line-height: 1.12;
 }
 
+.calibration-onboarding {
+  display: grid;
+  min-height: calc(100vh - var(--nav-height, 4.5rem));
+  place-items: center;
+}
+
+.calibration-onboarding__panel {
+  width: min(100%, 46rem);
+  padding: clamp(1.5rem, 5vw, 3.5rem);
+  border: 1px solid rgba(15, 37, 71, 0.08);
+  border-radius: 1.35rem;
+  background: var(--color-surface, #fff);
+  box-shadow: 0 28px 70px rgba(15, 37, 71, 0.14);
+}
+
+.calibration-onboarding__eyebrow {
+  margin: 0;
+  color: var(--color-navy);
+  font-size: 0.95rem;
+}
+
+.calibration-onboarding h1 {
+  max-width: 24rem;
+  margin: 1rem 0 0;
+  color: #111827;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 600;
+  line-height: 1.18;
+}
+
+.calibration-onboarding__body {
+  max-width: 38rem;
+  margin: 1.3rem 0 0;
+  color: var(--color-copy-soft);
+  font-weight: 300;
+  line-height: 1.65;
+}
+
+.calibration-onboarding__body span {
+  display: block;
+}
+
+.calibration-onboarding__body span + span {
+  margin-top: 0.35em;
+}
+
+.calibration-onboarding__button {
+  width: 100%;
+  min-height: 3.55rem;
+  margin-top: 2.65rem;
+  border-radius: 0.95rem;
+  background: var(--color-navy);
+  box-shadow: 0 18px 34px rgba(15, 37, 71, 0.16);
+  font-size: 1.05rem;
+}
+
+.calibration-onboarding__button:hover:not(:disabled) {
+  background: var(--color-navy);
+}
+
+.calibration-onboarding__skip {
+  display: block;
+  width: fit-content;
+  margin: 1.25rem auto 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-copy-soft);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 300;
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.calibration-onboarding__skip:hover:not(:disabled) {
+  color: var(--color-navy);
+  transform: translateY(-1px);
+}
+
 .calibration-screen__subtitle {
   max-width: 42rem;
   margin: -0.45rem 0 0;
@@ -4052,89 +4131,11 @@ a.dashboard-module-row:hover {
   line-height: 1.65;
 }
 
-.calibration-intro-modal {
-  width: min(100%, 46rem);
-  padding: 1.65rem;
-  border-color: rgba(15, 37, 71, 0.08);
-  border-radius: 1.35rem;
-  box-shadow: 0 28px 70px rgba(15, 37, 71, 0.14);
-}
-
-.modal-card .calibration-intro-modal__eyebrow {
-  margin-top: 0;
-  color: var(--color-navy);
-  font-size: 0.95rem;
-  font-weight: 400;
-  line-height: 1.35;
-}
-
-.calibration-intro-modal h2 {
-  max-width: 24rem;
-  margin-top: 1rem;
-  color: #111827;
-  font-size: clamp(2rem, 5vw, 2.75rem);
-  font-weight: 600;
-  line-height: 1.18;
-}
-
-.modal-card .calibration-intro-modal__body {
-  max-width: 38rem;
-  margin-top: 1.3rem;
-  color: var(--color-copy-soft);
-  font-weight: 300;
-  line-height: 1.65;
-}
-
-.calibration-intro-modal__body span {
-  display: block;
-}
-
-.calibration-intro-modal__body span + span {
-  margin-top: 0.35em;
-}
-
 .modal-card__actions {
   display: flex;
   justify-content: flex-start;
   gap: 0.75rem;
   margin-top: 1.3rem;
-}
-
-.calibration-intro-modal__actions {
-  margin-top: 2.65rem;
-}
-
-.calibration-intro-modal__button {
-  width: 100%;
-  min-height: 3.55rem;
-  border-radius: 0.95rem;
-  background: var(--color-navy);
-  box-shadow: 0 18px 34px rgba(15, 37, 71, 0.16);
-  font-size: 1.05rem;
-}
-
-.calibration-intro-modal__button:hover:not(:disabled) {
-  background: var(--color-navy);
-}
-
-.calibration-intro-modal__skip {
-  display: block;
-  width: fit-content;
-  margin: 1.25rem auto 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--color-copy-soft);
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 300;
-  text-align: center;
-  transition: color 160ms ease, transform 160ms ease;
-}
-
-.calibration-intro-modal__skip:hover {
-  color: var(--color-navy);
-  transform: translateY(-1px);
 }
 
 .learn-unlock-modal {
@@ -4720,40 +4721,6 @@ a.dashboard-module-row:hover {
     align-items: flex-start;
     flex-direction: column;
     gap: 0.35rem;
-  }
-
-  .calibration-intro-modal {
-    padding: 1.2rem;
-  }
-
-  .modal-card .calibration-intro-modal__eyebrow {
-    margin-top: 0;
-    font-size: 0.9rem;
-  }
-
-  .calibration-intro-modal h2 {
-    margin-top: 1rem;
-    font-size: 1.9rem;
-  }
-
-  .modal-card .calibration-intro-modal__body {
-    margin-top: 1.05rem;
-    font-size: 0.98rem;
-    line-height: 1.6;
-  }
-
-  .calibration-intro-modal__actions {
-    margin-top: 2rem;
-  }
-
-  .calibration-intro-modal__button {
-    min-height: 3.35rem;
-    font-size: 1rem;
-  }
-
-  .calibration-intro-modal__skip {
-    margin-top: 1.05rem;
-    font-size: 0.86rem;
   }
 
   .launch-notify-modal {

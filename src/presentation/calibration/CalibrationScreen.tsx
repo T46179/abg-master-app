@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import { CALIBRATION_COMPLETION_VERSION, createCalibrationCompletionRecord } from "../../core/calibration";
 import { trackEvent } from "../../core/analytics";
+import {
+  hasMeaningfulCalibrationProgress,
+  shouldShowCalibrationIntroduction
+} from "../../core/calibrationOnboarding";
 import { mapProgressRowToUserState, syncUserStateDerivedFields } from "../../core/progression";
 import { completeCalibrationProgress } from "../../core/progressionSync";
 import type { CalibrationPlacement } from "../../core/types";
@@ -10,6 +14,7 @@ import { getCalibrationSubtitle } from "./calibrationConfig";
 import { AnalysingSampleCalibrationStep } from "./AnalysingSampleCalibrationStep";
 import { BuildAGasCalibrationStep } from "./BuildAGasCalibrationStep";
 import { CalibrationBloodGasBlitzStep } from "./CalibrationBloodGasBlitzStep";
+import { CalibrationOnboardingStep } from "./CalibrationOnboardingStep";
 import { CalibrationProgressHeader } from "./CalibrationProgressHeader";
 import { CalibrationStepShell } from "./CalibrationStepShell";
 import { CalibrationSummaryStep } from "./CalibrationSummaryStep";
@@ -18,6 +23,7 @@ import { MixedProcessCalibrationStep } from "./MixedProcessCalibrationStep";
 import { scoreCalibration, type CalibrationScoringInput } from "./calibrationScoring";
 import type { CalibrationPhase } from "./calibrationTypes";
 import { useCalibrationFlow } from "./useCalibrationFlow";
+import { LoadingView } from "../shared/StatusViews";
 
 const CALIBRATION_ANALYTICS_VERSION = "1";
 const CALIBRATION_TOTAL_SCORE_MAX = 12;
@@ -54,8 +60,10 @@ function roundSeconds(elapsedMs: number | undefined): number | null {
 }
 
 export function CalibrationScreen() {
-  const { state, setUserState } = useAppContext();
+  const { state, setUserState, saveLocalCalibrationCompletion, skipCalibrationOnboarding } = useAppContext();
   const navigate = useNavigate();
+  const [introductionAccepted, setIntroductionAccepted] = useState(false);
+  const [skipPending, setSkipPending] = useState(false);
   const calibrationFlow = useCalibrationFlow();
   const { phase, placement, step, canUseContinueCta } = calibrationFlow;
   const subtitle = getCalibrationSubtitle(phase);
@@ -154,10 +162,24 @@ export function CalibrationScreen() {
   }
 
   useEffect(() => {
-    const completion = state.storage?.loadCalibrationCompletion();
+    const completion = state.calibrationState.effectiveCompletion;
     if (!completion) return;
     navigate(`/practice?difficulty=${completion.placement}`, { replace: true });
-  }, [navigate, state.storage]);
+  }, [navigate, state.calibrationState.effectiveCompletion]);
+
+  const hasMeaningfulProgress = hasMeaningfulCalibrationProgress({
+    userState: state.userState,
+    seenCasesByDifficulty: state.storage?.loadSeenCaseState() ?? null,
+    hasActiveCase: Boolean(state.practiceState.currentCase),
+    hasSummary: Boolean(state.practiceState.lastCaseSummary),
+    hasPendingSubmission: Boolean(state.practiceState.pendingSubmission)
+  });
+  const shouldShowIntroduction = !introductionAccepted && shouldShowCalibrationIntroduction({
+    calibration: state.calibrationState,
+    hasMeaningfulProgress,
+    hasSeenIntroduction: state.storage?.loadPracticeIntroSeen() ?? false,
+    hasVisitedAppArea: state.storage?.loadAppAreaVisited() ?? false
+  });
 
   useEffect(() => () => {
     if (submitDelayTimerRef.current !== null) {
@@ -168,7 +190,7 @@ export function CalibrationScreen() {
   async function syncCalibrationCompletion(nextPlacement: CalibrationPlacement, nextResults: CalibrationScoringInput) {
     const completion = createCalibrationCompletionRecord(nextPlacement);
 
-    state.storage?.saveCalibrationCompletion(completion);
+    await saveLocalCalibrationCompletion(completion);
     if (!state.supabase) return;
 
     try {
@@ -186,10 +208,15 @@ export function CalibrationScreen() {
       });
       const progressPatch = mapProgressRowToUserState(progress);
       if (progressPatch) {
-        await setUserState(syncUserStateDerivedFields({
+        const nextUserState = syncUserStateDerivedFields({
           ...state.userState,
           ...progressPatch
-        }, state.payload?.progressionConfig ?? null));
+        }, state.payload?.progressionConfig ?? null);
+        await setUserState(nextUserState);
+        const remoteCompletion = nextUserState.calibrationCompleted && nextUserState.calibrationPlacement
+          ? createCalibrationCompletionRecord(nextUserState.calibrationPlacement)
+          : null;
+        if (remoteCompletion) state.storage?.saveCalibrationCompletion(remoteCompletion);
       }
     } catch {
       // Keep the local calibration completion so users can continue if sync is temporarily unavailable.
@@ -247,6 +274,38 @@ export function CalibrationScreen() {
 
   function handleStartDifficulty(difficulty: string) {
     navigate(`/practice?difficulty=${difficulty}`);
+  }
+
+  function handleBeginCalibration() {
+    state.storage?.savePracticeIntroSeen(true);
+    state.storage?.saveAppAreaVisited(true);
+    setIntroductionAccepted(true);
+  }
+
+  async function handleSkipCalibration() {
+    if (skipPending) return;
+    setSkipPending(true);
+    state.storage?.savePracticeIntroSeen(true);
+    state.storage?.saveAppAreaVisited(true);
+    await skipCalibrationOnboarding();
+    navigate("/practice?difficulty=beginner", { replace: true });
+  }
+
+  if (
+    state.status !== "ready" ||
+    (!state.calibrationState.localCompletion && state.calibrationState.remoteStatus === "loading")
+  ) {
+    return <LoadingView />;
+  }
+
+  if (shouldShowIntroduction) {
+    return (
+      <CalibrationOnboardingStep
+        onBegin={handleBeginCalibration}
+        onSkip={() => { void handleSkipCalibration(); }}
+        skipPending={skipPending}
+      />
+    );
   }
 
   if (phase === "analysing-sample") {

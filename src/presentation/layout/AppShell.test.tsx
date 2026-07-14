@@ -35,8 +35,16 @@ vi.mock("../../app/AppProvider", () => ({
       appStatus: {
         warnings: {}
       },
+      calibrationState: {
+        localCompletion: null,
+        remoteCompletion: null,
+        remoteStatus: "unavailable",
+        effectiveCompletion: null,
+        completionSource: "none"
+      },
       storage: {
-        saveAppAreaVisited
+        saveAppAreaVisited,
+        loadSeenCaseState: () => ({})
       }
     },
     patchSessionState,
