@@ -208,8 +208,7 @@ export function useCalibrationFlow() {
     dispatch({ type: "setFinalDiagnosisSelection", answer });
   }, []);
 
-  const continueCurrentPhase = useCallback(() => {
-    const now = Date.now();
+  const continueCurrentPhase = useCallback((now = Date.now()) => {
     const outcome = getCalibrationContinueOutcome(flowState, now);
     dispatch({ type: "continue", now });
     return outcome.completion;

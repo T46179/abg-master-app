@@ -3,11 +3,13 @@ import { MetricLabel, MetricReference, MetricValue } from "../practice/MetricTex
 import { mixedProcessAbgMetrics, mixedProcessOptions, mixedProcessSecondaryMetrics } from "./calibrationConfig";
 
 interface MixedProcessCalibrationStepProps {
+  disabled?: boolean;
   onCanContinueChange?: (canContinue: boolean) => void;
   onSelectionChange?: (answer: string | null) => void;
 }
 
 export function MixedProcessCalibrationStep({
+  disabled = false,
   onCanContinueChange,
   onSelectionChange
 }: MixedProcessCalibrationStepProps) {
@@ -62,6 +64,7 @@ export function MixedProcessCalibrationStep({
                 type="button"
                 key={option}
                 aria-pressed={selected}
+                disabled={disabled}
                 onClick={() => setSelectedAnswer(option)}
               >
                 <span className="calibration-compensation__option-label">{option}</span>

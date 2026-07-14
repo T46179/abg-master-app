@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import { CALIBRATION_COMPLETION_VERSION, createCalibrationCompletionRecord } from "../../core/calibration";
@@ -21,6 +21,7 @@ import { useCalibrationFlow } from "./useCalibrationFlow";
 
 const CALIBRATION_ANALYTICS_VERSION = "1";
 const CALIBRATION_TOTAL_SCORE_MAX = 12;
+const CALIBRATION_SUBMIT_DELAY_MS = 800;
 const CALIBRATION_PLACEMENTS: CalibrationPlacement[] = ["beginner", "intermediate", "advanced"];
 
 const CALIBRATION_ANALYTICS_STEPS: Partial<Record<CalibrationPhase, {
@@ -62,6 +63,8 @@ export function CalibrationScreen() {
   const completedStepIdsRef = useRef(new Set<string>());
   const completedEventFiredRef = useRef(false);
   const calibrationAttemptIdRef = useRef<string | null>(null);
+  const submitDelayTimerRef = useRef<number | null>(null);
+  const [isSubmittingFinalStep, setIsSubmittingFinalStep] = useState(false);
 
   function createCurrentCalibrationAttemptId() {
     calibrationAttemptIdRef.current ??= createCalibrationAttemptId();
@@ -156,6 +159,12 @@ export function CalibrationScreen() {
     navigate(`/practice?difficulty=${completion.placement}`, { replace: true });
   }, [navigate, state.storage]);
 
+  useEffect(() => () => {
+    if (submitDelayTimerRef.current !== null) {
+      window.clearTimeout(submitDelayTimerRef.current);
+    }
+  }, []);
+
   async function syncCalibrationCompletion(nextPlacement: CalibrationPlacement, nextResults: CalibrationScoringInput) {
     const completion = createCalibrationCompletionRecord(nextPlacement);
 
@@ -187,9 +196,9 @@ export function CalibrationScreen() {
     }
   }
 
-  function handleContinue() {
+  function completeCurrentPhase(completedAt?: number) {
     const completedPhase = phase;
-    const completion = calibrationFlow.continueCurrentPhase();
+    const completion = calibrationFlow.continueCurrentPhase(completedAt);
     if (completedPhase === "build-a-gas") {
       const buildAGasResult = {
         selectedValues: calibrationFlow.buildAGasSelection,
@@ -219,6 +228,21 @@ export function CalibrationScreen() {
       trackCalibrationCompleted(completion.placement, completion.results);
       void syncCalibrationCompletion(completion.placement, completion.results);
     }
+  }
+
+  function handleContinue() {
+    completeCurrentPhase();
+  }
+
+  function handleFinalSubmit() {
+    if (isSubmittingFinalStep || !canUseContinueCta) return;
+
+    const submittedAt = Date.now();
+    setIsSubmittingFinalStep(true);
+    submitDelayTimerRef.current = window.setTimeout(() => {
+      submitDelayTimerRef.current = null;
+      completeCurrentPhase(submittedAt);
+    }, CALIBRATION_SUBMIT_DELAY_MS);
   }
 
   function handleStartDifficulty(difficulty: string) {
@@ -285,6 +309,7 @@ export function CalibrationScreen() {
     if (phase === "mixed-process-challenge") {
       return (
         <MixedProcessCalibrationStep
+          disabled={isSubmittingFinalStep}
           onCanContinueChange={calibrationFlow.setCanContinueCurrentStep}
           onSelectionChange={calibrationFlow.setFinalDiagnosisSelection}
         />
@@ -309,10 +334,19 @@ export function CalibrationScreen() {
               <button
                 className="figma-button calibration-screen__button"
                 type="button"
-                disabled={!canUseContinueCta}
-                onClick={handleContinue}
+                disabled={!canUseContinueCta || isSubmittingFinalStep}
+                onClick={phase === "mixed-process-challenge" ? handleFinalSubmit : handleContinue}
               >
-                Continue
+                {phase === "mixed-process-challenge" && isSubmittingFinalStep ? (
+                  <>
+                    <span className="figma-button__spinner" aria-hidden="true" />
+                    <span>Submitting</span>
+                  </>
+                ) : phase === "mixed-process-challenge" ? (
+                  "Submit"
+                ) : (
+                  "Continue"
+                )}
               </button>
             ) : null}
           </div>

@@ -179,11 +179,25 @@ describe("CalibrationScreen", () => {
     clickButton("Continue");
     expect(container.textContent).toContain("Almost There");
     expect(container.textContent).toContain("Use the values below to choose the best answer");
-    expect(getButton("Continue").disabled).toBe(true);
+    expect(getButton("Submit").disabled).toBe(true);
 
     clickButton("Raised anion gap metabolic acidosis");
-    expect(getButton("Continue").disabled).toBe(false);
-    clickButton("Continue");
+    expect(getButton("Submit").disabled).toBe(false);
+    clickButton("Submit");
+    expect(getButton("Submitting").disabled).toBe(true);
+    expect(container.querySelector(".figma-button__spinner")).toBeTruthy();
+    expect(container.textContent).toContain("Almost There");
+    expect(container.querySelectorAll(".calibration-compensation__option:disabled")).toHaveLength(4);
+
+    act(() => {
+      vi.advanceTimersByTime(799);
+    });
+    expect(container.textContent).toContain("Almost There");
+    expect(container.textContent).not.toContain("ANALYSING SAMPLE");
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
     expect(container.textContent).toContain("ABG Master");
     expect(container.textContent).not.toContain("4 of 4");
 
@@ -210,7 +224,15 @@ describe("CalibrationScreen", () => {
     clickButton("Appropriate compensation");
     clickButton("Continue");
     clickButton("Raised anion gap metabolic acidosis");
-    clickButton("Continue");
+    clickButton("Submit");
+
+    expect(container.textContent).toContain("Almost There");
+    expect(container.textContent).toContain("Submitting");
+    expect(container.textContent).not.toContain("ANALYSING SAMPLE");
+
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
 
     expect(container.textContent).toContain("ABG Master");
     expect(container.textContent).toContain("ANALYSING SAMPLE");
@@ -309,7 +331,10 @@ describe("CalibrationScreen", () => {
     clickButton("Appropriate compensation");
     clickButton("Continue");
     clickButton("Raised anion gap metabolic acidosis");
-    clickButton("Continue");
+    clickButton("Submit");
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
     act(() => {
       vi.advanceTimersByTime(20000);
     });
@@ -329,7 +354,10 @@ describe("CalibrationScreen", () => {
     clickButton("Appropriate compensation");
     clickButton("Continue");
     clickButton("Raised anion gap metabolic acidosis");
-    clickButton("Continue");
+    clickButton("Submit");
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
     act(() => {
       vi.advanceTimersByTime(20000);
     });
@@ -378,7 +406,14 @@ describe("CalibrationScreen", () => {
       vi.advanceTimersByTime(34000);
     });
     clickButton("Raised anion gap metabolic acidosis");
-    clickButton("Continue");
+    clickButton("Submit");
+    clickButton("Submitting");
+
+    expect(analytics.trackEvent.mock.calls.filter(([name]) => name === "calibration_completed")).toHaveLength(0);
+
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
 
     const events = analytics.trackEvent.mock.calls;
     const startedEvents = events.filter(([name]) => name === "calibration_started");
