@@ -83,12 +83,14 @@ describe("LandingScreen", () => {
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn()
     })));
-    vi.stubGlobal("IntersectionObserver", vi.fn().mockImplementation(() => ({
-      observe: vi.fn(),
-      unobserve: vi.fn(),
-      disconnect: vi.fn(),
-      takeRecords: vi.fn(() => [])
-    })));
+    class IntersectionObserverMock {
+      observe = vi.fn();
+      unobserve = vi.fn();
+      disconnect = vi.fn();
+      takeRecords = vi.fn(() => []);
+    }
+
+    vi.stubGlobal("IntersectionObserver", IntersectionObserverMock);
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       const timeoutId = window.setTimeout(() => {
         animationTime += 1000;
