@@ -598,7 +598,7 @@ export function BloodGasBlitzGame({
         </div>
 
         <span className="speed-check__prompt">{config.prompt}</span>
-        <strong>{question.value}</strong>
+        <strong>{question.value.toFixed(2)}</strong>
         <p>{config.rangeLabel}</p>
         <div
           className={cn(

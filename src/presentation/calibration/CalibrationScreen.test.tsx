@@ -38,6 +38,13 @@ const analytics = vi.hoisted(() => ({
 const saveLocalCalibrationCompletion = vi.hoisted(() => vi.fn(async () => undefined));
 const skipCalibrationOnboarding = vi.hoisted(() => vi.fn(async () => undefined));
 const setUserState = vi.hoisted(() => vi.fn(async () => undefined));
+const calibrationState = vi.hoisted(() => ({
+  localCompletion: null as null | { completed: true; placement: "beginner" | "intermediate" | "advanced"; version: number },
+  remoteCompletion: null,
+  remoteStatus: "unavailable" as "loading" | "loaded" | "absent" | "unavailable",
+  effectiveCompletion: null as null | { completed: true; placement: "beginner" | "intermediate" | "advanced"; version: number },
+  completionSource: "none" as "remote" | "local" | "none"
+}));
 
 vi.mock("../../app/AppProvider", () => ({
   useAppContext: () => ({
@@ -61,13 +68,7 @@ vi.mock("../../app/AppProvider", () => ({
         lastCaseSummary: null,
         pendingSubmission: null
       },
-      calibrationState: {
-        localCompletion: null,
-        remoteCompletion: null,
-        remoteStatus: "unavailable",
-        effectiveCompletion: null,
-        completionSource: "none"
-      }
+      calibrationState
     },
     setUserState,
     saveLocalCalibrationCompletion,
@@ -124,6 +125,11 @@ describe("CalibrationScreen", () => {
     storageAdapter.saveAppAreaVisited.mockClear();
     saveLocalCalibrationCompletion.mockClear();
     skipCalibrationOnboarding.mockClear();
+    calibrationState.localCompletion = null;
+    calibrationState.remoteCompletion = null;
+    calibrationState.remoteStatus = "unavailable";
+    calibrationState.effectiveCompletion = null;
+    calibrationState.completionSource = "none";
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -295,6 +301,40 @@ describe("CalibrationScreen", () => {
     expect(container.textContent).toContain("Start advanced");
   });
 
+  it("does not redirect when the current session persists its calibration completion", () => {
+    vi.useFakeTimers();
+    renderScreen();
+
+    clickButton("Mock finish blitz");
+    completeBuildAGasStep();
+    clickButton("Continue");
+    clickButton("Appropriate compensation");
+    clickButton("Continue");
+    clickButton("Raised anion gap metabolic acidosis");
+    clickButton("Submit");
+
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(container.textContent).toContain("ANALYSING SAMPLE");
+
+    const completion = { completed: true as const, placement: "advanced" as const, version: 1 };
+    calibrationState.localCompletion = completion;
+    calibrationState.effectiveCompletion = completion;
+    calibrationState.completionSource = "local";
+    renderScreen();
+
+    expect(container.textContent).toContain("ANALYSING SAMPLE");
+    expect(container.textContent).not.toContain("Practice route");
+
+    act(() => {
+      vi.advanceTimersByTime(20000);
+    });
+    expect(container.textContent).toContain("Calibration complete");
+    expect(container.textContent).toContain("Start advanced");
+    expect(container.textContent).not.toContain("Practice route");
+  });
+
   it("shows the Build a Gas metabolic acidosis scaffold", () => {
     renderScreen();
 
@@ -417,6 +457,17 @@ describe("CalibrationScreen", () => {
 
     expect(container.textContent).toContain("Blood Gas Blitz");
     expect(container.textContent).toContain("Mock Blood Gas Blitz Game");
+  });
+
+  it("still redirects users who enter calibration with an existing completion", () => {
+    const completion = { completed: true as const, placement: "beginner" as const, version: 1 };
+    calibrationState.localCompletion = completion;
+    calibrationState.effectiveCompletion = completion;
+    calibrationState.completionSource = "local";
+
+    renderScreen();
+
+    expect(container.textContent).toContain("Practice route ?difficulty=beginner");
   });
 
   it("tracks calibration analytics milestones once with a shared attempt id", () => {
@@ -549,17 +600,39 @@ describe("CalibrationScreen", () => {
   });
 
   it("persists Skip locally before opening Beginner Practice", async () => {
+    let resolveSkip: (() => void) | null = null;
+    skipCalibrationOnboarding.mockImplementationOnce(() => new Promise<undefined>((resolve) => {
+      resolveSkip = () => resolve(undefined);
+    }));
     storageAdapter.loadPracticeIntroSeen.mockReturnValue(false);
     storageAdapter.loadAppAreaVisited.mockReturnValue(false);
     renderScreen();
 
     const skipButton = getButton("Skip and start at Beginner");
-    await act(async () => {
+    act(() => {
       skipButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      await Promise.resolve();
     });
 
     expect(skipCalibrationOnboarding).toHaveBeenCalledTimes(1);
+    expect(analytics.trackEvent).not.toHaveBeenCalledWith("calibration_skipped", expect.anything());
+    expect(container.textContent).not.toContain("Practice route");
+
+    await act(async () => {
+      resolveSkip?.();
+      await Promise.resolve();
+    });
+
+    expect(analytics.trackEvent.mock.calls.filter(([name]) => name === "calibration_skipped")).toEqual([
+      [
+        "calibration_skipped",
+        {
+          version: "1",
+          placement_version: "1",
+          destination_difficulty: "beginner"
+        }
+      ]
+    ]);
+    expect(analytics.trackEvent).not.toHaveBeenCalledWith("calibration_started", expect.anything());
     expect(container.textContent).toContain("Practice route ?difficulty=beginner");
   });
 });

@@ -111,6 +111,15 @@ describe("BloodGasBlitzGame", () => {
     expect(onXpAwarded).toHaveBeenCalledWith(3);
   });
 
+  it("displays pH values with two decimal places", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    renderGame();
+
+    startGame();
+
+    expect(container.querySelector(".speed-check__question strong")?.textContent).toBe("7.20");
+  });
+
   it("completes all questions and calls continue on the results screen", () => {
     const { onComplete } = renderGame();
 
@@ -219,10 +228,18 @@ describe("BloodGasBlitzGame", () => {
 
   it("keeps pH v1 playable and CO2 v1 planned-only", () => {
     const questions = generateBloodGasBlitzQuestions("ph-classification-v1");
+    const config = getPlayableBloodGasBlitzConfig("ph-classification-v1");
 
     expect(questions).toHaveLength(10);
+    expect(new Set(questions.map(question => question.value)).size).toBe(questions.length);
     expect(new Set(questions.map(question => question.expectedAnswer))).toEqual(new Set(["Acidaemia", "Normal", "Alkalaemia"]));
-    expect(getPlayableBloodGasBlitzConfig("ph-classification-v1").status).toBe("playable");
+    questions.forEach(question => {
+      const range = config.ranges[question.expectedAnswer];
+      expect(question.value).toBeGreaterThanOrEqual(range.min);
+      expect(question.value).toBeLessThanOrEqual(range.max);
+      expect(Number.isInteger(question.value * 100)).toBe(true);
+    });
+    expect(config.status).toBe("playable");
     expect(bloodGasBlitzVersions["co2-classification-v1"]).toMatchObject({ status: "planned" });
   });
 });

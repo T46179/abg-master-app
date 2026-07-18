@@ -70,6 +70,7 @@ export function CalibrationScreen() {
   const startedEventFiredRef = useRef(false);
   const completedStepIdsRef = useRef(new Set<string>());
   const completedEventFiredRef = useRef(false);
+  const completionCreatedThisSessionRef = useRef(false);
   const calibrationAttemptIdRef = useRef<string | null>(null);
   const submitDelayTimerRef = useRef<number | null>(null);
   const [isSubmittingFinalStep, setIsSubmittingFinalStep] = useState(false);
@@ -163,7 +164,7 @@ export function CalibrationScreen() {
 
   useEffect(() => {
     const completion = state.calibrationState.effectiveCompletion;
-    if (!completion) return;
+    if (!completion || completionCreatedThisSessionRef.current) return;
     navigate(`/practice?difficulty=${completion.placement}`, { replace: true });
   }, [navigate, state.calibrationState.effectiveCompletion]);
 
@@ -252,6 +253,7 @@ export function CalibrationScreen() {
     }
 
     if (completion) {
+      completionCreatedThisSessionRef.current = true;
       trackCalibrationCompleted(completion.placement, completion.results);
       void syncCalibrationCompletion(completion.placement, completion.results);
     }
@@ -288,6 +290,11 @@ export function CalibrationScreen() {
     state.storage?.savePracticeIntroSeen(true);
     state.storage?.saveAppAreaVisited(true);
     await skipCalibrationOnboarding();
+    trackEvent("calibration_skipped", {
+      version: CALIBRATION_ANALYTICS_VERSION,
+      placement_version: String(CALIBRATION_COMPLETION_VERSION),
+      destination_difficulty: "beginner"
+    });
     navigate("/practice?difficulty=beginner", { replace: true });
   }
 

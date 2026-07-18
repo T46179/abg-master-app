@@ -8,7 +8,7 @@ const CALIBRATION_INTRO_COPY = {
   eyebrow: "Welcome to ABG Master!",
   title: "Let's find your starting level",
   bodyLead: "Four short challenges. Two minutes.",
-  bodyDetail: "We'll estimate where you should begin so practice feels right — not too easy, not too hard.",
+  bodyDetail: "We'll estimate where you should begin so practice feels right.",
   cta: "Begin Calibration",
   skip: "Skip and start at Beginner"
 } as const;

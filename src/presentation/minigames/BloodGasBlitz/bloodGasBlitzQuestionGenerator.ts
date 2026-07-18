@@ -2,9 +2,26 @@ import type { BloodGasBlitzQuestion } from "./bloodGasBlitzTypes";
 import { getPlayableBloodGasBlitzConfig } from "./bloodGasBlitzConfig";
 import type { BloodGasBlitzPlayableVersionId } from "./bloodGasBlitzTypes";
 
-function randomValueInRange(range: { min: number; max: number }) {
-  const value = range.min + Math.random() * (range.max - range.min);
-  return Number(value.toFixed(2));
+function randomUniqueValueInRange(range: { min: number; max: number }, usedHundredths: Set<number>) {
+  const minHundredths = Math.ceil(range.min * 100 - 1e-9);
+  const maxHundredths = Math.floor(range.max * 100 + 1e-9);
+  const availableHundredths: number[] = [];
+
+  for (let value = minHundredths; value <= maxHundredths; value += 1) {
+    if (!usedHundredths.has(value)) {
+      availableHundredths.push(value);
+    }
+  }
+
+  if (!availableHundredths.length) {
+    throw new Error(
+      `Blood Gas Blitz cannot generate another unique value in the configured range ${range.min.toFixed(2)}-${range.max.toFixed(2)}.`
+    );
+  }
+
+  const selectedHundredths = availableHundredths[Math.floor(Math.random() * availableHundredths.length)];
+  usedHundredths.add(selectedHundredths);
+  return selectedHundredths / 100;
 }
 
 function shuffleQuestions(questions: BloodGasBlitzQuestion[]) {
@@ -20,11 +37,12 @@ function shuffleQuestions(questions: BloodGasBlitzQuestion[]) {
 
 export function generateBloodGasBlitzQuestions(versionId: BloodGasBlitzPlayableVersionId = "ph-classification-v1"): BloodGasBlitzQuestion[] {
   const config = getPlayableBloodGasBlitzConfig(versionId);
+  const usedHundredths = new Set<number>();
 
   return shuffleQuestions(
     config.pattern.slice(0, config.questionCount).map((expectedAnswer, index) => ({
       id: `${config.versionId}-q${index + 1}-${expectedAnswer.toLowerCase()}`,
-      value: randomValueInRange(config.ranges[expectedAnswer]),
+      value: randomUniqueValueInRange(config.ranges[expectedAnswer], usedHundredths),
       expectedAnswer
     }))
   );
