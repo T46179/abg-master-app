@@ -65,6 +65,18 @@ vi.mock("../../app/AppProvider", () => ({
   })
 }));
 
+vi.mock("../../app/useFeaturedCaseStatus", () => ({
+  useFeaturedCaseStatus: () => ({
+    loading: false,
+    status: {
+      state: "completed",
+      releaseId: "featured-authored-001-r1",
+      ctaEligible: false,
+      opened: true
+    }
+  })
+}));
+
 describe("DashboardScreen", () => {
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
@@ -145,6 +157,39 @@ describe("DashboardScreen", () => {
       .find(link => link.textContent?.includes("Resume Practice"));
 
     expect(nextCaseLink?.getAttribute("href")).toBe("/practice?difficulty=advanced");
+  });
+
+  it("uses the same arrow asset for Resume Practice and Featured Case", () => {
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <DashboardScreen />
+        </MemoryRouter>
+      );
+    });
+
+    const links = Array.from(container.querySelectorAll<HTMLAnchorElement>("a.dashboard-resume-button"));
+    const resumeLink = links.find(link => link.textContent?.includes("Resume Practice"));
+    const featuredLink = links.find(link => link.textContent?.includes("Retry Featured Case"));
+
+    expect(featuredLink?.querySelector("img")?.getAttribute("src"))
+      .toBe(resumeLink?.querySelector("img")?.getAttribute("src"));
+    expect(featuredLink?.querySelector("svg")).toBeNull();
+  });
+
+  it("styles the completed Featured Case status with its completed modifier", () => {
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <DashboardScreen />
+        </MemoryRouter>
+      );
+    });
+
+    const status = container.querySelector(".dashboard-coming-soon");
+
+    expect(status?.textContent?.trim()).toBe("Completed");
+    expect(status?.classList.contains("is-completed")).toBe(true);
   });
 
   it("shows live progress values and recent step accuracy", () => {

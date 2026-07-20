@@ -1,6 +1,5 @@
 import {
   Activity,
-  ArrowRight,
   FileText,
   Flame,
   Lightbulb,
@@ -133,7 +132,13 @@ export function DashboardScreen() {
                 <div className="dashboard-featured-card__eyebrow">
                   <span className="dashboard-eyebrow">Featured Case</span>
                 </div>
-                <span className="dashboard-coming-soon">
+                <span
+                  className={`dashboard-coming-soon${
+                    !featured.loading && featured.status.state === "completed"
+                      ? " is-completed"
+                      : ""
+                  }`}
+                >
                   {featured.loading
                     ? "Checking"
                     : featured.status.state === "in_progress"
@@ -146,7 +151,7 @@ export function DashboardScreen() {
                 </span>
               </div>
               <h2>Hand-picked cases</h2>
-              <p>A curated rotation of clinically rich gases, annotated with reasoning notes and regularly refreshed.</p>
+              <p>Discover hand-picked cases with deeper reasoning, complex physiology and exam-style questions.</p>
               <div className="dashboard-featured-card__previews">
                 {featuredCasePreviews.map(({ icon: Icon, label }) => (
                   <div key={label}>
@@ -172,7 +177,7 @@ export function DashboardScreen() {
                         ? "Retry Featured Case"
                         : "Start Featured Case"}
                     </span>
-                    <ArrowRight aria-hidden="true" />
+                    <img src={arrowRightIconUrl} alt="" aria-hidden="true" />
                   </Link>
                 )}
               </div>

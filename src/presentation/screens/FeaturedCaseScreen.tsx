@@ -6,8 +6,10 @@ import {
   confirmFeaturedCaseOpen,
   FEATURED_CASE_DRAFT_VERSION,
   loadFeaturedCaseDraft,
+  loadFeaturedCaseIntroSeen,
   prepareFeaturedCase,
   saveFeaturedCaseDraft,
+  saveFeaturedCaseIntroSeen,
   submitFeaturedCase
 } from "../../core/featuredCase";
 import { isProtectedPracticeError } from "../../core/protectedPractice";
@@ -27,6 +29,7 @@ import type {
   StepResult
 } from "../../core/types";
 import { ActivePracticeCase } from "../practice/ActivePracticeCase";
+import { FeaturedCaseIntroModal } from "../practice/FeaturedCaseIntroModal";
 import { ResultsSummaryCard, ResultsSummaryHeader } from "../practice/ResultsSummaryCard";
 import { Surface } from "../primitives/Surface";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
@@ -44,6 +47,10 @@ export function FeaturedCaseScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasSeenFeaturedIntro, setHasSeenFeaturedIntro] = useState(
+    () => loadFeaturedCaseIntroSeen(window.localStorage)
+  );
+  const [focusCaseAfterIntro, setFocusCaseAfterIntro] = useState(false);
   const [showAdvancedRanges, setShowAdvancedRanges] = useState(
     () => state.storage?.loadAdvancedRangesPreference() ?? false
   );
@@ -52,13 +59,26 @@ export function FeaturedCaseScreen() {
 
   useEffect(() => {
     if (state.status !== "ready") return;
-    if (!state.runtimeConfig || !state.supabase || !state.payload?.featuredRelease?.releaseId) {
+    if (!state.runtimeConfig || !state.payload?.featuredRelease?.releaseId) {
       setError("There is no current Featured Case.");
       setLoading(false);
       return;
     }
 
+    if (!state.supabase) {
+      if (state.supabaseEnabled && !state.syncUnavailable) {
+        setError(null);
+        setLoading(true);
+        return;
+      }
+
+      setError("Cloud access is unavailable. Please refresh and try again.");
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
+    setError(null);
     setLoading(true);
     prepareFeaturedCase(state.runtimeConfig, state.supabase)
       .then(async result => {
@@ -76,6 +96,7 @@ export function FeaturedCaseScreen() {
         setStepResults(draft?.stepResults ?? []);
         setCurrentStepIndex(Math.min(maxStepIndex, Math.max(0, draft?.currentStepIndex ?? 0)));
         caseStartRef.current = Date.now();
+        setError(null);
         setLoading(false);
 
         await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
@@ -97,6 +118,8 @@ export function FeaturedCaseScreen() {
     state.runtimeConfig,
     state.status,
     state.supabase,
+    state.supabaseEnabled,
+    state.syncUnavailable,
     state.userId
   ]);
 
@@ -123,6 +146,15 @@ export function FeaturedCaseScreen() {
     summary
   ]);
 
+  useEffect(() => {
+    if (!focusCaseAfterIntro || !hasSeenFeaturedIntro) return;
+    const frameId = window.requestAnimationFrame(() => {
+      activeStepRef.current?.focus();
+      setFocusCaseAfterIntro(false);
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [focusCaseAfterIntro, hasSeenFeaturedIntro]);
+
   const questions = caseItem?.questions_flow ?? [];
   const currentStep = questions[currentStepIndex] ?? null;
   const allowsClientSideFeedback = canUseClientSidePracticeFeedback(caseItem);
@@ -138,6 +170,13 @@ export function FeaturedCaseScreen() {
   const showAbnormalHighlighting = Number(caseItem?.difficulty_level ?? 1) <= 3;
   const showSummaryReferences = Boolean(
     summary && shouldShowMetricReferences(summary.caseData, showAdvancedRanges)
+  );
+  const showFeaturedIntro = Boolean(
+    caseItem &&
+    caseToken &&
+    releaseId &&
+    !summary &&
+    !hasSeenFeaturedIntro
   );
 
   function updateSelection(chosen: AnswerValue): AnswerSelection[] {
@@ -307,6 +346,12 @@ export function FeaturedCaseScreen() {
     void finishCase();
   }
 
+  function handleBeginFeaturedCase() {
+    saveFeaturedCaseIntroSeen(window.localStorage);
+    setHasSeenFeaturedIntro(true);
+    setFocusCaseAfterIntro(true);
+  }
+
   if (state.status === "idle" || state.status === "loading" || loading) return <LoadingView />;
   if (state.status === "error") return <ErrorView message={state.errorMessage} />;
   if (!caseItem || !caseToken || !releaseId) {
@@ -348,34 +393,44 @@ export function FeaturedCaseScreen() {
   }
 
   return (
-    <main className="app-shell__page practice-screen">
-      <div className="practice-screen__container">
-        {error ? <Surface className="practice-alert-card">{error}</Surface> : null}
-        <ActivePracticeCase
-          caseItem={caseItem}
-          questions={questions}
-          currentStepIndex={currentStepIndex}
-          currentStep={currentStep}
-          currentSelection={currentSelection}
-          currentResult={currentResult}
-          currentOptions={currentOptions}
-          selectedAnswers={allowsClientSideFeedback ? [] : selectedAnswers}
-          stepResults={stepResults}
-          showAdvancedRanges={showAdvancedRanges}
-          showAbnormalHighlighting={showAbnormalHighlighting}
-          onToggleAdvancedRanges={() => {
-            const next = !showAdvancedRanges;
-            setShowAdvancedRanges(next);
-            state.storage?.saveAdvancedRangesPreference(next);
-          }}
-          onAnswer={handleAnswer}
-          onContinueStep={handleContinueStep}
-          activeStepRef={activeStepRef}
-          interactionDisabled={submitting}
-          isSubmittingCase={submitting}
-          lastStepButtonLabel="Submit Featured Case"
-        />
-      </div>
-    </main>
+    <>
+      <FeaturedCaseIntroModal
+        open={showFeaturedIntro}
+        onBegin={handleBeginFeaturedCase}
+      />
+      <main
+        className="app-shell__page practice-screen"
+        aria-hidden={showFeaturedIntro || undefined}
+        inert={showFeaturedIntro || undefined}
+      >
+        <div className="practice-screen__container">
+          {error ? <Surface className="practice-alert-card">{error}</Surface> : null}
+          <ActivePracticeCase
+            caseItem={caseItem}
+            questions={questions}
+            currentStepIndex={currentStepIndex}
+            currentStep={currentStep}
+            currentSelection={currentSelection}
+            currentResult={currentResult}
+            currentOptions={currentOptions}
+            selectedAnswers={allowsClientSideFeedback ? [] : selectedAnswers}
+            stepResults={stepResults}
+            showAdvancedRanges={showAdvancedRanges}
+            showAbnormalHighlighting={showAbnormalHighlighting}
+            onToggleAdvancedRanges={() => {
+              const next = !showAdvancedRanges;
+              setShowAdvancedRanges(next);
+              state.storage?.saveAdvancedRangesPreference(next);
+            }}
+            onAnswer={handleAnswer}
+            onContinueStep={handleContinueStep}
+            activeStepRef={activeStepRef}
+            interactionDisabled={submitting}
+            isSubmittingCase={submitting}
+            lastStepButtonLabel="Submit Featured Case"
+          />
+        </div>
+      </main>
+    </>
   );
 }

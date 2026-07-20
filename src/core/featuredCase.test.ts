@@ -4,8 +4,11 @@ import {
   clearFeaturedCaseDraft,
   FEATURED_CASE_DRAFT_STORAGE_KEY,
   FEATURED_CASE_DRAFT_VERSION,
+  FEATURED_CASE_INTRO_SEEN_STORAGE_KEY,
   loadFeaturedCaseDraft,
-  saveFeaturedCaseDraft
+  loadFeaturedCaseIntroSeen,
+  saveFeaturedCaseDraft,
+  saveFeaturedCaseIntroSeen
 } from "./featuredCase";
 
 describe("Featured Case draft storage", () => {
@@ -65,5 +68,15 @@ describe("Featured Case draft storage", () => {
     storage.setItem(FEATURED_CASE_DRAFT_STORAGE_KEY, "{}");
     clearFeaturedCaseDraft(storage);
     expect(storage.getItem(FEATURED_CASE_DRAFT_STORAGE_KEY)).toBeNull();
+  });
+
+  it("persists one release-independent Featured introduction acknowledgement", () => {
+    const storage = createMemoryStorage();
+
+    expect(loadFeaturedCaseIntroSeen(storage)).toBe(false);
+    saveFeaturedCaseIntroSeen(storage);
+
+    expect(storage.getItem(FEATURED_CASE_INTRO_SEEN_STORAGE_KEY)).toBe("true");
+    expect(loadFeaturedCaseIntroSeen(storage)).toBe(true);
   });
 });

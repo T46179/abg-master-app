@@ -1747,6 +1747,11 @@ button:disabled {
   white-space: nowrap;
 }
 
+.dashboard-coming-soon.is-completed {
+  background: var(--color-green-soft);
+  color: var(--color-green);
+}
+
 .dashboard-featured-card h2,
 .dashboard-section-heading h2 {
   font-size: 1.2rem;

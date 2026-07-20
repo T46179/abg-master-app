@@ -11,6 +11,7 @@ import type {
 } from "./types";
 
 export const FEATURED_CASE_DRAFT_STORAGE_KEY = "abgmaster_featuredCaseDraft";
+export const FEATURED_CASE_INTRO_SEEN_STORAGE_KEY = "abgmaster_featuredCaseIntroSeen";
 export const FEATURED_CASE_DRAFT_VERSION = 2;
 
 export interface FeaturedCaseDraft {
@@ -154,4 +155,20 @@ export function saveFeaturedCaseDraft(
 
 export function clearFeaturedCaseDraft(storage: Pick<Storage, "removeItem">): void {
   storage.removeItem(FEATURED_CASE_DRAFT_STORAGE_KEY);
+}
+
+export function loadFeaturedCaseIntroSeen(storage: Pick<Storage, "getItem">): boolean {
+  try {
+    return storage.getItem(FEATURED_CASE_INTRO_SEEN_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function saveFeaturedCaseIntroSeen(storage: Pick<Storage, "setItem">): void {
+  try {
+    storage.setItem(FEATURED_CASE_INTRO_SEEN_STORAGE_KEY, "true");
+  } catch {
+    // Keep the current session usable when browser storage is unavailable.
+  }
 }

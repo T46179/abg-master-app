@@ -6,7 +6,8 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   FEATURED_CASE_DRAFT_STORAGE_KEY,
-  FEATURED_CASE_DRAFT_VERSION
+  FEATURED_CASE_DRAFT_VERSION,
+  FEATURED_CASE_INTRO_SEEN_STORAGE_KEY
 } from "../../core/featuredCase";
 import { getQuestionFlowStepStatus } from "../../core/practice";
 import type { AnswerSelection, CaseData, CaseSummary, StepResult } from "../../core/types";
@@ -24,12 +25,14 @@ const state = {
   status: "ready" as const,
   errorMessage: null,
   runtimeConfig: { supabaseUrl: "https://staging.example.test" },
-  supabase: {},
+  supabase: {} as Record<string, never> | null,
+  supabaseEnabled: true,
+  syncUnavailable: false,
   userId: "user-1",
   payload: {
     featuredRelease: {
       releaseId: "featured-authored-001-r1"
-    }
+    } as { releaseId: string } | null
   },
   userState: {
     level: 1
@@ -61,7 +64,20 @@ vi.mock("../../core/metrics", () => ({
 vi.mock("../practice/ActivePracticeCase", () => ({
   ActivePracticeCase: (props: Record<string, unknown>) => {
     latestActivePracticeCaseProps = props;
-    return <div data-testid="active-featured-case" />;
+    const activeStepRef = props.activeStepRef as { current: HTMLButtonElement | null };
+    return (
+      <div data-testid="active-featured-case">
+        <button
+          ref={element => {
+            activeStepRef.current = element;
+          }}
+          className="active-featured-step"
+          type="button"
+        >
+          First question
+        </button>
+      </div>
+    );
   }
 }));
 
@@ -183,6 +199,12 @@ describe("FeaturedCaseScreen grading parity", () => {
     latestActivePracticeCaseProps = null;
     latestResultsSummaryHeaderProps = null;
     latestResultsSummaryCardProps = null;
+    state.supabase = {};
+    state.supabaseEnabled = true;
+    state.syncUnavailable = false;
+    state.payload.featuredRelease = {
+      releaseId: "featured-authored-001-r1"
+    };
     prepareFeaturedCase.mockReset();
     confirmFeaturedCaseOpen.mockReset();
     submitFeaturedCase.mockReset();
@@ -243,6 +265,120 @@ describe("FeaturedCaseScreen grading parity", () => {
       onContinueStep: () => void;
     };
   }
+
+  it("shows an accessible blocking introduction after loading and persists only on Begin", async () => {
+    const caseItem = makeCase();
+    await renderFeatured(caseItem);
+
+    const dialog = container.querySelector<HTMLElement>("[role='dialog']");
+    const beginButton = Array.from(container.querySelectorAll("button"))
+      .find(button => button.textContent === "Begin") ?? null;
+    const caseMain = container.querySelector<HTMLElement>("main.practice-screen");
+    const activeStep = container.querySelector<HTMLButtonElement>(".active-featured-step");
+    const backdrop = container.querySelector<HTMLElement>(".modal-backdrop");
+
+    expect(dialog).not.toBeNull();
+    expect(dialog?.getAttribute("aria-modal")).toBe("true");
+    expect(dialog?.getAttribute("aria-labelledby")).toBeTruthy();
+    expect(dialog?.getAttribute("aria-describedby")).toBeTruthy();
+    expect(document.getElementById(dialog?.getAttribute("aria-labelledby") ?? "")?.textContent)
+      .toBe("Welcome to Featured Cases");
+    expect(document.getElementById(dialog?.getAttribute("aria-describedby") ?? "")?.textContent)
+      .toContain("Featured Cases showcases some of ABG Master’s most complex interpretations.");
+    expect(container.textContent).toContain("No reference ranges or abnormal-value highlighting");
+    expect(container.textContent).toContain("Oxygenation cases");
+    expect(container.textContent).toContain("Exam-style questions");
+    expect(caseMain?.hasAttribute("inert")).toBe(true);
+    expect(caseMain?.getAttribute("aria-hidden")).toBe("true");
+    expect(document.activeElement).toBe(beginButton);
+    expect(window.localStorage.getItem(FEATURED_CASE_INTRO_SEEN_STORAGE_KEY)).toBeNull();
+
+    activeStep?.focus();
+    expect(document.activeElement).toBe(beginButton);
+
+    beginButton?.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true
+    }));
+    expect(document.activeElement).toBe(beginButton);
+
+    beginButton?.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true
+    }));
+    backdrop?.click();
+    expect(container.querySelector("[role='dialog']")).not.toBeNull();
+    expect(window.localStorage.getItem(FEATURED_CASE_INTRO_SEEN_STORAGE_KEY)).toBeNull();
+
+    await act(async () => {
+      beginButton?.click();
+    });
+
+    expect(container.querySelector("[role='dialog']")).toBeNull();
+    expect(caseMain?.hasAttribute("inert")).toBe(false);
+    expect(caseMain?.hasAttribute("aria-hidden")).toBe(false);
+    expect(window.localStorage.getItem(FEATURED_CASE_INTRO_SEEN_STORAGE_KEY)).toBe("true");
+    expect(document.activeElement).toBe(activeStep);
+  });
+
+  it("does not show the introduction again after it has been acknowledged", async () => {
+    window.localStorage.setItem(FEATURED_CASE_INTRO_SEEN_STORAGE_KEY, "true");
+
+    await renderFeatured(makeCase());
+
+    expect(container.querySelector("[role='dialog']")).toBeNull();
+    expect(container.querySelector("main.practice-screen")?.hasAttribute("inert")).toBe(false);
+  });
+
+  it("keeps showing Loading cases while cloud authentication initializes", async () => {
+    const caseItem = makeCase();
+    state.supabase = null;
+    await renderFeatured(caseItem);
+
+    expect(container.textContent).toContain("Loading cases");
+    expect(container.textContent).not.toContain("Unable to start ABG Master");
+    expect(container.querySelector("[role='dialog']")).toBeNull();
+    expect(prepareFeaturedCase).not.toHaveBeenCalled();
+
+    state.supabase = {};
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <FeaturedCaseScreen />
+        </MemoryRouter>
+      );
+    });
+    await act(async () => {});
+
+    expect(prepareFeaturedCase).toHaveBeenCalledTimes(1);
+    expect(latestActivePracticeCaseProps).not.toBeNull();
+    expect(container.textContent).not.toContain("Unable to start ABG Master");
+  });
+
+  it("clears a stale unavailable message once the Featured Case successfully loads", async () => {
+    const caseItem = makeCase();
+    state.payload.featuredRelease = null;
+    await renderFeatured(caseItem);
+
+    expect(container.textContent).toContain("There is no current Featured Case.");
+
+    state.payload.featuredRelease = {
+      releaseId: "featured-authored-001-r1"
+    };
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <FeaturedCaseScreen />
+        </MemoryRouter>
+      );
+    });
+    await act(async () => {});
+
+    expect(latestActivePracticeCaseProps).not.toBeNull();
+    expect(container.textContent).not.toContain("There is no current Featured Case.");
+  });
 
   it("marks pH 7.20 plus Acidaemia correct and preserves parity through submission", async () => {
     const caseItem = makeCase();

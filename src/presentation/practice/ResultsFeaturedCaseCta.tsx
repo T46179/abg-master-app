@@ -23,10 +23,10 @@ export function ResultsFeaturedCaseCta() {
     <Surface className="results-pattern-tip" aria-label="Featured Case invitation">
       <Sparkles className="results-pattern-tip__icon" aria-hidden="true" />
       <div className="results-pattern-tip__copy">
-        <strong className="results-pattern-tip__label">Explore a Featured Case</strong>
-        <span>See how ABG interpretation develops when a case has more clinical layers.</span>
+        <strong className="results-pattern-tip__label">Featured Case Available!</strong>
+        <span>Up for a challenge? Try a Master-level case and see what ABG Master can do</span>
         <p>
-          <Link className="figma-link" to="/featured-case">View the current Featured Case</Link>
+          <Link className="figma-link" to="/featured-case">Try Featured Case</Link>
         </p>
       </div>
       <button

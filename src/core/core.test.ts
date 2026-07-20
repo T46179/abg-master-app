@@ -1431,6 +1431,18 @@ describe("storage adapters", () => {
     expect(reloadedStorage.loadPracticeIntroSeen()).toBe(false);
   });
 
+  it("clears the Featured introduction acknowledgement when progress resets", async () => {
+    const browserStorage = createMemoryStorage();
+    const storage = createAppStorage({ browserStorage });
+
+    await storage.init({ releaseSignature: "sig-1" });
+    browserStorage.setItem(STORAGE_KEYS.FEATURED_CASE_INTRO_SEEN_STORAGE_KEY, "true");
+
+    await storage.resetUserState();
+
+    expect(browserStorage.getItem(STORAGE_KEYS.FEATURED_CASE_INTRO_SEEN_STORAGE_KEY)).toBeNull();
+  });
+
   it("persists app area visited changes across re-init", async () => {
     const browserStorage = createMemoryStorage();
     const storage = createAppStorage({ browserStorage });
