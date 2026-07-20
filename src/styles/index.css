@@ -1708,6 +1708,14 @@ button:disabled {
   margin-bottom: 1rem;
 }
 
+.dashboard-featured-card__status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
 .dashboard-round-icon {
   display: inline-flex;
   align-items: center;
@@ -1750,6 +1758,17 @@ button:disabled {
 .dashboard-coming-soon.is-completed {
   background: var(--color-green-soft);
   color: var(--color-green);
+}
+
+.dashboard-comparison-rank {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(20, 28, 31, 0.05);
+  color: var(--color-text-muted);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .dashboard-featured-card h2,
@@ -4141,6 +4160,10 @@ a.dashboard-module-row:hover {
   justify-content: flex-start;
   gap: 0.75rem;
   margin-top: 1.3rem;
+}
+
+.featured-case-intro-modal__actions {
+  justify-content: center;
 }
 
 .learn-unlock-modal {

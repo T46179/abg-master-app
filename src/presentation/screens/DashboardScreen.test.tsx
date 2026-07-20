@@ -78,7 +78,14 @@ vi.mock("../../app/useFeaturedCaseStatus", () => ({
       state: "completed",
       releaseId: "featured-authored-001-r1",
       ctaEligible: false,
-      opened: true
+      opened: true,
+      comparison: {
+        status: "available",
+        canonicalScore: 100,
+        cohortSize: 10,
+        percentileBand: 100,
+        isTopScore: true
+      }
     }
   })
 }));
@@ -238,6 +245,24 @@ describe("DashboardScreen", () => {
 
     expect(status?.textContent?.trim()).toBe("Completed");
     expect(status?.classList.contains("is-completed")).toBe(true);
+  });
+
+  it("shows a separate neutral rank pill for a completed Featured Case", () => {
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <DashboardScreen />
+        </MemoryRouter>
+      );
+    });
+
+    const completedStatus = container.querySelector(".dashboard-coming-soon");
+    const comparisonRank = container.querySelector(".dashboard-comparison-rank");
+
+    expect(completedStatus?.textContent?.trim()).toBe("Completed");
+    expect(completedStatus?.classList.contains("is-completed")).toBe(true);
+    expect(comparisonRank?.textContent?.trim()).toBe("Top score");
+    expect(comparisonRank?.classList.contains("is-completed")).toBe(false);
   });
 
   it("shows live progress values and recent step accuracy", () => {

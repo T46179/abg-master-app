@@ -773,6 +773,38 @@ describe("ResultsSummaryCard", () => {
     expect(container.querySelector(".progress-bar__fill")).toBeNull();
   });
 
+  it("shows the server-derived Featured comparison in the summary header", () => {
+    const summary = {
+      ...buildSummary([]),
+      accuracy: 80,
+      totalXpAward: 0
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryHeader
+          mode="featured"
+          summary={summary}
+          level={1}
+          xpProgressLabel=""
+          progressValue={0}
+          featuredComparison={{
+            status: "available",
+            canonicalScore: 80,
+            cohortSize: 20,
+            percentileBand: 65,
+            isTopScore: false
+          }}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain(
+      "You scored 80%. This is higher than about 65% of people who have completed this case!"
+    );
+    expect(container.textContent).not.toContain("do not affect XP or progression");
+  });
+
   it("can label the summary header as max level", () => {
     const summary = buildSummary([]);
 

@@ -12,10 +12,12 @@ import type {
   CaseData,
   CaseSummary,
   ExplanationSection,
+  FeaturedCaseComparison,
   ResultsExplanationPreferenceKey,
   ResultsExplanationPreferences,
   StorageAdapter
 } from "../../core/types";
+import { getFeaturedComparisonSummaryCopy } from "../../core/featuredCaseComparison";
 import { formatElapsed, splitMetrics } from "../../app/viewHelpers";
 import { formatAnswerValue } from "../../core/practice";
 import { MetricInlineText, MetricLabel, MetricReference, MetricValue } from "./MetricText";
@@ -210,6 +212,8 @@ interface ResultsSummaryHeaderProps {
   xpProgressBlocked?: boolean;
   boostedXp?: boolean;
   mode?: "practice" | "featured";
+  featuredComparison?: FeaturedCaseComparison | null;
+  featuredIsReplay?: boolean;
 }
 
 export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
@@ -223,7 +227,13 @@ export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
             </span>
             <div className="results-card__hero-text">
               <h1>Featured Case complete</h1>
-              <p>You scored {props.summary.accuracy}%. Featured Cases do not affect XP or progression.</p>
+              <p>
+                {getFeaturedComparisonSummaryCopy({
+                  accuracy: props.summary.accuracy,
+                  comparison: props.featuredComparison,
+                  isReplay: Boolean(props.featuredIsReplay)
+                })}
+              </p>
             </div>
           </div>
           <CaseMetadataIcons caseItem={props.summary.caseData} />

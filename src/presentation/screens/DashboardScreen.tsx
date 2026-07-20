@@ -37,6 +37,7 @@ import {
   trackFeaturedCaseEntry,
   type FeaturedCaseEntryAction
 } from "../../core/featuredCaseAnalytics";
+import { getFeaturedComparisonRankLabel } from "../../core/featuredCaseComparison";
 import { useElementViewed } from "../primitives/useElementViewed";
 
 const featuredCasePreviews = [
@@ -62,6 +63,7 @@ export function DashboardScreen() {
   const { state } = useAppContext();
   const featured = useFeaturedCaseStatus();
   const featuredReleaseId = featured.status.releaseId;
+  const featuredComparisonRank = getFeaturedComparisonRankLabel(featured.status.comparison);
   const featuredAction: FeaturedCaseEntryAction = featured.status.state === "completed"
     ? "retry"
     : featured.status.state === "in_progress"
@@ -172,23 +174,32 @@ export function DashboardScreen() {
                 <div className="dashboard-featured-card__eyebrow">
                   <span className="dashboard-eyebrow">Featured Case</span>
                 </div>
-                <span
-                  className={`dashboard-coming-soon${
-                    !featured.loading && featured.status.state === "completed"
-                      ? " is-completed"
-                      : ""
-                  }`}
-                >
-                  {featured.loading
-                    ? "Checking"
-                    : featured.status.state === "in_progress"
-                    ? "In progress"
-                    : featured.status.state === "completed"
-                    ? "Completed"
-                    : featured.status.state === "available"
-                    ? "Available"
-                    : "Unavailable"}
-                </span>
+                <div className="dashboard-featured-card__status">
+                  <span
+                    className={`dashboard-coming-soon${
+                      !featured.loading && featured.status.state === "completed"
+                        ? " is-completed"
+                        : ""
+                    }`}
+                  >
+                    {featured.loading
+                      ? "Checking"
+                      : featured.status.state === "in_progress"
+                      ? "In progress"
+                      : featured.status.state === "completed"
+                      ? "Completed"
+                      : featured.status.state === "available"
+                      ? "Available"
+                      : "Unavailable"}
+                  </span>
+                  {!featured.loading &&
+                  featured.status.state === "completed" &&
+                  featuredComparisonRank ? (
+                    <span className="dashboard-comparison-rank">
+                      {featuredComparisonRank}
+                    </span>
+                  ) : null}
+                </div>
               </div>
               <h2>Hand-picked cases</h2>
               <p>Discover hand-picked cases with deeper reasoning, complex physiology and exam-style questions.</p>

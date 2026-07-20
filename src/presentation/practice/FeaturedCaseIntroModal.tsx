@@ -101,7 +101,7 @@ export function FeaturedCaseIntroModal(props: FeaturedCaseIntroModalProps) {
         <h2 id={titleId}>Welcome to Featured Cases</h2>
 
         <div id={descriptionId}>
-          <p>Featured Cases showcases some of ABG Master’s most complex interpretations.</p>
+          <p>Featured Cases showcase some of ABG Master’s most complex interpretations.</p>
           <p>You can unlock similar cases by reaching Master.</p>
 
           <div className="learn-unlock-modal__section">
@@ -110,13 +110,14 @@ export function FeaturedCaseIntroModal(props: FeaturedCaseIntroModalProps) {
               <li>No reference ranges or abnormal-value highlighting</li>
               <li>Oxygenation cases</li>
               <li>Exam-style questions</li>
+              <li>See how you perform against others</li>
             </ul>
           </div>
 
           <p>Featured Cases rotate periodically and do not affect your XP or progression.</p>
         </div>
 
-        <div className="modal-card__actions">
+        <div className="modal-card__actions featured-case-intro-modal__actions">
           <button
             ref={beginButtonRef}
             className="figma-button results-card__button learn-unlock-modal__button"

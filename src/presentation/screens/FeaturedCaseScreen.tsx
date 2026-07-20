@@ -36,6 +36,7 @@ import type {
   AnswerValue,
   CaseData,
   CaseSummary,
+  FeaturedCaseComparison,
   StepResult
 } from "../../core/types";
 import { ActivePracticeCase } from "../practice/ActivePracticeCase";
@@ -61,6 +62,8 @@ export function FeaturedCaseScreen() {
   const [stepResults, setStepResults] = useState<StepResult[]>([]);
   const [analyticsContext, setAnalyticsContext] = useState<FeaturedCaseAnalyticsContext | null>(null);
   const [summary, setSummary] = useState<CaseSummary | null>(null);
+  const [comparison, setComparison] = useState<FeaturedCaseComparison | null>(null);
+  const [summaryIsReplay, setSummaryIsReplay] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -368,6 +371,8 @@ export function FeaturedCaseScreen() {
       });
       clearFeaturedCaseDraft(window.localStorage);
       setSummary(result.summary);
+      setComparison(result.comparison);
+      setSummaryIsReplay(!result.isCanonical);
     } catch (caught) {
       if (
         isProtectedPracticeError(caught) &&
@@ -524,6 +529,8 @@ export function FeaturedCaseScreen() {
             level={state.userState.level}
             xpProgressLabel=""
             progressValue={0}
+            featuredComparison={comparison}
+            featuredIsReplay={summaryIsReplay}
           />
           <ResultsSummaryCard
             summary={summary}

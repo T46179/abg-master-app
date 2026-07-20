@@ -231,6 +231,14 @@ export interface FeaturedReleaseMetadata {
 
 export type FeaturedCaseAvailabilityState = "unavailable" | "available" | "in_progress" | "completed";
 
+export interface FeaturedCaseComparison {
+  status: "available" | "first_person";
+  canonicalScore: number;
+  cohortSize: number;
+  percentileBand: number | null;
+  isTopScore: boolean;
+}
+
 export interface FeaturedCaseStatus {
   releaseId: string | null;
   state: FeaturedCaseAvailabilityState;
@@ -239,6 +247,7 @@ export interface FeaturedCaseStatus {
   opened: boolean;
   completed?: boolean;
   activeSessionExpiresAt?: string | null;
+  comparison?: FeaturedCaseComparison | null;
 }
 
 export interface CasesPayload {

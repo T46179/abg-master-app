@@ -31,6 +31,44 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function assertComparison(comparison, expectedScore) {
+  assert(comparison && typeof comparison === "object", "Featured comparison was not returned.");
+  assert(
+    ["available", "first_person"].includes(comparison.status),
+    "Featured comparison returned an invalid status."
+  );
+  assert(comparison.canonicalScore === expectedScore, "Featured comparison used the wrong canonical score.");
+  assert(Number.isInteger(comparison.cohortSize) && comparison.cohortSize >= 1, "Featured comparison returned an invalid cohort size.");
+  assert(comparison.isTopScore === true, "A perfect canonical score was not identified as a top score.");
+  if (comparison.status === "first_person") {
+    assert(comparison.cohortSize === 1, "First-person comparison returned a cohort larger than one.");
+    assert(comparison.percentileBand === null, "First-person comparison returned a percentile band.");
+  } else {
+    assert(
+      Number.isInteger(comparison.percentileBand) &&
+        comparison.percentileBand >= 0 &&
+        comparison.percentileBand <= 100 &&
+        comparison.percentileBand % 5 === 0,
+      "Featured comparison returned an invalid percentile band."
+    );
+  }
+  assert(
+    Object.keys(comparison).sort().join(",") ===
+      ["canonicalScore", "cohortSize", "isTopScore", "percentileBand", "status"].sort().join(","),
+    "Featured comparison exposed data beyond the approved aggregate."
+  );
+}
+
+function buildPerfectAnswers(caseData) {
+  return caseData.questions_flow.map(step => {
+    const chosen = step.key === "anion_gap"
+      ? caseData.answer_key.anion_gap_category
+      : caseData.answer_key[step.key];
+    assert(chosen != null, `Featured answer key is missing a scored answer for ${step.key}.`);
+    return { key: step.key, chosen };
+  });
+}
+
 async function invoke(name, body = {}) {
   const { data, error } = await supabase.functions.invoke(name, { body });
   if (error) {
@@ -48,8 +86,9 @@ if (authError || !authData.user) throw authError ?? new Error("Anonymous Staging
 
 try {
   const statusBefore = await invoke("featured-case-status");
-  assert(statusBefore.releaseId === "featured-authored-001-r1", "Unexpected active Featured release.");
+  assert(typeof statusBefore.releaseId === "string" && statusBefore.releaseId.length > 0, "No active Featured release was returned.");
   assert(statusBefore.state === "available", "Fresh verifier should see the Featured Case as available.");
+  assert(statusBefore.comparison === null, "An incomplete Featured Case returned a comparison.");
 
   const { data: metricBefore, error: metricBeforeError } = await supabase
     .from("public_site_metrics")
@@ -66,7 +105,8 @@ try {
   if (progressBeforeError) throw progressBeforeError;
 
   const prepared = await invoke("prepare-featured-case");
-  assert(prepared.slot?.caseData?.case_id === "AUTHORED_001", "Featured prepare returned the wrong authored case.");
+  assert(prepared.releaseId === statusBefore.releaseId, "Featured prepare returned a different release.");
+  assert(typeof prepared.slot?.caseData?.case_id === "string", "Featured prepare did not return an authored case.");
   assert(
     prepared.slot.caseData.protected_payload_mode === "practice_learning",
     "Featured prepare did not return a practice-learning payload."
@@ -98,10 +138,7 @@ try {
   if (confirmError) throw confirmError;
   assert(confirmed === true, "Featured open confirmation was not persisted.");
 
-  const answers = prepared.slot.caseData.questions_flow.map(step => ({
-    key: step.key,
-    chosen: step.selection_mode === "multi" ? [step.options[0]] : step.options[0]
-  }));
+  const answers = buildPerfectAnswers(prepared.slot.caseData);
   const firstCompletion = await invoke("submit-featured-case", {
     caseToken: prepared.slot.caseToken,
     answers,
@@ -110,12 +147,31 @@ try {
   });
   assert(firstCompletion.summary.totalXpAward === 0, "Featured completion awarded XP.");
   assert(firstCompletion.isCanonical === true, "First Featured completion was not canonical.");
+  assert(firstCompletion.summary.accuracy === 100, "Staging verifier did not submit a perfect Featured attempt.");
+  assertComparison(firstCompletion.comparison, 100);
   assert(
     firstCompletion.stepResults?.find(result => result.key === "ph_status")?.correct === true,
     "Server grading disagreed with the issued pH answer key."
   );
   assert(!("progress" in firstCompletion), "Featured completion returned normal progression.");
   assert(!("replacementSlot" in firstCompletion), "Featured completion issued a normal replacement slot.");
+
+  const repeatedCompletion = await invoke("submit-featured-case", {
+    caseToken: prepared.slot.caseToken,
+    answers,
+    elapsedSeconds: 30,
+    clientCompletedAt: new Date().toISOString()
+  });
+  assert(repeatedCompletion.attemptId === firstCompletion.attemptId, "Repeated submission created a different attempt.");
+  assert(
+    repeatedCompletion.canonicalAttemptId === firstCompletion.canonicalAttemptId,
+    "Repeated submission returned a different canonical attempt."
+  );
+  assertComparison(repeatedCompletion.comparison, 100);
+
+  const completedStatus = await invoke("featured-case-status");
+  assert(completedStatus.state === "completed", "Completed Featured Case was not reflected on the dashboard.");
+  assertComparison(completedStatus.comparison, 100);
 
   const { data: progressAfter, error: progressAfterError } = await supabase
     .from("user_progress")
@@ -151,12 +207,10 @@ try {
   const statusAfterReset = await invoke("featured-case-status");
   assert(statusAfterReset.state === "available", "Reset did not make the current Featured Case available again.");
   assert(statusAfterReset.opened === false, "Reset retained the old Featured open state.");
+  assert(statusAfterReset.comparison === null, "Reset retained the previous Featured comparison.");
 
   const preparedAfterReset = await invoke("prepare-featured-case");
-  const secondAnswers = preparedAfterReset.slot.caseData.questions_flow.map(step => ({
-    key: step.key,
-    chosen: step.selection_mode === "multi" ? [step.options[0]] : step.options[0]
-  }));
+  const secondAnswers = buildPerfectAnswers(preparedAfterReset.slot.caseData);
   const secondCompletion = await invoke("submit-featured-case", {
     caseToken: preparedAfterReset.slot.caseToken,
     answers: secondAnswers,
@@ -164,6 +218,7 @@ try {
     clientCompletedAt: new Date().toISOString()
   });
   assert(secondCompletion.isCanonical === true, "First post-reset completion was not the new canonical attempt.");
+  assertComparison(secondCompletion.comparison, 100);
 
   const { data: attemptsAfterReset, error: attemptsAfterResetError } = await supabase
     .from("attempts")

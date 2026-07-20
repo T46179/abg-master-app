@@ -10,6 +10,7 @@ import {
 import type {
   AnswerSelection,
   CaseSummary,
+  FeaturedCaseComparison,
   FeaturedCaseStatus,
   IssuedPracticeSlot,
   RuntimeConfig,
@@ -54,6 +55,7 @@ interface FeaturedSubmitResponse {
   attemptId?: string | null;
   canonicalAttemptId?: string | null;
   isCanonical?: boolean;
+  comparison?: FeaturedCaseComparison | null;
 }
 
 export async function loadFeaturedCaseStatus(
@@ -113,6 +115,7 @@ export async function submitFeaturedCase(
   attemptId: string | null;
   canonicalAttemptId: string | null;
   isCanonical: boolean;
+  comparison: FeaturedCaseComparison | null;
 }> {
   const response = await invokeProtectedFunction<FeaturedSubmitResponse>(
     config,
@@ -128,7 +131,8 @@ export async function submitFeaturedCase(
     },
     attemptId: response.attemptId ?? null,
     canonicalAttemptId: response.canonicalAttemptId ?? null,
-    isCanonical: Boolean(response.isCanonical)
+    isCanonical: Boolean(response.isCanonical),
+    comparison: response.comparison ?? null
   };
 }
 

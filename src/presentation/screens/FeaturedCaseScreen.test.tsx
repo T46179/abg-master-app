@@ -242,7 +242,8 @@ describe("FeaturedCaseScreen grading parity", () => {
 
   async function renderFeatured(
     caseItem: CaseData,
-    initialEntry = "/featured-case"
+    initialEntry = "/featured-case",
+    submitOverrides: Record<string, unknown> = {}
   ) {
     prepareFeaturedCase.mockResolvedValue({
       releaseId: "featured-authored-001-r1",
@@ -259,7 +260,9 @@ describe("FeaturedCaseScreen grading parity", () => {
       summary: makeSummary(caseItem),
       attemptId: "attempt-1",
       canonicalAttemptId: "attempt-1",
-      isCanonical: true
+      isCanonical: true,
+      comparison: null,
+      ...submitOverrides
     });
 
     await act(async () => {
@@ -304,10 +307,11 @@ describe("FeaturedCaseScreen grading parity", () => {
     expect(document.getElementById(dialog?.getAttribute("aria-labelledby") ?? "")?.textContent)
       .toBe("Welcome to Featured Cases");
     expect(document.getElementById(dialog?.getAttribute("aria-describedby") ?? "")?.textContent)
-      .toContain("Featured Cases showcases some of ABG Master’s most complex interpretations.");
+      .toContain("Featured Cases showcase some of ABG Master’s most complex interpretations.");
     expect(container.textContent).toContain("No reference ranges or abnormal-value highlighting");
     expect(container.textContent).toContain("Oxygenation cases");
     expect(container.textContent).toContain("Exam-style questions");
+    expect(container.textContent).toContain("See how you perform against others");
     expect(caseMain?.hasAttribute("inert")).toBe(true);
     expect(caseMain?.getAttribute("aria-hidden")).toBe("true");
     expect(document.activeElement).toBe(beginButton);
@@ -554,6 +558,40 @@ describe("FeaturedCaseScreen grading parity", () => {
     expect(new Set(submission.answers.map(answer => answer.key)).size).toBe(5);
     expect(latestResultsSummaryHeaderProps?.summary).toEqual(makeSummary(caseItem));
     expect(latestResultsSummaryCardProps?.summary).toEqual(makeSummary(caseItem));
+  });
+
+  it("passes the server comparison and canonical replay state to the summary header", async () => {
+    const caseItem = makeCase({
+      questions_flow: [{
+        key: "ph_status",
+        label: "pH status",
+        prompt: "What is the pH status?",
+        options: ["Acidaemia", "Alkalaemia", "Normal"]
+      }],
+      answer_key: {
+        ph_status: "Acidaemia"
+      }
+    });
+    const comparison = {
+      status: "available",
+      canonicalScore: 80,
+      cohortSize: 20,
+      percentileBand: 65,
+      isTopScore: false
+    };
+    await renderFeatured(caseItem, "/featured-case?source=dashboard&action=retry&replay=1", {
+      canonicalAttemptId: "canonical-attempt-1",
+      isCanonical: false,
+      comparison
+    });
+
+    act(() => activeProps().onAnswer("Acidaemia"));
+    await act(async () => {
+      activeProps().onContinueStep();
+    });
+
+    expect(latestResultsSummaryHeaderProps?.featuredComparison).toEqual(comparison);
+    expect(latestResultsSummaryHeaderProps?.featuredIsReplay).toBe(true);
   });
 
   it("locks an incorrect Master answer, marks it red, and shows the correction before advancing", async () => {
