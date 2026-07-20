@@ -1,4 +1,4 @@
-import posthog from "posthog-js";
+import posthog, { type CaptureOptions } from "posthog-js";
 
 let initialized = false;
 
@@ -32,12 +32,16 @@ export function initAnalytics() {
   initialized = true;
 }
 
-export function trackEvent(name: string, params: Record<string, unknown> = {}) {
+export function trackEvent(
+  name: string,
+  params: Record<string, unknown> = {},
+  options?: Pick<CaptureOptions, "uuid">
+) {
   if (!initialized) return;
   posthog.capture(name, {
     ...getCommonEventProperties(),
     ...params
-  });
+  }, options);
 }
 
 export function trackPageView(viewName: string) {

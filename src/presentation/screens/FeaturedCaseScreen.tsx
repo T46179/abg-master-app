@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import {
   clearFeaturedCaseDraft,
   confirmFeaturedCaseOpen,
+  ensureFeaturedCaseAnalyticsContext,
   FEATURED_CASE_DRAFT_VERSION,
   loadFeaturedCaseDraft,
   loadFeaturedCaseIntroSeen,
@@ -12,6 +13,15 @@ import {
   saveFeaturedCaseIntroSeen,
   submitFeaturedCase
 } from "../../core/featuredCase";
+import {
+  buildFeaturedCaseEntryUrl,
+  resolveFeaturedCaseEntry,
+  trackFeaturedCaseEntry,
+  trackFeaturedCaseMilestone,
+  type FeaturedCaseAnalyticsContext,
+  type FeaturedCaseAnalyticsPropertiesInput,
+  type FeaturedCaseMilestone
+} from "../../core/featuredCaseAnalytics";
 import { isProtectedPracticeError } from "../../core/protectedPractice";
 import { shouldShowMetricReferences } from "../../core/metrics";
 import { buildConciseStepFeedback } from "../../core/explanations";
@@ -32,17 +42,24 @@ import { ActivePracticeCase } from "../practice/ActivePracticeCase";
 import { FeaturedCaseIntroModal } from "../practice/FeaturedCaseIntroModal";
 import { ResultsSummaryCard, ResultsSummaryHeader } from "../practice/ResultsSummaryCard";
 import { Surface } from "../primitives/Surface";
+import { useElementViewed } from "../primitives/useElementViewed";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
 
 export function FeaturedCaseScreen() {
   const { state } = useAppContext();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedEntry = useMemo(
+    () => resolveFeaturedCaseEntry(searchParams),
+    [searchParams]
+  );
   const [caseItem, setCaseItem] = useState<CaseData | null>(null);
   const [caseToken, setCaseToken] = useState<string | null>(null);
   const [releaseId, setReleaseId] = useState<string | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<AnswerSelection[]>([]);
   const [stepResults, setStepResults] = useState<StepResult[]>([]);
+  const [analyticsContext, setAnalyticsContext] = useState<FeaturedCaseAnalyticsContext | null>(null);
   const [summary, setSummary] = useState<CaseSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -56,6 +73,8 @@ export function FeaturedCaseScreen() {
   );
   const caseStartRef = useRef(Date.now());
   const activeStepRef = useRef<HTMLButtonElement | null>(null);
+  const emittedAnalyticsUuidsRef = useRef(new Set<string>());
+  const introSeenAtLoadRef = useRef(hasSeenFeaturedIntro);
 
   useEffect(() => {
     if (state.status !== "ready") return;
@@ -83,24 +102,77 @@ export function FeaturedCaseScreen() {
     prepareFeaturedCase(state.runtimeConfig, state.supabase)
       .then(async result => {
         if (cancelled) return;
-        const draft = loadFeaturedCaseDraft(window.localStorage, {
+        const expectedDraft = {
           userId: state.userId,
           releaseId: result.releaseId,
           caseToken: result.slot.caseToken
-        });
+        };
+        const savedDraft = loadFeaturedCaseDraft(window.localStorage, expectedDraft);
+        const draft = await ensureFeaturedCaseAnalyticsContext(
+          window.localStorage,
+          expectedDraft,
+          {
+            entrySource: requestedEntry.entrySource,
+            action: requestedEntry.action,
+            isReplay: requestedEntry.isReplay,
+            introShown: !introSeenAtLoadRef.current
+          },
+          savedDraft ?? {
+            version: FEATURED_CASE_DRAFT_VERSION,
+            userId: state.userId,
+            releaseId: result.releaseId,
+            caseToken: result.slot.caseToken,
+            currentStepIndex: 0,
+            selectedAnswers: [],
+            stepResults: [],
+            savedAt: new Date().toISOString()
+          }
+        );
+        if (cancelled) return;
         const maxStepIndex = Math.max(0, (result.slot.caseData.questions_flow?.length ?? 1) - 1);
         setReleaseId(result.releaseId);
         setCaseToken(result.slot.caseToken);
         setCaseItem(result.slot.caseData);
-        setSelectedAnswers(draft?.selectedAnswers ?? []);
-        setStepResults(draft?.stepResults ?? []);
-        setCurrentStepIndex(Math.min(maxStepIndex, Math.max(0, draft?.currentStepIndex ?? 0)));
+        setSelectedAnswers(draft.selectedAnswers);
+        setStepResults(draft.stepResults);
+        setCurrentStepIndex(Math.min(maxStepIndex, Math.max(0, draft.currentStepIndex)));
+        setAnalyticsContext(draft.analytics ?? null);
         caseStartRef.current = Date.now();
         setError(null);
         setLoading(false);
 
         await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
         if (!cancelled) {
+          if (draft.analytics && !draft.analytics.tracked.opened) {
+            const openedContext: FeaturedCaseAnalyticsContext = {
+              ...draft.analytics,
+              tracked: {
+                ...draft.analytics.tracked,
+                opened: true
+              }
+            };
+            emittedAnalyticsUuidsRef.current.add(draft.analytics.eventUuids.opened);
+            trackFeaturedCaseMilestone(
+              "featured_case_opened",
+              {
+                releaseId: result.releaseId,
+                entrySource: draft.analytics.entrySource,
+                action: draft.analytics.action,
+                learnerLevel: state.userState.level,
+                normalCasesCompleted: state.userState.casesCompleted,
+                isReplay: draft.analytics.isReplay,
+                introShown: draft.analytics.introShown,
+                analyticsAttemptId: draft.analytics.attemptId
+              },
+              draft.analytics.eventUuids.opened
+            );
+            saveFeaturedCaseDraft(window.localStorage, {
+              ...draft,
+              analytics: openedContext,
+              savedAt: new Date().toISOString()
+            });
+            setAnalyticsContext(openedContext);
+          }
           await confirmFeaturedCaseOpen(state.supabase!, result.slot.caseToken).catch(() => undefined);
         }
       })
@@ -120,7 +192,12 @@ export function FeaturedCaseScreen() {
     state.supabase,
     state.supabaseEnabled,
     state.syncUnavailable,
-    state.userId
+    state.userId,
+    state.userState.casesCompleted,
+    state.userState.level,
+    requestedEntry.action,
+    requestedEntry.entrySource,
+    requestedEntry.isReplay
   ]);
 
   useEffect(() => {
@@ -133,9 +210,11 @@ export function FeaturedCaseScreen() {
       currentStepIndex,
       selectedAnswers,
       stepResults,
+      analytics: analyticsContext ?? undefined,
       savedAt: new Date().toISOString()
     });
   }, [
+    analyticsContext,
     caseToken,
     currentStepIndex,
     loading,
@@ -178,6 +257,69 @@ export function FeaturedCaseScreen() {
     !summary &&
     !hasSeenFeaturedIntro
   );
+  const featuredSummaryEntryRef = useElementViewed<HTMLAnchorElement>({
+    enabled: Boolean(summary && releaseId),
+    trackingKey: `${releaseId ?? "none"}:featured_summary:retry`,
+    onViewed: () => {
+      if (!releaseId) return;
+      trackFeaturedCaseEntry("featured_case_entry_viewed", {
+        releaseId,
+        entrySource: "featured_summary",
+        action: "retry",
+        learnerLevel: state.userState.level,
+        normalCasesCompleted: state.userState.casesCompleted,
+        isReplay: true
+      });
+    }
+  });
+
+  function getAttemptAnalyticsProperties(
+    context: FeaturedCaseAnalyticsContext,
+    extra: Partial<Pick<FeaturedCaseAnalyticsPropertiesInput, "isCanonical" | "elapsedSeconds">> = {}
+  ): FeaturedCaseAnalyticsPropertiesInput | null {
+    if (!releaseId) return null;
+    return {
+      releaseId,
+      entrySource: context.entrySource,
+      action: context.action,
+      learnerLevel: state.userState.level,
+      normalCasesCompleted: state.userState.casesCompleted,
+      isReplay: context.isReplay,
+      introShown: context.introShown,
+      analyticsAttemptId: context.attemptId,
+      ...extra
+    };
+  }
+
+  function trackAttemptMilestone(
+    milestone: FeaturedCaseMilestone,
+    eventName:
+      | "featured_case_opened"
+      | "featured_case_engaged"
+      | "featured_case_completed"
+      | "featured_case_intro_begin_clicked",
+    extra?: Partial<Pick<FeaturedCaseAnalyticsPropertiesInput, "isCanonical" | "elapsedSeconds">>
+  ) {
+    const context = analyticsContext;
+    if (!context || context.tracked[milestone]) return;
+    const eventUuid = context.eventUuids[milestone];
+    if (emittedAnalyticsUuidsRef.current.has(eventUuid)) return;
+    const properties = getAttemptAnalyticsProperties(context, extra);
+    if (!properties) return;
+
+    emittedAnalyticsUuidsRef.current.add(eventUuid);
+    trackFeaturedCaseMilestone(eventName, properties, eventUuid);
+    setAnalyticsContext(current => {
+      if (!current || current.attemptId !== context.attemptId) return current;
+      return {
+        ...current,
+        tracked: {
+          ...current.tracked,
+          [milestone]: true
+        }
+      };
+    });
+  }
 
   function updateSelection(chosen: AnswerValue): AnswerSelection[] {
     if (!currentStep) return selectedAnswers;
@@ -212,12 +354,17 @@ export function FeaturedCaseScreen() {
 
     setSubmitting(true);
     setError(null);
+    const elapsedSeconds = Math.max(0, Math.round((Date.now() - caseStartRef.current) / 1000));
     try {
       const result = await submitFeaturedCase(state.runtimeConfig, state.supabase, {
         caseToken,
         answers,
-        elapsedSeconds: Math.max(0, Math.round((Date.now() - caseStartRef.current) / 1000)),
+        elapsedSeconds,
         clientCompletedAt: new Date().toISOString()
+      });
+      trackAttemptMilestone("completed", "featured_case_completed", {
+        isCanonical: result.isCanonical,
+        elapsedSeconds
       });
       clearFeaturedCaseDraft(window.localStorage);
       setSummary(result.summary);
@@ -237,6 +384,7 @@ export function FeaturedCaseScreen() {
   function handleAnswer(option: string) {
     if (!currentStep || !caseItem || currentResult || submitting) return;
     setError(null);
+    trackAttemptMilestone("engaged", "featured_case_engaged");
 
     if (currentStep.selection_mode === "multi") {
       const nextValues = selectedValues.includes(option)
@@ -347,6 +495,7 @@ export function FeaturedCaseScreen() {
   }
 
   function handleBeginFeaturedCase() {
+    trackAttemptMilestone("intro_begin", "featured_case_intro_begin_clicked");
     saveFeaturedCaseIntroSeen(window.localStorage);
     setHasSeenFeaturedIntro(true);
     setFocusCaseAfterIntro(true);
@@ -384,7 +533,18 @@ export function FeaturedCaseScreen() {
             onNextCase={() => navigate("/dashboard")}
             primaryActionLabel="Back to dashboard"
             secondaryActionLabel="Retry Featured Case"
-            secondaryActionHref="/featured-case?replay=1"
+            secondaryActionHref={buildFeaturedCaseEntryUrl("featured_summary", "retry")}
+            secondaryActionRef={featuredSummaryEntryRef}
+            onSecondaryActionClick={() => {
+              trackFeaturedCaseEntry("featured_case_entry_clicked", {
+                releaseId,
+                entrySource: "featured_summary",
+                action: "retry",
+                learnerLevel: state.userState.level,
+                normalCasesCompleted: state.userState.casesCompleted,
+                isReplay: true
+              });
+            }}
             storage={state.storage}
           />
         </div>

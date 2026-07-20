@@ -1,6 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeProtectedFunction, normalizeIssuedPracticeSlot, ProtectedPracticeError } from "./protectedPractice";
 import { normalizeStructuredExplanation } from "./practice";
+import {
+  createFeaturedCaseAnalyticsContext,
+  type FeaturedCaseAnalyticsContext,
+  type FeaturedCaseEntryAction,
+  type FeaturedCaseEntrySource
+} from "./featuredCaseAnalytics";
 import type {
   AnswerSelection,
   CaseSummary,
@@ -23,7 +29,10 @@ export interface FeaturedCaseDraft {
   selectedAnswers: AnswerSelection[];
   stepResults: StepResult[];
   savedAt: string;
+  analytics?: FeaturedCaseAnalyticsContext;
 }
+
+const FEATURED_ANALYTICS_CONTEXT_LOCK = "abgmaster-featured-analytics-context";
 
 interface FeaturedPrepareResponse {
   releaseId: string;
@@ -151,6 +160,47 @@ export function saveFeaturedCaseDraft(
   draft: FeaturedCaseDraft
 ): void {
   storage.setItem(FEATURED_CASE_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+}
+
+export async function ensureFeaturedCaseAnalyticsContext(
+  storage: Pick<Storage, "getItem" | "setItem">,
+  expected: { userId: string | null; releaseId: string; caseToken: string },
+  input: {
+    entrySource: FeaturedCaseEntrySource;
+    action: FeaturedCaseEntryAction;
+    isReplay: boolean;
+    introShown: boolean;
+  },
+  fallbackDraft: FeaturedCaseDraft
+): Promise<FeaturedCaseDraft> {
+  const initialize = () => {
+    const currentDraft = loadFeaturedCaseDraft(storage, expected) ?? fallbackDraft;
+    if (currentDraft.analytics) return currentDraft;
+
+    const analytics = createFeaturedCaseAnalyticsContext({
+      ...input,
+      alreadyEngaged: currentDraft.selectedAnswers.length > 0 || currentDraft.stepResults.length > 0
+    });
+    const nextDraft = { ...currentDraft, analytics };
+    saveFeaturedCaseDraft(storage, nextDraft);
+    return nextDraft;
+  };
+
+  const lockManager = typeof navigator === "undefined"
+    ? null
+    : (navigator as Navigator & {
+        locks?: {
+          request<T>(name: string, callback: () => T | PromiseLike<T>): Promise<T>;
+        };
+      }).locks;
+
+  if (lockManager) {
+    return lockManager.request(FEATURED_ANALYTICS_CONTEXT_LOCK, initialize);
+  }
+
+  const candidate = initialize();
+  await Promise.resolve();
+  return loadFeaturedCaseDraft(storage, expected) ?? candidate;
 }
 
 export function clearFeaturedCaseDraft(storage: Pick<Storage, "removeItem">): void {

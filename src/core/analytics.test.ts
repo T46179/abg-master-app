@@ -39,13 +39,38 @@ describe("analytics", () => {
     initAnalytics();
     trackEvent("beta_event", { source: "test" });
 
-    expect(posthog.capture).toHaveBeenCalledWith("beta_event", expect.objectContaining({
-      app: "abg_master",
-      environment: expect.any(String),
-      current_path: "/learn",
-      current_search: "?source=nav",
-      source: "test"
-    }));
+    expect(posthog.capture).toHaveBeenCalledWith(
+      "beta_event",
+      expect.objectContaining({
+        app: "abg_master",
+        environment: expect.any(String),
+        current_path: "/learn",
+        current_search: "?source=nav",
+        source: "test"
+      }),
+      undefined
+    );
+  });
+
+  it("forwards a stable event UUID for idempotent milestone capture", async () => {
+    const { initAnalytics, trackEvent } = await import("./analytics");
+
+    initAnalytics();
+    trackEvent("featured_case_engaged", {
+      analytics_attempt_id: "attempt-1"
+    }, {
+      uuid: "019f8d04-6c35-7e40-9384-6fba31f37586"
+    });
+
+    expect(posthog.capture).toHaveBeenCalledWith(
+      "featured_case_engaged",
+      expect.objectContaining({
+        analytics_attempt_id: "attempt-1"
+      }),
+      {
+        uuid: "019f8d04-6c35-7e40-9384-6fba31f37586"
+      }
+    );
   });
 
   it("enables automatic pageleave tracking without automatic pageviews", async () => {

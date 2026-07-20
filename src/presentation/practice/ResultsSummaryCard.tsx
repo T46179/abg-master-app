@@ -1,4 +1,9 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  type MouseEventHandler,
+  type Ref
+} from "react";
 import { Trophy } from "lucide-react";
 import { Surface } from "../primitives/Surface";
 import { ProgressBar } from "../primitives/ProgressBar";
@@ -187,6 +192,8 @@ interface ResultsSummaryCardProps {
   primaryActionLabel?: string;
   secondaryActionLabel?: string;
   secondaryActionHref?: string;
+  secondaryActionRef?: Ref<HTMLAnchorElement>;
+  onSecondaryActionClick?: MouseEventHandler<HTMLAnchorElement>;
   storage?: StorageAdapter | null;
 }
 
@@ -349,7 +356,12 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
             {props.primaryActionLabel ?? "Next case"}
           </button>
           {props.secondaryActionHref ? (
-            <a className="figma-button figma-button--secondary results-card__button results-card__button--secondary" href={props.secondaryActionHref}>
+            <a
+              ref={props.secondaryActionRef}
+              className="figma-button figma-button--secondary results-card__button results-card__button--secondary"
+              href={props.secondaryActionHref}
+              onClick={props.onSecondaryActionClick}
+            >
               {props.secondaryActionLabel ?? "View Performance"}
             </a>
           ) : props.secondaryActionHref === undefined ? (

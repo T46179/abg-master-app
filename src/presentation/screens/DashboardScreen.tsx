@@ -7,6 +7,7 @@ import {
   Target,
   Trophy
 } from "lucide-react";
+import { useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import {
@@ -31,6 +32,12 @@ import { Surface } from "../primitives/Surface";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
 import { getDailyClinicalPearl } from "./clinicalPearls";
 import { useFeaturedCaseStatus } from "../../app/useFeaturedCaseStatus";
+import {
+  buildFeaturedCaseEntryUrl,
+  trackFeaturedCaseEntry,
+  type FeaturedCaseEntryAction
+} from "../../core/featuredCaseAnalytics";
+import { useElementViewed } from "../primitives/useElementViewed";
 
 const featuredCasePreviews = [
   { icon: FileText, label: "Challenging and unique cases" },
@@ -54,6 +61,39 @@ function getLearnProgressPercent(level: LearnLevelConfig, completedLessonCount: 
 export function DashboardScreen() {
   const { state } = useAppContext();
   const featured = useFeaturedCaseStatus();
+  const featuredReleaseId = featured.status.releaseId;
+  const featuredAction: FeaturedCaseEntryAction = featured.status.state === "completed"
+    ? "retry"
+    : featured.status.state === "in_progress"
+    ? "continue"
+    : "start";
+  const featuredEntryProperties = {
+    releaseId: featuredReleaseId ?? "",
+    entrySource: "dashboard" as const,
+    action: featuredAction,
+    learnerLevel: state.userState.level,
+    normalCasesCompleted: state.userState.casesCompleted,
+    isReplay: featuredAction === "retry"
+  };
+  const handleFeaturedEntryViewed = useCallback(() => {
+    if (!featuredReleaseId) return;
+    trackFeaturedCaseEntry("featured_case_entry_viewed", featuredEntryProperties);
+  }, [
+    featuredAction,
+    featuredReleaseId,
+    state.userState.casesCompleted,
+    state.userState.level
+  ]);
+  const featuredEntryRef = useElementViewed<HTMLDivElement>({
+    enabled:
+      state.status === "ready" &&
+      !featured.loading &&
+      Boolean(featuredReleaseId) &&
+      featured.status.state !== "unavailable",
+    trackingKey: `${featuredReleaseId ?? "none"}:dashboard:${featuredAction}`,
+    onViewed: handleFeaturedEntryViewed
+  });
+
   if (state.status === "loading" || state.status === "idle") return <LoadingView />;
   if (state.status === "error") return <ErrorView message={state.errorMessage} />;
 
@@ -160,7 +200,7 @@ export function DashboardScreen() {
                   </div>
                 ))}
               </div>
-              <div className="dashboard-resume-card__action">
+              <div className="dashboard-resume-card__action" ref={featuredEntryRef}>
                 {featured.status.state === "unavailable" ? (
                   <button className="dashboard-resume-button" type="button" disabled>
                     No Featured Case currently available
@@ -168,7 +208,12 @@ export function DashboardScreen() {
                 ) : (
                   <Link
                     className="dashboard-resume-button"
-                    to={featured.status.state === "completed" ? "/featured-case?replay=1" : "/featured-case"}
+                    to={buildFeaturedCaseEntryUrl("dashboard", featuredAction)}
+                    onClick={() => {
+                      if (featuredReleaseId) {
+                        trackFeaturedCaseEntry("featured_case_entry_clicked", featuredEntryProperties);
+                      }
+                    }}
                   >
                     <span>
                       {featured.status.state === "in_progress"

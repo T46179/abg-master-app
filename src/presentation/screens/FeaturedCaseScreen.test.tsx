@@ -2,6 +2,7 @@
 
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import type { MouseEventHandler, Ref } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -17,6 +18,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const prepareFeaturedCase = vi.hoisted(() => vi.fn());
 const confirmFeaturedCaseOpen = vi.hoisted(() => vi.fn());
 const submitFeaturedCase = vi.hoisted(() => vi.fn());
+const trackEvent = vi.hoisted(() => vi.fn());
 let latestActivePracticeCaseProps: Record<string, unknown> | null = null;
 let latestResultsSummaryHeaderProps: Record<string, unknown> | null = null;
 let latestResultsSummaryCardProps: Record<string, unknown> | null = null;
@@ -35,7 +37,8 @@ const state = {
     } as { releaseId: string } | null
   },
   userState: {
-    level: 1
+    level: 1,
+    casesCompleted: 2
   },
   storage: {
     loadAdvancedRangesPreference: () => false,
@@ -45,6 +48,10 @@ const state = {
 
 vi.mock("../../app/AppProvider", () => ({
   useAppContext: () => ({ state })
+}));
+
+vi.mock("../../core/analytics", () => ({
+  trackEvent
 }));
 
 vi.mock("../../core/featuredCase", async importOriginal => {
@@ -88,7 +95,16 @@ vi.mock("../practice/ResultsSummaryCard", () => ({
   },
   ResultsSummaryCard: (props: Record<string, unknown>) => {
     latestResultsSummaryCardProps = props;
-    return <div data-testid="featured-summary-card" />;
+    return (
+      <a
+        data-testid="featured-summary-card"
+        ref={props.secondaryActionRef as Ref<HTMLAnchorElement>}
+        href={props.secondaryActionHref as string}
+        onClick={props.onSecondaryActionClick as MouseEventHandler<HTMLAnchorElement>}
+      >
+        {props.secondaryActionLabel as string}
+      </a>
+    );
   }
 }));
 
@@ -208,6 +224,7 @@ describe("FeaturedCaseScreen grading parity", () => {
     prepareFeaturedCase.mockReset();
     confirmFeaturedCaseOpen.mockReset();
     submitFeaturedCase.mockReset();
+    trackEvent.mockReset();
     confirmFeaturedCaseOpen.mockResolvedValue(undefined);
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       callback(0);
@@ -223,7 +240,10 @@ describe("FeaturedCaseScreen grading parity", () => {
     vi.unstubAllGlobals();
   });
 
-  async function renderFeatured(caseItem: CaseData) {
+  async function renderFeatured(
+    caseItem: CaseData,
+    initialEntry = "/featured-case"
+  ) {
     prepareFeaturedCase.mockResolvedValue({
       releaseId: "featured-authored-001-r1",
       slot: {
@@ -244,7 +264,7 @@ describe("FeaturedCaseScreen grading parity", () => {
 
     await act(async () => {
       root.render(
-        <MemoryRouter>
+        <MemoryRouter initialEntries={[initialEntry]}>
           <FeaturedCaseScreen />
         </MemoryRouter>
       );
@@ -321,6 +341,17 @@ describe("FeaturedCaseScreen grading parity", () => {
     expect(caseMain?.hasAttribute("aria-hidden")).toBe(false);
     expect(window.localStorage.getItem(FEATURED_CASE_INTRO_SEEN_STORAGE_KEY)).toBe("true");
     expect(document.activeElement).toBe(activeStep);
+    expect(trackEvent).toHaveBeenCalledWith(
+      "featured_case_intro_begin_clicked",
+      expect.objectContaining({
+        release_id: "featured-authored-001-r1",
+        intro_shown: true,
+        analytics_attempt_id: expect.any(String)
+      }),
+      {
+        uuid: expect.any(String)
+      }
+    );
   });
 
   it("does not show the introduction again after it has been acknowledged", async () => {
@@ -330,6 +361,93 @@ describe("FeaturedCaseScreen grading parity", () => {
 
     expect(container.querySelector("[role='dialog']")).toBeNull();
     expect(container.querySelector("main.practice-screen")?.hasAttribute("inert")).toBe(false);
+  });
+
+  it("tracks one attributed attempt from open through completion and a genuine replay entry", async () => {
+    window.localStorage.setItem(FEATURED_CASE_INTRO_SEEN_STORAGE_KEY, "true");
+    const caseItem = makeCase({
+      questions_flow: [{
+        key: "ph_status",
+        label: "pH status",
+        prompt: "What is the pH status?",
+        options: ["Acidaemia", "Alkalaemia", "Normal"]
+      }],
+      answer_key: {
+        ph_status: "Acidaemia"
+      }
+    });
+    await renderFeatured(
+      caseItem,
+      "/featured-case?source=dashboard&action=start"
+    );
+
+    const openedCall = trackEvent.mock.calls.find(call => call[0] === "featured_case_opened");
+    expect(openedCall).toEqual([
+      "featured_case_opened",
+      expect.objectContaining({
+        release_id: "featured-authored-001-r1",
+        entry_source: "dashboard",
+        action: "start",
+        learner_level: 1,
+        normal_cases_completed: 2,
+        is_replay: false,
+        intro_shown: false,
+        analytics_attempt_id: expect.any(String)
+      }),
+      {
+        uuid: expect.any(String)
+      }
+    ]);
+
+    act(() => activeProps().onAnswer("Acidaemia"));
+    await act(async () => {
+      activeProps().onContinueStep();
+    });
+
+    const engagedCalls = trackEvent.mock.calls
+      .filter(call => call[0] === "featured_case_engaged");
+    const completedCalls = trackEvent.mock.calls
+      .filter(call => call[0] === "featured_case_completed");
+    expect(engagedCalls).toHaveLength(1);
+    expect(completedCalls).toHaveLength(1);
+    expect(engagedCalls[0][1].analytics_attempt_id)
+      .toBe(openedCall?.[1].analytics_attempt_id);
+    expect(completedCalls[0][1]).toEqual(expect.objectContaining({
+      analytics_attempt_id: openedCall?.[1].analytics_attempt_id,
+      is_canonical: true,
+      elapsed_seconds: expect.any(Number)
+    }));
+
+    const analyticsPayload = JSON.stringify(trackEvent.mock.calls);
+    expect(analyticsPayload).not.toContain("featured-token-1");
+    expect(analyticsPayload).not.toContain("Acidaemia");
+    expect(analyticsPayload).not.toContain("user-1");
+
+    const replayLink = container.querySelector<HTMLAnchorElement>(
+      "[data-testid='featured-summary-card']"
+    );
+    expect(replayLink?.getAttribute("href"))
+      .toBe("/featured-case?source=featured_summary&action=retry&replay=1");
+    expect(trackEvent).toHaveBeenCalledWith(
+      "featured_case_entry_viewed",
+      expect.objectContaining({
+        entry_source: "featured_summary",
+        action: "retry",
+        is_replay: true
+      })
+    );
+
+    act(() => {
+      replayLink?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(trackEvent).toHaveBeenCalledWith(
+      "featured_case_entry_clicked",
+      expect.objectContaining({
+        entry_source: "featured_summary",
+        action: "retry",
+        is_replay: true
+      })
+    );
   });
 
   it("keeps showing Loading cases while cloud authentication initializes", async () => {
@@ -579,5 +697,17 @@ describe("FeaturedCaseScreen grading parity", () => {
       correctAnswer: "Acidaemia",
       correct: false
     });
+    const persistedDraft = JSON.parse(
+      window.localStorage.getItem(FEATURED_CASE_DRAFT_STORAGE_KEY) ?? "{}"
+    ) as {
+      analytics?: {
+        attemptId?: string;
+        tracked?: { engaged?: boolean };
+      };
+    };
+    expect(persistedDraft.analytics?.attemptId).toEqual(expect.any(String));
+    expect(persistedDraft.analytics?.tracked?.engaged).toBe(true);
+    expect(trackEvent.mock.calls.filter(call => call[0] === "featured_case_engaged"))
+      .toHaveLength(0);
   });
 });

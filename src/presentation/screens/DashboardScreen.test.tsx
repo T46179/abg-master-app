@@ -8,6 +8,12 @@ import { DashboardScreen } from "./DashboardScreen";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
+const trackEvent = vi.hoisted(() => vi.fn());
+
+vi.mock("../../core/analytics", () => ({
+  trackEvent
+}));
+
 const mockStorage = vi.hoisted(() => ({
   resetUserState: vi.fn(async () => undefined),
   saveSeenCaseState: vi.fn(),
@@ -83,6 +89,7 @@ describe("DashboardScreen", () => {
   let originalLocation: Location;
 
   beforeEach(() => {
+    trackEvent.mockReset();
     window.localStorage.clear();
     mockStorage.resetUserState.mockClear();
     mockStorage.saveSeenCaseState.mockClear();
@@ -175,6 +182,47 @@ describe("DashboardScreen", () => {
     expect(featuredLink?.querySelector("img")?.getAttribute("src"))
       .toBe(resumeLink?.querySelector("img")?.getAttribute("src"));
     expect(featuredLink?.querySelector("svg")).toBeNull();
+  });
+
+  it("tracks the visible Featured entry and its retry click with tagged attribution", () => {
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <DashboardScreen />
+        </MemoryRouter>
+      );
+    });
+
+    const featuredLink = Array.from(container.querySelectorAll<HTMLAnchorElement>("a"))
+      .find(link => link.textContent?.includes("Retry Featured Case"));
+
+    expect(featuredLink?.getAttribute("href"))
+      .toBe("/featured-case?source=dashboard&action=retry&replay=1");
+    expect(trackEvent).toHaveBeenCalledWith(
+      "featured_case_entry_viewed",
+      expect.objectContaining({
+        release_id: "featured-authored-001-r1",
+        entry_source: "dashboard",
+        action: "retry",
+        learner_level: 1,
+        normal_cases_completed: 0,
+        is_replay: true
+      })
+    );
+
+    act(() => {
+      featuredLink?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(trackEvent).toHaveBeenCalledWith(
+      "featured_case_entry_clicked",
+      expect.objectContaining({
+        release_id: "featured-authored-001-r1",
+        entry_source: "dashboard",
+        action: "retry",
+        is_replay: true
+      })
+    );
   });
 
   it("styles the completed Featured Case status with its completed modifier", () => {
