@@ -11,6 +11,7 @@ import type {
   UserState
 } from "./types";
 import { mapProgressRowToUserState as mapRemoteProgressRowToUserState } from "./progression";
+import { FEATURED_CASE_DRAFT_STORAGE_KEY } from "./featuredCase";
 
 const USER_STATE_STORAGE_KEY = "abgmaster_userState";
 const USER_STATE_MODE_STORAGE_KEY = "abgmaster_userState_mode";
@@ -42,7 +43,8 @@ export const STORAGE_KEYS = {
   RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY,
   RESULTS_REVIEW_EXPANDED_STORAGE_KEY,
   SEEN_CASES_STORAGE_KEY,
-  CALIBRATION_COMPLETION_STORAGE_KEY
+  CALIBRATION_COMPLETION_STORAGE_KEY,
+  FEATURED_CASE_DRAFT_STORAGE_KEY
 } as const;
 
 export interface BrowserStorageLike {
@@ -252,6 +254,7 @@ export function createLocalStorageAdapter(browserStorage: BrowserStorageLike): S
 
     async resetUserState() {
       safeRemoveItem(browserStorage, USER_STATE_STORAGE_KEY);
+      safeRemoveItem(browserStorage, FEATURED_CASE_DRAFT_STORAGE_KEY);
       safeSetItem(browserStorage, USER_STATE_MODE_STORAGE_KEY, String(state.releaseSignature ?? ""));
     },
 

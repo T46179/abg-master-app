@@ -38,7 +38,8 @@ export function usePublicCasesSolvedCount() {
 
       const { count, error: attemptsCountError } = await activeSupabase
         .from("attempts")
-        .select("*", { count: "exact", head: true });
+        .select("*", { count: "exact", head: true })
+        .eq("mode", "practice");
 
       if (cancelled || attemptsCountError) {
         setCasesSolvedLoaded(true);

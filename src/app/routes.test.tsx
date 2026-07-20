@@ -92,12 +92,13 @@ describe("app routes", () => {
     expect(getElementName(anionGapRoute?.element)).toBe("AnionGapScreen");
   });
 
-  it("keeps dashboard, practice, insights, and calibration available inside the app shell", () => {
+  it("keeps dashboard, practice, Featured Case, insights, and calibration available inside the app shell", () => {
     const shellRoute = appRoutes.find((route) => route.children != null);
     const childPaths = shellRoute?.children?.map((route) => route.path);
 
     expect(childPaths).toContain("dashboard");
     expect(childPaths).toContain("practice");
+    expect(childPaths).toContain("featured-case");
     expect(childPaths).toContain("insights");
     expect(childPaths).toContain("calibration");
     expect(childPaths).toContain("case-preview/:caseId");

@@ -51,6 +51,18 @@ export const publicResources: PublicResource[] = [
 // corresponding change has been released, with the release date as the source of truth.
 export const publicUpdates: PublicUpdate[] = [
   {
+    date: "2026-07-19",
+    version: "v1.4",
+    category: "improved",
+    title: "Calibration",
+    summary: "Improvements to the Calibration flow",
+    highlights: [
+      "Streamlined the calibration process",
+      "Multiple UI fixes to the calibration screens and questions",
+      "Fixed a bug in Blood Gas Blitz where certain pH values were not rounded to two decimal places"
+    ]
+  },
+  {
     date: "2026-06-28",
     version: "v1.4",
     category: "fixed",

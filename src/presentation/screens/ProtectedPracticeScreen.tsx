@@ -66,6 +66,7 @@ import { Surface } from "../primitives/Surface";
 import { ActivePracticeCase } from "../practice/ActivePracticeCase";
 import { PracticeDifficultyRail } from "../practice/PracticeDifficultyRail";
 import { ResultsPatternTip } from "../practice/ResultsPatternTip";
+import { ResultsFeaturedCaseCta } from "../practice/ResultsFeaturedCaseCta";
 import { ResultsSummaryCard, ResultsSummaryHeader } from "../practice/ResultsSummaryCard";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
 
@@ -1124,6 +1125,7 @@ export function ProtectedPracticeScreen() {
                 dismissedPatternKey={dismissedResultsPatternKey}
                 onDismiss={setDismissedResultsPatternKey}
               />
+              <ResultsFeaturedCaseCta />
               <ResultsSummaryCard
                 summary={summary}
                 caseItem={summary.caseData}

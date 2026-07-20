@@ -748,6 +748,31 @@ describe("ResultsSummaryCard", () => {
     expect(container.querySelector(".progress-bar__fill")).not.toBeNull();
   });
 
+  it("shows Featured accuracy without presenting zero XP as a reward", () => {
+    const summary = {
+      ...buildSummary([]),
+      accuracy: 80,
+      totalXpAward: 0
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryHeader
+          mode="featured"
+          summary={summary}
+          level={1}
+          xpProgressLabel=""
+          progressValue={0}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("Featured Case complete");
+    expect(container.textContent).toContain("You scored 80%. Featured Cases do not affect XP or progression.");
+    expect(container.textContent).not.toContain("earned 0 XP");
+    expect(container.querySelector(".progress-bar__fill")).toBeNull();
+  });
+
   it("can label the summary header as max level", () => {
     const summary = buildSummary([]);
 

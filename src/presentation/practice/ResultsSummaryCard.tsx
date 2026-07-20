@@ -184,6 +184,9 @@ interface ResultsSummaryCardProps {
   showSummaryReferences: boolean;
   showAbnormalHighlighting: boolean;
   onNextCase: () => void;
+  primaryActionLabel?: string;
+  secondaryActionLabel?: string;
+  secondaryActionHref?: string;
   storage?: StorageAdapter | null;
 }
 
@@ -199,9 +202,29 @@ interface ResultsSummaryHeaderProps {
   xpProgressNotice?: string;
   xpProgressBlocked?: boolean;
   boostedXp?: boolean;
+  mode?: "practice" | "featured";
 }
 
 export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
+  if (props.mode === "featured") {
+    return (
+      <Surface className="results-summary-card">
+        <div className="results-card__hero">
+          <div className="results-card__hero-copy">
+            <span className="results-card__icon" aria-hidden="true">
+              <Trophy />
+            </span>
+            <div className="results-card__hero-text">
+              <h1>Featured Case complete</h1>
+              <p>You scored {props.summary.accuracy}%. Featured Cases do not affect XP or progression.</p>
+            </div>
+          </div>
+          <CaseMetadataIcons caseItem={props.summary.caseData} />
+        </div>
+      </Surface>
+    );
+  }
+
   return (
     <Surface className="results-summary-card">
       <div className="results-card__hero">
@@ -323,11 +346,17 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
 
         <div className="results-card__actions">
           <button className="figma-button results-card__button results-card__button--next-case" type="button" onClick={props.onNextCase}>
-            Next case
+            {props.primaryActionLabel ?? "Next case"}
           </button>
-          <a className="figma-button figma-button--secondary results-card__button results-card__button--secondary" href="/insights">
-            View Performance
-          </a>
+          {props.secondaryActionHref ? (
+            <a className="figma-button figma-button--secondary results-card__button results-card__button--secondary" href={props.secondaryActionHref}>
+              {props.secondaryActionLabel ?? "View Performance"}
+            </a>
+          ) : props.secondaryActionHref === undefined ? (
+            <a className="figma-button figma-button--secondary results-card__button results-card__button--secondary" href="/insights">
+              View Performance
+            </a>
+          ) : null}
         </div>
       </Surface>
 

@@ -348,12 +348,14 @@ describe("runtime normalization", () => {
       progression_config: { difficulty_labels: { 1: "beginner" } },
       default_user_state: { total_xp: 0, level: 1 },
       dashboard_state: { user: { level: 1 } },
+      featured_release: { release_id: "featured-authored-001-r1" },
       content_version: "beta-1_2026-04-03"
     });
 
     expect(payload.deliveryMode).toBe("protected_runtime");
     expect(payload.cases).toEqual([]);
     expect(payload.contentVersion).toBe("beta-1_2026-04-03");
+    expect(payload.featuredRelease).toEqual({ releaseId: "featured-authored-001-r1" });
   });
 
   it("rejects wrapped public catalog payloads", () => {

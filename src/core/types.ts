@@ -220,9 +220,25 @@ export interface CaseData {
     credit_enabled?: boolean;
   };
   featured?: {
-    eligible?: boolean;
-    priority?: number;
+    active?: boolean;
+    release_id?: string;
   };
+}
+
+export interface FeaturedReleaseMetadata {
+  releaseId: string;
+}
+
+export type FeaturedCaseAvailabilityState = "unavailable" | "available" | "in_progress" | "completed";
+
+export interface FeaturedCaseStatus {
+  releaseId: string | null;
+  state: FeaturedCaseAvailabilityState;
+  ctaEligible: boolean;
+  eligibleAfterCasesCompleted?: number | null;
+  opened: boolean;
+  completed?: boolean;
+  activeSessionExpiresAt?: string | null;
 }
 
 export interface CasesPayload {
@@ -231,6 +247,7 @@ export interface CasesPayload {
   defaultUserState: DefaultUserStateSnapshot | null;
   dashboardState: DashboardState | null;
   contentVersion: string | null;
+  featuredRelease?: FeaturedReleaseMetadata | null;
   deliveryMode: "protected_runtime";
 }
 

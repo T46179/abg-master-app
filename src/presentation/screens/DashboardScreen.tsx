@@ -31,6 +31,7 @@ import { StatCard } from "../primitives/StatCard";
 import { Surface } from "../primitives/Surface";
 import { ErrorView, LoadingView } from "../shared/StatusViews";
 import { getDailyClinicalPearl } from "./clinicalPearls";
+import { useFeaturedCaseStatus } from "../../app/useFeaturedCaseStatus";
 
 const featuredCasePreviews = [
   { icon: FileText, label: "Challenging and unique cases" },
@@ -53,6 +54,7 @@ function getLearnProgressPercent(level: LearnLevelConfig, completedLessonCount: 
 
 export function DashboardScreen() {
   const { state } = useAppContext();
+  const featured = useFeaturedCaseStatus();
   if (state.status === "loading" || state.status === "idle") return <LoadingView />;
   if (state.status === "error") return <ErrorView message={state.errorMessage} />;
 
@@ -131,7 +133,17 @@ export function DashboardScreen() {
                 <div className="dashboard-featured-card__eyebrow">
                   <span className="dashboard-eyebrow">Featured Case</span>
                 </div>
-                <span className="dashboard-coming-soon">Coming Soon</span>
+                <span className="dashboard-coming-soon">
+                  {featured.loading
+                    ? "Checking"
+                    : featured.status.state === "in_progress"
+                    ? "In progress"
+                    : featured.status.state === "completed"
+                    ? "Completed"
+                    : featured.status.state === "available"
+                    ? "Available"
+                    : "Unavailable"}
+                </span>
               </div>
               <h2>Hand-picked cases</h2>
               <p>A curated rotation of clinically rich gases, annotated with reasoning notes and regularly refreshed.</p>
@@ -142,6 +154,27 @@ export function DashboardScreen() {
                     <span>{label}</span>
                   </div>
                 ))}
+              </div>
+              <div className="dashboard-resume-card__action">
+                {featured.status.state === "unavailable" ? (
+                  <button className="dashboard-resume-button" type="button" disabled>
+                    No Featured Case currently available
+                  </button>
+                ) : (
+                  <Link
+                    className="dashboard-resume-button"
+                    to={featured.status.state === "completed" ? "/featured-case?replay=1" : "/featured-case"}
+                  >
+                    <span>
+                      {featured.status.state === "in_progress"
+                        ? "Continue Featured Case"
+                        : featured.status.state === "completed"
+                        ? "Retry Featured Case"
+                        : "Start Featured Case"}
+                    </span>
+                    <ArrowRight aria-hidden="true" />
+                  </Link>
+                )}
               </div>
             </div>
           </Surface>

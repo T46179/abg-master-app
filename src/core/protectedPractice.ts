@@ -81,7 +81,7 @@ async function getAccessToken(supabase: SupabaseClient): Promise<string> {
   return accessToken;
 }
 
-async function invokeProtectedFunction<TResponse>(
+export async function invokeProtectedFunction<TResponse>(
   config: RuntimeConfig,
   supabase: SupabaseClient,
   functionName: string,

@@ -57,6 +57,7 @@ export function normalizeCasesPayload(payload: unknown): CasesPayload {
       default_user_state?: CasesPayload["defaultUserState"];
       dashboard_state?: CasesPayload["dashboardState"];
       content_version?: string | null;
+      featured_release?: { release_id?: unknown } | null;
     };
 
     return {
@@ -65,6 +66,9 @@ export function normalizeCasesPayload(payload: unknown): CasesPayload {
       defaultUserState: typedPayload.default_user_state ?? null,
       dashboardState: typedPayload.dashboard_state ?? null,
       contentVersion: typedPayload.content_version ?? null,
+      featuredRelease: typedPayload.featured_release?.release_id
+        ? { releaseId: String(typedPayload.featured_release.release_id) }
+        : null,
       deliveryMode: "protected_runtime"
     };
   }

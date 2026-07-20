@@ -21,6 +21,7 @@ import { AboutScreen } from "../presentation/screens/AboutScreen";
 import { ResourcesScreen } from "../presentation/screens/ResourcesScreen";
 import { UpdatesScreen } from "../presentation/screens/UpdatesScreen";
 import { ContactScreen } from "../presentation/screens/ContactScreen";
+import { FeaturedCaseScreen } from "../presentation/screens/FeaturedCaseScreen";
 
 export const appRoutes: RouteObject[] = [
   {
@@ -69,6 +70,7 @@ export const appRoutes: RouteObject[] = [
     children: [
       { path: "dashboard", element: <DashboardScreen /> },
       { path: "practice", element: <PracticeScreen /> },
+      { path: "featured-case", element: <FeaturedCaseScreen /> },
       { path: "insights", element: <InsightsScreen /> },
       { path: "calibration", element: <CalibrationScreen /> },
       { path: "case-preview/:caseId", element: <CasePreviewScreen /> },

@@ -8,7 +8,8 @@
     "build": "vite build && node scripts/create-spa-fallback.mjs",
     "preview": "vite preview",
     "test": "vitest run --pool=forks --maxWorkers=1",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:featured:staging": "node scripts/verify-featured-staging.mjs"
   },
   "dependencies": {
     "@microsoft/clarity": "^1.0.2",
