@@ -115,7 +115,8 @@ export function DashboardScreen() {
   const recentAttempts = (state.userState.recentPracticeAttempts ?? []).slice(-10);
   const recentCorrectSteps = recentAttempts.reduce((sum, attempt) => sum + Math.max(0, Number(attempt.correctSteps ?? 0)), 0);
   const recentTotalSteps = recentAttempts.reduce((sum, attempt) => sum + Math.max(0, Number(attempt.totalSteps ?? 0)), 0);
-  const recentAccuracy = recentTotalSteps ? Math.round((recentCorrectSteps / recentTotalSteps) * 100) : 100;
+  const hasRecentAccuracy = state.userState.casesCompleted > 0 && recentTotalSteps > 0;
+  const recentAccuracy = hasRecentAccuracy ? Math.round((recentCorrectSteps / recentTotalSteps) * 100) : null;
   const casesRemaining = getCasesRemainingToday(payload?.progressionConfig ?? null, state.userState);
   const longestStreak = state.userState.longestStreak ?? state.userState.streak ?? 0;
   const defaultDifficulty = getDefaultPracticeDifficulty(
@@ -254,8 +255,8 @@ export function DashboardScreen() {
           <Link className="dashboard-stat-link" to="/insights" aria-label="View accuracy insights">
             <StatCard
               label="Accuracy"
-              value={`${recentAccuracy}%`}
-              meta="Last 10 cases"
+              value={recentAccuracy == null ? undefined : `${recentAccuracy}%`}
+              meta={recentAccuracy == null ? undefined : "Last 10 cases"}
               icon={Target}
               tone="green"
             />

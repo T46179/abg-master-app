@@ -47,7 +47,7 @@ describe("AboutScreen", () => {
     expect(headings).toEqual([
       "AboutThe project & the person",
       "ABG MasterA focused learning companion",
-      "Dr Thanh TruongEmergency doctor"
+      "Dr Thanh TruongEmergency Medicine Registrar"
     ]);
     expect(container.querySelector(".about-page__portrait")?.getAttribute("role")).toBe("img");
     expect(container.querySelectorAll(".about-page__stat")).toHaveLength(3);

@@ -3,6 +3,7 @@ import { ArrowRight, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SeoMetadata } from "../../app/seo";
 import { PublicPageShell } from "../layout/PublicPageShell";
+import { ArticleByline } from "../shared/ArticleByline";
 import bookSearchIcon from "../../assets/icons/book_search.svg";
 import bookCheckedIcon from "../../assets/icons/book_checked.svg";
 import checkAllAltIcon from "../../assets/icons/check_all_alt.svg";
@@ -132,6 +133,7 @@ export function AnionGapScreen() {
             <p>ABG Master · Methodology</p>
           </div>
           <h1>Anion Gap Explained</h1>
+          <ArticleByline />
         </header>
 
         <section className="comp-rules-page__takeaway anion-gap-page__takeaway">

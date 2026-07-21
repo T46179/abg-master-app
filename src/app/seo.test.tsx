@@ -2,11 +2,23 @@
 
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useNavigate, type NavigateFunction } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { SeoMetadata } from "./seo";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+let navigate: NavigateFunction;
+
+function NavigationSeoMetadata() {
+  navigate = useNavigate();
+  return <SeoMetadata />;
+}
+
+function readArticleJsonLd() {
+  const element = document.head.querySelector<HTMLScriptElement>("#article-jsonld");
+  return element?.textContent ? JSON.parse(element.textContent) : undefined;
+}
 
 describe("SeoMetadata", () => {
   let container: HTMLDivElement;
@@ -34,7 +46,7 @@ describe("SeoMetadata", () => {
     },
     {
       pathname: "/delta-ratio/",
-      title: "Delta Ratio Explained | ABG Master",
+      title: "Delta Ratio & Delta Gap: Formula and Interpretation | ABG Master",
       description: "Learn how to calculate and interpret the delta ratio in high anion gap metabolic acidosis, with worked examples for detecting mixed metabolic disorders.",
       canonicalUrl: "https://www.abgmaster.com/delta-ratio/"
     },
@@ -67,6 +79,81 @@ describe("SeoMetadata", () => {
     expect(document.head.querySelector<HTMLMetaElement>('meta[property="og:url"]')?.content).toBe(canonicalUrl);
     expect(document.head.querySelector<HTMLMetaElement>('meta[name="twitter:title"]')?.content).toBe(title);
     expect(document.head.querySelector<HTMLMetaElement>('meta[name="twitter:description"]')?.content).toBe(description);
+  });
+
+  it.each([
+    ["/blood-gas-compensation-rules", "2026-05-01", undefined],
+    ["/delta-ratio/", "2026-05-14", undefined],
+    ["/abg-interpretation", undefined, "2026-05-23"],
+    ["/anion-gap/", "2026-06-19", undefined]
+  ])("emits Article JSON-LD with verified dates for %s", (pathname, datePublished, dateModified) => {
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={[pathname]}>
+          <SeoMetadata />
+        </MemoryRouter>
+      );
+    });
+
+    const structuredData = readArticleJsonLd();
+
+    expect(document.head.querySelectorAll("#article-jsonld")).toHaveLength(1);
+    expect(structuredData?.["@type"]).toBe("Article");
+    expect(structuredData?.author).toEqual({
+      "@type": "Person",
+      name: "Thanh Truong",
+      honorificPrefix: "Dr",
+      jobTitle: "Emergency Medicine Registrar",
+      url: "https://www.abgmaster.com/about/"
+    });
+    expect(structuredData?.datePublished).toBe(datePublished);
+    expect(structuredData?.dateModified).toBe(dateModified);
+    expect(structuredData).not.toHaveProperty("image");
+  });
+
+  it("reuses the statically generated Article JSON-LD node during hydration", () => {
+    document.head.insertAdjacentHTML(
+      "beforeend",
+      '<script id="article-jsonld" type="application/ld+json">{"stale":true}</script>'
+    );
+    const staticNode = document.head.querySelector("#article-jsonld");
+
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={["/abg-interpretation/"]}>
+          <SeoMetadata />
+        </MemoryRouter>
+      );
+    });
+
+    expect(document.head.querySelectorAll("#article-jsonld")).toHaveLength(1);
+    expect(document.head.querySelector("#article-jsonld")).toBe(staticNode);
+    expect(readArticleJsonLd()?.headline).toBe("How to Interpret a Blood Gas");
+  });
+
+  it("updates, removes, and restores a single Article JSON-LD node during navigation", () => {
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={["/blood-gas-compensation-rules/"]}>
+          <NavigationSeoMetadata />
+        </MemoryRouter>
+      );
+    });
+
+    const initialNode = document.head.querySelector("#article-jsonld");
+    expect(document.head.querySelectorAll("#article-jsonld")).toHaveLength(1);
+
+    act(() => navigate("/anion-gap/"));
+    expect(document.head.querySelectorAll("#article-jsonld")).toHaveLength(1);
+    expect(document.head.querySelector("#article-jsonld")).toBe(initialNode);
+    expect(readArticleJsonLd()?.headline).toBe("Anion Gap Explained");
+
+    act(() => navigate("/about/"));
+    expect(document.head.querySelectorAll("#article-jsonld")).toHaveLength(0);
+
+    act(() => navigate("/delta-ratio/"));
+    expect(document.head.querySelectorAll("#article-jsonld")).toHaveLength(1);
+    expect(readArticleJsonLd()?.headline).toBe("Delta Ratio Explained");
   });
 
   it.each([

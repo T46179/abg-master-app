@@ -9427,12 +9427,12 @@ button.learn-progress-dots__dot:focus-visible {
   font-weight: 350;
 }
 
-.delta-ratio-page a:not(.figma-button, .comp-rules-page__cta a, .comp-rules-page__practice-cta, .delta-ratio-page__icon-link, .delta-ratio-page__card-icon-link, .delta-ratio-page__quick-cta a) {
+.delta-ratio-page a:not(.figma-button, .comp-rules-page__cta a, .comp-rules-page__practice-cta, .delta-ratio-page__icon-link, .delta-ratio-page__card-icon-link, .delta-ratio-page__quick-cta a, .article-byline a) {
   color: #026aa2;
   text-decoration: none;
 }
 
-.delta-ratio-page a:not(.figma-button, .comp-rules-page__cta a, .comp-rules-page__practice-cta, .delta-ratio-page__icon-link, .delta-ratio-page__card-icon-link, .delta-ratio-page__quick-cta a):hover {
+.delta-ratio-page a:not(.figma-button, .comp-rules-page__cta a, .comp-rules-page__practice-cta, .delta-ratio-page__icon-link, .delta-ratio-page__card-icon-link, .delta-ratio-page__quick-cta a, .article-byline a):hover {
   text-decoration: underline;
 }
 
@@ -9733,7 +9733,7 @@ button.learn-progress-dots__dot:focus-visible {
   padding-top: 1rem;
 }
 
-.abg-interpretation-page__hero > p:not(.abg-interpretation-page__byline) {
+.abg-interpretation-page__hero > p:not(.article-byline) {
   max-width: none;
 }
 
@@ -9794,10 +9794,26 @@ button.learn-progress-dots__dot:focus-visible {
   color: var(--color-slate-strong);
 }
 
-.abg-interpretation-page__byline {
+.comp-rules-page__header > .article-byline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.55rem;
+  max-width: none;
+  margin: 0;
   color: var(--color-slate-faint) !important;
   font-size: 0.85rem !important;
   letter-spacing: 0.02em;
+  line-height: 1.5;
+}
+
+.article-byline a {
+  color: inherit;
+  font-weight: 500;
+  text-underline-offset: 0.15em;
+}
+
+.article-byline__separator {
+  color: var(--color-slate-faint);
 }
 
 .abg-interpretation-page__takeaway .comp-rules-page__card {

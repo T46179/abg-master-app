@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+import { articleAuthorDisplayName, siteIdentity } from "../../app/publicSeo";
 import { SeoMetadata } from "../../app/seo";
 import { PublicPageShell } from "../layout/PublicPageShell";
 import { usePublicCasesSolvedCount } from "../shared/usePublicCasesSolvedCount";
@@ -26,9 +27,7 @@ const aboutContent = {
   },
   person: {
     label: "02 — The person",
-    name: "Dr Thanh Truong",
-    role: "Emergency doctor",
-    portraitAlt: "Portrait placeholder for Dr Thanh Truong",
+    portraitAlt: `Portrait placeholder for ${articleAuthorDisplayName}`,
     paragraphs: [
       "ABG Master is built by an emergency medicine doctor in Australia as an education and practice resource for people learning to make sense of blood gases.",
       "It started as a practical way to make blood gas interpretation feel less abstract: short cases, step-by-step reasoning, and feedback that explains the pattern rather than just giving the answer.",
@@ -39,7 +38,7 @@ const aboutContent = {
       { term: "Interests", description: "Teaching, web design, eating" }
     ]
   },
-  footer: "© 2026 ABG Master · Dr Thanh Truong"
+  footer: "© 2026 ABG Master"
 } as const;
 
 export function AboutScreen() {
@@ -102,8 +101,8 @@ export function AboutScreen() {
                   {/* Add a portrait <img> here when an asset is ready. */}
                 </div>
                 <h2 id="about-person-heading">
-                  {aboutContent.person.name}
-                  <span>{aboutContent.person.role}</span>
+                  {articleAuthorDisplayName}
+                  <span>{siteIdentity.author.jobTitle}</span>
                 </h2>
               </div>
               <div className="about-page__copy">
@@ -122,7 +121,7 @@ export function AboutScreen() {
         </div>
 
         <footer className="about-page__footer">
-          <p>{aboutContent.footer}</p>
+          <p>{aboutContent.footer} · {articleAuthorDisplayName}</p>
         </footer>
       </PublicPageShell>
     </>

@@ -10,6 +10,7 @@ import {
 import { Link } from "react-router-dom";
 import { SeoMetadata } from "../../app/seo";
 import { PublicPageShell } from "../layout/PublicPageShell";
+import { ArticleByline } from "../shared/ArticleByline";
 import { convertMmHgToKPa, type PressureUnit } from "../../core/metrics";
 import { getCorrectAnswer, isCorrectAnswer, prettyStepLabel } from "../../core/practice";
 import type { AnswerSelection, AnswerValue, CaseData, StepResult } from "../../core/types";
@@ -583,7 +584,7 @@ export function AbgInterpretationScreen() {
           <h1>
             How to Interpret a Blood Gas
           </h1>
-          <p className="abg-interpretation-page__byline">Last updated May 2026</p>
+          <ArticleByline />
           <p>Most clinicians can interpret a blood gas intuitively to some extent. However once compensation, anion gap, and mixed disorders enter the picture, things get confusing.</p>
           <p>This guide will walk you through a systematic approach to blood gas interpretation — from first principles to advanced acid–base disorders.</p>
           <p>Understanding the physiology is important, but the best way to improve is through practice. Once you've finished, head over to ABG Master to apply what you've learned.</p>

@@ -1,26 +1,20 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import staticSeoPages from "./staticSeoPages.json";
+import {
+  buildArticleStructuredData,
+  getArticleSeoPage,
+  normalizeSeoPathname,
+  siteIdentity,
+  staticSeoPageConfigs,
+  type SeoMetadataConfig
+} from "./publicSeo";
 
-const SITE_URL = "https://www.abgmaster.com";
-
-interface SeoMetadataConfig {
-  title: string;
-  description: string;
-}
-
-interface StaticSeoPageConfig extends SeoMetadataConfig {
-  path: string;
-  canonicalPath: string;
-  outputDirectory: string;
-}
+export const ARTICLE_JSONLD_ID = "article-jsonld";
 
 const HOME_METADATA: SeoMetadataConfig = {
   title: "ABG Master | Learn Blood Gas Interpretation",
   description: "Learn blood gas interpretation with step-by-step lessons, interactive ABG practice cases, and exam-style questions."
 };
-
-const staticSeoPageConfigs = staticSeoPages as StaticSeoPageConfig[];
 
 const SEO_BY_PATH: Record<string, SeoMetadataConfig> = {
   "/": HOME_METADATA,
@@ -63,11 +57,6 @@ const CANONICAL_PATH_BY_PATH: Record<string, string> = Object.fromEntries(
   staticSeoPageConfigs.map(({ path, canonicalPath }) => [path, canonicalPath])
 );
 
-function normalizePathname(pathname: string) {
-  if (pathname === "/") return pathname;
-  return pathname.replace(/\/+$/, "");
-}
-
 function upsertMetaByName(name: string, content: string) {
   let element = document.head.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
 
@@ -78,6 +67,32 @@ function upsertMetaByName(name: string, content: string) {
   }
 
   element.setAttribute("content", content);
+}
+
+function syncArticleStructuredData(pathname: string) {
+  const article = getArticleSeoPage(pathname);
+  const existingNodes = Array.from(document.head.querySelectorAll<HTMLElement>(`#${ARTICLE_JSONLD_ID}`));
+  const existingElement = existingNodes.shift();
+
+  existingNodes.forEach(node => node.remove());
+
+  if (!article) {
+    existingElement?.remove();
+    return;
+  }
+
+  let scriptElement: HTMLScriptElement;
+  if (existingElement instanceof HTMLScriptElement) {
+    scriptElement = existingElement;
+  } else {
+    existingElement?.remove();
+    scriptElement = document.createElement("script");
+    document.head.appendChild(scriptElement);
+  }
+
+  scriptElement.id = ARTICLE_JSONLD_ID;
+  scriptElement.type = "application/ld+json";
+  scriptElement.textContent = JSON.stringify(buildArticleStructuredData(article));
 }
 
 function upsertMetaByProperty(property: string, content: string) {
@@ -108,10 +123,10 @@ export function SeoMetadata() {
   const location = useLocation();
 
   useEffect(() => {
-    const pathname = normalizePathname(location.pathname);
+    const pathname = normalizeSeoPathname(location.pathname);
     const metadata = SEO_BY_PATH[pathname] ?? HOME_METADATA;
     const canonicalPath = CANONICAL_PATH_BY_PATH[pathname] ?? (SEO_BY_PATH[pathname] ? pathname : "/");
-    const canonicalUrl = `${SITE_URL}${canonicalPath}`;
+    const canonicalUrl = `${siteIdentity.siteUrl}${canonicalPath}`;
 
     document.title = metadata.title;
     upsertMetaByName("description", metadata.description);
@@ -121,6 +136,7 @@ export function SeoMetadata() {
     upsertMetaByProperty("og:url", canonicalUrl);
     upsertMetaByName("twitter:title", metadata.title);
     upsertMetaByName("twitter:description", metadata.description);
+    syncArticleStructuredData(pathname);
   }, [location.pathname]);
 
   return null;
