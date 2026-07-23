@@ -100,7 +100,6 @@
 }
 
 .cmp-visual__schematic-note {
-  font-style: italic;
   text-align: right;
 }
 
@@ -152,8 +151,9 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: var(--cmp-low, 0%);
+  left: var(--cmp-center, 50%);
   width: max(1.5rem, calc(var(--cmp-high, 100%) - var(--cmp-low, 0%)));
+  transform: translateX(-50%);
   border: 2px solid var(--band-line, var(--color-blue-muted, #5f7897));
   border-radius: 6px;
   background: var(--band-fill, var(--color-blue-soft, #eff6ff));
@@ -162,11 +162,22 @@
 .cmp-band__label {
   position: absolute;
   bottom: calc(100% + 2px);
-  left: var(--cmp-low, 0%);
+  left: var(--cmp-center, 50%);
+  transform: translateX(-50%);
   color: var(--band-line, var(--color-navy-soft, #24436f));
   font-size: 0.6875rem;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.cmp-band__label--start {
+  left: var(--cmp-low, 0%);
+  transform: none;
+}
+
+.cmp-band__label--end {
+  left: var(--cmp-high, 100%);
+  transform: translateX(-100%);
 }
 
 .cmp-band__bounds {
@@ -193,6 +204,7 @@
 }
 
 .cmp-band--reference .cmp-band__segment {
+  border-width: 1px;
   border-style: dashed;
 }
 
@@ -223,17 +235,6 @@
 
 .cmp-band--neutral .cmp-band__segment {
   border-style: dotted;
-}
-
-.cmp-band__midpoint {
-  position: absolute;
-  top: 50%;
-  left: var(--cmp-mid, 50%);
-  width: 2px;
-  height: 0.75rem;
-  transform: translate(-50%, -50%);
-  background: var(--band-line, var(--color-blue-muted, #5f7897));
-  opacity: 0.7;
 }
 
 .cmp-marker {
@@ -290,28 +291,40 @@
   transform: translateX(-100%);
 }
 
+.cmp-interpretation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.375rem;
+}
+
+.cmp-interpretation .cmp-status {
+  flex: none;
+  align-self: center;
+}
+
 .cmp .cmp-sentence {
+  flex: 1 1 20rem;
   margin: 0;
   color: var(--color-navy-soft, #24436f);
-  font-size: 0.9375rem;
-  font-weight: 400;
-  line-height: 1.5;
+  font-size: 0.98rem;
+  font-weight: 300;
+  line-height: 1.72;
 }
 
 .cmp-calc {
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--color-border, #e3e7e8);
+  padding-top: 0;
 }
 
 .cmp-calc__toggle {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.4375rem 0.75rem;
-  border: 1px solid var(--color-border, #e3e7e8);
-  border-radius: 8px;
-  background: var(--color-surface, #fff);
-  color: var(--color-blue, #2563eb);
+  padding: 0.4375rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-navy, #0f2547);
   font: inherit;
   font-size: 0.8125rem;
   font-weight: 600;
@@ -319,7 +332,7 @@
 }
 
 .cmp-calc__toggle:hover {
-  background: var(--color-blue-soft, #eff6ff);
+  background: transparent;
 }
 
 .cmp-calc__toggle:focus-visible {
@@ -337,19 +350,9 @@
 
 .cmp-calc__panel {
   margin-top: 0.75rem;
-  padding: 0.875rem 1rem;
-  border: 1px solid var(--color-border, #e3e7e8);
-  border-radius: 10px;
-  background: var(--color-surface-raised, #f8fafc);
-}
-
-.cmp .cmp-calc__rule {
-  margin: 0 0 0.5rem;
-  color: var(--color-blue-muted, #5f7897);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .cmp-calc__lines {
@@ -357,27 +360,127 @@
   flex-direction: column;
   gap: 0.375rem;
   margin: 0;
-  padding: 0;
+  padding-left: 1.25rem;
   color: var(--color-navy-soft, #24436f);
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  list-style: none;
+  font-size: 0.98rem;
+  font-weight: 300;
+  line-height: 1.72;
+  list-style: disc;
 }
 
 .cmp-calc__lines li {
   position: relative;
-  padding-left: 0.875rem;
+  padding-left: 0.25rem;
 }
 
-.cmp-calc__lines li::before {
+.cmp-calc__lines li::marker {
+  color: var(--color-blue, #2563eb);
+  font-size: 0.8em;
+}
+
+.cmp-calc__range--primary_expected {
+  color: var(--color-blue, #2563eb);
+}
+
+.cmp-calc__range--acute_expected {
+  color: var(--color-violet, #7c3aed);
+}
+
+.cmp-calc__range--chronic_expected {
+  color: var(--color-orange, #ea580c);
+}
+
+.cmp-formula-help {
+  display: inline-flex;
+  margin-left: 0.25rem;
+  vertical-align: middle;
+}
+
+.cmp-formula-help__button {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #8c989d;
+  cursor: pointer;
+}
+
+.cmp-formula-help__button:hover,
+.cmp-formula-help__button:focus-visible,
+.cmp-formula-help__button[aria-expanded="true"] {
+  background: rgba(15, 37, 71, 0.08);
+  color: var(--color-navy, #0f2547);
+}
+
+.cmp-formula-help__button:focus-visible {
+  outline: 2px solid rgba(15, 37, 71, 0.35);
+  outline-offset: 2px;
+}
+
+.cmp-formula-help__icon {
+  width: 1rem;
+  height: 1rem;
+  background: currentColor;
+  -webkit-mask-image: url("../../../assets/icons/book_search.svg");
+  mask-image: url("../../../assets/icons/book_search.svg");
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.cmp-formula-help__popover {
   position: absolute;
-  top: 0.5rem;
-  left: 0;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--color-blue, #2563eb);
-  content: "";
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 50;
+  width: min(24rem, 100%);
+  padding: 1rem;
+  border: 1px solid rgba(15, 37, 71, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 1rem 2rem rgba(15, 23, 42, 0.16);
+  color: var(--color-navy-soft, #24436f);
+  font-size: 0.86rem;
+  font-weight: 300;
+  line-height: 1.45;
+}
+
+.cmp .cmp-formula-help__eyebrow {
+  margin: 0 0 0.65rem;
+  color: #7a878c;
+  font-size: 0.625rem;
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cmp-formula-help__rule + .cmp-formula-help__rule {
+  margin-top: 0.875rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--color-border, #e3e7e8);
+}
+
+.cmp-formula-help__rule h5 {
+  margin: 0 0 0.35rem;
+  color: var(--color-navy, #0f2547);
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+.cmp .cmp-formula-help__rule p {
+  margin: 0.35rem 0 0;
+  color: var(--color-navy-soft, #24436f);
+  font-size: 0.86rem;
+  font-weight: 300;
+  line-height: 1.45;
 }
 
 .cmp-qualifier {

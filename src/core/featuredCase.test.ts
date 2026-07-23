@@ -6,9 +6,12 @@ import {
   FEATURED_CASE_DRAFT_STORAGE_KEY,
   FEATURED_CASE_DRAFT_VERSION,
   FEATURED_CASE_INTRO_SEEN_STORAGE_KEY,
+  FEATURED_CASE_INVITATION_DISMISSAL_STORAGE_KEY,
+  isFeaturedCaseInvitationDismissed,
   loadFeaturedCaseDraft,
   loadFeaturedCaseIntroSeen,
   saveFeaturedCaseDraft,
+  saveFeaturedCaseInvitationDismissal,
   saveFeaturedCaseIntroSeen,
   type FeaturedCaseDraft
 } from "./featuredCase";
@@ -84,6 +87,63 @@ describe("Featured Case draft storage", () => {
 
     expect(storage.getItem(FEATURED_CASE_INTRO_SEEN_STORAGE_KEY)).toBe("true");
     expect(loadFeaturedCaseIntroSeen(storage)).toBe(true);
+  });
+
+  it("persists one user-and-release-specific invitation dismissal", () => {
+    const storage = createMemoryStorage();
+
+    saveFeaturedCaseInvitationDismissal(storage, {
+      userId: "user-1",
+      releaseId: "featured-authored-004-r4"
+    });
+
+    expect(isFeaturedCaseInvitationDismissed(storage, {
+      userId: "user-1",
+      releaseId: "featured-authored-004-r4"
+    })).toBe(true);
+    expect(isFeaturedCaseInvitationDismissed(storage, {
+      userId: "user-2",
+      releaseId: "featured-authored-004-r4"
+    })).toBe(false);
+    expect(isFeaturedCaseInvitationDismissed(storage, {
+      userId: "user-1",
+      releaseId: "featured-authored-005-r1"
+    })).toBe(false);
+  });
+
+  it("overwrites the prior invitation dismissal instead of accumulating releases", () => {
+    const storage = createMemoryStorage();
+    saveFeaturedCaseInvitationDismissal(storage, {
+      userId: "user-1",
+      releaseId: "featured-authored-004-r4"
+    });
+    saveFeaturedCaseInvitationDismissal(storage, {
+      userId: "user-1",
+      releaseId: "featured-authored-005-r1"
+    });
+
+    const stored = JSON.parse(
+      storage.getItem(FEATURED_CASE_INVITATION_DISMISSAL_STORAGE_KEY) ?? "null"
+    );
+    expect(stored).toEqual({
+      version: 1,
+      userId: "user-1",
+      releaseId: "featured-authored-005-r1"
+    });
+    expect(isFeaturedCaseInvitationDismissed(storage, {
+      userId: "user-1",
+      releaseId: "featured-authored-004-r4"
+    })).toBe(false);
+  });
+
+  it("ignores malformed invitation dismissal storage", () => {
+    const storage = createMemoryStorage();
+    storage.setItem(FEATURED_CASE_INVITATION_DISMISSAL_STORAGE_KEY, "{malformed");
+
+    expect(isFeaturedCaseInvitationDismissed(storage, {
+      userId: "user-1",
+      releaseId: "featured-authored-004-r4"
+    })).toBe(false);
   });
 
   it("shares one analytics attempt across tabs for the same issued session", async () => {

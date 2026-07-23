@@ -1,10 +1,12 @@
-import { useEffect, useId, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Info } from "lucide-react";
 import type { CompensationResult } from "../../../core/types";
+import { compensationRules } from "../../learn/CompensationRules";
 import { MetricInlineText } from "../MetricText";
 import {
   buildCompensationVisualModel,
   type CompensationBandVisualModel,
+  type CompensationCalculationRowVisualModel,
   type CompensationVisualModel
 } from "./compensationVisualModel";
 import "./compensation.css";
@@ -25,6 +27,17 @@ const STATUS_GLYPHS: Record<StatusTone, string> = {
   context: "i"
 };
 
+const FORMULA_SLUGS_BY_RULE_KEY: Record<string, string[]> = {
+  winter: ["metabolic-acidosis"],
+  metabolic_alkalosis: ["metabolic-alkalosis"],
+  metabolic_alkalosis_compensation: ["metabolic-alkalosis"],
+  acute_respiratory_acidosis: ["acute-respiratory-acidosis"],
+  chronic_respiratory_acidosis: ["chronic-respiratory-acidosis"],
+  acute_respiratory_alkalosis: ["acute-respiratory-alkalosis"],
+  chronic_respiratory_alkalosis: ["chronic-respiratory-alkalosis"],
+  acute_on_chronic_respiratory_acidosis: ["acute-respiratory-acidosis", "chronic-respiratory-acidosis"]
+};
+
 function formatNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
@@ -42,18 +55,21 @@ function bandPresentationClass(kindKey?: string) {
 }
 
 function ComparisonBand({ band }: { band: CompensationBandVisualModel }) {
+  const labelAlignment = band.centerPos <= 5
+    ? "start"
+    : band.centerPos >= 95
+      ? "end"
+      : "center";
   const style = {
     "--cmp-low": `${band.lowPos}%`,
     "--cmp-high": `${band.highPos}%`,
-    ...(band.midPos === undefined ? {} : { "--cmp-mid": `${band.midPos}%` })
+    "--cmp-center": `${band.centerPos}%`
   } as CSSProperties;
 
   return (
     <div className={`cmp-band ${bandPresentationClass(band.kindKey)}`} style={style}>
-      <span className="cmp-band__label">{band.label}</span>
-      <div className="cmp-band__segment">
-        {band.midpoint === undefined ? null : <span className="cmp-band__midpoint" />}
-      </div>
+      <span className={`cmp-band__label cmp-band__label--${labelAlignment}`}>{band.label}</span>
+      <div className="cmp-band__segment" />
       <span className="cmp-band__bounds cmp-band__bounds--low">{formatNumber(band.low)}</span>
       <span className="cmp-band__bounds cmp-band__bounds--high">{formatNumber(band.high)}</span>
     </div>
@@ -82,7 +98,7 @@ function SchematicRangeVisual({ model }: { model: CompensationVisualModel }) {
     <div className="cmp-visual">
       <div className="cmp-visual__meta" aria-hidden="true">
         <span>{model.targetLabel} vs expected ranges</span>
-        <span className="cmp-visual__schematic-note">Schematic — not to scale</span>
+        <span className="cmp-visual__schematic-note">not to scale</span>
       </div>
 
       <div className="cmp-rail" aria-hidden="true">
@@ -139,14 +155,93 @@ function InterpretationStatus({ model }: { model: CompensationVisualModel }) {
   );
 }
 
+function CompensationFormulaHelp(props: { ruleKey: string | null; caseId: string }) {
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const containerRef = useRef<HTMLSpanElement | null>(null);
+  const popoverId = useId();
+  const [open, setOpen] = useState(false);
+  const rules = (FORMULA_SLUGS_BY_RULE_KEY[props.ruleKey ?? ""] ?? [])
+    .map(slug => compensationRules.find(rule => rule.slug === slug))
+    .filter((rule): rule is (typeof compensationRules)[number] => Boolean(rule));
+  const multipleRules = rules.length > 1;
+  const accessibleLabel = multipleRules
+    ? "Show acute and chronic respiratory acidosis formulas"
+    : rules[0]
+      ? `Show ${String(rules[0].title)} formula`
+      : "Show compensation formula";
+
+  useEffect(() => {
+    setOpen(false);
+  }, [props.caseId, props.ruleKey]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handleDocumentClick(event: MouseEvent) {
+      const target = event.target as Node | null;
+      if (target && containerRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      buttonRef.current?.focus();
+    }
+
+    document.addEventListener("click", handleDocumentClick);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("click", handleDocumentClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open]);
+
+  if (!rules.length) return null;
+
+  return (
+    <span className="cmp-formula-help" ref={containerRef}>
+      <button
+        ref={buttonRef}
+        className="cmp-formula-help__button"
+        type="button"
+        aria-label={accessibleLabel}
+        aria-expanded={open}
+        aria-controls={popoverId}
+        onClick={() => setOpen(current => !current)}
+      >
+        <span className="cmp-formula-help__icon" aria-hidden="true" />
+      </button>
+      {open ? (
+        <div
+          className="cmp-formula-help__popover"
+          id={popoverId}
+          role="dialog"
+          aria-label={multipleRules ? "Acute and chronic respiratory acidosis formulas" : "Compensation formula"}
+        >
+          <p className="cmp-formula-help__eyebrow">{multipleRules ? "formulas" : "formula"}</p>
+          {rules.map(rule => (
+            <div className="cmp-formula-help__rule" key={rule.slug}>
+              <h5>{rule.title}</h5>
+              <p>{rule.formula}</p>
+              <p>{rule.range}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </span>
+  );
+}
+
 function CalculationDisclosure(props: {
-  label: string | null;
-  lines: string[];
+  rows: CompensationCalculationRowVisualModel[];
+  ruleKey: string | null;
+  caseId: string;
   open: boolean;
   onToggle: () => void;
 }) {
   const panelId = useId();
-  if (!props.lines.length) return null;
+  if (!props.rows.length) return null;
 
   return (
     <div className="cmp-calc">
@@ -162,10 +257,19 @@ function CalculationDisclosure(props: {
       </button>
       {props.open ? (
         <div className="cmp-calc__panel" id={panelId}>
-          {props.label ? <p className="cmp-calc__rule">{props.label}</p> : null}
           <ul className="cmp-calc__lines">
-            {props.lines.map((line, index) => (
-              <li key={`${index}-${line}`}><MetricInlineText text={line} /></li>
+            {props.rows.map((row, rowIndex) => (
+              <li key={row.id}>
+                {row.parts.map((part, partIndex) => (
+                  <span
+                    className={part.tone ? `cmp-calc__range cmp-calc__range--${part.tone}` : undefined}
+                    key={`${partIndex}-${part.text}`}
+                  >
+                    <MetricInlineText text={part.text} />
+                  </span>
+                ))}
+                {rowIndex === 0 ? <CompensationFormulaHelp ruleKey={props.ruleKey} caseId={props.caseId} /> : null}
+              </li>
             ))}
           </ul>
         </div>
@@ -214,12 +318,15 @@ export function CompensationVisualContent(props: CompensationVisualContentProps)
 
   return (
     <div className="cmp">
-      <InterpretationStatus model={model} />
       <SchematicRangeVisual model={model} />
-      <p className="cmp-sentence"><MetricInlineText text={model.clinicalSentence} /></p>
+      <div className="cmp-interpretation">
+        <InterpretationStatus model={model} />
+        <p className="cmp-sentence"><MetricInlineText text={model.clinicalSentence} /></p>
+      </div>
       <CalculationDisclosure
-        label={model.calculationLabel}
-        lines={model.calculationLines}
+        rows={model.calculationRows}
+        ruleKey={model.calculationRuleKey}
+        caseId={props.caseId}
         open={calculationOpen}
         onToggle={() => setCalculationOpen(current => !current)}
       />

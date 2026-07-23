@@ -7,20 +7,39 @@ import {
   buildFeaturedCaseEntryUrl,
   trackFeaturedCaseEntry
 } from "../../core/featuredCaseAnalytics";
+import {
+  isFeaturedCaseInvitationDismissed,
+  saveFeaturedCaseInvitationDismissal
+} from "../../core/featuredCase";
 import { Surface } from "../primitives/Surface";
 import { useElementViewed } from "../primitives/useElementViewed";
 
 export function ResultsFeaturedCaseCta() {
   const { state } = useAppContext();
   const featured = useFeaturedCaseStatus();
-  const [dismissedReleaseId, setDismissedReleaseId] = useState<string | null>(null);
+  const [sessionDismissal, setSessionDismissal] = useState<{
+    userId: string | null;
+    releaseId: string;
+  } | null>(null);
   const releaseId = featured.status.releaseId;
+  const userId = state.userId ?? null;
+  const persistedDismissal = Boolean(
+    releaseId
+    && typeof window !== "undefined"
+    && isFeaturedCaseInvitationDismissed(window.localStorage, { userId, releaseId })
+  );
+  const dismissedInSession = Boolean(
+    releaseId
+    && sessionDismissal?.userId === userId
+    && sessionDismissal.releaseId === releaseId
+  );
   const eligible = Boolean(
     !featured.loading &&
     releaseId &&
     featured.status.ctaEligible &&
     !featured.status.opened &&
-    dismissedReleaseId !== releaseId
+    !persistedDismissal &&
+    !dismissedInSession
   );
   const handleEntryViewed = useCallback(() => {
     if (!releaseId) return;
@@ -72,7 +91,11 @@ export function ResultsFeaturedCaseCta() {
         className="results-pattern-tip__dismiss"
         type="button"
         aria-label="Dismiss Featured Case invitation"
-        onClick={() => setDismissedReleaseId(releaseId)}
+        onClick={() => {
+          const dismissal = { userId, releaseId };
+          saveFeaturedCaseInvitationDismissal(window.localStorage, dismissal);
+          setSessionDismissal(dismissal);
+        }}
       >
         <X aria-hidden="true" />
       </button>

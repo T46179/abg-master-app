@@ -19,7 +19,9 @@ import type {
 
 export const FEATURED_CASE_DRAFT_STORAGE_KEY = "abgmaster_featuredCaseDraft";
 export const FEATURED_CASE_INTRO_SEEN_STORAGE_KEY = "abgmaster_featuredCaseIntroSeen";
+export const FEATURED_CASE_INVITATION_DISMISSAL_STORAGE_KEY = "abgmaster_featuredCaseInvitationDismissal";
 export const FEATURED_CASE_DRAFT_VERSION = 2;
+const FEATURED_CASE_INVITATION_DISMISSAL_VERSION = 1;
 
 export interface FeaturedCaseDraft {
   version: typeof FEATURED_CASE_DRAFT_VERSION;
@@ -31,6 +33,12 @@ export interface FeaturedCaseDraft {
   stepResults: StepResult[];
   savedAt: string;
   analytics?: FeaturedCaseAnalyticsContext;
+}
+
+interface FeaturedCaseInvitationDismissal {
+  version: typeof FEATURED_CASE_INVITATION_DISMISSAL_VERSION;
+  userId: string | null;
+  releaseId: string;
 }
 
 const FEATURED_ANALYTICS_CONTEXT_LOCK = "abgmaster-featured-analytics-context";
@@ -224,5 +232,42 @@ export function saveFeaturedCaseIntroSeen(storage: Pick<Storage, "setItem">): vo
     storage.setItem(FEATURED_CASE_INTRO_SEEN_STORAGE_KEY, "true");
   } catch {
     // Keep the current session usable when browser storage is unavailable.
+  }
+}
+
+export function isFeaturedCaseInvitationDismissed(
+  storage: Pick<Storage, "getItem">,
+  expected: { userId: string | null; releaseId: string }
+): boolean {
+  try {
+    const parsed = JSON.parse(
+      storage.getItem(FEATURED_CASE_INVITATION_DISMISSAL_STORAGE_KEY) ?? "null"
+    ) as FeaturedCaseInvitationDismissal | null;
+    return Boolean(
+      parsed
+      && parsed.version === FEATURED_CASE_INVITATION_DISMISSAL_VERSION
+      && parsed.userId === expected.userId
+      && parsed.releaseId === expected.releaseId
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function saveFeaturedCaseInvitationDismissal(
+  storage: Pick<Storage, "setItem">,
+  dismissal: { userId: string | null; releaseId: string }
+): void {
+  try {
+    storage.setItem(
+      FEATURED_CASE_INVITATION_DISMISSAL_STORAGE_KEY,
+      JSON.stringify({
+        version: FEATURED_CASE_INVITATION_DISMISSAL_VERSION,
+        userId: dismissal.userId,
+        releaseId: dismissal.releaseId
+      } satisfies FeaturedCaseInvitationDismissal)
+    );
+  } catch {
+    // The invitation still dismisses for the current mounted session.
   }
 }

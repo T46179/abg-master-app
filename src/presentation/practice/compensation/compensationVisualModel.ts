@@ -14,30 +14,19 @@ const INTERPRETATION_LABELS: Record<string, string> = {
 };
 
 const BAND_LABELS: Record<string, string> = {
-  reference_range: "Reference interval",
-  expected_range: "Expected interval",
-  acute_expected: "Acute expected",
-  chronic_expected: "Chronic expected"
+  reference_range: "Reference",
+  expected_range: "Expected",
+  acute_expected: "Acute",
+  chronic_expected: "Chronic"
 };
 
 const QUALIFIER_LABELS: Record<string, string> = {
   acute_on_chronic_without_known_baseline:
-    "No documented baseline: this supports an acute-on-chronic pattern but does not define a precise combined target.",
+    "Without a documented baseline, there is no precise combined expected range.",
   venous_sample:
     "This is a venous sample, so the exact PaCO2 difference should be interpreted with clinical context.",
   profound_hypothermia:
     "Profound hypothermia can alter measured blood-gas values and the expected physiological response."
-};
-
-const RULE_LABELS: Record<string, string> = {
-  winter: "Winter's formula",
-  metabolic_alkalosis: "Metabolic alkalosis rule",
-  metabolic_alkalosis_compensation: "Metabolic alkalosis rule",
-  acute_respiratory_acidosis: "Acute respiratory acidosis rule",
-  chronic_respiratory_acidosis: "Chronic respiratory acidosis rule",
-  acute_respiratory_alkalosis: "Acute respiratory alkalosis rule",
-  chronic_respiratory_alkalosis: "Chronic respiratory alkalosis rule",
-  acute_on_chronic_respiratory_acidosis: "Acute and chronic respiratory acidosis comparison"
 };
 
 const VALID_ROLES = new Set(["reference", "expected", "comparator"]);
@@ -101,7 +90,19 @@ export interface CompensationBandVisualModel extends CompensationComparisonBand 
   label: string;
   lowPos: number;
   highPos: number;
-  midPos?: number;
+  centerPos: number;
+}
+
+export type CompensationCalculationTone = "primary_expected" | "acute_expected" | "chronic_expected";
+
+export interface CompensationCalculationPartVisualModel {
+  text: string;
+  tone?: CompensationCalculationTone;
+}
+
+export interface CompensationCalculationRowVisualModel {
+  id: string;
+  parts: CompensationCalculationPartVisualModel[];
 }
 
 export interface CompensationVisualModel {
@@ -116,8 +117,8 @@ export interface CompensationVisualModel {
   interpretationKey: string;
   clinicalSentence: string;
   qualifierMessages: string[];
-  calculationLabel: string | null;
-  calculationLines: string[];
+  calculationRuleKey: string | null;
+  calculationRows: CompensationCalculationRowVisualModel[];
   accessibleDescription: string;
 }
 
@@ -132,37 +133,125 @@ function formatNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-function buildClinicalSentence(result: CompensationResult, targetLabel: string) {
-  const measured = `${targetLabel} ${formatNumber(result.measuredValue)} ${result.unit}`;
+function buildClinicalSentence(result: CompensationResult) {
+  const additionalProcess = result.targetAnalyte === "paco2" ? "respiratory" : "metabolic";
+  const processBelowExpected = result.targetAnalyte === "paco2"
+    ? "respiratory alkalosis"
+    : "metabolic acidosis";
+  const processAboveExpected = result.targetAnalyte === "paco2"
+    ? "respiratory acidosis"
+    : "metabolic alkalosis";
+
   switch (result.interpretationKey) {
     case "within_expected_range":
-      return `${measured} sits within the expected compensation range.`;
+      return `No additional ${additionalProcess} acid–base process is evident.`;
     case "below_expected_range":
-      return `${measured} sits below the expected compensation range.`;
+      return `This suggests an additional ${processBelowExpected}.`;
     case "above_expected_range":
-      return `${measured} sits above the expected compensation range.`;
+      return `This suggests an additional ${processAboveExpected}.`;
     case "markedly_below_expected_range":
-      return `${measured} sits markedly below the expected compensation range.`;
+      return `This strongly suggests an additional ${processBelowExpected}.`;
     case "markedly_above_expected_range":
-      return `${measured} sits markedly above the expected compensation range.`;
+      return `This strongly suggests an additional ${processAboveExpected}.`;
     case "between_acute_and_chronic_expectations":
-      return `${measured} sits above the acute expectation and below the chronic expectation.`;
+      return "This suggests an acute-on-chronic respiratory process.";
     default:
-      return `${measured} is shown against the supplied compensation ranges.`;
+      return "Interpret the measured value against the supplied compensation ranges.";
   }
 }
 
-function buildOrdinalPositionMap(result: CompensationResult) {
+function buildLinearPositionMap(result: CompensationResult) {
   const anchors = Array.from(new Set([
     result.measuredValue,
     ...result.comparisonBands.flatMap(band => [band.low, band.high])
-  ])).sort((left, right) => left - right);
+  ]));
+  const minimum = Math.min(...anchors);
+  const maximum = Math.max(...anchors);
+  const span = maximum - minimum;
+
   return new Map(
-    anchors.map((anchor, index) => [
+    anchors.map(anchor => [
       anchor,
-      anchors.length === 1 ? 50 : (index / (anchors.length - 1)) * 100
+      span === 0 ? 50 : ((anchor - minimum) / span) * 100
     ])
   );
+}
+
+function rawCalculationRows(lines: string[]): CompensationCalculationRowVisualModel[] {
+  return lines.map((line, index) => ({
+    id: `raw-${index}`,
+    parts: [{ text: line }]
+  }));
+}
+
+function rangeText(band: CompensationBandVisualModel) {
+  return `${formatNumber(band.low)} – ${formatNumber(band.high)}`;
+}
+
+function calculationToneFor(band: CompensationBandVisualModel): CompensationCalculationTone | undefined {
+  switch (band.kindKey) {
+    case "primary_expected":
+    case "acute_expected":
+    case "chronic_expected":
+      return band.kindKey;
+    default:
+      return undefined;
+  }
+}
+
+function buildCalculationRows(
+  result: CompensationResult,
+  bands: CompensationBandVisualModel[],
+  targetLabel: string,
+  lines: string[]
+): CompensationCalculationRowVisualModel[] {
+  if (!lines.length) return [];
+
+  if (result.calculation?.ruleKey === "acute_on_chronic_respiratory_acidosis") {
+    const acuteBand = bands.find(band => band.id === "acute_expected");
+    const chronicBand = bands.find(band => band.id === "chronic_expected");
+    const hasStructuredFormulaLines = lines[0]?.startsWith("Acute:") && lines[1]?.startsWith("Chronic:");
+    if (!acuteBand || !chronicBand || !hasStructuredFormulaLines) return rawCalculationRows(lines);
+
+    return [
+      { id: "acute-formula", parts: [{ text: lines[0] }] },
+      { id: "chronic-formula", parts: [{ text: lines[1] }] },
+      {
+        id: "expected",
+        parts: [
+          { text: `Expected ${targetLabel}: Acute ` },
+          { text: rangeText(acuteBand), tone: calculationToneFor(acuteBand) },
+          { text: " · Chronic " },
+          { text: rangeText(chronicBand), tone: calculationToneFor(chronicBand) },
+          { text: ` ${result.unit}` }
+        ]
+      },
+      {
+        id: "measured",
+        parts: [{ text: `Measured ${targetLabel}: ${formatNumber(result.measuredValue)} ${result.unit}` }]
+      }
+    ];
+  }
+
+  const expectedBand = bands.find(band => band.id === result.primaryExpectedBandId)
+    ?? bands.find(band => band.role === "expected");
+  if (!expectedBand) return rawCalculationRows(lines);
+
+  return [
+    { id: "formula", parts: [{ text: lines[0] }] },
+    {
+      id: "expected",
+      parts: [
+        { text: `Expected ${targetLabel}: ` },
+        { text: rangeText(expectedBand), tone: calculationToneFor(expectedBand) },
+        { text: ` ${result.unit}` }
+      ]
+    },
+    {
+      id: "measured",
+      parts: [{ text: `Measured ${targetLabel}: ${formatNumber(result.measuredValue)} ${result.unit}` }]
+    }
+  ];
 }
 
 export function buildCompensationVisualModel(
@@ -176,21 +265,16 @@ export function buildCompensationVisualModel(
     };
   }
 
-  const positions = buildOrdinalPositionMap(result);
+  const positions = buildLinearPositionMap(result);
   const bands = result.comparisonBands.map(band => {
     const lowPos = positions.get(band.low) ?? 0;
     const highPos = positions.get(band.high) ?? 100;
-    const midPos = band.midpoint === undefined
-      ? undefined
-      : band.high === band.low
-        ? 50
-        : Math.min(100, Math.max(0, ((band.midpoint - band.low) / (band.high - band.low)) * 100));
     return {
       ...band,
       label: BAND_LABELS[band.labelKey] ?? band.labelKey.replaceAll("_", " "),
       lowPos,
       highPos,
-      midPos
+      centerPos: lowPos + ((highPos - lowPos) / 2)
     };
   });
   const targetLabel = result.targetAnalyte === "paco2" ? "PaCO₂" : "HCO₃⁻";
@@ -199,6 +283,7 @@ export function buildCompensationVisualModel(
     key => QUALIFIER_LABELS[key] ?? "Additional clinical context applies to this comparison."
   );
   const calculationLines = result.calculation?.displayLines?.map(line => line.trim()).filter(Boolean) ?? [];
+  const calculationRows = buildCalculationRows(result, bands, targetLabel, calculationLines);
   const relationshipByBand = new Map(result.comparisons.map(comparison => [comparison.bandId, comparison.relationship]));
   const bandDescriptions = result.comparisonBands.map(band => {
     const relationship = relationshipByBand.get(band.id);
@@ -218,12 +303,10 @@ export function buildCompensationVisualModel(
     bands,
     interpretationLabel,
     interpretationKey: result.interpretationKey,
-    clinicalSentence: buildClinicalSentence(result, targetLabel),
+    clinicalSentence: buildClinicalSentence(result),
     qualifierMessages,
-    calculationLabel: result.calculation?.ruleKey
-      ? (RULE_LABELS[result.calculation.ruleKey] ?? result.calculation.ruleKey.replaceAll("_", " "))
-      : null,
-    calculationLines,
+    calculationRuleKey: result.calculation?.ruleKey?.trim() || null,
+    calculationRows,
     accessibleDescription: [
       `Measured ${targetLabel}: ${formatNumber(result.measuredValue)} ${result.unit}.`,
       ...bandDescriptions,
