@@ -29,6 +29,7 @@ function buildPreviewSummary(caseItem: CaseData, stepResults: StepResult[], elap
     perfectBonus: 0,
     speedBonus: 0,
     level: 1,
+    analysis: caseItem.analysis,
     stepResults,
     caseData: caseItem
   };

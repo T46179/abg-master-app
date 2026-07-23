@@ -181,6 +181,7 @@ export async function submitProtectedPracticeCase(
     perfectBonus: response.summary.perfectBonus,
     speedBonus: response.summary.speedBonus,
     level: response.summary.level,
+    analysis: response.summary.analysis,
     stepResults: response.stepResults ?? [],
     caseData: response.summary.caseData
   };

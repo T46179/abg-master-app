@@ -933,4 +933,47 @@ describe("ResultsSummaryCard", () => {
     expect(container.querySelector(".case-metadata-icon--boosted-xp")).not.toBeNull();
     expect(container.textContent).toContain("This case earns bonus XP");
   });
+
+  it("replaces compensation prose with the structured visual while keeping the existing card", () => {
+    const summary: CaseSummary = {
+      ...buildSummary([
+        { key: "compensation", title: "Compensation", body: "Fallback compensation explanation.", order: 1 }
+      ]),
+      analysis: {
+        compensation: {
+          targetAnalyte: "paco2",
+          measuredValue: 22,
+          unit: "mmHg",
+          comparisonBands: [
+            { id: "expected", role: "expected", kindKey: "primary_expected", labelKey: "expected_range", low: 24, high: 28 },
+            { id: "reference", role: "reference", kindKey: "reference", labelKey: "reference_range", low: 35, high: 45 }
+          ],
+          primaryExpectedBandId: "expected",
+          comparisons: [
+            { bandId: "expected", relationship: "below" },
+            { bandId: "reference", relationship: "below" }
+          ],
+          interpretationKey: "below_expected_range",
+          calculation: { ruleKey: "winter", displayLines: ["Expected PaCO2: 24-28 mmHg"] }
+        }
+      }
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={summary.caseData}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+        />
+      );
+    });
+
+    expect(container.querySelector(".results-card__detail-card")).not.toBeNull();
+    expect(container.querySelector(".cmp-rail")).not.toBeNull();
+    expect(container.textContent).toContain("Below expected range");
+    expect(container.textContent).not.toContain("Fallback compensation explanation.");
+  });
 });

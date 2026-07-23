@@ -22,6 +22,7 @@ import { formatElapsed, splitMetrics } from "../../app/viewHelpers";
 import { formatAnswerValue } from "../../core/practice";
 import { MetricInlineText, MetricLabel, MetricReference, MetricValue } from "./MetricText";
 import { CaseMetadataIcons } from "./CaseMetadataIcons";
+import { CompensationVisualContent } from "./compensation/CompensationVisualContent";
 import { useHorizontalOverflowState } from "../useHorizontalOverflowState";
 import { cn } from "../utils";
 
@@ -353,7 +354,15 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                     ) : null}
                   </div>
                   {isCollapsibleExplanationKey(section.key) && !expandedByKey[section.key] ? null : (
-                    <p><MetricInlineText text={section.body} /></p>
+                    section.key === "compensation" && (props.summary.analysis?.compensation ?? props.summary.caseData.analysis?.compensation) ? (
+                      <CompensationVisualContent
+                        result={props.summary.analysis?.compensation ?? props.summary.caseData.analysis?.compensation}
+                        fallbackExplanation={section.body}
+                        caseId={props.summary.caseId}
+                      />
+                    ) : (
+                      <p><MetricInlineText text={section.body} /></p>
+                    )
                   )}
                 </div>
               ))}

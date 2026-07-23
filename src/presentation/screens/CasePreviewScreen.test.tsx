@@ -13,6 +13,7 @@ const buildStepOptionOverrides = vi.hoisted(() => vi.fn((_caseItem: unknown, _ca
 const renderOrder: string[] = [];
 let latestQuestionFlowCardProps: Record<string, unknown> | null = null;
 let latestValuePanelsProps: Record<string, unknown> | null = null;
+let latestResultsSummaryCardProps: Record<string, unknown> | null = null;
 
 vi.mock("../../core/authoredCasePreview", async importOriginal => {
   const actual = await importOriginal<typeof import("../../core/authoredCasePreview")>();
@@ -55,7 +56,10 @@ vi.mock("../practice/ValuePanels", () => ({
 }));
 
 vi.mock("../practice/ResultsSummaryCard", () => ({
-  ResultsSummaryCard: () => null,
+  ResultsSummaryCard: (props: Record<string, unknown>) => {
+    latestResultsSummaryCardProps = props;
+    return null;
+  },
   ResultsSummaryHeader: () => null
 }));
 
@@ -94,6 +98,7 @@ describe("CasePreviewScreen", () => {
     renderOrder.length = 0;
     latestQuestionFlowCardProps = null;
     latestValuePanelsProps = null;
+    latestResultsSummaryCardProps = null;
     loadAuthoredCasePreviewPayload.mockReset();
     buildStepOptionOverrides.mockReset();
     buildStepOptionOverrides.mockReturnValue({});
@@ -147,5 +152,35 @@ describe("CasePreviewScreen", () => {
     await renderPreview("AUTHORED_001");
 
     expect(latestQuestionFlowCardProps?.currentOptions).toEqual(["shuffled", "options"]);
+  });
+
+  it("delivers authored compensation analysis to the preview result summary", async () => {
+    const compensation = {
+      targetAnalyte: "paco2" as const,
+      measuredValue: 22,
+      unit: "mmHg" as const,
+      comparisonBands: [
+        { id: "expected", role: "expected" as const, labelKey: "expected_range", low: 24, high: 28 }
+      ],
+      comparisons: [{ bandId: "expected", relationship: "below" as const }],
+      interpretationKey: "below_expected_range"
+    };
+    loadAuthoredCasePreviewPayload.mockResolvedValue({
+      cases: [makeCase("AUTHORED_001", { analysis: { compensation } })]
+    });
+
+    await renderPreview("AUTHORED_001");
+
+    await act(async () => {
+      (latestQuestionFlowCardProps?.onAnswer as (option: string) => void)("Acidaemia");
+    });
+    await act(async () => {
+      (latestQuestionFlowCardProps?.onContinueStep as () => void)();
+    });
+    await act(async () => {
+      (latestQuestionFlowCardProps?.onAnswer as (option: string) => void)("raw correct");
+    });
+
+    expect((latestResultsSummaryCardProps?.summary as { analysis?: unknown }).analysis).toEqual({ compensation });
   });
 });

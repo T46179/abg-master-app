@@ -169,6 +169,39 @@ export interface StructuredExplanation {
   sections: ExplanationSection[];
 }
 
+export type CompensationRelationship = "below" | "within" | "above";
+export type CompensationBandRole = "reference" | "expected" | "comparator";
+
+export interface CompensationComparisonBand {
+  id: string;
+  role: CompensationBandRole;
+  kindKey?: string;
+  labelKey: string;
+  low: number;
+  high: number;
+  midpoint?: number;
+}
+
+export interface CompensationResult {
+  targetAnalyte: "paco2" | "hco3";
+  measuredValue: number;
+  unit: "mmHg" | "mmol/L";
+  comparisonBands: CompensationComparisonBand[];
+  primaryExpectedBandId?: string;
+  comparisons: Array<{ bandId: string; relationship: CompensationRelationship }>;
+  interpretationKey: string;
+  qualifierKeys?: string[];
+  calculation?: {
+    ruleKey?: string;
+    displayLines?: string[];
+  };
+  fallbackExplanation?: string;
+}
+
+export interface CaseAnalysis {
+  compensation?: CompensationResult;
+}
+
 export type ResultsExplanationPreferenceKey =
   | "primary_disorder"
   | "compensation"
@@ -199,6 +232,7 @@ export interface CaseData {
   protected_payload_mode?: string;
   inputs?: CaseInputs;
   answer_key?: Record<string, AnswerValue>;
+  analysis?: CaseAnalysis;
   questions_flow?: QuestionFlowStep[];
   explanation_blueprint?: ExplanationBlueprintEntry[];
   step_feedback?: Record<string, StepFeedbackEntry>;
@@ -359,6 +393,7 @@ export interface CaseSummary {
   perfectBonus: number;
   speedBonus: number;
   level: number;
+  analysis?: CaseAnalysis;
   stepResults: StepResult[];
   caseData: CaseData;
 }
@@ -497,6 +532,7 @@ export interface ProtectedPracticeSubmitResponse {
     perfectBonus: number;
     speedBonus: number;
     level: number;
+    analysis?: CaseAnalysis;
     caseData: CaseData;
   };
   stepResults: StepResult[];

@@ -311,6 +311,7 @@ export function createCaseSummary(input: {
     perfectBonus: input.perfectBonus,
     speedBonus: input.speedBonus,
     level: input.level,
+    analysis: input.caseItem.analysis,
     stepResults: [...input.stepResults],
     caseData: input.caseItem
   };
