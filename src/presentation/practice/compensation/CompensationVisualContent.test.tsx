@@ -59,9 +59,59 @@ const standardResult: CompensationResult = {
   }
 };
 
+interface BandMeasurementDimensions {
+  bandWidth: number;
+  lowWidth: number;
+  highWidth: number;
+  compactWidth: number;
+}
+
+function measuredRect(width: number): DOMRect {
+  return {
+    x: 0,
+    y: 0,
+    width,
+    height: 16,
+    top: 0,
+    right: width,
+    bottom: 16,
+    left: 0,
+    toJSON: () => ({})
+  } as DOMRect;
+}
+
+function mockBandMeasurements(initial: BandMeasurementDimensions) {
+  const dimensions = { ...initial };
+  const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+
+  HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect() {
+    if (this.classList.contains("cmp-band")) {
+      return measuredRect(dimensions.bandWidth);
+    }
+    if (this.classList.contains("cmp-band__bounds--compact")) {
+      return measuredRect(dimensions.compactWidth);
+    }
+    if (this.classList.contains("cmp-band__bounds--low")) {
+      return measuredRect(dimensions.lowWidth);
+    }
+    if (this.classList.contains("cmp-band__bounds--high")) {
+      return measuredRect(dimensions.highWidth);
+    }
+    return originalGetBoundingClientRect.call(this);
+  };
+
+  return {
+    dimensions,
+    restore() {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
+  };
+}
+
 describe("CompensationVisualContent", () => {
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
+  let restoreBandMeasurements: (() => void) | undefined;
 
   beforeEach(() => {
     container = document.createElement("div");
@@ -71,6 +121,8 @@ describe("CompensationVisualContent", () => {
 
   afterEach(() => {
     act(() => root.unmount());
+    restoreBandMeasurements?.();
+    restoreBandMeasurements = undefined;
     container.remove();
   });
 
@@ -103,6 +155,13 @@ describe("CompensationVisualContent", () => {
   });
 
   it("keeps centred band labels contained when a band hugs either rail edge", () => {
+    const measurements = mockBandMeasurements({
+      bandWidth: 300,
+      lowWidth: 24,
+      highWidth: 24,
+      compactWidth: 60
+    });
+    restoreBandMeasurements = measurements.restore;
     const leftEdgeResult: CompensationResult = {
       ...result,
       targetAnalyte: "paco2",
@@ -123,6 +182,9 @@ describe("CompensationVisualContent", () => {
       root.render(<CompensationVisualContent result={leftEdgeResult} fallbackExplanation="Fallback" caseId="left-edge" />);
     });
     expect(container.querySelector(".cmp-band__label--start")?.textContent).toBe("Expected");
+    expect(
+      container.querySelector(".cmp-band--primary_expected .cmp-band__bounds--compact-start")?.textContent
+    ).toBe("22.5–26.5");
 
     const rightEdgeResult: CompensationResult = {
       ...leftEdgeResult,
@@ -142,6 +204,62 @@ describe("CompensationVisualContent", () => {
       root.render(<CompensationVisualContent result={rightEdgeResult} fallbackExplanation="Fallback" caseId="right-edge" />);
     });
     expect(container.querySelector(".cmp-band__label--end")?.textContent).toBe("Expected");
+    expect(
+      container.querySelector(".cmp-band--primary_expected .cmp-band__bounds--compact-end")?.textContent
+    ).toBe("76–80");
+  });
+
+  it("collapses bounds from their true endpoint separation and responds to resizing", () => {
+    const measurements = mockBandMeasurements({
+      bandWidth: 400,
+      lowWidth: 16,
+      highWidth: 16,
+      compactWidth: 48
+    });
+    restoreBandMeasurements = measurements.restore;
+
+    act(() => {
+      root.render(<CompensationVisualContent result={standardResult} fallbackExplanation="Fallback" caseId="standard" />);
+    });
+
+    const expectedBand = container.querySelector(".cmp-band--primary_expected");
+    expect(expectedBand?.classList.contains("cmp-band--compact-bounds")).toBe(false);
+
+    measurements.dimensions.bandWidth = 100;
+    act(() => window.dispatchEvent(new Event("resize")));
+
+    expect(expectedBand?.classList.contains("cmp-band--compact-bounds")).toBe(true);
+    expect(expectedBand?.querySelector(".cmp-band__bounds--compact")?.textContent).toBe("24–28");
+    expect(expectedBand?.querySelector(".cmp-band__segment")).not.toBeNull();
+
+    measurements.dimensions.bandWidth = 400;
+    act(() => window.dispatchEvent(new Event("resize")));
+
+    expect(expectedBand?.classList.contains("cmp-band--compact-bounds")).toBe(false);
+  });
+
+  it("retains separate bounds until temporarily unavailable dimensions can be measured", () => {
+    const measurements = mockBandMeasurements({
+      bandWidth: 0,
+      lowWidth: 16,
+      highWidth: 16,
+      compactWidth: 48
+    });
+    restoreBandMeasurements = measurements.restore;
+
+    act(() => {
+      root.render(<CompensationVisualContent result={standardResult} fallbackExplanation="Fallback" caseId="standard" />);
+    });
+
+    const expectedBand = container.querySelector(".cmp-band--primary_expected");
+    expect(expectedBand?.classList.contains("cmp-band--compact-bounds")).toBe(false);
+
+    measurements.dimensions.bandWidth = 100;
+    act(() => window.dispatchEvent(new Event("resize")));
+
+    expect(expectedBand?.classList.contains("cmp-band--compact-bounds")).toBe(true);
+    expect(container.querySelector(".cmp-rail")?.getAttribute("aria-hidden")).toBe("true");
+    expect(container.querySelector(".cmp-visually-hidden")?.textContent).toContain("Expected");
   });
 
   it("opens the calculation and resets it when the case changes", () => {

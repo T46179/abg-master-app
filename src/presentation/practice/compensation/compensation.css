@@ -198,6 +198,32 @@
   transform: translateX(-50%);
 }
 
+.cmp-band__bounds--compact {
+  left: var(--cmp-center, 50%);
+  visibility: hidden;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.cmp-band__bounds--compact-start {
+  left: 0;
+  transform: none;
+}
+
+.cmp-band__bounds--compact-end {
+  left: 100%;
+  transform: translateX(-100%);
+}
+
+.cmp-band--compact-bounds .cmp-band__bounds--low,
+.cmp-band--compact-bounds .cmp-band__bounds--high {
+  visibility: hidden;
+}
+
+.cmp-band--compact-bounds .cmp-band__bounds--compact {
+  visibility: visible;
+}
+
 .cmp-band--reference {
   --band-fill: var(--color-surface-raised, #f8fafc);
   --band-line: var(--color-navy-soft, #24436f);

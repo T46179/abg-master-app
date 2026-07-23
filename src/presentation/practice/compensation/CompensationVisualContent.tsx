@@ -1,4 +1,12 @@
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties
+} from "react";
 import { Info } from "lucide-react";
 import type { CompensationResult } from "../../../core/types";
 import { compensationRules } from "../../learn/CompensationRules";
@@ -18,6 +26,18 @@ interface CompensationVisualContentProps {
 }
 
 type StatusTone = "within" | "below" | "above" | "between" | "context";
+type CompactBoundsAlignment = "start" | "center" | "end";
+
+interface BoundsLayout {
+  compact: boolean;
+  alignment: CompactBoundsAlignment;
+}
+
+const DEFAULT_BOUNDS_LAYOUT: BoundsLayout = {
+  compact: false,
+  alignment: "center"
+};
+const BOUNDS_SAFETY_GAP_PX = 6;
 
 const STATUS_GLYPHS: Record<StatusTone, string> = {
   within: "✓",
@@ -55,6 +75,11 @@ function bandPresentationClass(kindKey?: string) {
 }
 
 function ComparisonBand({ band }: { band: CompensationBandVisualModel }) {
+  const bandRef = useRef<HTMLDivElement | null>(null);
+  const lowBoundRef = useRef<HTMLSpanElement | null>(null);
+  const highBoundRef = useRef<HTMLSpanElement | null>(null);
+  const compactBoundRef = useRef<HTMLSpanElement | null>(null);
+  const [boundsLayout, setBoundsLayout] = useState<BoundsLayout>(DEFAULT_BOUNDS_LAYOUT);
   const labelAlignment = band.centerPos <= 5
     ? "start"
     : band.centerPos >= 95
@@ -66,12 +91,91 @@ function ComparisonBand({ band }: { band: CompensationBandVisualModel }) {
     "--cmp-center": `${band.centerPos}%`
   } as CSSProperties;
 
+  useLayoutEffect(() => {
+    const bandElement = bandRef.current;
+    const lowBound = lowBoundRef.current;
+    const highBound = highBoundRef.current;
+    const compactBound = compactBoundRef.current;
+    if (!bandElement || !lowBound || !highBound || !compactBound) return;
+
+    const updateBoundsLayout = () => {
+      const bandWidth = bandElement.getBoundingClientRect().width;
+      const lowWidth = lowBound.getBoundingClientRect().width;
+      const highWidth = highBound.getBoundingClientRect().width;
+      const compactWidth = compactBound.getBoundingClientRect().width;
+      const dimensions = [bandWidth, lowWidth, highWidth, compactWidth];
+
+      if (!dimensions.every(Number.isFinite) || dimensions.some(value => value <= 0)) {
+        setBoundsLayout(current => (
+          current.compact || current.alignment !== "center"
+            ? DEFAULT_BOUNDS_LAYOUT
+            : current
+        ));
+        return;
+      }
+
+      const endpointSeparation = bandWidth * Math.max(0, band.highPos - band.lowPos) / 100;
+      const compact = endpointSeparation
+        < ((lowWidth + highWidth) / 2) + BOUNDS_SAFETY_GAP_PX;
+      let alignment: CompactBoundsAlignment = "center";
+
+      if (compact) {
+        const midpoint = bandWidth * band.centerPos / 100;
+        if (midpoint - compactWidth / 2 < 0) {
+          alignment = "start";
+        } else if (midpoint + compactWidth / 2 > bandWidth) {
+          alignment = "end";
+        }
+      }
+
+      setBoundsLayout(current => (
+        current.compact === compact && current.alignment === alignment
+          ? current
+          : { compact, alignment }
+      ));
+    };
+
+    updateBoundsLayout();
+
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(updateBoundsLayout);
+    resizeObserver?.observe(bandElement);
+    resizeObserver?.observe(lowBound);
+    resizeObserver?.observe(highBound);
+    resizeObserver?.observe(compactBound);
+    window.addEventListener("resize", updateBoundsLayout);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", updateBoundsLayout);
+    };
+  }, [band.centerPos, band.high, band.highPos, band.low, band.lowPos]);
+
   return (
-    <div className={`cmp-band ${bandPresentationClass(band.kindKey)}`} style={style}>
+    <div
+      ref={bandRef}
+      className={[
+        "cmp-band",
+        bandPresentationClass(band.kindKey),
+        boundsLayout.compact ? "cmp-band--compact-bounds" : ""
+      ].filter(Boolean).join(" ")}
+      style={style}
+    >
       <span className={`cmp-band__label cmp-band__label--${labelAlignment}`}>{band.label}</span>
       <div className="cmp-band__segment" />
-      <span className="cmp-band__bounds cmp-band__bounds--low">{formatNumber(band.low)}</span>
-      <span className="cmp-band__bounds cmp-band__bounds--high">{formatNumber(band.high)}</span>
+      <span ref={lowBoundRef} className="cmp-band__bounds cmp-band__bounds--low">
+        {formatNumber(band.low)}
+      </span>
+      <span ref={highBoundRef} className="cmp-band__bounds cmp-band__bounds--high">
+        {formatNumber(band.high)}
+      </span>
+      <span
+        ref={compactBoundRef}
+        className={`cmp-band__bounds cmp-band__bounds--compact cmp-band__bounds--compact-${boundsLayout.alignment}`}
+      >
+        {formatNumber(band.low)}–{formatNumber(band.high)}
+      </span>
     </div>
   );
 }
