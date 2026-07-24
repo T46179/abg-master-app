@@ -343,6 +343,14 @@
   padding-top: 0;
 }
 
+.cmp-calc__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .cmp-calc__toggle {
   display: inline-flex;
   align-items: center;
@@ -418,8 +426,7 @@
 
 .cmp-formula-help {
   display: inline-flex;
-  margin-left: 0.25rem;
-  vertical-align: middle;
+  flex: 0 0 auto;
 }
 
 .cmp-formula-help__button {

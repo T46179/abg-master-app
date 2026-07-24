@@ -201,7 +201,7 @@ function SchematicRangeVisual({ model }: { model: CompensationVisualModel }) {
   return (
     <div className="cmp-visual">
       <div className="cmp-visual__meta" aria-hidden="true">
-        <span>{model.targetLabel} vs expected ranges</span>
+        <span>{model.targetLabel}</span>
         <span className="cmp-visual__schematic-note">not to scale</span>
       </div>
 
@@ -349,20 +349,23 @@ function CalculationDisclosure(props: {
 
   return (
     <div className="cmp-calc">
-      <button
-        type="button"
-        className="cmp-calc__toggle"
-        aria-expanded={props.open}
-        aria-controls={panelId}
-        onClick={props.onToggle}
-      >
-        <span className="cmp-calc__chevron" aria-hidden="true">›</span>
-        {props.open ? "Hide calculation" : "Show calculation"}
-      </button>
+      <div className="cmp-calc__header">
+        <button
+          type="button"
+          className="cmp-calc__toggle"
+          aria-expanded={props.open}
+          aria-controls={panelId}
+          onClick={props.onToggle}
+        >
+          <span className="cmp-calc__chevron" aria-hidden="true">›</span>
+          {props.open ? "Hide calculation" : "Show calculation"}
+        </button>
+        {props.open ? <CompensationFormulaHelp ruleKey={props.ruleKey} caseId={props.caseId} /> : null}
+      </div>
       {props.open ? (
         <div className="cmp-calc__panel" id={panelId}>
           <ul className="cmp-calc__lines">
-            {props.rows.map((row, rowIndex) => (
+            {props.rows.map(row => (
               <li key={row.id}>
                 {row.parts.map((part, partIndex) => (
                   <span
@@ -372,7 +375,6 @@ function CalculationDisclosure(props: {
                     <MetricInlineText text={part.text} />
                   </span>
                 ))}
-                {rowIndex === 0 ? <CompensationFormulaHelp ruleKey={props.ruleKey} caseId={props.caseId} /> : null}
               </li>
             ))}
           </ul>

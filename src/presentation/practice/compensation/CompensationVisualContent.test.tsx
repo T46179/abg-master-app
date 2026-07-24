@@ -141,7 +141,8 @@ describe("CompensationVisualContent", () => {
       "Acute",
       "Chronic"
     ]);
-    expect(container.textContent).toContain("HCO₃⁻ vs expected ranges");
+    expect(container.textContent).toContain("HCO₃⁻");
+    expect(container.textContent).not.toContain("vs expected ranges");
     expect(container.textContent).toContain("not to scale");
     expect(container.textContent).not.toContain("Schematic");
     expect(container.textContent).toContain("32 mmol/L");
@@ -290,8 +291,8 @@ describe("CompensationVisualContent", () => {
 
     const formulaButton = container.querySelector<HTMLButtonElement>(".cmp-formula-help__button");
     expect(formulaButton).not.toBeNull();
-    expect(calculationItems[0].contains(formulaButton)).toBe(true);
-    expect(calculationItems[1].contains(formulaButton)).toBe(false);
+    expect(container.querySelector(".cmp-calc__header")?.contains(formulaButton)).toBe(true);
+    expect(container.querySelector(".cmp-calc__lines")?.contains(formulaButton)).toBe(false);
     expect(formulaButton?.getAttribute("aria-label")).toBe(
       "Show acute and chronic respiratory acidosis formulas"
     );
@@ -332,6 +333,8 @@ describe("CompensationVisualContent", () => {
     act(() => {
       root.render(<CompensationVisualContent result={standardResult} fallbackExplanation="Fallback" caseId="standard" />);
     });
+    expect(container.querySelector(".cmp-visual__meta")?.textContent).toContain("PaCO₂");
+    expect(container.querySelector(".cmp-visual__meta")?.textContent).not.toContain("vs expected ranges");
     act(() => container.querySelector<HTMLButtonElement>(".cmp-calc__toggle")?.click());
 
     const items = container.querySelectorAll(".cmp-calc__lines > li");

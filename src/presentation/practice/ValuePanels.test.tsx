@@ -106,6 +106,7 @@ describe("ValuePanels", () => {
     const secondaryPanel = container.querySelector(".value-panels__card--secondary");
     expect(secondaryPanel?.classList.contains("value-panels__secondary--rail")).toBe(true);
     expect(secondaryPanel?.classList.contains("value-panels__secondary--fill")).toBe(false);
-    expect(secondaryPanel?.querySelectorAll(".metric-card--scroll-item")).toHaveLength(2);
+    expect(secondaryPanel?.querySelector(".secondary-metric-rail")).not.toBeNull();
+    expect(secondaryPanel?.querySelectorAll(".secondary-metric-rail__grid > .metric-card--scroll-item")).toHaveLength(2);
   });
 });

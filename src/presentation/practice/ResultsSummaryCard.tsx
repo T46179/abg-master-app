@@ -23,7 +23,7 @@ import { formatAnswerValue } from "../../core/practice";
 import { MetricInlineText, MetricLabel, MetricReference, MetricValue } from "./MetricText";
 import { CaseMetadataIcons } from "./CaseMetadataIcons";
 import { CompensationVisualContent } from "./compensation/CompensationVisualContent";
-import { useHorizontalOverflowState } from "../useHorizontalOverflowState";
+import { SecondaryMetricRail } from "./SecondaryMetricRail";
 import { cn } from "../utils";
 
 const DIAGNOSIS_DISPLAY = {
@@ -139,13 +139,6 @@ function getRenderedExplanationSections(caseSummary: CaseSummary): ExplanationSe
   }
 
   return renderedSections;
-}
-
-function getMetricCardClass(metric: { group?: string }, ...classes: string[]): string {
-  return cn(
-    ...classes,
-    metric.group === "oxygenation" ? "metric-card--oxygenation" : null
-  );
 }
 
 const COLLAPSIBLE_EXPLANATION_KEYS = new Set<ResultsExplanationPreferenceKey>([
@@ -285,9 +278,8 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
   const difficultyLevel = Number(props.caseItem.difficulty_level ?? 1);
   const [expandedByKey, setExpandedByKey] = useState<ResultsExplanationPreferences>(() => getExpandedPreferences(props.storage));
   const [isReviewExpanded, setIsReviewExpanded] = useState(() => getResultsReviewExpandedPreference(props.storage));
-  const secondaryScroll = useHorizontalOverflowState<HTMLDivElement>(
-    `results-${props.caseItem.case_id ?? "unknown-case"}-${difficultyLevel}-${metrics.secondary.map(metric => metric.label).join("|")}-${props.showSummaryReferences ? "refs" : "no-refs"}`
-  );
+  const secondaryContentKey =
+    `results-${props.caseItem.case_id ?? "unknown-case"}-${difficultyLevel}-${metrics.secondary.map(metric => metric.label).join("|")}-${props.showSummaryReferences ? "refs" : "no-refs"}`;
 
   useEffect(() => {
     setExpandedByKey(getExpandedPreferences(props.storage));
@@ -412,7 +404,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                 {metrics.primary.map(metric => (
                   <article
                     key={metric.label}
-                    className={getMetricCardClass(metric, "metric-card")}
+                    className="metric-card"
                   >
                     <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
                     <MetricValue
@@ -429,40 +421,12 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
             {metrics.secondary.length ? (
               <div className="results-card__metric-section results-card__metric-section--secondary">
                 <h4 className="results-review-card__section-title results-review-card__section-title--compact">Electrolytes &amp; other values</h4>
-                <div
-                  className="results-card__secondary-scroll"
-                  data-show-scroll-hint={secondaryScroll.overflowing && !secondaryScroll.movedFromStart}
-                >
-                  <div
-                    ref={secondaryScroll.ref}
-                    className={cn("metric-scroll", "metric-scroll--secondary", "scroll-fade", "results-card__metric-scroll")}
-                    data-overflowing={secondaryScroll.overflowing}
-                    data-at-start={secondaryScroll.atStart}
-                    data-at-end={secondaryScroll.atEnd}
-                  >
-                    <div className="metric-grid metric-grid--secondary metric-grid--scrolling results-card__metric-grid-secondary">
-                      {metrics.secondary.map(metric => (
-                        <article
-                          key={metric.label}
-                          className={getMetricCardClass(
-                            metric,
-                            "metric-card",
-                            "metric-card--secondary",
-                            "metric-card--scroll-item"
-                          )}
-                        >
-                          <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
-                          <MetricValue
-                            renderedValue={metric.renderedValue}
-                            unit={metric.unit}
-                            abnormal={props.showAbnormalHighlighting && metric.abnormal}
-                          />
-                          {props.showSummaryReferences ? <MetricReference reference={metric.reference} /> : null}
-                        </article>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <SecondaryMetricRail
+                  metrics={metrics.secondary}
+                  contentKey={secondaryContentKey}
+                  showReferences={props.showSummaryReferences}
+                  showAbnormalHighlighting={props.showAbnormalHighlighting}
+                />
               </div>
             ) : null}
 

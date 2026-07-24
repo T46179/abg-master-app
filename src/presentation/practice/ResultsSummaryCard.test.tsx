@@ -301,6 +301,14 @@ describe("ResultsSummaryCard", () => {
           oxygenation: {
             fio2_fraction: 1,
             spo2_percent: 92
+          },
+          electrolytes: {
+            ...buildCaseItem("dka").inputs?.electrolytes,
+            k_mmolL: 4.5,
+            glucose_mmolL: 18
+          },
+          other: {
+            lactate_mmolL: 2.4
           }
         }
       }
@@ -323,6 +331,14 @@ describe("ResultsSummaryCard", () => {
       const labelNode = Array.from(container.querySelectorAll(".metric-card__label"))
         .find(node => node.textContent === label);
       expect(labelNode?.closest(".metric-card")?.classList.contains("metric-card--oxygenation")).toBe(true);
+    }
+
+    const secondaryRail = container.querySelector(".results-card__metric-section--secondary > .secondary-metric-rail");
+    expect(secondaryRail).not.toBeNull();
+    expect(secondaryRail?.querySelectorAll(".secondary-metric-rail__grid > .metric-card--scroll-item")).toHaveLength(8);
+    for (const label of ["FiO2", "PaO2", "SpO2", "Na+", "K+", "Cl-", "Glucose", "Lactate"]) {
+      expect(Array.from(secondaryRail?.querySelectorAll(".metric-card__label") ?? [])
+        .some(node => node.textContent === label)).toBe(true);
     }
 
     const metricCards = Array.from(container.querySelectorAll(".metric-card"));

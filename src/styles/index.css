@@ -3220,31 +3220,33 @@ a.dashboard-module-row:hover {
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
 }
 
-.results-card__metric-section .metric-grid--secondary {
-  margin-top: 1rem;
-}
-
 .metric-scroll {
   max-width: 100%;
   overflow-x: auto;
   margin-top: 1rem;
 }
 
-.value-panels__secondary--rail .metric-scroll--secondary {
-  scrollbar-width: none;
-}
-
-.value-panels__secondary--rail .metric-scroll--secondary::-webkit-scrollbar {
-  display: none;
-}
-
-.value-panels__secondary-scroll {
+.secondary-metric-rail {
   position: relative;
+  width: 100%;
   max-width: 100%;
   min-width: 0;
 }
 
-.value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling {
+.secondary-metric-rail__scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.secondary-metric-rail__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.secondary-metric-rail__grid.metric-grid {
   display: flex;
   flex-wrap: nowrap;
   align-items: stretch;
@@ -3254,12 +3256,12 @@ a.dashboard-module-row:hover {
   grid-template-columns: none;
 }
 
-.value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling > .metric-card--scroll-item {
+.secondary-metric-rail__grid > .metric-card--scroll-item {
   flex: 1 0 9.5rem;
   min-width: 9.5rem;
 }
 
-.value-panels__secondary-scroll::after {
+.secondary-metric-rail::after {
   content: "\2192";
   position: absolute;
   top: calc(1rem + 0.9rem);
@@ -3280,7 +3282,7 @@ a.dashboard-module-row:hover {
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
-.value-panels__secondary-scroll[data-show-scroll-hint="true"]::after {
+.secondary-metric-rail[data-show-scroll-hint="true"]::after {
   opacity: 1;
   animation: value-panel-scroll-hint 3.6s ease-in-out infinite;
 }
@@ -3896,8 +3898,8 @@ a.dashboard-module-row:hover {
 .results-card__metric-section--primary,
 .results-card__metric-section--secondary,
 .results-card__metric-grid-primary,
-.results-card__secondary-scroll,
-.results-card__metric-scroll {
+.secondary-metric-rail,
+.secondary-metric-rail__scroll {
   min-width: 0;
   max-width: 100%;
 }
@@ -4056,35 +4058,6 @@ a.dashboard-module-row:hover {
 
 .results-card__metric-section + .results-review-card__section {
   margin-top: 1.9rem;
-}
-
-.results-card__secondary-scroll {
-  position: relative;
-}
-
-.results-card__secondary-scroll::after {
-  content: "\2192";
-  position: absolute;
-  top: 50%;
-  right: 0.75rem;
-  width: 1.7rem;
-  height: 1.7rem;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  background: rgba(248, 250, 252, 0.92);
-  color: #6f8488;
-  font-size: 0.95rem;
-  line-height: 1;
-  box-shadow: 0 8px 18px rgba(15, 37, 71, 0.08);
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(-50%);
-  transition: opacity 160ms ease, transform 160ms ease;
-}
-
-.results-card__secondary-scroll[data-show-scroll-hint="true"]::after {
-  opacity: 1;
 }
 
 .results-review-card__list {
@@ -4544,25 +4517,6 @@ a.dashboard-module-row:hover {
     min-width: 0;
   }
 
-  .value-panels__card.value-panels__secondary--rail > .value-panels__secondary-scroll {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
-
-  .value-panels__secondary--rail .metric-scroll--secondary {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-  }
-
-  .value-panels__secondary--rail .metric-scroll--secondary::-webkit-scrollbar {
-    display: none;
-  }
-
   .main-nav__inner {
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
@@ -4826,19 +4780,6 @@ a.dashboard-module-row:hover {
     min-width: 0;
   }
 
-  .value-panels__card--secondary > .value-panels__secondary-scroll {
-    position: relative;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
-
-  .value-panels__card--secondary > .value-panels__secondary-scroll::after {
-    background: var(--color-navy);
-    color: var(--color-surface);
-    box-shadow: 0 10px 22px rgba(15, 37, 71, 0.12);
-  }
-
   .metric-scroll--secondary {
     width: 100%;
     max-width: 100%;
@@ -4864,15 +4805,7 @@ a.dashboard-module-row:hover {
     padding: 0.82rem 0.82rem 0.76rem;
   }
 
-  .value-panels__secondary--rail .metric-scroll--secondary {
-    scrollbar-width: none;
-  }
-
-  .value-panels__secondary--rail .metric-scroll--secondary::-webkit-scrollbar {
-    display: none;
-  }
-
-  .value-panels__card--secondary.value-panels__card--references-hidden .metric-card--scroll-item {
+  .secondary-metric-rail--references-hidden .metric-card--scroll-item {
     min-height: 5.75rem;
   }
 
@@ -4890,23 +4823,6 @@ a.dashboard-module-row:hover {
     width: 100%;
     max-width: 100%;
     min-width: 0;
-  }
-
-  .results-card__metric-section--secondary > .results-card__secondary-scroll {
-    position: relative;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    margin-top: 1rem;
-  }
-
-  .results-card__metric-section--secondary > .results-card__secondary-scroll > .results-card__metric-scroll {
-    margin-top: 0;
-  }
-
-  .results-card__metric-section--secondary .results-card__metric-grid-secondary {
-    width: max-content;
-    min-width: 100%;
   }
 
   .results-card__hero,
@@ -12868,7 +12784,7 @@ button.learn-progress-dots__dot:focus-visible {
 }
 
 @media (min-width: 760px) {
-  .value-panels__secondary--rail .metric-grid.metric-grid--secondary.metric-grid--scrolling > .metric-card--scroll-item {
+  .secondary-metric-rail__grid > .metric-card--scroll-item {
     flex-basis: 13.75rem;
     min-width: 13.75rem;
   }
