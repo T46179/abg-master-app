@@ -4,28 +4,41 @@
     "title": "Blood Gas Compensation Rules Explained | ABG Master",
     "description": "Learn the blood gas compensation rules used by ABG Master, including Winter's formula, metabolic alkalosis compensation, and acute and chronic respiratory compensation.",
     "canonicalPath": "/blood-gas-compensation-rules/",
-    "outputDirectory": "blood-gas-compensation-rules"
+    "outputDirectory": "blood-gas-compensation-rules",
+    "pageType": "article",
+    "headline": "Blood Gas Compensation Rules Explained",
+    "datePublished": "2026-05-01"
   },
   {
     "path": "/delta-ratio",
-    "title": "Delta Ratio Explained | ABG Master",
+    "title": "Delta Ratio & Delta Gap: Formula and Interpretation | ABG Master",
     "description": "Learn how to calculate and interpret the delta ratio in high anion gap metabolic acidosis, with worked examples for detecting mixed metabolic disorders.",
     "canonicalPath": "/delta-ratio/",
-    "outputDirectory": "delta-ratio"
+    "outputDirectory": "delta-ratio",
+    "pageType": "article",
+    "headline": "Delta Ratio Explained",
+    "datePublished": "2026-05-14",
+    "sitemapLastmod": null
   },
   {
     "path": "/abg-interpretation",
     "title": "ABG Interpretation | Step-by-Step Guide to Blood Gas Analysis",
     "description": "Learn how to interpret an ABG step by step, including oxygenation, pH, primary acid-base process, compensation, anion gap, mixed disorders, and ABG vs VBG differences.",
     "canonicalPath": "/abg-interpretation/",
-    "outputDirectory": "abg-interpretation"
+    "outputDirectory": "abg-interpretation",
+    "pageType": "article",
+    "headline": "How to Interpret a Blood Gas",
+    "dateModified": "2026-05-23"
   },
   {
     "path": "/anion-gap",
     "title": "Anion Gap Explained | ABG Master",
     "description": "Learn how to calculate and interpret the anion gap, including normal ranges, albumin correction, high-gap acidosis, normal-gap acidosis, and key pitfalls.",
     "canonicalPath": "/anion-gap/",
-    "outputDirectory": "anion-gap"
+    "outputDirectory": "anion-gap",
+    "pageType": "article",
+    "headline": "Anion Gap Explained",
+    "datePublished": "2026-06-19"
   },
   {
     "path": "/about",

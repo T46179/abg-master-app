@@ -402,7 +402,8 @@ describe("InsightsScreen", () => {
       currentFocus: { state: "none" }
     });
 
-    expect(container.textContent).toContain("Not enough data. Keep practising.");
+    expect(container.textContent).toContain("You currently do not have any focus areas.");
+    expect(container.textContent).not.toContain("Not enough data. Keep practising.");
     expect(container.textContent).not.toContain("based on");
     expect(container.textContent).not.toContain("Focus on deciding whether");
   });

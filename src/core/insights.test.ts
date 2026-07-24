@@ -370,6 +370,33 @@ describe("insights", () => {
     });
   });
 
+  it("returns no current focus when every eligible reasoning step is 100% accurate", () => {
+    const perfect = readyModel(Array.from({ length: 5 }, (_, index) => createAttempt({
+      id: `perfect-focus-${index}`,
+      stepResults: [
+        { key: "ph_status", correct: true },
+        { key: "compensation", correct: true }
+      ]
+    })));
+    const imperfect = readyModel(Array.from({ length: 5 }, (_, index) => createAttempt({
+      id: `imperfect-focus-${index}`,
+      stepResults: [
+        { key: "ph_status", correct: true },
+        { key: "compensation", correct: index > 0 }
+      ]
+    })));
+
+    expect(perfect.state).toBe("ready");
+    expect(imperfect.state).toBe("ready");
+    if (perfect.state !== "ready" || imperfect.state !== "ready") return;
+    expect(perfect.currentFocus).toEqual({ state: "none" });
+    expect(imperfect.currentFocus).toMatchObject({
+      state: "available",
+      stepKey: "compensation",
+      accuracyPercent: 80
+    });
+  });
+
   it("adds current focus explanations for known and unknown step keys", () => {
     const known = readyModel(Array.from({ length: 5 }, (_, index) => createAttempt({
       id: `known-focus-${index}`,

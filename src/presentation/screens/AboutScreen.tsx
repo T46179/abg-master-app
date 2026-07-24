@@ -1,5 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+import aboutPortrait from "../../assets/about-portrait.webp";
+import { articleAuthorDisplayName, siteIdentity } from "../../app/publicSeo";
 import { SeoMetadata } from "../../app/seo";
 import { PublicPageShell } from "../layout/PublicPageShell";
 import { usePublicCasesSolvedCount } from "../shared/usePublicCasesSolvedCount";
@@ -26,20 +28,19 @@ const aboutContent = {
   },
   person: {
     label: "02 — The person",
-    name: "Dr Thanh Truong",
-    role: "Emergency doctor",
-    portraitAlt: "Portrait placeholder for Dr Thanh Truong",
+    portraitAlt: `Portrait of ${articleAuthorDisplayName}`,
     paragraphs: [
-      "ABG Master is built by an emergency medicine doctor in Australia as an education and practice resource for people learning to make sense of blood gases.",
-      "It started as a practical way to make blood gas interpretation feel less abstract: short cases, step-by-step reasoning, and feedback that explains the pattern rather than just giving the answer.",
-      "The project brings together my interests in emergency medicine, clinical reasoning, medical education, and building tools that make difficult concepts easier to practise."
+      "I’m Thanh, an emergency medicine registrar in Australia. I spend much of my working life in emergency departments, where blood gases are common, time is limited, and the numbers are only useful if you can turn them into a coherent clinical picture.",
+      "ABG Master grew out of my frustration with how acid–base interpretation is often learned: memorise a formula, use it a few times, and then forget it. I wanted to build something that made the reasoning visible and provided enough repetition for it to become intuitive.",
+      "I design and build the site myself. It has become a way to combine medicine with several things I enjoy—teaching, web design, and finding clearer ways to explain difficult concepts.",
+      "Outside work, I spend much of my time bouldering, learning Japanese, and looking for somewhere good to eat."
     ],
     facts: [
       { term: "Based in", description: "Australia" },
-      { term: "Interests", description: "Teaching, web design, eating" }
+      { term: "Interests", description: "Teaching, web design, bouldering" }
     ]
   },
-  footer: "© 2026 ABG Master · Dr Thanh Truong"
+  footer: "© 2026 ABG Master"
 } as const;
 
 export function AboutScreen() {
@@ -98,12 +99,19 @@ export function AboutScreen() {
             <p className="about-page__section-label">{aboutContent.person.label}</p>
             <div className="about-page__section-content">
               <div className="about-page__person-heading">
-                <div className="about-page__portrait" role="img" aria-label={aboutContent.person.portraitAlt}>
-                  {/* Add a portrait <img> here when an asset is ready. */}
+                <div className="about-page__portrait">
+                  <img
+                    src={aboutPortrait}
+                    alt={aboutContent.person.portraitAlt}
+                    width={88}
+                    height={88}
+                    loading="lazy"
+                    decoding="async"
+                  />
                 </div>
                 <h2 id="about-person-heading">
-                  {aboutContent.person.name}
-                  <span>{aboutContent.person.role}</span>
+                  {articleAuthorDisplayName}
+                  <span>{siteIdentity.author.jobTitle}</span>
                 </h2>
               </div>
               <div className="about-page__copy">
@@ -122,7 +130,7 @@ export function AboutScreen() {
         </div>
 
         <footer className="about-page__footer">
-          <p>{aboutContent.footer}</p>
+          <p>{aboutContent.footer} · {articleAuthorDisplayName}</p>
         </footer>
       </PublicPageShell>
     </>

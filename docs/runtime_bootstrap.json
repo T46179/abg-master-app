@@ -1,7 +1,7 @@
 {
   "delivery_mode": "protected_runtime",
   "protected_payload_mode": "practice_learning",
-  "content_version": "beta-2_2026-07-24",
+  "content_version": "beta-2_2026-07-20",
   "progression_config": {
     "version": "v2",
     "beta_release_number": 2,
@@ -193,6 +193,6 @@
     }
   },
   "featured_release": {
-    "release_id": "featured-authored-004-r3"
+    "release_id": "featured-authored-004-r1"
   }
 }

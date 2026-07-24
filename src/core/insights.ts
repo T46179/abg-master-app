@@ -736,7 +736,7 @@ function buildReasoningStepAccuracy(attempts: InsightsAttemptRow[]): ReasoningSt
 }
 
 function buildCurrentFocus(steps: ReasoningStepAccuracyItem[]): InsightsFocusModel {
-  if (!steps.length) return { state: "none" };
+  if (!steps.length) return { state: "insufficient_data" };
 
   const eligibleSteps = steps.filter(step =>
     step.enoughData &&
@@ -751,6 +751,8 @@ function buildCurrentFocus(steps: ReasoningStepAccuracyItem[]): InsightsFocusMod
     }
     return right.attempts - left.attempts;
   })[0];
+
+  if ((weakest.accuracyPercent ?? 0) >= 100) return { state: "none" };
 
   return {
     state: "available",

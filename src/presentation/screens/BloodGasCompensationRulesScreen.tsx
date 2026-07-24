@@ -3,6 +3,7 @@ import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SeoMetadata } from "../../app/seo";
 import { PublicPageShell } from "../layout/PublicPageShell";
+import { ArticleByline } from "../shared/ArticleByline";
 import bookIcon from "../../assets/icons/book.svg";
 import bookSearchIcon from "../../assets/icons/book_search.svg";
 import externalLinkIcon from "../../assets/icons/external_link.svg";
@@ -189,6 +190,7 @@ export function BloodGasCompensationRulesScreen() {
           <h1>
             Blood Gas Compensation Rules Explained
           </h1>
+          <ArticleByline />
         </header>
 
         <section className="comp-rules-page__takeaway">

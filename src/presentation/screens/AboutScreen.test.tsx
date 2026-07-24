@@ -47,9 +47,11 @@ describe("AboutScreen", () => {
     expect(headings).toEqual([
       "AboutThe project & the person",
       "ABG MasterA focused learning companion",
-      "Dr Thanh TruongEmergency doctor"
+      "Dr Thanh TruongEmergency Medicine Registrar"
     ]);
-    expect(container.querySelector(".about-page__portrait")?.getAttribute("role")).toBe("img");
+    const portrait = container.querySelector<HTMLImageElement>(".about-page__portrait img");
+    expect(portrait?.alt).toBe("Portrait of Dr Thanh Truong");
+    expect(portrait?.getAttribute("src")).toContain("about-portrait.webp");
     expect(container.querySelectorAll(".about-page__stat")).toHaveLength(3);
     expect(Array.from(container.querySelectorAll(".about-page__stat strong")).map(card => card.textContent)).toEqual(["546", "156", "4"]);
     expect(Array.from(container.querySelectorAll(".about-page__stat span")).map(card => card.textContent)).toEqual([

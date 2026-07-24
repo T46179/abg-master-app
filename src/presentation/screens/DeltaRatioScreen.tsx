@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SeoMetadata } from "../../app/seo";
 import { PublicPageShell } from "../layout/PublicPageShell";
+import { ArticleByline } from "../shared/ArticleByline";
 import arrowDownIcon from "../../assets/icons/arrow_down.svg";
 import arrowUpIcon from "../../assets/icons/arrow_up.svg";
 import bookSearchIcon from "../../assets/icons/book_search.svg";
@@ -286,12 +287,13 @@ export function DeltaRatioScreen() {
           </div>
           <h1>Delta Ratio Explained</h1>
           <h2>How to detect mixed metabolic disorders in high anion gap metabolic acidosis</h2>
+          <ArticleByline />
         </header>
 
         <section className="comp-rules-page__takeaway">
           <SectionLabel icon={lightbulbIcon}>Key takeaway</SectionLabel>
           <div className="comp-rules-page__card">
-            <p>The delta ratio is used after identifying a raised anion gap metabolic acidosis to look for an additional metabolic process.</p>
+            <p>The delta ratio is used after identifying a high anion gap metabolic acidosis to look for an additional metabolic process.</p>
             <p>It asks one practical question:</p>
             <blockquote>Does the fall in bicarbonate match the rise in anion gap?</blockquote>
             <p>If bicarbonate has fallen more than expected, there may be an additional normal anion gap metabolic acidosis.</p>
@@ -307,6 +309,7 @@ export function DeltaRatioScreen() {
         </div>
 
         <section className="comp-rules-page__section">
+          <p>The delta ratio, also called the delta–delta ratio, compares the rise in anion gap with the fall in bicarbonate. The related delta gap expresses these changes as a difference rather than a ratio.</p>
           <SectionLabel icon={flaskIcon}>The formula</SectionLabel>
           <h2>Calculating the delta ratio</h2>
           <p>The delta ratio compares the rise in anion gap with the fall in bicarbonate.</p>

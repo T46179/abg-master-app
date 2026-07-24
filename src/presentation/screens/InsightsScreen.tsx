@@ -374,6 +374,8 @@ function CurrentFocusCard({ currentFocus }: { currentFocus: InsightsFocusModel }
             <img src={arrowRightIconUrl} alt="" aria-hidden="true" />
           </Link>
         </>
+      ) : currentFocus.state === "none" ? (
+        <p>You currently do not have any focus areas.</p>
       ) : (
         <p>Not enough data. Keep practising.</p>
       )}

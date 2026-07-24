@@ -25,6 +25,34 @@ const mockStorage = vi.hoisted(() => ({
   saveLastPracticeDifficulty: vi.fn()
 }));
 
+const mockUserState = vi.hoisted(() => ({
+  xp: 0,
+  level: 1,
+  casesCompleted: 0,
+  abandonedCases: 0,
+  correctAnswers: 0,
+  totalAnswers: 0,
+  streak: 0,
+  dailyCasesUsed: 0,
+  lastCaseDate: null,
+  unlockedDifficulties: ["beginner"],
+  isPremium: false,
+  badges: [] as string[],
+  recentResults: [] as unknown[],
+  recentPracticeAttempts: [
+    { difficulty: "beginner", correctSteps: 1, totalSteps: 4 },
+    { difficulty: "beginner", correctSteps: 3, totalSteps: 4 },
+    { difficulty: "intermediate", correctSteps: 4, totalSteps: 4 }
+  ],
+  appliedProtectedCaseTokens: [] as string[],
+  learnProgress: {
+    foundations: {
+      completedLessonCount: 2,
+      completed: false
+    }
+  }
+}));
+
 vi.mock("../../app/AppProvider", () => ({
   useAppContext: () => ({
     state: {
@@ -39,33 +67,7 @@ vi.mock("../../app/AppProvider", () => ({
         defaultUserState: null,
         cases: []
       },
-      userState: {
-        xp: 0,
-        level: 1,
-        casesCompleted: 0,
-        abandonedCases: 0,
-        correctAnswers: 0,
-        totalAnswers: 0,
-        streak: 0,
-        dailyCasesUsed: 0,
-        lastCaseDate: null,
-        unlockedDifficulties: ["beginner"],
-        isPremium: false,
-        badges: [],
-        recentResults: [],
-        recentPracticeAttempts: [
-          { difficulty: "beginner", correctSteps: 1, totalSteps: 4 },
-          { difficulty: "beginner", correctSteps: 3, totalSteps: 4 },
-          { difficulty: "intermediate", correctSteps: 4, totalSteps: 4 }
-        ],
-        appliedProtectedCaseTokens: [],
-        learnProgress: {
-          foundations: {
-            completedLessonCount: 2,
-            completed: false
-          }
-        }
-      },
+      userState: mockUserState,
       storage: mockStorage
     }
   })
@@ -96,6 +98,14 @@ describe("DashboardScreen", () => {
   let originalLocation: Location;
 
   beforeEach(() => {
+    mockUserState.casesCompleted = 0;
+    mockUserState.correctAnswers = 0;
+    mockUserState.totalAnswers = 0;
+    mockUserState.recentPracticeAttempts = [
+      { difficulty: "beginner", correctSteps: 1, totalSteps: 4 },
+      { difficulty: "beginner", correctSteps: 3, totalSteps: 4 },
+      { difficulty: "intermediate", correctSteps: 4, totalSteps: 4 }
+    ];
     trackEvent.mockReset();
     window.localStorage.clear();
     mockStorage.resetUserState.mockClear();
@@ -266,6 +276,10 @@ describe("DashboardScreen", () => {
   });
 
   it("shows live progress values and recent step accuracy", () => {
+    mockUserState.casesCompleted = 3;
+    mockUserState.correctAnswers = 8;
+    mockUserState.totalAnswers = 12;
+
     act(() => {
       root.render(
         <MemoryRouter>
@@ -284,6 +298,31 @@ describe("DashboardScreen", () => {
     expect(container.textContent).toContain("Cases Solved");
     expect(container.textContent).toContain("Daily Streak");
     expect(container.textContent).toContain("Beginner");
+  });
+
+  it("keeps the accuracy card empty until a practice case has been completed", () => {
+    mockUserState.casesCompleted = 0;
+    mockUserState.correctAnswers = 0;
+    mockUserState.totalAnswers = 0;
+    mockUserState.recentPracticeAttempts = [];
+
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <DashboardScreen />
+        </MemoryRouter>
+      );
+    });
+
+    const accuracyCard = Array.from(container.querySelectorAll<HTMLElement>(".stat-card"))
+      .find(card => card.textContent?.includes("Accuracy"));
+
+    expect(accuracyCard).toBeDefined();
+    expect(accuracyCard?.querySelector(".stat-card__icon")).not.toBeNull();
+    expect(accuracyCard?.querySelector(".stat-card__value")).toBeNull();
+    expect(accuracyCard?.querySelector(".stat-card__meta")).toBeNull();
+    expect(accuracyCard?.textContent).not.toContain("100%");
+    expect(accuracyCard?.textContent).not.toContain("Last 10 cases");
   });
 
   it("renders the learning path, featured cases, and clinical pearl actions", () => {
