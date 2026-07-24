@@ -51,6 +51,21 @@ export const publicResources: PublicResource[] = [
 // corresponding change has been released, with the release date as the source of truth.
 export const publicUpdates: PublicUpdate[] = [
   {
+    date: "2026-07-21",
+    version: "v1.4",
+    category: "new",
+    title: "Featured Cases",
+    summary: "Featured Cases and Master-level preview cases now available",
+    highlights: [
+      "Added new Featured Cases from the dashboard",
+      "Cases will be rotated periodically, and can be accessed irrespective of current unlocked level",
+      "See how you perform against other people who have completed the same featured case",
+      "Check back periodically for new cases",
+      "UI fixes",
+      "Generated new content library"
+    ]
+  },
+  {
     date: "2026-07-19",
     version: "v1.4",
     category: "improved",
