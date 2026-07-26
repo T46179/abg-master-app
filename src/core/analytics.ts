@@ -25,6 +25,7 @@ export function initAnalytics() {
 
   posthog.init(apiKey, {
     api_host: apiHost,
+    ui_host: "https://us.posthog.com",
     capture_pageview: false,
     capture_pageleave: true
   });

@@ -80,6 +80,7 @@ describe("analytics", () => {
 
     expect(posthog.init).toHaveBeenCalledWith("test-key", expect.objectContaining({
       api_host: "https://posthog.example",
+      ui_host: "https://us.posthog.com",
       capture_pageview: false,
       capture_pageleave: true
     }));
