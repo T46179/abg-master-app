@@ -8,6 +8,7 @@ import {
   buildFinalStepResults,
   canUseClientSidePracticeFeedback,
   formatAnswerValue,
+  getCorrectAnswer,
   getQuestionFlowStepStatus,
   isCorrectAnswer,
   reconcileProtectedSummaryWithLockedStepResults
@@ -37,7 +38,7 @@ import {
 } from "./progression";
 import { createMemoryStorage } from "./storage";
 import { getRuntimeAssetPath, isRuntimeBootstrapError, loadCasesPayload, normalizeCasesPayload } from "./runtime";
-import { getEligibleCasesForDifficulty } from "./selection";
+import { buildStepOptionOverrides, getEligibleCasesForDifficulty } from "./selection";
 import {
   createAppStorage,
   mapProgressRowToUserState,
@@ -867,9 +868,56 @@ describe("selection helpers", () => {
 
     expect(eligible.map(item => item.case_id)).toEqual(["case-2"]);
   });
+
+  it("preserves issued legacy anion-gap options and only overrides final diagnosis", () => {
+    const legacyCase: CaseData = {
+      ...sampleCase,
+      answer_key: { anion_gap_category: "Normal" },
+      questions_flow: [
+        { key: "anion_gap", options: ["Raised", "Normal"] },
+        { key: "final_diagnosis", options: ["Sepsis", "COPD"] }
+      ]
+    };
+
+    const overrides = buildStepOptionOverrides(legacyCase, [legacyCase]);
+
+    expect(overrides[0]).toBeUndefined();
+    expect(legacyCase.questions_flow?.[0]?.options).toEqual(["Raised", "Normal"]);
+    expect(overrides[1]).toBeDefined();
+  });
 });
 
 describe("practice outcome", () => {
+  it("grades new and retained legacy anion-gap answers without translating Normal", () => {
+    const newCase: CaseData = {
+      ...sampleCase,
+      answer_key: { anion_gap: "Not raised" },
+      questions_flow: [{ key: "anion_gap", options: ["Raised", "Not raised"] }]
+    };
+    const legacyCase: CaseData = {
+      ...sampleCase,
+      answer_key: { anion_gap_category: "Normal" },
+      questions_flow: [{ key: "anion_gap", options: ["Raised", "Normal"] }]
+    };
+
+    expect(getCorrectAnswer(newCase, "anion_gap")).toBe("Not raised");
+    expect(getCorrectAnswer(legacyCase, "anion_gap")).toBe("Normal");
+    expect(isCorrectAnswer(legacyCase, "anion_gap", "Normal")).toBe(true);
+    expect(isCorrectAnswer(legacyCase, "anion_gap", "Not raised")).toBe(false);
+  });
+
+  it("prefers the new anion-gap answer when both keys are present", () => {
+    const transitionalCase: CaseData = {
+      ...sampleCase,
+      answer_key: {
+        anion_gap: "Not raised",
+        anion_gap_category: "Raised"
+      }
+    };
+
+    expect(getCorrectAnswer(transitionalCase, "anion_gap")).toBe("Not raised");
+  });
+
   it("awards xp and returns a case summary", () => {
     const outcome = applyPracticeOutcome({
       caseItem: sampleCase,

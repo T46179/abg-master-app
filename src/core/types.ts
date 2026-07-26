@@ -198,8 +198,26 @@ export interface CompensationResult {
   fallbackExplanation?: string;
 }
 
+export type AnionGapClassification = "low" | "normal" | "raised";
+
+export interface AnionGapResult {
+  measuredValue: number;
+  unit: "mmol/L";
+  referenceLowerLimit: 4;
+  referenceUpperLimit: 12;
+  classification: AnionGapClassification;
+  includesPotassium: false;
+  albuminCorrection?: {
+    measuredAlbumin: number;
+    albuminUnit: "g/L";
+    correctedValue: number;
+    classification: AnionGapClassification;
+  };
+}
+
 export interface CaseAnalysis {
   compensation?: CompensationResult;
+  anionGap?: AnionGapResult;
 }
 
 export type ResultsExplanationPreferenceKey =

@@ -29,10 +29,6 @@ export function prettyStepLabel(stepKey: string): string {
   return labels[stepKey] ?? stepKey.replaceAll("_", " ");
 }
 
-export function calcAnionGap(na: number, cl: number, hco3: number): number {
-  return na - (cl + hco3);
-}
-
 function normalizeAnswerText(value: unknown): string {
   return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
@@ -48,17 +44,6 @@ export function formatAnswerValue(value: AnswerValue): string {
 
 export function getCorrectAnswer(caseItem: CaseData, stepKey: string): AnswerValue {
   const answerKey = caseItem.answer_key ?? {};
-
-  if (stepKey === "anion_gap") {
-    const gas = caseItem.inputs?.gas ?? {};
-    const electrolytes = caseItem.inputs?.electrolytes ?? {};
-    const gap = calcAnionGap(
-      Number(electrolytes.na_mmolL),
-      Number(electrolytes.cl_mmolL),
-      Number(gas.hco3_mmolL)
-    );
-    return gap > 16 ? "Raised" : "Normal";
-  }
 
   if (answerKey[stepKey] != null) return answerKey[stepKey];
   if (stepKey === "anion_gap" && answerKey.anion_gap_category) return String(answerKey.anion_gap_category);

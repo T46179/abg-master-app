@@ -199,6 +199,51 @@ describe("ResultsSummaryCard", () => {
     ]);
   });
 
+  it("renders a completed retained case with its unchanged legacy Normal answer", () => {
+    const legacyCase: CaseData = {
+      ...buildCaseItem("simple_nagma"),
+      answer_key: { anion_gap_category: "Normal" },
+      questions_flow: [
+        { key: "anion_gap", options: ["Raised", "Normal"] }
+      ]
+    };
+    const summary = buildSummary([
+      {
+        key: "anion_gap",
+        title: "Anion Gap Analysis",
+        body: "Legacy case explanation.",
+        order: 1
+      }
+    ]);
+    summary.caseData = legacyCase;
+    summary.stepResults = [
+      {
+        key: "anion_gap",
+        label: "Anion gap",
+        chosen: "Normal",
+        correctAnswer: "Normal",
+        correct: true
+      }
+    ];
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={legacyCase}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          storage={createStorageAdapter({ loadResultsReviewExpandedPreference: vi.fn(() => true) })}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("Anion gap");
+    expect(container.textContent).toContain("Normal");
+    expect(container.textContent).toContain("Legacy case explanation.");
+  });
+
   it("renders oxygenation explanation sections and oxygenation answer review labels", () => {
     const storage = createStorageAdapter({
       loadResultsReviewExpandedPreference: vi.fn(() => true)
