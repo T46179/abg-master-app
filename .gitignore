@@ -4,7 +4,14 @@ staged-docs/
 .playwright-cli/
 .env.local
 supabase/
-public/abg_cases.json
+public/abg_cases*.json
+public/abg-cases*.json
+public/abg_case_bank*.json
+public/abg-case-bank*.json
+docs/abg_cases*.json
+docs/abg-cases*.json
+docs/abg_case_bank*.json
+docs/abg-case-bank*.json
 nppBackup/
 *.bak
 README.md

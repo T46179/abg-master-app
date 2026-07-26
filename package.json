@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/create-spa-fallback.mjs",
+    "check:static-case-leaks": "node scripts/check-static-case-leaks.mjs",
     "preview": "vite preview",
     "test": "vitest run --pool=forks --maxWorkers=1",
     "typecheck": "tsc --noEmit",

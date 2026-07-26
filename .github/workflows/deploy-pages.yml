@@ -26,6 +26,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run test
+      - run: npm run check:static-case-leaks -- public docs
       - run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
@@ -39,6 +40,7 @@ jobs:
           VITE_SENTRY_TRACES_SAMPLE_RATE: ${{ vars.VITE_SENTRY_TRACES_SAMPLE_RATE }}
           VITE_SENTRY_REPLAY_SESSION_SAMPLE_RATE: ${{ vars.VITE_SENTRY_REPLAY_SESSION_SAMPLE_RATE }}
           VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE: ${{ vars.VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE }}
+      - run: npm run check:static-case-leaks -- docs
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./docs

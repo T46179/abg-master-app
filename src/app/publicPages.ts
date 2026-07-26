@@ -51,13 +51,25 @@ export const publicResources: PublicResource[] = [
 // corresponding change has been released, with the release date as the source of truth.
 export const publicUpdates: PublicUpdate[] = [
   {
+    date: "2026-07-26",
+    version: "v1.4",
+    category: "improved",
+    title: "Compensation 2.0",
+    summary: "A clearer, more visual way to understand how compensation works.",
+    highlights: [
+      "See expected compensation ranges at a glance",
+      "Understand when compensation is appropriate or inappropriate",
+      "Improved explanations and mobile presentation"
+    ]
+  },
+  {
     date: "2026-07-21",
     version: "v1.4",
     category: "new",
     title: "Featured Cases",
     summary: "Featured Cases and Master-level preview cases now available",
     highlights: [
-      "Added new Featured Cases from the dashboard",
+      "Featured Cases are now available from the dashboard, including Master-level preview cases and performance comparisons with other learners.",
       "Cases will be rotated periodically, and can be accessed irrespective of current unlocked level",
       "See how you perform against other people who have completed the same featured case",
       "Check back periodically for new cases",
