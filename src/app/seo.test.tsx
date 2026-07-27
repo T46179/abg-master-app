@@ -83,8 +83,8 @@ describe("SeoMetadata", () => {
 
   it.each([
     ["/blood-gas-compensation-rules", "2026-05-01", undefined],
-    ["/delta-ratio/", "2026-05-14", undefined],
-    ["/abg-interpretation", undefined, "2026-05-23"],
+    ["/delta-ratio/", "2026-05-14", "2026-07-27"],
+    ["/abg-interpretation", undefined, "2026-07-27"],
     ["/anion-gap/", "2026-06-19", undefined]
   ])("emits Article JSON-LD with verified dates for %s", (pathname, datePublished, dateModified) => {
     act(() => {

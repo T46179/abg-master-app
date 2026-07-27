@@ -34,7 +34,7 @@ describe("static article SEO generation", () => {
     expect(compensation).not.toHaveProperty("dateModified");
     expect(compensation).not.toHaveProperty("image");
     expect(abgInterpretation).not.toHaveProperty("datePublished");
-    expect(abgInterpretation.dateModified).toBe("2026-05-23");
+    expect(abgInterpretation.dateModified).toBe("2026-07-27");
   });
 
   it("generates exactly one Article JSON-LD script for articles and none for other pages", () => {
@@ -48,13 +48,13 @@ describe("static article SEO generation", () => {
     expect(nonArticleHtml).not.toContain('id="article-jsonld"');
   });
 
-  it("derives article sitemap dates while deliberately omitting Delta Ratio lastmod", () => {
+  it("derives article sitemap dates from verified publication and modification dates", () => {
     const template = readFileSync(new URL("../public/sitemap.xml", import.meta.url), "utf-8");
     const sitemap = updateArticleSitemap(template, pages, siteIdentity);
 
     expect(getSitemapBlock(sitemap, "/blood-gas-compensation-rules/")).toContain("<lastmod>2026-05-01</lastmod>");
-    expect(getSitemapBlock(sitemap, "/delta-ratio/")).not.toContain("<lastmod>");
-    expect(getSitemapBlock(sitemap, "/abg-interpretation/")).toContain("<lastmod>2026-05-23</lastmod>");
+    expect(getSitemapBlock(sitemap, "/delta-ratio/")).toContain("<lastmod>2026-07-27</lastmod>");
+    expect(getSitemapBlock(sitemap, "/abg-interpretation/")).toContain("<lastmod>2026-07-27</lastmod>");
     expect(getSitemapBlock(sitemap, "/anion-gap/")).toContain("<lastmod>2026-06-19</lastmod>");
     expect(getSitemapBlock(sitemap, "/about/")).toContain("<lastmod>2026-07-21</lastmod>");
   });

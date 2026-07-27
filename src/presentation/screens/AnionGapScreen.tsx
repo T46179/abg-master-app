@@ -185,7 +185,7 @@ export function AnionGapScreen() {
             <article>
               <span>Without potassium</span>
               <strong>About 4 to 12 mmol/L</strong>
-              <p>Many sources quote a normal range around 4 to 12 or 4 to 13 mmol/L.</p>
+              <p>Many sources quote a normal range around 4 to 12 mmol/L.</p>
             </article>
             <article>
               <span>With potassium</span>

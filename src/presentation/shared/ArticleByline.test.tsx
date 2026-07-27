@@ -29,8 +29,8 @@ describe("ArticleByline", () => {
 
   it.each([
     ["/blood-gas-compensation-rules/", BloodGasCompensationRulesScreen, "Published: May 2026", "2026-05-01"],
-    ["/delta-ratio/", DeltaRatioScreen, "Published: May 2026", "2026-05-14"],
-    ["/abg-interpretation/", AbgInterpretationScreen, "Last updated: May 2026", "2026-05-23"],
+    ["/delta-ratio/", DeltaRatioScreen, "Last updated: July 2026", "2026-07-27"],
+    ["/abg-interpretation/", AbgInterpretationScreen, "Last updated: July 2026", "2026-07-27"],
     ["/anion-gap/", AnionGapScreen, "Published: June 2026", "2026-06-19"]
   ] as Array<[string, ComponentType, string, string]>) (
     "renders accessible authorship in the article header for %s",
@@ -58,7 +58,7 @@ describe("ArticleByline", () => {
       expect(byline?.textContent).toContain(dateText);
       expect(authorLink?.getAttribute("href")).toBe("/about/");
       expect(time?.dateTime).toBe(datetime);
-      expect(time?.textContent).toMatch(/^(May|June) 2026$/);
+      expect(time?.textContent).toMatch(/^(May|June|July) 2026$/);
     }
   );
 });

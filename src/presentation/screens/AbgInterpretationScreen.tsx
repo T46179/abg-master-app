@@ -146,7 +146,7 @@ function getStepBlocks(pressureUnit: PressureUnit): StepBlock[] {
     number: "Step 05",
     title: "Calculate the anion gap",
     body: [
-      "In metabolic acidosis, calculating the anion gap helps determine how much of the acidaemia is due to additional unmeasured acids. When elevated (AG > 16, or > 12 in some resources), it suggests processes such as lactic acidosis or ketoacidosis are contributing to the low pH.",
+      "In metabolic acidosis, calculating the anion gap helps determine how much of the acidaemia is due to additional unmeasured acids. When elevated (AG > 12, or > 16 if including potassium), it suggests processes such as lactic acidosis or ketoacidosis are contributing to the low pH.",
       "If the anion gap is raised, the delta ratio — essentially the rise in anion gap compared with the fall in bicarbonate — can help identify additional metabolic processes.",
       "Because albumin is an anion, the anion gap should be corrected for in hypoalbuminaemia."
     ],
@@ -201,7 +201,7 @@ const workedCases: WorkedCase[] = [
       <>PaO<sub>2</sub> {formatPagePressure(82, pressureUnit)} on 28% O<sub>2</sub> — impaired gas exchange.</>,
       "pH looks normal — do not stop here.",
       "Anion gap = 140 − (92 + 18) = 30 → high anion gap.",
-      "Delta ratio = (30 − 16) / (24 − 18) ≈ 2.3 → HAGMA + metabolic alkalosis.",
+      "Delta ratio = (30 − 12) / (24 − 18) = 3.0 → HAGMA + metabolic alkalosis.",
       "Mixed picture: HAGMA (sepsis/lactate) + metabolic alkalosis (vomiting). Normal pH was hiding it."
     ],
     result: "Mixed disorder — compensation hint, not the diagnosis.",

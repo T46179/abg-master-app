@@ -63,11 +63,11 @@ const workedExamples: WorkedExample[] = [
       { key: "paco2", value: "25 mmHg" },
       { key: "hco3", value: "10 mmol/L" },
       { key: "na", value: "140 mmol/L" },
-      { key: "cl", value: "104 mmol/L" }
+      { key: "cl", value: "108 mmol/L" }
     ],
     calculations: [
-      ["Anion gap", "140 - 104 - 10 = 26"],
-      ["Delta ratio", "(26 - 16) / (24 - 10) = 0.71"]
+      ["Anion gap", "140 - 108 - 10 = 22"],
+      ["Delta ratio", "(22 - 12) / (24 - 10) = 0.71"]
     ],
     result: "Near the low end of the expected range. Consistent with a HAGMA, though a mild additional NAGMA could be considered in context.",
     tone: "orange"
@@ -83,7 +83,7 @@ const workedExamples: WorkedExample[] = [
     ],
     calculations: [
       ["Anion gap", "140 - 86 - 18 = 36"],
-      ["Delta ratio", "(36 - 16) / (24 - 18) = 3.33"]
+      ["Delta ratio", "(36 - 12) / (24 - 18) = 4.0"]
     ],
     result: "Anion gap has risen substantially, but bicarbonate has barely fallen. This suggests HAGMA with an additional metabolic alkalosis, classically DKA with vomiting.",
     tone: "blue"
@@ -95,11 +95,11 @@ const workedExamples: WorkedExample[] = [
       { key: "paco2", value: "22 mmHg" },
       { key: "hco3", value: "7 mmol/L" },
       { key: "na", value: "140 mmol/L" },
-      { key: "cl", value: "112 mmol/L" }
+      { key: "cl", value: "116 mmol/L" }
     ],
     calculations: [
-      ["Anion gap", "140 - 112 - 7 = 21"],
-      ["Delta ratio", "(21 - 16) / (24 - 7) = 0.29"]
+      ["Anion gap", "140 - 116 - 7 = 17"],
+      ["Delta ratio", "(17 - 12) / (24 - 7) = 0.29"]
     ],
     result: "Bicarbonate has fallen much more than the anion gap has risen. Likely an additional NAGMA, such as diarrhoea, RTA, or saline-related hyperchloraemia.",
     tone: "yellow"
@@ -115,7 +115,7 @@ const workedExamples: WorkedExample[] = [
     ],
     calculations: [
       ["Anion gap", "140 - 100 - 12 = 28"],
-      ["Delta ratio", "(28 - 16) / (24 - 12) = 1.0"]
+      ["Delta ratio", "(28 - 12) / (24 - 12) = 1.33"]
     ],
     result: <>Delta ratio fits HAGMA without an additional metabolic process, but <PaCO2Text /> is far lower than compensation alone would explain. This is why compensation should always be assessed separately from the delta ratio. <Link className="delta-ratio-page__inline-icon-link" to="/blood-gas-compensation-rules/" target="_blank" rel="noopener noreferrer">Review compensation rules <img src={externalLinkIcon} alt="" aria-hidden="true" /></Link></>,
     tone: "green"
@@ -212,8 +212,8 @@ function FormulaBlock() {
       </div>
       <div>
         <span>ABG Master reference points</span>
-        <code>Delta ratio = (AG - 16) / (24 - <HCO3Text />)</code>
-        <p>ABG Master uses a normal AG of 16 and a normal <HCO3Text /> of 24 for consistency across interpretation and grading.</p>
+        <code>Delta ratio = (AG - 12) / (24 - <HCO3Text />)</code>
+        <p>ABG Master calculates the anion gap without potassium and uses 12 mmol/L as the delta anion gap reference point, with 24 mmol/L as the normal <HCO3Text /> reference.</p>
       </div>
     </div>
   );
@@ -404,7 +404,7 @@ export function DeltaRatioScreen() {
             <code>Delta ratio = ΔAG / Δ<HCO3Text /></code>
             <code>Delta gap = ΔAG - Δ<HCO3Text /></code>
           </div>
-          <p>For ABG Master teaching, the delta ratio is preferred because it maps cleanly to the three labelled patterns: HAGMA only, HAGMA + NAGMA, and HAGMA + metabolic alkalosis.</p>
+          <p>ABG Master uses delta analysis to compare the rise in anion gap above 12 with the fall in bicarbonate below 24. This helps determine whether bicarbonate is lower than expected, close to expected, or relatively preserved for the size of the raised anion gap.</p>
         </section>
 
         <section className="comp-rules-page__section">
@@ -441,7 +441,7 @@ export function DeltaRatioScreen() {
 
         <section className="comp-rules-page__section">
           <h2>How ABG Master uses the delta ratio</h2>
-          <p>ABG Master teaches mixed metabolic disorders in a stepwise way: first identify the primary disorder, then assess compensation, then use the anion gap and delta ratio to decide whether the final diagnosis explains the whole pattern.</p>
+          <p>ABG Master teaches mixed metabolic disorders in a stepwise way: identify the primary disorder, assess compensation, calculate the anion gap, then use delta analysis to determine whether the bicarbonate is lower than, close to, or higher than expected for the rise in anion gap.</p>
           <p>Reference ranges and thresholds are kept internally consistent across teaching, grading, and explanations so learners can practise the same logic repeatedly.</p>
           <p>
             For related foundations, review the <Link to="/anion-gap/" target="_blank" rel="noopener noreferrer">anion gap guide</Link>, how to <Link to="/abg-interpretation/" target="_blank" rel="noopener noreferrer">interpret a blood gas</Link>, or the <Link to="/blood-gas-compensation-rules/" target="_blank" rel="noopener noreferrer">blood gas compensation rules</Link>.
