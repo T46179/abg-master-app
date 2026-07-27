@@ -21,6 +21,7 @@ import { getFeaturedComparisonSummaryCopy } from "../../core/featuredCaseCompari
 import { formatElapsed, splitMetrics } from "../../app/viewHelpers";
 import { formatAnswerValue } from "../../core/practice";
 import { MetricInlineText, MetricLabel, MetricReference, MetricValue } from "./MetricText";
+import { AnionGapVisualContent } from "./anionGap/AnionGapVisualContent";
 import { CaseMetadataIcons } from "./CaseMetadataIcons";
 import { CompensationVisualContent } from "./compensation/CompensationVisualContent";
 import { SecondaryMetricRail } from "./SecondaryMetricRail";
@@ -346,7 +347,14 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                     ) : null}
                   </div>
                   {isCollapsibleExplanationKey(section.key) && !expandedByKey[section.key] ? null : (
-                    section.key === "compensation" && (props.summary.analysis?.compensation ?? props.summary.caseData.analysis?.compensation) ? (
+                    section.key === "anion_gap" ? (
+                      <AnionGapVisualContent
+                        result={props.summary.analysis?.anionGap ?? props.summary.caseData.analysis?.anionGap}
+                        caseInputs={props.summary.caseData.inputs}
+                        fallbackExplanation={section.body}
+                        caseId={props.summary.caseId}
+                      />
+                    ) : section.key === "compensation" && (props.summary.analysis?.compensation ?? props.summary.caseData.analysis?.compensation) ? (
                       <CompensationVisualContent
                         result={props.summary.analysis?.compensation ?? props.summary.caseData.analysis?.compensation}
                         fallbackExplanation={section.body}

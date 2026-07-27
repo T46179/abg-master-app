@@ -1037,4 +1037,105 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).toContain("Below expected range");
     expect(container.textContent).not.toContain("Fallback compensation explanation.");
   });
+
+  it("replaces anion gap prose with the production structured visual and case-input calculation", () => {
+    const summary: CaseSummary = {
+      ...buildSummary([
+        { key: "anion_gap", title: "Anion Gap Analysis", body: "Fallback anion gap explanation.", order: 2 }
+      ]),
+      analysis: {
+        anionGap: {
+          measuredValue: 31,
+          unit: "mmol/L",
+          referenceLowerLimit: 4,
+          referenceUpperLimit: 12,
+          classification: "raised",
+          includesPotassium: false
+        }
+      }
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={summary.caseData}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+        />
+      );
+    });
+
+    expect(container.querySelector(".results-card__detail-card")).not.toBeNull();
+    expect(container.querySelector(".ag-gauge")).not.toBeNull();
+    expect(container.textContent).toContain("Calculated AG");
+    expect(container.textContent).toContain("Raised anion gap");
+    expect(container.textContent).not.toContain("Fallback anion gap explanation.");
+
+    const calculationButton = container.querySelector<HTMLButtonElement>(".ag-calc__toggle");
+    expect(calculationButton).not.toBeNull();
+    act(() => calculationButton?.click());
+    expect(container.querySelector(".ag-equation")?.textContent).toContain("= 31 mmol/L");
+  });
+
+  it("supports the retained caseData analysis location for the anion gap visual", () => {
+    const baseSummary = buildSummary([
+      { key: "anion_gap", title: "Anion Gap Analysis", body: "Fallback anion gap explanation.", order: 2 }
+    ]);
+    const summary: CaseSummary = {
+      ...baseSummary,
+      caseData: {
+        ...baseSummary.caseData,
+        analysis: {
+          anionGap: {
+            measuredValue: 31,
+            unit: "mmol/L",
+            referenceLowerLimit: 4,
+            referenceUpperLimit: 12,
+            classification: "raised",
+            includesPotassium: false
+          }
+        }
+      }
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={summary.caseData}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+        />
+      );
+    });
+
+    expect(container.querySelector(".ag-gauge")).not.toBeNull();
+    expect(container.textContent).toContain("Raised anion gap");
+    expect(container.textContent).not.toContain("Fallback anion gap explanation.");
+  });
+
+  it("uses the styled existing-prose fallback when structured anion gap data is absent", () => {
+    const summary = buildSummary([
+      { key: "anion_gap", title: "Anion Gap Analysis", body: "Existing anion gap explanation.", order: 2 }
+    ]);
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={summary.caseData}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+        />
+      );
+    });
+
+    expect(container.querySelector(".ag-fallback")).not.toBeNull();
+    expect(container.textContent).toContain("Existing anion gap explanation.");
+    expect(container.querySelector(".ag-gauge")).toBeNull();
+  });
 });
