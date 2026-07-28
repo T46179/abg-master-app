@@ -140,6 +140,7 @@ describe("anion gap visual model", () => {
     expect(model.calculation).toBeDefined();
     expect(model.calculation?.ionic?.gap).toBe(value);
     expect(model.calculation?.ionic?.anions.at(-1)?.value).toBe(value);
+    expect(model.calculation?.ionic?.anions.at(-1)?.label).toBe("AG");
   });
 
   it.each([

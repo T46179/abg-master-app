@@ -248,7 +248,7 @@ function buildCalculation(
       },
       {
         key: "gap",
-        label: "Anion gap",
+        label: "AG",
         value: result.measuredValue,
         widthPercent: widthPercent(result.measuredValue)
       }

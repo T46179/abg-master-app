@@ -1069,7 +1069,8 @@ describe("ResultsSummaryCard", () => {
 
     expect(container.querySelector(".results-card__detail-card")).not.toBeNull();
     expect(container.querySelector(".ag-gauge")).not.toBeNull();
-    expect(container.textContent).toContain("Calculated AG");
+    expect(container.querySelector(".ag-value")).toBeNull();
+    expect(container.querySelector(".ag-gauge__note")).toBeNull();
     expect(container.textContent).toContain("Raised anion gap");
     expect(container.textContent).not.toContain("Fallback anion gap explanation.");
 
