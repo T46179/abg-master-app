@@ -227,6 +227,7 @@ describe("AnionGapVisualContent", () => {
     expect(button?.getAttribute("aria-expanded")).toBe("false");
     expect(button?.getAttribute("aria-controls")).toBeTruthy();
     expect(container.querySelector(".ag-calc__panel")).toBeNull();
+    expect(container.querySelector(".ag-ionic-help")).toBeNull();
 
     act(() => {
       button?.click();
@@ -236,6 +237,19 @@ describe("AnionGapVisualContent", () => {
     const panel = container.querySelector(".ag-calc__panel");
     expect(panel?.id).toBe(button?.getAttribute("aria-controls"));
     expect(container.textContent).toContain("Hide calculation");
+    expect(container.querySelector(".ag-ionic__caption")).toBeNull();
+    const helpTrigger = container.querySelector<HTMLButtonElement>(
+      ".ag-ionic-help__trigger"
+    );
+    const helpTooltip = container.querySelector(".ag-ionic-help__bubble");
+    expect(helpTrigger?.getAttribute("aria-label")).toBe(
+      "About the ionic balance schematic"
+    );
+    expect(helpTooltip?.id).toBe(helpTrigger?.getAttribute("aria-describedby"));
+    expect(helpTooltip?.getAttribute("role")).toBe("tooltip");
+    expect(helpTooltip?.textContent).toContain(
+      "The anion gap is the calculated difference that makes up the remainder"
+    );
     expect(container.querySelector(".ag-ionic__legend")?.textContent).toContain(
       "Na⁺ 140 (measured)"
     );
@@ -492,6 +506,7 @@ describe("AnionGapVisualContent", () => {
 
     expect(container.querySelector(".ag-equation")?.textContent).toContain("= -4 mmol/L");
     expect(container.querySelector(".ag-ionic")).toBeNull();
+    expect(container.querySelector(".ag-ionic-help")).toBeNull();
   });
 
   it("renders the existing explanation body in the styled fallback", () => {

@@ -169,7 +169,7 @@ function buildSentence(
   const baseSentences: Record<AnionGapClassification, string> = {
     low: "The calculated anion gap is below the reference range.",
     normal: "The calculated anion gap is within the reference range.",
-    raised: "The calculated anion gap is above the reference range."
+    raised: "Consider unmeasured anions such as lactate, ketones, or toxins."
   };
 
   if (!correction) return baseSentences[classification];

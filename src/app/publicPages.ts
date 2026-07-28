@@ -50,6 +50,18 @@ export const publicResources: PublicResource[] = [
 // Keep this list limited to confirmed public additions. Add new entries when the
 // corresponding change has been released, with the release date as the source of truth.
 export const publicUpdates: PublicUpdate[] = [
+{
+  date: "2026-07-28",
+  version: "v1.4",
+  category: "improved",
+  title: "Anion Gap 2.0",
+  summary: "A clearer, more visual way to understand how the anion gap is calculated and interpreted.",
+  highlights: [
+    "See whether the anion gap is low, normal, or raised at a glance",
+    "Visualise how sodium, chloride, bicarbonate, and the calculated gap relate",
+    "Explore the calculation with clearer explanations and improved mobile presentation"
+  ]
+},
   {
     date: "2026-07-26",
     version: "v1.4",

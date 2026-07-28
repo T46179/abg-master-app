@@ -61,6 +61,7 @@ const TOTAL_BORROW_RATIO = 0.1;
 const COMBINED_WIDTH_BORROW_RATIO = 0.5;
 const INDIVIDUAL_BORROW_RATIO = 0.06;
 const IONIC_LAYOUT_EPSILON_PX = 0.01;
+const IONIC_EXPLANATION = "Na⁺ is the measured cation; Cl⁻ and HCO₃⁻ are the measured anions. The anion gap is the calculated difference that makes up the remainder — a schematic estimate, not a measured ion or a real charge imbalance.";
 
 const POSITIVE_GAP_LABEL_CANDIDATES: Array<IonicLayout["labelModes"]> = [
   { cl: "full", hco3: "full", gap: "full" },
@@ -432,12 +433,6 @@ function IonicBalance({ ionic }: { ionic: AnionGapIonicModel }) {
 
   return (
     <div className="ag-ionic" ref={ionicRef}>
-      <p className="ag-ionic__caption">
-        Na⁺ is the measured cation; Cl⁻ and HCO₃⁻ are the measured anions.
-        The anion gap is the calculated difference that makes up the remainder
-        — a schematic estimate, not a measured ion or a real charge imbalance.
-      </p>
-
       <div className="ag-ionic__row">
         <span className="ag-ionic__row-label">Measured cation</span>
         <div className="ag-ionic__bar" aria-hidden="true">
@@ -523,6 +518,30 @@ function IonicBalance({ ionic }: { ionic: AnionGapIonicModel }) {
   );
 }
 
+function AnionGapIonicHelp() {
+  const tooltipId = useId();
+
+  return (
+    <span className="ag-ionic-help">
+      <button
+        className="ag-ionic-help__trigger"
+        type="button"
+        aria-label="About the ionic balance schematic"
+        aria-describedby={tooltipId}
+      >
+        <span className="ag-ionic-help__icon" aria-hidden="true" />
+      </button>
+      <span
+        className="ag-ionic-help__bubble"
+        id={tooltipId}
+        role="tooltip"
+      >
+        {IONIC_EXPLANATION}
+      </span>
+    </span>
+  );
+}
+
 function AnionGapCalculationDisclosure(props: {
   calculation: AnionGapCalculationModel;
   open: boolean;
@@ -532,16 +551,21 @@ function AnionGapCalculationDisclosure(props: {
 
   return (
     <div className="ag-calc">
-      <button
-        type="button"
-        className="ag-calc__toggle"
-        aria-expanded={props.open}
-        aria-controls={panelId}
-        onClick={props.onToggle}
-      >
-        <span className="ag-calc__chevron" aria-hidden="true">›</span>
-        {props.open ? "Hide calculation" : "Show calculation"}
-      </button>
+      <div className="ag-calc__header">
+        <button
+          type="button"
+          className="ag-calc__toggle"
+          aria-expanded={props.open}
+          aria-controls={panelId}
+          onClick={props.onToggle}
+        >
+          <span className="ag-calc__chevron" aria-hidden="true">›</span>
+          {props.open ? "Hide calculation" : "Show calculation"}
+        </button>
+        {props.open && props.calculation.ionic
+          ? <AnionGapIonicHelp />
+          : null}
+      </div>
 
       {props.open ? (
         <div className="ag-calc__panel" id={panelId}>

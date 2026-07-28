@@ -40,10 +40,22 @@ function buildInputs(
 
 describe("anion gap visual model", () => {
   it.each([
-    { value: 2, classification: "low" as const },
-    { value: 8, classification: "normal" as const },
-    { value: 18, classification: "raised" as const }
-  ])("preserves the supplied $classification classification", ({ value, classification }) => {
+    {
+      value: 2,
+      classification: "low" as const,
+      expectedSentence: "The calculated anion gap is below the reference range."
+    },
+    {
+      value: 8,
+      classification: "normal" as const,
+      expectedSentence: "The calculated anion gap is within the reference range."
+    },
+    {
+      value: 18,
+      classification: "raised" as const,
+      expectedSentence: "Consider unmeasured anions such as lactate, ketones, or toxins."
+    }
+  ])("preserves the supplied $classification classification", ({ value, classification, expectedSentence }) => {
     const model = buildAnionGapVisualModel(
       buildResult(value, classification),
       undefined,
@@ -54,6 +66,7 @@ describe("anion gap visual model", () => {
     if (model.kind !== "visual") return;
     expect(model.status.tone).toBe(classification);
     expect(model.primaryMarker.classification).toBe(classification);
+    expect(model.sentence).toBe(expectedSentence);
     expect(Number.isFinite(model.primaryMarker.position)).toBe(true);
     expect(model.primaryMarker.position).toBeGreaterThanOrEqual(0);
     expect(model.primaryMarker.position).toBeLessThanOrEqual(100);
