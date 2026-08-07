@@ -127,6 +127,101 @@ describe("QuestionFlowCard", () => {
     act(() => root.unmount());
   });
 
+  it("advances after a translator moves the current prompt text node", () => {
+    const compensationStep: QuestionFlowStep = {
+      key: "compensation",
+      label: "Compensation",
+      prompt: "Is compensation appropriate?",
+      options: ["Appropriate", "Inappropriate"]
+    };
+    const anionGapStep: QuestionFlowStep = {
+      key: "anion_gap",
+      label: "Anion gap",
+      prompt: "What is the anion gap?",
+      options: ["Raised", "Normal"]
+    };
+    const translatedCase: CaseData = {
+      ...caseItem,
+      answer_key: {
+        compensation: "Inappropriate",
+        anion_gap: "Raised"
+      }
+    };
+    const questions = [compensationStep, anionGapStep];
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const onAnswer = vi.fn();
+    const activeStepRef = createRef<HTMLButtonElement>();
+
+    act(() => {
+      root.render(
+        <QuestionFlowCard
+          caseItem={translatedCase}
+          questions={questions}
+          currentStepIndex={0}
+          currentStep={compensationStep}
+          currentSelection={null}
+          currentResult={null}
+          currentOptions={compensationStep.options ?? []}
+          selectedAnswers={[]}
+          stepResults={[]}
+          onAnswer={onAnswer}
+          onContinueStep={vi.fn()}
+          activeStepRef={activeStepRef}
+        />
+      );
+    });
+
+    const promptWrapper = container.querySelector<HTMLElement>(
+      ".question-flow-card__prompt [data-translation-safe-inline]"
+    );
+    const promptTextNode = promptWrapper?.firstChild;
+    const translatedWrapper = document.createElement("font");
+
+    expect(promptTextNode?.nodeType).toBe(Node.TEXT_NODE);
+    promptWrapper?.appendChild(translatedWrapper);
+    translatedWrapper.appendChild(promptTextNode as Node);
+
+    expect(() => {
+      act(() => {
+        root.render(
+          <QuestionFlowCard
+            caseItem={translatedCase}
+            questions={questions}
+            currentStepIndex={1}
+            currentStep={anionGapStep}
+            currentSelection={null}
+            currentResult={null}
+            currentOptions={anionGapStep.options ?? []}
+            selectedAnswers={[{
+              key: compensationStep.key,
+              label: compensationStep.label ?? "Compensation",
+              prompt: compensationStep.prompt,
+              chosen: "Inappropriate"
+            }]}
+            stepResults={[]}
+            onAnswer={onAnswer}
+            onContinueStep={vi.fn()}
+            activeStepRef={activeStepRef}
+          />
+        );
+      });
+    }).not.toThrow();
+
+    expect(container.querySelector(".question-flow-card__prompt")?.textContent).toBe("What is the anion gap?");
+    const raisedOption = Array.from(container.querySelectorAll<HTMLButtonElement>(".answer-option"))
+      .find(option => option.textContent === "Raised");
+
+    act(() => {
+      raisedOption?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onAnswer).toHaveBeenCalledWith("Raised");
+    act(() => root.unmount());
+    container.remove();
+  });
+
   it("shows the A-a gradient formula popover without substituted case values", () => {
     const aaGradientStep: QuestionFlowStep = {
       key: "aa_gradient_mechanism",

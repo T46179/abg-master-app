@@ -1,5 +1,6 @@
 import type { StepResult } from "../../core/types";
 import { formatAnswerValue } from "../../core/practice";
+import { TranslationSafeInline } from "../primitives/TranslationSafeInline";
 import { MetricInlineText } from "./MetricText";
 
 interface InlineFeedbackCardProps {
@@ -12,6 +13,10 @@ interface InlineFeedbackCardProps {
 }
 
 export function InlineFeedbackCard(props: InlineFeedbackCardProps) {
+  const actionLabel = props.isLastStep
+    ? props.lastStepButtonLabel ?? "Submit Case"
+    : "Continue";
+
   return (
     <div className={`inline-feedback inline-feedback--answer-flow${props.result.correct ? " is-correct" : " is-incorrect"}`}>
       <div className="inline-feedback__grid">
@@ -38,12 +43,10 @@ export function InlineFeedbackCard(props: InlineFeedbackCardProps) {
         {props.isLastStep && props.isSubmitting ? (
           <>
             <span className="figma-button__spinner" aria-hidden="true" />
-            <span>Submitting case</span>
+            <TranslationSafeInline identity="Submitting case">Submitting case</TranslationSafeInline>
           </>
-        ) : props.isLastStep ? (
-          props.lastStepButtonLabel ?? "Submit Case"
         ) : (
-          "Continue"
+          <TranslationSafeInline identity={actionLabel}>{actionLabel}</TranslationSafeInline>
         )}
       </button>
     </div>

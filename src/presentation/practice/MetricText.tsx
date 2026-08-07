@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { TranslationSafeInline } from "../primitives/TranslationSafeInline";
 
 interface MetricLabelProps {
   label: string;
@@ -82,12 +83,12 @@ export function MetricInlineText({ text }: { text: string }) {
   const parts = text.split(INLINE_METRIC_PATTERN);
 
   return (
-    <>
+    <TranslationSafeInline identity={text}>
       {parts.map((part, index) => (
         <Fragment key={`${part}-${index}`}>
           {renderInlineMetricToken(part)}
         </Fragment>
       ))}
-    </>
+    </TranslationSafeInline>
   );
 }

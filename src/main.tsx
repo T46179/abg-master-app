@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { AppProvider } from "./app/AppProvider";
 import { App } from "./app/App";
-import { initMonitoring } from "./core/monitoring";
+import { handleCaughtReactError, initMonitoring } from "./core/monitoring";
 import { initAnalytics } from "./core/analytics";
 import "./styles/theme.css";
 import "./styles/index.css";
@@ -17,7 +17,7 @@ if (!container) {
 
 initAnalytics();
 
-createRoot(container).render(
+createRoot(container, { onCaughtError: handleCaughtReactError }).render(
   <StrictMode>
     <AppProvider>
       <App />

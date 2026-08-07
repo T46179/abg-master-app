@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { AnswerSelection, CaseData, QuestionFlowStep, StepResult } from "../../core/types";
 import { Surface } from "../primitives/Surface";
 import { PillNav } from "../primitives/PillNav";
+import { TranslationSafeInline } from "../primitives/TranslationSafeInline";
 import { formatAnswerValue, getQuestionFlowStepStatus, prettyStepLabel } from "../../core/practice";
 import { InlineFeedbackCard } from "./InlineFeedbackCard";
 import { MetricInlineText } from "./MetricText";
@@ -88,6 +89,27 @@ function getCompensationRuleSlug(caseItem: CaseData | null, primaryDisorder: str
 }
 
 type FormulaPopoverType = "compensation" | "aa_gradient";
+
+function ContinueButtonContent(props: {
+  isLastStep: boolean;
+  isSubmitting: boolean;
+  lastStepButtonLabel?: string;
+}) {
+  if (props.isLastStep && props.isSubmitting) {
+    return (
+      <>
+        <span className="figma-button__spinner" aria-hidden="true" />
+        <TranslationSafeInline identity="Submitting case">Submitting case</TranslationSafeInline>
+      </>
+    );
+  }
+
+  const label = props.isLastStep
+    ? props.lastStepButtonLabel ?? "Submit Case"
+    : "Continue";
+
+  return <TranslationSafeInline identity={label}>{label}</TranslationSafeInline>;
+}
 
 function AAGradientFormulaPopover() {
   return (
@@ -288,16 +310,11 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
                 onClick={props.onContinueStep}
                 disabled={props.interactionDisabled || !hasMultiSelectAnswer}
               >
-                {props.currentStepIndex >= props.questions.length - 1 && props.isSubmittingCase ? (
-                  <>
-                    <span className="figma-button__spinner" aria-hidden="true" />
-                    <span>Submitting case</span>
-                  </>
-                ) : props.currentStepIndex >= props.questions.length - 1 ? (
-                  "Submit Case"
-                ) : (
-                  "Continue"
-                )}
+                <ContinueButtonContent
+                  isLastStep={props.currentStepIndex >= props.questions.length - 1}
+                  isSubmitting={Boolean(props.isSubmittingCase)}
+                  lastStepButtonLabel={props.lastStepButtonLabel}
+                />
               </button>
             </div>
           ) : props.currentSelection ? (
@@ -319,16 +336,11 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
                 onClick={props.onContinueStep}
                 disabled={props.interactionDisabled}
               >
-                {props.currentStepIndex >= props.questions.length - 1 && props.isSubmittingCase ? (
-                  <>
-                    <span className="figma-button__spinner" aria-hidden="true" />
-                    <span>Submitting case</span>
-                  </>
-                ) : props.currentStepIndex >= props.questions.length - 1 ? (
-                  "Submit Case"
-                ) : (
-                  "Continue"
-                )}
+                <ContinueButtonContent
+                  isLastStep={props.currentStepIndex >= props.questions.length - 1}
+                  isSubmitting={Boolean(props.isSubmittingCase)}
+                  lastStepButtonLabel={props.lastStepButtonLabel}
+                />
               </button>
             </div>
           ) : (

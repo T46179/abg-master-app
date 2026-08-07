@@ -22,6 +22,7 @@ import { ResourcesScreen } from "../presentation/screens/ResourcesScreen";
 import { UpdatesScreen } from "../presentation/screens/UpdatesScreen";
 import { ContactScreen } from "../presentation/screens/ContactScreen";
 import { FeaturedCaseScreen } from "../presentation/screens/FeaturedCaseScreen";
+import { AppRouteErrorView } from "../presentation/shared/StatusViews";
 
 export const appRoutes: RouteObject[] = [
   {
@@ -67,6 +68,7 @@ export const appRoutes: RouteObject[] = [
   {
     path: "/",
     element: <AppShell />,
+    errorElement: <AppRouteErrorView />,
     children: [
       { path: "dashboard", element: <DashboardScreen /> },
       { path: "practice", element: <PracticeScreen /> },
