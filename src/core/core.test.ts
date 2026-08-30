@@ -797,6 +797,21 @@ describe("metric visibility", () => {
     expect(renderMetricValue(bicarbonateMetric!, { pressureUnit: "kPa" })).toBe("18.0 mmol/L");
   });
 
+  it("leaves unrelated mmHg metrics unchanged unless they explicitly opt into pressure conversion", () => {
+    const bloodPressureMetric = {
+      label: "Blood pressure",
+      displayLabel: "Blood pressure",
+      reference: "Normal: 90 - 120 mmHg",
+      value: 110,
+      decimals: 0,
+      unit: "mmHg",
+      abnormal: false
+    };
+
+    expect(getDisplayMetricDefinition(bloodPressureMetric, { pressureUnit: "kPa" })).toBe(bloodPressureMetric);
+    expect(renderMetricValue(bloodPressureMetric, { pressureUnit: "kPa" })).toBe("110 mmHg");
+  });
+
   it("orders raw oxygenation metrics first in the secondary rail", () => {
     const metrics = splitMetrics({
       ...sampleCase,
@@ -1418,6 +1433,7 @@ describe("storage adapters", () => {
     initialStorage.savePracticeIntroSeen(true);
     initialStorage.saveAppAreaVisited(true);
     initialStorage.saveAdvancedRangesPreference(true);
+    initialStorage.savePressureUnitPreference("kPa");
     initialStorage.saveLastPracticeDifficulty("advanced");
     initialStorage.saveResultsExplanationPreferences({
       primary_disorder: true,
@@ -1441,6 +1457,7 @@ describe("storage adapters", () => {
     expect(reloadedStorage.loadPracticeIntroSeen()).toBe(true);
     expect(reloadedStorage.loadAppAreaVisited()).toBe(true);
     expect(reloadedStorage.loadAdvancedRangesPreference()).toBe(true);
+    expect(reloadedStorage.loadPressureUnitPreference()).toBe("kPa");
     expect(reloadedStorage.loadLastPracticeDifficulty()).toBe("advanced");
     expect(reloadedStorage.loadResultsExplanationPreferences()).toEqual({
       primary_disorder: true,
@@ -1451,6 +1468,17 @@ describe("storage adapters", () => {
     });
     expect(reloadedStorage.loadResultsReviewExpandedPreference()).toBe(true);
     expect(browserStorage.getItem(STORAGE_KEYS.USER_STATE_MODE_STORAGE_KEY)).toBe("sig-1");
+  });
+
+  it("defaults missing or invalid pressure-unit preferences to mmHg", async () => {
+    const browserStorage = createMemoryStorage();
+    const storage = createAppStorage({ browserStorage });
+
+    await storage.init({ releaseSignature: "sig-1" });
+    expect(storage.loadPressureUnitPreference()).toBe("mmHg");
+
+    browserStorage.setItem(STORAGE_KEYS.PRESSURE_UNIT_STORAGE_KEY, "psi");
+    expect(storage.loadPressureUnitPreference()).toBe("mmHg");
   });
 
   it("sanitizes the stored last practice difficulty", async () => {

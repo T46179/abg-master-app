@@ -354,6 +354,31 @@ describe("CompensationVisualContent", () => {
     );
   });
 
+  it("shows kPa labels while leaving calculation values in their authored mmHg", () => {
+    act(() => {
+      root.render(
+        <CompensationVisualContent
+          result={standardResult}
+          fallbackExplanation="Fallback"
+          caseId="standard-kpa"
+          pressureUnit="kPa"
+        />
+      );
+    });
+
+    expect(container.querySelector(".cmp-marker__chip")?.textContent).toBe("2.9 kPa");
+    expect(container.querySelector(".cmp-band--primary_expected .cmp-band__bounds--compact")?.textContent).toBe("3.2–3.7");
+    expect(container.textContent).not.toContain("Calculation shown in mmHg");
+
+    act(() => container.querySelector<HTMLButtonElement>(".cmp-calc__toggle")?.click());
+    expect(container.querySelectorAll(".cmp-calc__lines > li")[1]?.textContent).toBe(
+      "Expected PaCO₂: 24 – 28 mmHg"
+    );
+    expect(container.querySelectorAll(".cmp-calc__lines > li")[2]?.textContent).toBe(
+      "Measured PaCO₂: 22 mmHg"
+    );
+  });
+
   it("renders calculations without an icon when the rule key is unknown", () => {
     const unknownRuleResult: CompensationResult = {
       ...standardResult,

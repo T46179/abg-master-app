@@ -15,10 +15,14 @@ interface ValuePanelsProps {
   onToggleAdvancedRanges?: () => void;
 }
 
-function getMetricCardClass(metric: { group?: string }, ...classes: string[]): string {
+function getMetricCardClass(
+  metric: { group?: string; pressureUnitConvertible?: boolean },
+  ...classes: string[]
+): string {
   return cn(
     ...classes,
-    metric.group === "oxygenation" ? "metric-card--oxygenation" : null
+    metric.group === "oxygenation" ? "metric-card--oxygenation" : null,
+    metric.pressureUnitConvertible ? "metric-card--pressure-unit-convertible" : null
   );
 }
 

@@ -13,6 +13,7 @@ import type {
   CaseSummary,
   ExplanationSection,
   FeaturedCaseComparison,
+  PressureUnit,
   ResultsExplanationPreferenceKey,
   ResultsExplanationPreferences,
   StorageAdapter
@@ -192,6 +193,7 @@ interface ResultsSummaryCardProps {
   secondaryActionRef?: Ref<HTMLAnchorElement>;
   onSecondaryActionClick?: MouseEventHandler<HTMLAnchorElement>;
   storage?: StorageAdapter | null;
+  pressureUnit?: PressureUnit;
 }
 
 interface ResultsSummaryHeaderProps {
@@ -273,7 +275,7 @@ export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
 }
 
 export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
-  const metrics = splitMetrics(props.caseItem);
+  const metrics = splitMetrics(props.caseItem, { pressureUnit: props.pressureUnit });
   const { main, sub } = getDiagnosisDisplay(props.caseItem);
   const explanationSections = getRenderedExplanationSections(props.summary);
   const difficultyLevel = Number(props.caseItem.difficulty_level ?? 1);
@@ -359,6 +361,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                         result={props.summary.analysis?.compensation ?? props.summary.caseData.analysis?.compensation}
                         fallbackExplanation={section.body}
                         caseId={props.summary.caseId}
+                        pressureUnit={props.pressureUnit}
                       />
                     ) : (
                       <p><MetricInlineText text={section.body} /></p>
@@ -412,7 +415,10 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                 {metrics.primary.map(metric => (
                   <article
                     key={metric.label}
-                    className="metric-card"
+                    className={cn(
+                      "metric-card",
+                      metric.pressureUnitConvertible && "metric-card--pressure-unit-convertible"
+                    )}
                   >
                     <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
                     <MetricValue

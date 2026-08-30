@@ -1133,6 +1133,7 @@ export function ProtectedPracticeScreen() {
                 showAbnormalHighlighting={showAbnormalHighlighting}
                 onNextCase={handleNextCaseFromSummary}
                 storage={state.storage}
+                pressureUnit={state.sessionState.pressureUnit}
               />
             </>
           ) : currentCase ? (
@@ -1148,6 +1149,7 @@ export function ProtectedPracticeScreen() {
               stepResults={state.sessionState.stepResults}
               showAdvancedRanges={state.sessionState.showAdvancedRanges}
               showAbnormalHighlighting={showAbnormalHighlighting}
+              pressureUnit={state.sessionState.pressureUnit}
               onToggleAdvancedRanges={handleAdvancedRangesToggle}
               onAnswer={handleAnswer}
               onContinueStep={handleContinueStep}

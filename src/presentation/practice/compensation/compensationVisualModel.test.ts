@@ -49,6 +49,46 @@ describe("compensation visual model", () => {
     expect(model.accessibleDescription).toContain("measured value below");
   });
 
+  it("converts only pressure labels while preserving canonical values and geometry", () => {
+    const canonical = buildCompensationVisualModel(buildResult(), "Fallback prose");
+    const converted = buildCompensationVisualModel(buildResult(), "Fallback prose", { pressureUnit: "kPa" });
+
+    expect(canonical.kind).toBe("visual");
+    expect(converted.kind).toBe("visual");
+    if (canonical.kind !== "visual" || converted.kind !== "visual") return;
+
+    expect(converted.measuredValue).toBe(22);
+    expect(converted.measuredDisplay).toBe("2.9");
+    expect(converted.unit).toBe("kPa");
+    expect(converted.canonicalUnit).toBe("mmHg");
+    expect(converted.bands[0]).toMatchObject({
+      low: 24,
+      high: 28,
+      lowDisplay: "3.2",
+      highDisplay: "3.7"
+    });
+    expect(converted.markerPercent).toBe(canonical.markerPercent);
+    expect(converted.bands.map(band => [band.lowPos, band.highPos, band.centerPos])).toEqual(
+      canonical.bands.map(band => [band.lowPos, band.highPos, band.centerPos])
+    );
+    expect(converted.interpretationKey).toBe(canonical.interpretationKey);
+    expect(converted.calculationRows).toEqual(canonical.calculationRows);
+    expect(converted.accessibleDescription).toContain("Measured PaCO₂: 2.9 kPa");
+  });
+
+  it("does not convert bicarbonate compensation visuals", () => {
+    const model = buildCompensationVisualModel(buildResult({
+      targetAnalyte: "hco3",
+      measuredValue: 18,
+      unit: "mmol/L"
+    }), "Fallback prose", { pressureUnit: "kPa" });
+
+    expect(model.kind).toBe("visual");
+    if (model.kind !== "visual") return;
+    expect(model.measuredDisplay).toBe("18");
+    expect(model.unit).toBe("mmol/L");
+  });
+
   it("builds semantic standard calculation rows and colours only the expected numbers", () => {
     const model = buildCompensationVisualModel(buildResult(), "Fallback prose");
 

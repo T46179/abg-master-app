@@ -8,7 +8,7 @@ import {
   type CSSProperties
 } from "react";
 import { Info } from "lucide-react";
-import type { CompensationResult } from "../../../core/types";
+import type { CompensationResult, PressureUnit } from "../../../core/types";
 import { compensationRules } from "../../learn/CompensationRules";
 import { MetricInlineText } from "../MetricText";
 import {
@@ -23,6 +23,7 @@ interface CompensationVisualContentProps {
   result: CompensationResult | unknown;
   fallbackExplanation: string;
   caseId: string;
+  pressureUnit?: PressureUnit;
 }
 
 type StatusTone = "within" | "below" | "above" | "between" | "context";
@@ -57,10 +58,6 @@ const FORMULA_SLUGS_BY_RULE_KEY: Record<string, string[]> = {
   chronic_respiratory_alkalosis: ["chronic-respiratory-alkalosis"],
   acute_on_chronic_respiratory_acidosis: ["acute-respiratory-acidosis", "chronic-respiratory-acidosis"]
 };
-
-function formatNumber(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
-}
 
 function bandPresentationClass(kindKey?: string) {
   switch (kindKey) {
@@ -150,7 +147,7 @@ function ComparisonBand({ band }: { band: CompensationBandVisualModel }) {
       resizeObserver?.disconnect();
       window.removeEventListener("resize", updateBoundsLayout);
     };
-  }, [band.centerPos, band.high, band.highPos, band.low, band.lowPos]);
+  }, [band.centerPos, band.high, band.highDisplay, band.highPos, band.low, band.lowDisplay, band.lowPos]);
 
   return (
     <div
@@ -165,16 +162,16 @@ function ComparisonBand({ band }: { band: CompensationBandVisualModel }) {
       <span className={`cmp-band__label cmp-band__label--${labelAlignment}`}>{band.label}</span>
       <div className="cmp-band__segment" />
       <span ref={lowBoundRef} className="cmp-band__bounds cmp-band__bounds--low">
-        {formatNumber(band.low)}
+        {band.lowDisplay}
       </span>
       <span ref={highBoundRef} className="cmp-band__bounds cmp-band__bounds--high">
-        {formatNumber(band.high)}
+        {band.highDisplay}
       </span>
       <span
         ref={compactBoundRef}
         className={`cmp-band__bounds cmp-band__bounds--compact cmp-band__bounds--compact-${boundsLayout.alignment}`}
       >
-        {formatNumber(band.low)}–{formatNumber(band.high)}
+        {band.lowDisplay}–{band.highDisplay}
       </span>
     </div>
   );
@@ -221,7 +218,7 @@ function SchematicRangeVisual({ model }: { model: CompensationVisualModel }) {
             <span className="cmp-callout__swatch" />
             <span>{band.label}</span>
             <span className="cmp-callout__value">
-              {formatNumber(band.low)}–{formatNumber(band.high)} {model.unit}
+              {band.lowDisplay}–{band.highDisplay} {model.unit}
             </span>
           </div>
         ))}
@@ -360,7 +357,9 @@ function CalculationDisclosure(props: {
           <span className="cmp-calc__chevron" aria-hidden="true">›</span>
           {props.open ? "Hide calculation" : "Show calculation"}
         </button>
-        {props.open ? <CompensationFormulaHelp ruleKey={props.ruleKey} caseId={props.caseId} /> : null}
+        <div className="cmp-calc__meta">
+          {props.open ? <CompensationFormulaHelp ruleKey={props.ruleKey} caseId={props.caseId} /> : null}
+        </div>
       </div>
       {props.open ? (
         <div className="cmp-calc__panel" id={panelId}>
@@ -403,8 +402,8 @@ function QualifierNotice({ messages }: { messages: string[] }) {
 export function CompensationVisualContent(props: CompensationVisualContentProps) {
   const [calculationOpen, setCalculationOpen] = useState(false);
   const model = useMemo(
-    () => buildCompensationVisualModel(props.result, props.fallbackExplanation),
-    [props.fallbackExplanation, props.result]
+    () => buildCompensationVisualModel(props.result, props.fallbackExplanation, { pressureUnit: props.pressureUnit }),
+    [props.fallbackExplanation, props.pressureUnit, props.result]
   );
 
   useEffect(() => {

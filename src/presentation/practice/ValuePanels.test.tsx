@@ -109,4 +109,26 @@ describe("ValuePanels", () => {
     expect(secondaryPanel?.querySelector(".secondary-metric-rail")).not.toBeNull();
     expect(secondaryPanel?.querySelectorAll(".secondary-metric-rail__grid > .metric-card--scroll-item")).toHaveLength(2);
   });
+
+  it("renders PaCO2 and PaO2 in kPa while leaving other values unchanged", () => {
+    act(() => {
+      root.render(
+        <ValuePanels
+          caseItem={buildCaseItem()}
+          showAdvancedRanges={false}
+          showAbnormalHighlighting
+          pressureUnit="kPa"
+        />
+      );
+    });
+
+    const metricByLabel = (label: string) => Array.from(container.querySelectorAll(".metric-card"))
+      .find(card => card.querySelector(".metric-card__label")?.textContent?.startsWith(label));
+
+    expect(metricByLabel("PaCO2")?.querySelector(".metric-card__value")?.textContent).toBe("6.9kPa");
+    expect(metricByLabel("PaO2")?.querySelector(".metric-card__value")?.textContent).toBe("9.1kPa");
+    expect(metricByLabel("HCO3")?.querySelector(".metric-card__value")?.textContent).toBe("22.0mmol/L");
+    expect(metricByLabel("SpO2")?.querySelector(".metric-card__value")?.textContent).toBe("92%");
+    expect(metricByLabel("PaCO2")?.querySelector(".metric-card__value")?.className).toContain("metric-card__value--abnormal");
+  });
 });

@@ -261,6 +261,148 @@ button:disabled {
   gap: 0.65rem;
 }
 
+.main-nav__settings {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.main-nav__settings-trigger {
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0.65rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.main-nav__settings-trigger:hover {
+  background: transparent;
+  color: var(--color-text-soft);
+}
+
+.main-nav__settings-trigger[aria-expanded="true"] {
+  background: transparent;
+  color: var(--color-navy);
+}
+
+.main-nav__settings-trigger:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.42);
+  outline-offset: 2px;
+}
+
+.main-nav__settings-trigger[aria-expanded="true"]:focus-visible {
+  outline-color: rgba(37, 99, 235, 0.55);
+}
+
+.main-nav__settings-icon {
+  display: block;
+  width: 1.35rem;
+  height: 1.35rem;
+  background: currentColor;
+  -webkit-mask-image: url("../assets/icons/Settings.svg");
+  mask-image: url("../assets/icons/Settings.svg");
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.main-nav__settings-panel {
+  position: absolute;
+  top: calc(100% + 0.75rem);
+  right: 0;
+  z-index: 60;
+  width: min(22.5rem, calc(100vw - 2rem));
+  padding: 1.1rem 1.15rem;
+  border: 1px solid rgba(15, 37, 71, 0.12);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.99);
+  box-shadow: 0 0.85rem 2rem rgba(15, 37, 71, 0.14);
+  color: var(--color-navy);
+}
+
+.main-nav__settings-eyebrow {
+  margin: 0 0 0.85rem;
+  color: var(--color-text-faint);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.main-nav__settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.main-nav__settings-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.main-nav__settings-label {
+  font-size: 0.92rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.main-nav__settings-description {
+  color: var(--color-text-faint);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.main-nav__unit-control {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 0.15rem;
+  border-radius: 999px;
+  background: #eef2f7;
+}
+
+.main-nav__unit-option {
+  min-width: 3.6rem;
+  padding: 0.4rem 0.65rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-faint);
+  font: inherit;
+  font-size: 0.84rem;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color 140ms ease, box-shadow 140ms ease, color 140ms ease;
+}
+
+.main-nav__unit-option:hover {
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--color-navy);
+}
+
+.main-nav__unit-option[aria-pressed="true"] {
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 37, 71, 0.2);
+  color: var(--color-navy);
+  font-weight: 500;
+}
+
+.main-nav__unit-option:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 1px;
+}
+
 .main-nav__link {
   position: relative;
   display: inline-flex;
@@ -377,6 +519,10 @@ button:disabled {
 }
 
 @media (max-width: 759px) {
+  .main-nav__settings-panel {
+    right: calc(-2.75rem - 0.65rem);
+  }
+
   .mobile-nav-drawer {
     position: fixed;
     inset: 0;
@@ -2061,6 +2207,19 @@ a.dashboard-module-row:hover {
 }
 
 @media (max-width: 639px) {
+  .main-nav__settings-panel {
+    padding: 0.95rem 1rem;
+  }
+
+  .main-nav__settings-row {
+    gap: 0.65rem;
+  }
+
+  .main-nav__unit-option {
+    min-width: 3.35rem;
+    padding-inline: 0.55rem;
+  }
+
   .dashboard-screen__container {
     gap: 1rem;
   }
@@ -4751,6 +4910,12 @@ a.dashboard-module-row:hover {
   .results-card__metric-section--primary .metric-card__value small,
   .value-panels__card--primary .metric-grid--primary .metric-card__value small {
     display: none;
+  }
+
+  .results-card__metric-section--primary .metric-card--pressure-unit-convertible .metric-card__value small,
+  .value-panels__card--primary .metric-grid--primary .metric-card--pressure-unit-convertible .metric-card__value small {
+    display: inline;
+    font-size: 0.62rem;
   }
 
   .results-card__metric-section--primary .metric-card__reference,

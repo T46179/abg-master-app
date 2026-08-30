@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   CalibrationCompletionRecord,
   CalibrationPlacement,
+  PressureUnit,
   ProgressRow,
   ResultsExplanationPreferenceKey,
   ResultsExplanationPreferences,
@@ -22,6 +23,7 @@ const USER_STATE_MODE_STORAGE_KEY = "abgmaster_userState_mode";
 const PRACTICE_INTRO_SEEN_STORAGE_KEY = "practiceIntroSeen";
 const APP_AREA_VISITED_STORAGE_KEY = "abgmaster_appAreaVisited";
 const ADVANCED_RANGES_STORAGE_KEY = "abgmaster_showAdvancedRanges";
+const PRESSURE_UNIT_STORAGE_KEY = "abgmaster_pressureUnit";
 const LAST_PRACTICE_DIFFICULTY_STORAGE_KEY = "abgmaster_lastPracticeDifficulty";
 const RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY = "abgmaster_resultsExplanationPreferences";
 const RESULTS_REVIEW_EXPANDED_STORAGE_KEY = "abgmaster_resultsReviewExpanded";
@@ -43,6 +45,7 @@ export const STORAGE_KEYS = {
   PRACTICE_INTRO_SEEN_STORAGE_KEY,
   APP_AREA_VISITED_STORAGE_KEY,
   ADVANCED_RANGES_STORAGE_KEY,
+  PRESSURE_UNIT_STORAGE_KEY,
   LAST_PRACTICE_DIFFICULTY_STORAGE_KEY,
   RESULTS_EXPLANATION_PREFERENCES_STORAGE_KEY,
   RESULTS_REVIEW_EXPANDED_STORAGE_KEY,
@@ -112,6 +115,10 @@ function safeRemoveItem(storage: BrowserStorageLike, key: string): boolean {
   } catch {
     return false;
   }
+}
+
+function sanitizePressureUnit(value: unknown): PressureUnit {
+  return value === "kPa" || value === "mmHg" ? value : "mmHg";
 }
 
 export function parseStoredUserState(raw: string | null): UserState | null {
@@ -303,6 +310,14 @@ export function createLocalStorageAdapter(browserStorage: BrowserStorageLike): S
 
     saveAdvancedRangesPreference(value) {
       safeSetItem(browserStorage, ADVANCED_RANGES_STORAGE_KEY, String(Boolean(value)));
+    },
+
+    loadPressureUnitPreference() {
+      return sanitizePressureUnit(safeGetItem(browserStorage, PRESSURE_UNIT_STORAGE_KEY));
+    },
+
+    savePressureUnitPreference(value) {
+      safeSetItem(browserStorage, PRESSURE_UNIT_STORAGE_KEY, sanitizePressureUnit(value));
     },
 
     loadLastPracticeDifficulty() {
@@ -508,6 +523,14 @@ export function createSupabaseStorageAdapter(
       localAdapter.saveAdvancedRangesPreference(value);
     },
 
+    loadPressureUnitPreference() {
+      return localAdapter.loadPressureUnitPreference();
+    },
+
+    savePressureUnitPreference(value) {
+      localAdapter.savePressureUnitPreference(value);
+    },
+
     loadLastPracticeDifficulty() {
       return localAdapter.loadLastPracticeDifficulty();
     },
@@ -602,6 +625,12 @@ export function createAppStorage(options?: {
     },
     saveAdvancedRangesPreference(value) {
       activeAdapter.saveAdvancedRangesPreference(value);
+    },
+    loadPressureUnitPreference() {
+      return activeAdapter.loadPressureUnitPreference();
+    },
+    savePressureUnitPreference(value) {
+      activeAdapter.savePressureUnitPreference(value);
     },
     loadLastPracticeDifficulty() {
       return activeAdapter.loadLastPracticeDifficulty();

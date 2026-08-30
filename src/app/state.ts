@@ -80,7 +80,8 @@ export const initialSessionState: SessionState = {
   stepOptionOverrides: {},
   caseStartMs: null,
   timedMode: false,
-  showAdvancedRanges: false
+  showAdvancedRanges: false,
+  pressureUnit: "mmHg"
 };
 
 export const initialAppStatus: AppStatus = {

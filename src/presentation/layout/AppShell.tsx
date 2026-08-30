@@ -10,6 +10,7 @@ import {
   shouldRedirectToCalibrationOnboarding
 } from "../../core/calibrationOnboarding";
 import { getReleaseFlags } from "../../core/progression";
+import type { PressureUnit } from "../../core/types";
 import { Surface } from "../primitives/Surface";
 import { LoadingView } from "../shared/StatusViews";
 import { LaunchNotifyModal } from "./LaunchNotifyModal";
@@ -20,6 +21,7 @@ export function AppShell() {
   const { state, patchSessionState, retryPendingSubmissionNow, discardPendingSubmission } = useAppContext();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [launchNotifyOpen, setLaunchNotifyOpen] = useState(false);
   const [launchNotifySubmitting, setLaunchNotifySubmitting] = useState(false);
   const [launchNotifySubmitted, setLaunchNotifySubmitted] = useState(false);
@@ -72,7 +74,6 @@ export function AppShell() {
       });
     }
     trackPageView(viewName);
-    setMobileOpen(false);
   }, [
     location.pathname,
     patchSessionState,
@@ -81,6 +82,11 @@ export function AppShell() {
     state.practiceState.lastCaseSummary,
     state.storage
   ]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+    setSettingsOpen(false);
+  }, [location.key]);
 
   function handleDiscardPendingCase() {
     if (typeof window === "undefined" || !state.practiceState.pendingSubmission) return;
@@ -91,9 +97,30 @@ export function AppShell() {
 
   function handleOpenStayUpdated() {
     setMobileOpen(false);
+    setSettingsOpen(false);
     setLaunchNotifyError("");
     setLaunchNotifySubmitted(false);
     setLaunchNotifyOpen(true);
+  }
+
+  function handleToggleMobile() {
+    setSettingsOpen(false);
+    setMobileOpen(value => !value);
+  }
+
+  function handleToggleSettings() {
+    const nextOpen = !settingsOpen;
+    setSettingsOpen(nextOpen);
+    if (nextOpen) {
+      setMobileOpen(false);
+      handleCloseStayUpdated();
+    }
+  }
+
+  function handlePressureUnitChange(pressureUnit: PressureUnit) {
+    if ((state.sessionState?.pressureUnit ?? "mmHg") === pressureUnit) return;
+    patchSessionState({ pressureUnit });
+    state.storage?.savePressureUnitPreference(pressureUnit);
   }
 
   function handleCloseStayUpdated() {
@@ -137,9 +164,14 @@ export function AppShell() {
 
       <MainNav
         mobileOpen={mobileOpen}
-        onToggleMobile={() => setMobileOpen(value => !value)}
+        onToggleMobile={handleToggleMobile}
         onCloseMobile={() => setMobileOpen(false)}
         onOpenStayUpdated={handleOpenStayUpdated}
+        settingsOpen={settingsOpen}
+        pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"}
+        onToggleSettings={handleToggleSettings}
+        onCloseSettings={() => setSettingsOpen(false)}
+        onPressureUnitChange={handlePressureUnitChange}
         learnEnabled
         showBetaBadge={releaseFlags.enable_beta_badge}
         mobileProgress={mobileProgress}

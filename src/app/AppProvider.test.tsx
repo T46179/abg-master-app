@@ -10,7 +10,7 @@ import {
   loadPendingCalibrationCompletion,
   savePendingCalibrationCompletion
 } from "../core/calibrationRecovery";
-import type { CalibrationCompletionRecord } from "../core/types";
+import type { CalibrationCompletionRecord, PressureUnit } from "../core/types";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -78,6 +78,7 @@ function Probe() {
       <div data-testid="calibration-status">{state.calibrationState.remoteStatus}</div>
       <div data-testid="calibration-source">{state.calibrationState.completionSource}</div>
       <div data-testid="calibration-placement">{state.calibrationState.effectiveCompletion?.placement ?? ""}</div>
+      <div data-testid="pressure-unit">{state.sessionState.pressureUnit}</div>
       <button type="button" onClick={retryPendingSubmissionNow}>retry</button>
       <button type="button" onClick={() => { void skipCalibrationOnboarding(); }}>skip calibration</button>
     </div>
@@ -104,6 +105,8 @@ const storageAdapter = {
   resetUserState: vi.fn(async () => undefined),
   loadAdvancedRangesPreference: vi.fn(() => false),
   saveAdvancedRangesPreference: vi.fn(),
+  loadPressureUnitPreference: vi.fn<() => PressureUnit>(() => "mmHg"),
+  savePressureUnitPreference: vi.fn(),
   loadLastPracticeDifficulty: vi.fn(() => null),
   saveLastPracticeDifficulty: vi.fn(),
   loadResultsExplanationPreferences: vi.fn(() => ({
@@ -160,6 +163,7 @@ describe("AppProvider protected practice recovery", () => {
     createAppStorage.mockReturnValue(storageAdapter);
     storageAdapter.loadUserState.mockResolvedValue(null);
     storageAdapter.loadCalibrationCompletion.mockReturnValue(null);
+    storageAdapter.loadPressureUnitPreference.mockReturnValue("mmHg");
     storageAdapter.saveCalibrationCompletion.mockClear();
     loadRemoteProgressRow.mockReset();
     loadRemoteProgressRow.mockResolvedValue(null);
@@ -169,6 +173,17 @@ describe("AppProvider protected practice recovery", () => {
     captureAppException.mockReset();
     applyProtectedCaseCompletion.mockImplementation(({ userState }: { userState: unknown }) => userState);
     isProtectedPracticeError.mockImplementation((error: { __protectedError?: boolean }) => Boolean(error?.__protectedError));
+  });
+
+  it("hydrates the persisted pressure unit into the first ready state", async () => {
+    storageAdapter.loadPressureUnitPreference.mockReturnValue("kPa");
+
+    act(() => {
+      root.render(<AppProvider><Probe /></AppProvider>);
+    });
+    await flush();
+
+    expect(container.querySelector("[data-testid='pressure-unit']")?.textContent).toBe("kPa");
   });
 
   afterEach(() => {

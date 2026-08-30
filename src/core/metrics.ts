@@ -1,6 +1,6 @@
-import type { CaseData, CaseMetricDefinition } from "./types";
+import type { CaseData, CaseMetricDefinition, PressureUnit } from "./types";
 
-export type PressureUnit = "mmHg" | "kPa";
+export type { PressureUnit } from "./types";
 
 const MMHG_TO_KPA = 0.133322;
 
@@ -30,7 +30,7 @@ export function getDisplayMetricDefinition(
   options?: { pressureUnit?: PressureUnit }
 ): CaseMetricDefinition {
   const pressureUnit = options?.pressureUnit ?? "mmHg";
-  if (pressureUnit === "mmHg" || metric.unit !== "mmHg") return metric;
+  if (pressureUnit === "mmHg" || !metric.pressureUnitConvertible || metric.unit !== "mmHg") return metric;
 
   const convertedValue = convertMmHgToKPa(metric.value);
   return {
@@ -80,7 +80,8 @@ export function buildCaseMetricDefinitions(caseItem: CaseData): CaseMetricDefini
       value: gas.paco2_mmHg,
       decimals: 1,
       unit: "mmHg",
-      abnormal: Number(gas.paco2_mmHg) < 35 || Number(gas.paco2_mmHg) > 45
+      abnormal: Number(gas.paco2_mmHg) < 35 || Number(gas.paco2_mmHg) > 45,
+      pressureUnitConvertible: true
     },
     {
       label: "HCO3",
@@ -109,6 +110,7 @@ export function buildCaseMetricDefinitions(caseItem: CaseData): CaseMetricDefini
       decimals: 1,
       unit: "mmHg",
       abnormal: Number(gas.pao2_mmHg) < 80 || Number(gas.pao2_mmHg) > 100,
+      pressureUnitConvertible: true,
       group: "oxygenation"
     },
     {

@@ -371,6 +371,8 @@ export interface StepResult {
 
 export type AnswerValue = string | string[];
 
+export type PressureUnit = "mmHg" | "kPa";
+
 export interface AnswerSelection {
   key: string;
   label: string;
@@ -388,6 +390,7 @@ export interface SessionState {
   caseStartMs: number | null;
   timedMode: boolean;
   showAdvancedRanges: boolean;
+  pressureUnit: PressureUnit;
 }
 
 export interface AppStatus {
@@ -496,6 +499,8 @@ export interface StorageAdapter {
   saveAppAreaVisited(value: boolean): void;
   loadAdvancedRangesPreference(): boolean;
   saveAdvancedRangesPreference(value: boolean): void;
+  loadPressureUnitPreference(): PressureUnit;
+  savePressureUnitPreference(value: PressureUnit): void;
   loadLastPracticeDifficulty(): string | null;
   saveLastPracticeDifficulty(value: string): void;
   loadResultsExplanationPreferences(): ResultsExplanationPreferences;
@@ -573,6 +578,7 @@ export interface CaseMetricDefinition {
   decimals: number;
   unit: string;
   abnormal: boolean;
+  pressureUnitConvertible?: boolean;
   group?: "oxygenation";
   minDifficultyLevel?: number;
   maxDifficultyLevel?: number;

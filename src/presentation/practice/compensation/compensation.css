@@ -351,6 +351,13 @@
   gap: 0.75rem;
 }
 
+.cmp-calc__meta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .cmp-calc__toggle {
   display: inline-flex;
   align-items: center;

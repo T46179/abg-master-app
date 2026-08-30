@@ -63,6 +63,7 @@ let currentState: {
     caseStartMs: null;
     timedMode: false;
     showAdvancedRanges: false;
+    pressureUnit: "mmHg" | "kPa";
   };
   practiceState: {
     currentCase: Record<string, unknown> | null;
@@ -368,7 +369,8 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
         stepOptionOverrides: {},
         caseStartMs: null,
         timedMode: false,
-        showAdvancedRanges: false
+        showAdvancedRanges: false,
+        pressureUnit: "kPa"
       },
       practiceState: {
         currentCase: null,
@@ -689,6 +691,7 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
       total_steps: 5,
       correct_steps: 4
     });
+    expect(latestResultsSummaryCardProps?.pressureUnit).toBe("kPa");
 
     act(() => {
       (latestResultsSummaryCardProps?.onNextCase as () => void)?.();

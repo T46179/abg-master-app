@@ -101,6 +101,36 @@ describe("MainNav", () => {
     expect(onOpenStayUpdated).toHaveBeenCalledTimes(1);
   });
 
+  it("places Settings before Stay Updated and the mobile menu trigger", () => {
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <MainNav
+            mobileOpen={false}
+            onToggleMobile={onToggleMobile}
+            onCloseMobile={onCloseMobile}
+            onOpenStayUpdated={onOpenStayUpdated}
+            learnEnabled
+            showBetaBadge={false}
+            mobileProgress={mobileProgress}
+            settingsOpen={false}
+            pressureUnit="mmHg"
+            onToggleSettings={vi.fn()}
+            onCloseSettings={vi.fn()}
+            onPressureUnitChange={vi.fn()}
+          />
+        </MemoryRouter>
+      );
+    });
+
+    const controls = container.querySelector(".main-nav__controls");
+    expect(Array.from(controls?.children ?? [], child => child.className)).toEqual([
+      "main-nav__settings",
+      "main-nav__stay-updated",
+      "main-nav__toggle"
+    ]);
+  });
+
   it("points the brand and dashboard links to /dashboard and includes insights", () => {
     renderNav();
 
@@ -270,14 +300,34 @@ describe("MainNav", () => {
     expect(document.body.style.overflow).toBe("");
   });
 
-  it("keeps only stay updated visible in the calibration nav", () => {
-    renderNav(["/calibration"]);
+  it("keeps Settings to the left of Stay Updated in the calibration nav", () => {
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={["/calibration"]}>
+          <MainNav
+            mobileOpen={false}
+            onToggleMobile={onToggleMobile}
+            onCloseMobile={onCloseMobile}
+            onOpenStayUpdated={onOpenStayUpdated}
+            learnEnabled
+            showBetaBadge={false}
+            mobileProgress={mobileProgress}
+            settingsOpen={false}
+            pressureUnit="mmHg"
+            onToggleSettings={vi.fn()}
+            onCloseSettings={vi.fn()}
+            onPressureUnitChange={vi.fn()}
+          />
+        </MemoryRouter>
+      );
+    });
 
     expect(container.querySelector(".main-nav")?.className).toContain("main-nav--minimal");
     expect(container.textContent).not.toContain("Insights");
     expect(container.textContent).not.toContain("Learn");
     expect(container.textContent).not.toContain("Practice");
     expect(container.textContent).toContain("Stay Updated");
+    expect(container.querySelector(".main-nav__controls")?.firstElementChild?.className).toBe("main-nav__settings");
     expect(container.querySelector(".main-nav__toggle")).toBeNull();
   });
 });

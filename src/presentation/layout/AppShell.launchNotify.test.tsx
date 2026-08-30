@@ -2,7 +2,7 @@
 
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -10,8 +10,13 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const retryPendingSubmissionNow = vi.fn();
 const discardPendingSubmission = vi.fn();
 const patchSessionState = vi.fn();
+const savePressureUnitPreference = vi.fn();
 const trackEvent = vi.fn();
 const trackPageView = vi.fn();
+const mockStorage = {
+  loadSeenCaseState: () => ({}),
+  savePressureUnitPreference
+};
 
 vi.mock("../../app/AppProvider", () => ({
   useAppContext: () => ({
@@ -29,6 +34,10 @@ vi.mock("../../app/AppProvider", () => ({
         cases: []
       },
       userState: {},
+      sessionState: {
+        pressureUnit: "mmHg"
+      },
+      storage: mockStorage,
       appStatus: {
         warnings: {},
         blocking: null
@@ -56,6 +65,7 @@ describe("AppShell launch notify flow", () => {
     document.body.appendChild(container);
     root = createRoot(container);
     patchSessionState.mockReset();
+    savePressureUnitPreference.mockReset();
     retryPendingSubmissionNow.mockReset();
     discardPendingSubmission.mockReset();
     trackEvent.mockReset();
@@ -145,6 +155,55 @@ describe("AppShell launch notify flow", () => {
     });
 
     expect(container.textContent).toContain("Stay in the Loop");
+  });
+
+  it("keeps Settings open while changing units and coordinates it with other navigation overlays", () => {
+    renderShell();
+
+    const settingsTrigger = container.querySelector<HTMLButtonElement>(".main-nav__settings-trigger");
+    act(() => settingsTrigger?.click());
+    expect(container.querySelector(".main-nav__settings-panel")).not.toBeNull();
+
+    const kPaButton = Array.from(container.querySelectorAll<HTMLButtonElement>(".main-nav__unit-option"))
+      .find(button => button.textContent === "kPa");
+    act(() => kPaButton?.click());
+
+    expect(patchSessionState).toHaveBeenCalledWith({ pressureUnit: "kPa" });
+    expect(savePressureUnitPreference).toHaveBeenCalledWith("kPa");
+    expect(container.querySelector(".main-nav__settings-panel")).not.toBeNull();
+    expect(trackEvent).not.toHaveBeenCalledWith(expect.stringContaining("unit"), expect.anything());
+
+    act(() => getDesktopStayUpdatedButton()?.click());
+    expect(container.querySelector(".main-nav__settings-panel")).toBeNull();
+    expect(container.textContent).toContain("Stay in the Loop");
+
+    const closeModal = getButtons().find(button => button.getAttribute("aria-label") === "Close stay updated modal");
+    act(() => closeModal?.click());
+    act(() => settingsTrigger?.click());
+    act(() => container.querySelector<HTMLButtonElement>(".main-nav__toggle")?.click());
+
+    expect(container.querySelector(".main-nav__settings-panel")).toBeNull();
+    expect(document.body.querySelector(".mobile-nav-drawer")?.className).toContain("is-open");
+  });
+
+  it("closes Settings when navigation changes the location", () => {
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route element={<AppShell />}>
+              <Route path="*" element={<Link to="/contact">Navigate</Link>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      );
+    });
+
+    act(() => container.querySelector<HTMLButtonElement>(".main-nav__settings-trigger")?.click());
+    expect(container.querySelector(".main-nav__settings-panel")).not.toBeNull();
+
+    act(() => container.querySelector<HTMLAnchorElement>('a[href="/contact"]')?.click());
+    expect(container.querySelector(".main-nav__settings-panel")).toBeNull();
   });
 
   it("rejects malformed emails without submitting and marks the input invalid", async () => {

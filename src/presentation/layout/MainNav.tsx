@@ -5,6 +5,8 @@ import listIconUrl from "../../assets/icons/list.svg";
 import { cn } from "../utils";
 import { MobileNavDrawer, type MobileNavDrawerItem } from "./MobileNavDrawer";
 import type { MobileNavProgress } from "./mobileNavProgress";
+import type { PressureUnit } from "../../core/types";
+import { SettingsPopover } from "./SettingsPopover";
 
 interface MainNavProps {
   mobileOpen: boolean;
@@ -16,6 +18,11 @@ interface MainNavProps {
   mobileProgress: MobileNavProgress;
   wideShell?: boolean;
   onCoreFlowLinkClick?: (label: string, destination: string) => void;
+  settingsOpen?: boolean;
+  pressureUnit?: PressureUnit;
+  onToggleSettings?: () => void;
+  onCloseSettings?: () => void;
+  onPressureUnitChange?: (unit: PressureUnit) => void;
 }
 
 interface NavItem {
@@ -143,6 +150,16 @@ export function MainNav(props: MainNavProps) {
         ) : null}
 
           <div className="main-nav__controls">
+            {props.onToggleSettings && props.onCloseSettings && props.onPressureUnitChange ? (
+              <SettingsPopover
+                open={Boolean(props.settingsOpen)}
+                pressureUnit={props.pressureUnit ?? "mmHg"}
+                onToggle={props.onToggleSettings}
+                onClose={props.onCloseSettings}
+                onPressureUnitChange={props.onPressureUnitChange}
+              />
+            ) : null}
+
             <button className="main-nav__stay-updated" type="button" onClick={props.onOpenStayUpdated}>
               <span className="main-nav__link-icon main-nav__bell-icon" aria-hidden="true" />
               <span>Stay Updated</span>

@@ -4,7 +4,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ResultsSummaryCard, ResultsSummaryHeader } from "./ResultsSummaryCard";
-import type { CaseData, CaseSummary, ResultsExplanationPreferences, StorageAdapter } from "../../core/types";
+import type { CaseData, CaseSummary, PressureUnit, ResultsExplanationPreferences, StorageAdapter } from "../../core/types";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -82,6 +82,8 @@ function createStorageAdapter(overrides: Partial<StorageAdapter> = {}): StorageA
     saveAppAreaVisited: vi.fn(),
     loadAdvancedRangesPreference: vi.fn(() => false),
     saveAdvancedRangesPreference: vi.fn(),
+    loadPressureUnitPreference: vi.fn<() => PressureUnit>(() => "mmHg"),
+    savePressureUnitPreference: vi.fn(),
     loadLastPracticeDifficulty: vi.fn(() => null),
     saveLastPracticeDifficulty: vi.fn(),
     loadResultsExplanationPreferences: vi.fn(() => ({
@@ -389,6 +391,32 @@ describe("ResultsSummaryCard", () => {
     const metricCards = Array.from(container.querySelectorAll(".metric-card"));
     expect(metricCards.filter(card => card.classList.contains("metric-card--oxygenation"))).toHaveLength(3);
     expect(metricCards.some(card => !card.classList.contains("metric-card--oxygenation"))).toBe(true);
+  });
+
+  it("uses the shared pressure preference in the expanded result review", () => {
+    const storage = createStorageAdapter({
+      loadResultsReviewExpandedPreference: vi.fn(() => true)
+    });
+    const summary = buildSummary([]);
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={summary.caseData}
+          showSummaryReferences
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          storage={storage}
+          pressureUnit="kPa"
+        />
+      );
+    });
+
+    const paco2Card = Array.from(container.querySelectorAll(".metric-card"))
+      .find(card => card.querySelector(".metric-card__label")?.textContent === "PaCO2");
+    expect(paco2Card?.querySelector(".metric-card__value")?.textContent).toBe("3.7kPa");
+    expect(paco2Card?.querySelector(".metric-card__reference")?.textContent).toBe("4.7 - 6.0 kPa");
   });
 
   it("falls back to diagnosis when clinical context is absent", () => {

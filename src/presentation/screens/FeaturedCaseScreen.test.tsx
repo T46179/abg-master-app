@@ -40,6 +40,9 @@ const state = {
     level: 1,
     casesCompleted: 2
   },
+  sessionState: {
+    pressureUnit: "kPa" as const
+  },
   storage: {
     loadAdvancedRangesPreference: () => false,
     saveAdvancedRangesPreference: vi.fn()
@@ -218,6 +221,7 @@ describe("FeaturedCaseScreen grading parity", () => {
     state.supabase = {};
     state.supabaseEnabled = true;
     state.syncUnavailable = false;
+    state.sessionState.pressureUnit = "kPa";
     state.payload.featuredRelease = {
       releaseId: "featured-authored-001-r1"
     };
@@ -558,6 +562,7 @@ describe("FeaturedCaseScreen grading parity", () => {
     expect(new Set(submission.answers.map(answer => answer.key)).size).toBe(5);
     expect(latestResultsSummaryHeaderProps?.summary).toEqual(makeSummary(caseItem));
     expect(latestResultsSummaryCardProps?.summary).toEqual(makeSummary(caseItem));
+    expect(latestResultsSummaryCardProps?.pressureUnit).toBe("kPa");
   });
 
   it("passes the server comparison and canonical replay state to the summary header", async () => {

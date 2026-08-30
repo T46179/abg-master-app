@@ -553,6 +553,7 @@ export function FeaturedCaseScreen() {
               });
             }}
             storage={state.storage}
+            pressureUnit={state.sessionState.pressureUnit}
           />
         </div>
       </main>
@@ -584,6 +585,7 @@ export function FeaturedCaseScreen() {
             stepResults={stepResults}
             showAdvancedRanges={showAdvancedRanges}
             showAbnormalHighlighting={showAbnormalHighlighting}
+            pressureUnit={state.sessionState.pressureUnit}
             onToggleAdvancedRanges={() => {
               const next = !showAdvancedRanges;
               setShowAdvancedRanges(next);

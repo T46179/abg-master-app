@@ -1,8 +1,10 @@
 import type {
   CompensationComparisonBand,
   CompensationRelationship,
-  CompensationResult
+  CompensationResult,
+  PressureUnit
 } from "../../../core/types";
+import { convertMmHgToKPa, formatValue } from "../../../core/metrics";
 
 const INTERPRETATION_LABELS: Record<string, string> = {
   within_expected_range: "Within expected range",
@@ -88,6 +90,8 @@ export function validateCompensationResult(value: unknown): value is Compensatio
 
 export interface CompensationBandVisualModel extends CompensationComparisonBand {
   label: string;
+  lowDisplay: string;
+  highDisplay: string;
   lowPos: number;
   highPos: number;
   centerPos: number;
@@ -111,6 +115,7 @@ export interface CompensationVisualModel {
   measuredValue: number;
   measuredDisplay: string;
   unit: string;
+  canonicalUnit: string;
   markerPercent: number;
   bands: CompensationBandVisualModel[];
   interpretationLabel: string;
@@ -256,7 +261,8 @@ function buildCalculationRows(
 
 export function buildCompensationVisualModel(
   result: unknown,
-  fallbackExplanation: string
+  fallbackExplanation: string,
+  options?: { pressureUnit?: PressureUnit }
 ): BuiltCompensationVisualModel {
   if (!validateCompensationResult(result)) {
     return {
@@ -266,12 +272,22 @@ export function buildCompensationVisualModel(
   }
 
   const positions = buildLinearPositionMap(result);
+  const displayInKPa = options?.pressureUnit === "kPa"
+    && result.targetAnalyte === "paco2"
+    && result.unit === "mmHg";
+  const displayUnit = displayInKPa ? "kPa" : result.unit;
+  const formatDisplayNumber = (value: number) => {
+    if (!displayInKPa) return formatNumber(value);
+    return formatValue(convertMmHgToKPa(value), 1);
+  };
   const bands = result.comparisonBands.map(band => {
     const lowPos = positions.get(band.low) ?? 0;
     const highPos = positions.get(band.high) ?? 100;
     return {
       ...band,
       label: BAND_LABELS[band.labelKey] ?? band.labelKey.replaceAll("_", " "),
+      lowDisplay: formatDisplayNumber(band.low),
+      highDisplay: formatDisplayNumber(band.high),
       lowPos,
       highPos,
       centerPos: lowPos + ((highPos - lowPos) / 2)
@@ -285,10 +301,10 @@ export function buildCompensationVisualModel(
   const calculationLines = result.calculation?.displayLines?.map(line => line.trim()).filter(Boolean) ?? [];
   const calculationRows = buildCalculationRows(result, bands, targetLabel, calculationLines);
   const relationshipByBand = new Map(result.comparisons.map(comparison => [comparison.bandId, comparison.relationship]));
-  const bandDescriptions = result.comparisonBands.map(band => {
+  const bandDescriptions = bands.map(band => {
     const relationship = relationshipByBand.get(band.id);
     return [
-      `${BAND_LABELS[band.labelKey] ?? band.labelKey}: ${formatNumber(band.low)} to ${formatNumber(band.high)} ${result.unit}`,
+      `${BAND_LABELS[band.labelKey] ?? band.labelKey}: ${band.lowDisplay} to ${band.highDisplay} ${displayUnit}`,
       relationship ? `measured value ${relationship}` : null
     ].filter(Boolean).join(", ");
   });
@@ -297,8 +313,9 @@ export function buildCompensationVisualModel(
     kind: "visual",
     targetLabel,
     measuredValue: result.measuredValue,
-    measuredDisplay: formatNumber(result.measuredValue),
-    unit: result.unit,
+    measuredDisplay: formatDisplayNumber(result.measuredValue),
+    unit: displayUnit,
+    canonicalUnit: result.unit,
     markerPercent: positions.get(result.measuredValue) ?? 50,
     bands,
     interpretationLabel,
@@ -308,7 +325,7 @@ export function buildCompensationVisualModel(
     calculationRuleKey: result.calculation?.ruleKey?.trim() || null,
     calculationRows,
     accessibleDescription: [
-      `Measured ${targetLabel}: ${formatNumber(result.measuredValue)} ${result.unit}.`,
+      `Measured ${targetLabel}: ${formatDisplayNumber(result.measuredValue)} ${displayUnit}.`,
       ...bandDescriptions,
       `Interpretation: ${interpretationLabel}.`
     ].join(" ")

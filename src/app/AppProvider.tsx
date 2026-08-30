@@ -177,7 +177,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
               userState: hydratedUserState,
               sessionState: {
                 ...initialAppState.sessionState,
-                showAdvancedRanges: storage.loadAdvancedRangesPreference()
+                showAdvancedRanges: storage.loadAdvancedRangesPreference(),
+                pressureUnit: storage.loadPressureUnitPreference()
               },
               practiceState: {
                 ...initialAppState.practiceState,
