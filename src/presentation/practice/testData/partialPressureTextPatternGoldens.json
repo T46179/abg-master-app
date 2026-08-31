@@ -1,0 +1,166 @@
+{
+  "contractVersion": "1",
+  "patterns": [
+    {
+      "id": "explanation.primary_disorder.respiratory_alkalosis",
+      "source": "explanation",
+      "domain": "primary_disorder",
+      "disposition": "converted",
+      "sourceText": "PaCO2 is 27.5 mmHg and has moved down while the pH has moved up, so the primary process is respiratory alkalosis. This is the respiratory side of ROME: PaCO2 and pH move in opposite directions, so losing CO2 raises the pH.",
+      "expectedKPaText": "PaCO2 is 3.7 kPa and has moved down while the pH has moved up, so the primary process is respiratory alkalosis. This is the respiratory side of ROME: PaCO2 and pH move in opposite directions, so losing CO2 raises the pH."
+    },
+    {
+      "id": "explanation.primary_disorder.respiratory_acidosis",
+      "source": "explanation",
+      "domain": "primary_disorder",
+      "disposition": "converted",
+      "sourceText": "PaCO2 is 63.5 mmHg and has moved up while the pH has moved down, so the primary process is respiratory acidosis. CO2 behaves like an acid load: as PaCO2 rises, more carbonic acid is generated and the pH falls.",
+      "expectedKPaText": "PaCO2 is 8.5 kPa and has moved up while the pH has moved down, so the primary process is respiratory acidosis. CO2 behaves like an acid load: as PaCO2 rises, more carbonic acid is generated and the pH falls."
+    },
+    {
+      "id": "explanation.compensation.acute_respiratory_alkalosis",
+      "source": "explanation",
+      "domain": "compensation",
+      "disposition": "converted",
+      "sourceText": "In acute respiratory alkalosis, buffering lowers HCO3 to partially offset the low PaCO2. Using the 1-2-4-5 rule for acute respiratory alkalosis, HCO3 should fall by 2 mmol/L for every 10 mmHg decrease in PaCO2, giving an expected HCO3 of about 20.5 mmol/L (acceptable range 18.5-22.5). The measured HCO3 is 21.5 mmol/L. This is within the expected range, indicating appropriate metabolic compensation.",
+      "expectedKPaText": "In acute respiratory alkalosis, buffering lowers HCO3 to partially offset the low PaCO2. Using the 1-2-4-5 rule for acute respiratory alkalosis, HCO3 should fall by 2 mmol/L for every 1.3 kPa decrease in PaCO2, giving an expected HCO3 of about 20.5 mmol/L (acceptable range 18.5-22.5). The measured HCO3 is 21.5 mmol/L. This is within the expected range, indicating appropriate metabolic compensation."
+    },
+    {
+      "id": "explanation.compensation.chronic_respiratory_acidosis_acute_on_chronic",
+      "source": "explanation",
+      "domain": "compensation",
+      "disposition": "converted",
+      "sourceText": "In chronic respiratory acidosis, the kidneys retain HCO3 to partially offset the raised PaCO2. Using the 1-2-4-5 rule for chronic respiratory acidosis, HCO3 should rise by 4 mmol/L for every 10 mmHg increase in PaCO2, giving an expected HCO3 of about 37.5 mmol/L (acceptable range 35.5-39.5). The measured HCO3 is 33.5 mmol/L. The acute-only expected HCO3 is about 27.5 mmol/L (range 25.5-29.5). The measured HCO3 sits between the acute and stable chronic expected responses, supporting acute-on-chronic respiratory acidosis without implying a precise combined target.",
+      "expectedKPaText": "In chronic respiratory acidosis, the kidneys retain HCO3 to partially offset the raised PaCO2. Using the 1-2-4-5 rule for chronic respiratory acidosis, HCO3 should rise by 4 mmol/L for every 1.3 kPa increase in PaCO2, giving an expected HCO3 of about 37.5 mmol/L (acceptable range 35.5-39.5). The measured HCO3 is 33.5 mmol/L. The acute-only expected HCO3 is about 27.5 mmol/L (range 25.5-29.5). The measured HCO3 sits between the acute and stable chronic expected responses, supporting acute-on-chronic respiratory acidosis without implying a precise combined target."
+    },
+    {
+      "id": "explanation.compensation.chronic_respiratory_acidosis_appropriate",
+      "source": "explanation",
+      "domain": "compensation",
+      "disposition": "converted",
+      "sourceText": "In chronic respiratory acidosis, the kidneys retain HCO3 to partially offset the raised PaCO2. Using the 1-2-4-5 rule for chronic respiratory acidosis, HCO3 should rise by 4 mmol/L for every 10 mmHg increase in PaCO2, giving an expected HCO3 of about 34.5 mmol/L (acceptable range 32.5-36.5). The measured HCO3 is 35.0 mmol/L. This is within the expected range, indicating appropriate metabolic compensation.",
+      "expectedKPaText": "In chronic respiratory acidosis, the kidneys retain HCO3 to partially offset the raised PaCO2. Using the 1-2-4-5 rule for chronic respiratory acidosis, HCO3 should rise by 4 mmol/L for every 1.3 kPa increase in PaCO2, giving an expected HCO3 of about 34.5 mmol/L (acceptable range 32.5-36.5). The measured HCO3 is 35.0 mmol/L. This is within the expected range, indicating appropriate metabolic compensation."
+    },
+    {
+      "id": "explanation.compensation.metabolic_alkalosis_appropriate",
+      "source": "explanation",
+      "domain": "compensation",
+      "disposition": "converted",
+      "sourceText": "In metabolic alkalosis, the body compensates by hypoventilating to retain PaCO2. Using the metabolic alkalosis compensation rule, the expected PaCO2 is about 49.5 mmHg (acceptable range 46.5-52.5). The measured PaCO2 is 48.5 mmHg. This is within the expected range, indicating appropriate respiratory compensation.",
+      "expectedKPaText": "In metabolic alkalosis, the body compensates by hypoventilating to retain PaCO2. Using the metabolic alkalosis compensation rule, the expected PaCO2 is about 6.6 kPa (acceptable range 6.2–7.0 kPa). The measured PaCO2 is 6.5 kPa. This is within the expected range, indicating appropriate respiratory compensation."
+    },
+    {
+      "id": "explanation.compensation.metabolic_acidosis_appropriate",
+      "source": "explanation",
+      "domain": "compensation",
+      "disposition": "converted",
+      "sourceText": "In metabolic acidosis, the body compensates by hyperventilating to lower PaCO2. Using Winter's formula, the expected PaCO2 is about 31.5 mmHg (acceptable range 29.5-33.5). The measured PaCO2 is 32.0 mmHg. This is within the expected range, indicating appropriate respiratory compensation.",
+      "expectedKPaText": "In metabolic acidosis, the body compensates by hyperventilating to lower PaCO2. Using Winter's formula, the expected PaCO2 is about 4.2 kPa (acceptable range 3.9–4.5 kPa). The measured PaCO2 is 4.3 kPa. This is within the expected range, indicating appropriate respiratory compensation."
+    },
+    {
+      "id": "explanation.compensation.metabolic_acidosis_above",
+      "source": "explanation",
+      "domain": "compensation",
+      "disposition": "converted",
+      "sourceText": "In metabolic acidosis, the body compensates by hyperventilating to lower PaCO2. Using Winter's formula, the expected PaCO2 is about 25.5 mmHg (acceptable range 23.5-27.5). The measured PaCO2 is 36.5 mmHg. Because the measured PaCO2 is above the expected range, this does not fit isolated compensation. A second acid-base process is likely present.",
+      "expectedKPaText": "In metabolic acidosis, the body compensates by hyperventilating to lower PaCO2. Using Winter's formula, the expected PaCO2 is about 3.4 kPa (acceptable range 3.1–3.7 kPa). The measured PaCO2 is 4.9 kPa. Because the measured PaCO2 is above the expected range, this does not fit isolated compensation. A second acid-base process is likely present."
+    },
+    {
+      "id": "explanation.compensation.metabolic_acidosis_below",
+      "source": "explanation",
+      "domain": "compensation",
+      "disposition": "converted",
+      "sourceText": "In metabolic acidosis, the body compensates by hyperventilating to lower PaCO2. Using Winter's formula, the expected PaCO2 is about 28.5 mmHg (acceptable range 26.5-30.5). The measured PaCO2 is 22.5 mmHg. Because the measured PaCO2 is below the expected range, this does not fit isolated compensation. A second acid-base process is likely present.",
+      "expectedKPaText": "In metabolic acidosis, the body compensates by hyperventilating to lower PaCO2. Using Winter's formula, the expected PaCO2 is about 3.8 kPa (acceptable range 3.5–4.1 kPa). The measured PaCO2 is 3.0 kPa. Because the measured PaCO2 is below the expected range, this does not fit isolated compensation. A second acid-base process is likely present."
+    },
+    {
+      "id": "explanation.compensation.metabolic_acidosis_above_hypothermia_qualifier",
+      "source": "explanation",
+      "domain": "compensation",
+      "disposition": "converted",
+      "sourceText": "In metabolic acidosis, the body compensates by hyperventilating to lower PaCO2. Using Winter's formula, the expected PaCO2 is about 18.5 mmHg (acceptable range 16.5-20.5). The measured PaCO2 is 33.0 mmHg. Because the measured PaCO2 is above the expected range, this does not fit isolated compensation. A second acid-base process is likely present. Because this is a venous sample obtained during profound hypothermia, the exact difference should be interpreted with clinical context, although it remains above the expected range.",
+      "expectedKPaText": "In metabolic acidosis, the body compensates by hyperventilating to lower PaCO2. Using Winter's formula, the expected PaCO2 is about 2.5 kPa (acceptable range 2.2–2.7 kPa). The measured PaCO2 is 4.4 kPa. Because the measured PaCO2 is above the expected range, this does not fit isolated compensation. A second acid-base process is likely present. Because this is a venous sample obtained during profound hypothermia, the exact difference should be interpreted with clinical context, although it remains above the expected range."
+    },
+    {
+      "id": "feedback.compensation.appropriate",
+      "source": "feedback",
+      "domain": "compensation",
+      "disposition": "converted",
+      "sourceText": "Expected PaCO2 is about 42.5 mmHg; measured PaCO2 is 41.5 mmHg, so compensation is appropriate.",
+      "expectedKPaText": "Expected PaCO2 is about 5.7 kPa; measured PaCO2 is 5.5 kPa, so compensation is appropriate."
+    },
+    {
+      "id": "feedback.compensation.inappropriate",
+      "source": "feedback",
+      "domain": "compensation",
+      "disposition": "converted",
+      "sourceText": "Expected PaCO2 is about 30.5 mmHg; measured PaCO2 is 39.5 mmHg, so compensation is inappropriate.",
+      "expectedKPaText": "Expected PaCO2 is about 4.1 kPa; measured PaCO2 is 5.3 kPa, so compensation is inappropriate."
+    },
+    {
+      "id": "feedback.primary_disorder.respiratory_alkalosis",
+      "source": "feedback",
+      "domain": "primary_disorder",
+      "disposition": "converted",
+      "sourceText": "PaCO2 is 27.5 mmHg and has moved down while the pH has moved up, so the primary process is respiratory alkalosis.",
+      "expectedKPaText": "PaCO2 is 3.7 kPa and has moved down while the pH has moved up, so the primary process is respiratory alkalosis."
+    },
+    {
+      "id": "feedback.primary_disorder.respiratory_acidosis",
+      "source": "feedback",
+      "domain": "primary_disorder",
+      "disposition": "converted",
+      "sourceText": "PaCO2 is 63.5 mmHg and has moved up while the pH has moved down, so the primary process is respiratory acidosis.",
+      "expectedKPaText": "PaCO2 is 8.5 kPa and has moved up while the pH has moved down, so the primary process is respiratory acidosis."
+    },
+    {
+      "id": "explanation.oxygenation_status.authored_unicode",
+      "source": "explanation",
+      "domain": "oxygenation_status",
+      "disposition": "converted",
+      "sourceText": "A PaO₂ of 87 mmHg might look acceptable in isolation, but this patient is on FiO₂ 0.9 with an oxygen saturation of 79%. This is severe oxygenation failure, not reassuring oxygenation.",
+      "expectedKPaText": "A PaO₂ of 11.6 kPa might look acceptable in isolation, but this patient is on FiO₂ 0.9 with an oxygen saturation of 79%. This is severe oxygenation failure, not reassuring oxygenation."
+    },
+    {
+      "id": "explanation.oxygenation_status.authored_ascii",
+      "source": "explanation",
+      "domain": "oxygenation_status",
+      "disposition": "converted",
+      "sourceText": "A PaO2 of 72 mmHg might look only mildly low in isolation, but this patient is on FiO2 0.8. This is severe oxygenation failure in a patient receiving maximal inspired oxygen.",
+      "expectedKPaText": "A PaO2 of 9.6 kPa might look only mildly low in isolation, but this patient is on FiO2 0.8. This is severe oxygenation failure in a patient receiving maximal inspired oxygen."
+    },
+    {
+      "id": "explanation.aa_gradient_mechanism.authored",
+      "source": "explanation",
+      "domain": "aa_gradient_mechanism",
+      "disposition": "unchanged",
+      "reason": "A-a gradient prose remains authored in mmHg until it has a dedicated structured renderer.",
+      "sourceText": "Using the alveolar gas equation, PAO₂ ≈ FiO₂ × (760 − 47) − PaCO₂/0.8. Here, PAO₂ is approximately 710 − 250 = 460 mmHg. With a measured PaO₂ of 87 mmHg, the A–a gradient is about 373 mmHg. This is markedly raised, meaning the low PaO₂ cannot be explained by hypoventilation alone; there is impaired oxygen transfer from alveoli to arterial blood.",
+      "expectedKPaText": "Using the alveolar gas equation, PAO₂ ≈ FiO₂ × (760 − 47) − PaCO₂/0.8. Here, PAO₂ is approximately 710 − 250 = 460 mmHg. With a measured PaO₂ of 87 mmHg, the A–a gradient is about 373 mmHg. This is markedly raised, meaning the low PaO₂ cannot be explained by hypoventilation alone; there is impaired oxygen transfer from alveoli to arterial blood."
+    },
+    {
+      "id": "explanation.clinical_context.severe_asthma",
+      "source": "explanation",
+      "domain": "clinical_context",
+      "disposition": "converted",
+      "sourceText": "In severe asthma, a normal or rising PaCO₂ is ominous because it suggests the patient can no longer maintain ventilation. A PaCO₂ of 215 mmHg is extreme ventilatory failure and should be interpreted as a peri-arrest finding.",
+      "expectedKPaText": "In severe asthma, a normal or rising PaCO₂ is ominous because it suggests the patient can no longer maintain ventilation. A PaCO₂ of 28.7 kPa is extreme ventilatory failure and should be interpreted as a peri-arrest finding."
+    },
+    {
+      "id": "explanation.clinical_context.pregnancy",
+      "source": "explanation",
+      "domain": "clinical_context",
+      "disposition": "converted",
+      "sourceText": "Pregnancy normally lowers PaCO₂ through increased minute ventilation. A PaCO₂ of 77 mmHg is therefore profoundly abnormal and should not be dismissed as a pregnancy-related change.",
+      "expectedKPaText": "Pregnancy normally lowers PaCO₂ through increased minute ventilation. A PaCO₂ of 10.3 kPa is therefore profoundly abnormal and should not be dismissed as a pregnancy-related change."
+    },
+    {
+      "id": "explanation.clinical_context.critical_metabolic_acidosis",
+      "source": "explanation",
+      "domain": "clinical_context",
+      "disposition": "converted",
+      "sourceText": "A pH of 6.91 is a critical result. In severe metabolic acidosis, the patient should be hyperventilating aggressively to reduce CO2. A pCO2 of 31 mmHg may look deceptively low in isolation, but with a bicarbonate of 8 mmol/L it is dangerously high. The potassium of 5.9 mmol/L is also consistent with severe acidaemia and critical illness.",
+      "expectedKPaText": "A pH of 6.91 is a critical result. In severe metabolic acidosis, the patient should be hyperventilating aggressively to reduce CO2. A pCO2 of 4.1 kPa may look deceptively low in isolation, but with a bicarbonate of 8 mmol/L it is dangerously high. The potassium of 5.9 mmol/L is also consistent with severe acidaemia and critical illness."
+    }
+  ]
+}

@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run --pool=forks --maxWorkers=1",
     "typecheck": "tsc --noEmit",
+    "verify:pressure-text-contract": "node scripts/verify-pressure-text-contract.mjs",
     "verify:featured:staging": "node scripts/verify-featured-staging.mjs"
   },
   "dependencies": {

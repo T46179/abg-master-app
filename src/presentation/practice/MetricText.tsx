@@ -1,4 +1,9 @@
 import { Fragment } from "react";
+import type { PressureUnit } from "../../core/types";
+import {
+  renderPartialPressureText,
+  type PartialPressureTextContext
+} from "../../core/partialPressureText";
 
 interface MetricLabelProps {
   label: string;
@@ -78,16 +83,25 @@ function renderInlineMetricToken(token: string) {
   }
 }
 
-export function MetricInlineText({ text }: { text: string }) {
-  const parts = text.split(INLINE_METRIC_PATTERN);
+interface MetricInlineTextProps {
+  text: string;
+  pressureUnit?: PressureUnit;
+  pressureTextContext?: PartialPressureTextContext;
+}
+
+export function MetricInlineText({ text, pressureUnit, pressureTextContext }: MetricInlineTextProps) {
+  const renderedText = pressureUnit && pressureTextContext
+    ? renderPartialPressureText(text, pressureUnit, pressureTextContext)
+    : text;
+  const parts = renderedText.split(INLINE_METRIC_PATTERN);
 
   return (
-    <>
+    <Fragment key={renderedText}>
       {parts.map((part, index) => (
         <Fragment key={`${part}-${index}`}>
           {renderInlineMetricToken(part)}
         </Fragment>
       ))}
-    </>
+    </Fragment>
   );
 }

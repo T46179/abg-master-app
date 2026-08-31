@@ -415,7 +415,13 @@ export function CompensationVisualContent(props: CompensationVisualContentProps)
       <div className="cmp">
         <div className="cmp-fallback">
           <Info className="cmp-fallback__icon" aria-hidden="true" />
-          <p className="cmp-fallback__text"><MetricInlineText text={model.explanation} /></p>
+          <p className="cmp-fallback__text">
+            <MetricInlineText
+              text={model.explanation}
+              pressureUnit={props.pressureUnit}
+              pressureTextContext={{ source: "explanation", domain: "compensation" }}
+            />
+          </p>
         </div>
       </div>
     );

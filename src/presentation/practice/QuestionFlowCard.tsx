@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import type { AnswerSelection, CaseData, QuestionFlowStep, StepResult } from "../../core/types";
+import type { AnswerSelection, CaseData, PressureUnit, QuestionFlowStep, StepResult } from "../../core/types";
 import { Surface } from "../primitives/Surface";
 import { PillNav } from "../primitives/PillNav";
 import { formatAnswerValue, getQuestionFlowStepStatus, prettyStepLabel } from "../../core/practice";
@@ -17,6 +17,7 @@ interface QuestionFlowCardProps {
   currentOptions: string[];
   selectedAnswers: AnswerSelection[];
   stepResults: StepResult[];
+  pressureUnit?: PressureUnit;
   onAnswer: (option: string) => void;
   onContinueStep: () => void;
   activeStepRef: RefObject<HTMLButtonElement | null>;
@@ -349,6 +350,7 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
         ) : (
           <InlineFeedbackCard
             result={props.currentResult}
+            pressureUnit={props.pressureUnit}
             isLastStep={props.currentStepIndex >= props.questions.length - 1}
             onContinue={props.onContinueStep}
             disabled={props.interactionDisabled}

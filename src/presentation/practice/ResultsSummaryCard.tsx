@@ -364,7 +364,13 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                         pressureUnit={props.pressureUnit}
                       />
                     ) : (
-                      <p><MetricInlineText text={section.body} /></p>
+                      <p>
+                        <MetricInlineText
+                          text={section.body}
+                          pressureUnit={props.pressureUnit}
+                          pressureTextContext={{ source: "explanation", domain: section.key }}
+                        />
+                      </p>
                     )
                   )}
                 </div>

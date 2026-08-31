@@ -78,6 +78,7 @@ export function ActivePracticeCase({
           currentOptions={currentOptions}
           selectedAnswers={selectedAnswers}
           stepResults={stepResults}
+          pressureUnit={pressureUnit}
           onAnswer={onAnswer}
           onContinueStep={onContinueStep}
           activeStepRef={activeStepRef}

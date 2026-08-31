@@ -5,7 +5,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { QuestionFlowCard } from "./QuestionFlowCard";
-import type { AnswerSelection, CaseData, QuestionFlowStep } from "../../core/types";
+import type { AnswerSelection, CaseData, PressureUnit, QuestionFlowStep, StepResult } from "../../core/types";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -34,7 +34,9 @@ function renderQuestionFlowCard(
   currentSelection: AnswerSelection | null,
   onAnswer = vi.fn(),
   step: QuestionFlowStep = multiSelectStep,
-  caseOverride: CaseData = caseItem
+  caseOverride: CaseData = caseItem,
+  currentResult: StepResult | null = null,
+  pressureUnit?: PressureUnit
 ) {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -49,10 +51,11 @@ function renderQuestionFlowCard(
         currentStepIndex={0}
         currentStep={step}
         currentSelection={currentSelection}
-        currentResult={null}
+        currentResult={currentResult}
         currentOptions={step.options ?? []}
         selectedAnswers={currentSelection ? [currentSelection] : []}
         stepResults={[]}
+        pressureUnit={pressureUnit}
         onAnswer={onAnswer}
         onContinueStep={onContinueStep}
         activeStepRef={createRef<HTMLButtonElement>()}
@@ -216,6 +219,81 @@ describe("QuestionFlowCard", () => {
     const { container, root } = renderQuestionFlowCard(null);
 
     expect(container.querySelector(".question-flow-card__rule-button")).toBeNull();
+
+    act(() => root.unmount());
+  });
+
+  it("converts supported inline feedback without changing answers or prompts", () => {
+    const compensationStep: QuestionFlowStep = {
+      key: "compensation",
+      label: "Compensation",
+      prompt: "Is compensation appropriate at 40 mmHg?",
+      options: ["Appropriate", "Inappropriate"]
+    };
+    const result: StepResult = {
+      key: "compensation",
+      label: "Compensation",
+      chosen: "Appropriate",
+      correctAnswer: "Appropriate",
+      correct: true,
+      feedback: {
+        key: "compensation",
+        title: "Compensation",
+        body: "Expected PaCO2 is about 32 mmHg; measured PaCO2 is 30 mmHg, so compensation is appropriate.",
+        order: 2
+      }
+    };
+
+    const { container, root } = renderQuestionFlowCard(
+      null,
+      vi.fn(),
+      compensationStep,
+      caseItem,
+      result,
+      "kPa"
+    );
+
+    expect(container.querySelector(".question-flow-card__prompt")?.textContent)
+      .toBe("Is compensation appropriate at 40 mmHg?");
+    expect(container.querySelector(".inline-feedback__note")?.textContent)
+      .toBe("Expected PaCO2 is about 4.3 kPa; measured PaCO2 is 4.0 kPa, so compensation is appropriate.");
+    expect(container.querySelector(".inline-feedback__item strong")?.textContent).toBe("Appropriate");
+
+    act(() => root.unmount());
+  });
+
+  it("keeps A-a gradient inline feedback in its authored units", () => {
+    const aaGradientStep: QuestionFlowStep = {
+      key: "aa_gradient_mechanism",
+      label: "A-a gradient",
+      prompt: "Can hypoventilation explain the PaO2?",
+      options: ["Yes", "No"]
+    };
+    const result: StepResult = {
+      key: "aa_gradient_mechanism",
+      label: "A-a gradient",
+      chosen: "No",
+      correctAnswer: "No",
+      correct: true,
+      feedback: {
+        key: "aa_gradient_mechanism",
+        title: "A-a gradient",
+        body: "With a measured PaO₂ of 90 mmHg, the A–a gradient is about 338 mmHg.",
+        order: 2
+      }
+    };
+
+    const { container, root } = renderQuestionFlowCard(
+      null,
+      vi.fn(),
+      aaGradientStep,
+      caseItem,
+      result,
+      "kPa"
+    );
+
+    expect(container.querySelector(".inline-feedback__note")?.textContent)
+      .toBe("With a measured PaO₂ of 90 mmHg, the A–a gradient is about 338 mmHg.");
 
     act(() => root.unmount());
   });

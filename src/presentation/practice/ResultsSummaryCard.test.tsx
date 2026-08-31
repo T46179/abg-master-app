@@ -441,6 +441,43 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).toContain("Diagnosis significance.");
   });
 
+  it("converts supported result prose while leaving A-a prose authored", () => {
+    const summary = buildSummary([
+      {
+        key: "primary_disorder",
+        title: "Primary Disorder",
+        body: "PaCO2 is 40 mmHg and has moved up while the pH has moved down, so the primary process is respiratory acidosis.",
+        order: 1
+      },
+      {
+        key: "aa_gradient_mechanism",
+        title: "A-a Gradient",
+        body: "With a measured PaO₂ of 90 mmHg, the A–a gradient is about 338 mmHg.",
+        order: 2
+      }
+    ]);
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={summary.caseData}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          onNextCase={() => {}}
+          pressureUnit="kPa"
+        />
+      );
+    });
+
+    expect(container.textContent).toContain(
+      "PaCO2 is 5.3 kPa and has moved up while the pH has moved down, so the primary process is respiratory acidosis."
+    );
+    expect(container.textContent).toContain(
+      "With a measured PaO₂ of 90 mmHg, the A–a gradient is about 338 mmHg."
+    );
+  });
+
   it("renders unknown fallback and omits empty explanation cards when sections are missing", () => {
     const summary = {
       ...buildSummary([

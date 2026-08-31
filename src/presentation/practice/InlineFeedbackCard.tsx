@@ -1,9 +1,10 @@
-import type { StepResult } from "../../core/types";
+import type { PressureUnit, StepResult } from "../../core/types";
 import { formatAnswerValue } from "../../core/practice";
 import { MetricInlineText } from "./MetricText";
 
 interface InlineFeedbackCardProps {
   result: StepResult;
+  pressureUnit?: PressureUnit;
   isLastStep: boolean;
   onContinue: () => void;
   disabled?: boolean;
@@ -26,7 +27,13 @@ export function InlineFeedbackCard(props: InlineFeedbackCardProps) {
       </div>
 
       {props.result.feedback?.body ? (
-        <p className="inline-feedback__note"><MetricInlineText text={props.result.feedback.body} /></p>
+        <p className="inline-feedback__note">
+          <MetricInlineText
+            text={props.result.feedback.body}
+            pressureUnit={props.pressureUnit}
+            pressureTextContext={{ source: "feedback", domain: props.result.feedback.key }}
+          />
+        </p>
       ) : null}
 
       <button

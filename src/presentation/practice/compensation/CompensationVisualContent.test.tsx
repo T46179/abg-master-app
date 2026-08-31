@@ -413,18 +413,21 @@ describe("CompensationVisualContent", () => {
     expect(container.querySelector<HTMLButtonElement>(".cmp-formula-help__button")?.getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("shows the existing explanation when the structured result is malformed", () => {
+  it("shows pressure-aware existing explanation when the structured result is malformed", () => {
     act(() => {
       root.render(
         <CompensationVisualContent
           result={{ ...result, comparisonBands: [] }}
-          fallbackExplanation="Existing compensation prose."
+          fallbackExplanation="Expected PaCO2 is about 32 mmHg; measured PaCO2 is 30 mmHg, so compensation is appropriate."
           caseId="case-1"
+          pressureUnit="kPa"
         />
       );
     });
 
-    expect(container.textContent).toContain("Existing compensation prose.");
+    expect(container.textContent).toContain(
+      "Expected PaCO2 is about 4.3 kPa; measured PaCO2 is 4.0 kPa, so compensation is appropriate."
+    );
     expect(container.querySelector(".cmp-rail")).toBeNull();
   });
 });
