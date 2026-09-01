@@ -4,6 +4,7 @@ import {
   renderPartialPressureText,
   type PartialPressureTextContext
 } from "../../core/partialPressureText";
+import { TranslationSafeInline } from "../primitives/TranslationSafeInline";
 
 interface MetricLabelProps {
   label: string;
@@ -96,12 +97,12 @@ export function MetricInlineText({ text, pressureUnit, pressureTextContext }: Me
   const parts = renderedText.split(INLINE_METRIC_PATTERN);
 
   return (
-    <Fragment key={renderedText}>
+    <TranslationSafeInline identity={renderedText}>
       {parts.map((part, index) => (
         <Fragment key={`${part}-${index}`}>
           {renderInlineMetricToken(part)}
         </Fragment>
       ))}
-    </Fragment>
+    </TranslationSafeInline>
   );
 }

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const renderMock = vi.fn();
 const createRootMock = vi.fn(() => ({ render: renderMock }));
 const initMonitoringMock = vi.fn();
+const handleCaughtReactErrorMock = vi.fn();
 const initAnalyticsMock = vi.fn();
 
 vi.mock("react-dom/client", () => ({
@@ -12,7 +13,8 @@ vi.mock("react-dom/client", () => ({
 }));
 
 vi.mock("./core/monitoring", () => ({
-  initMonitoring: initMonitoringMock
+  initMonitoring: initMonitoringMock,
+  handleCaughtReactError: handleCaughtReactErrorMock
 }));
 
 vi.mock("./core/analytics", () => ({
@@ -33,6 +35,7 @@ describe("main entrypoint", () => {
     renderMock.mockReset();
     createRootMock.mockClear();
     initMonitoringMock.mockClear();
+    handleCaughtReactErrorMock.mockClear();
     initAnalyticsMock.mockClear();
     vi.resetModules();
   });
@@ -43,6 +46,10 @@ describe("main entrypoint", () => {
     expect(initMonitoringMock).toHaveBeenCalledTimes(1);
     expect(initAnalyticsMock).toHaveBeenCalledTimes(1);
     expect(createRootMock).toHaveBeenCalledTimes(1);
+    expect(createRootMock).toHaveBeenCalledWith(
+      document.getElementById("root"),
+      { onCaughtError: handleCaughtReactErrorMock }
+    );
     expect(renderMock).toHaveBeenCalledTimes(1);
   });
 });

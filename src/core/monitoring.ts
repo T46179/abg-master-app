@@ -1,4 +1,7 @@
 import * as Sentry from "@sentry/react";
+import type { ErrorInfo } from "react";
+
+const sentryCaughtReactErrorHandler = Sentry.reactErrorHandler();
 
 function parseSampleRate(value: string | undefined, fallback = 0): number {
   if (!value) return fallback;
@@ -42,4 +45,9 @@ export function captureAppException(error: unknown, context?: { name?: string; e
     }
     Sentry.captureException(error);
   });
+}
+
+export function handleCaughtReactError(error: unknown, errorInfo: ErrorInfo) {
+  console.error("React caught an error", error, errorInfo.componentStack);
+  sentryCaughtReactErrorHandler(error, errorInfo);
 }

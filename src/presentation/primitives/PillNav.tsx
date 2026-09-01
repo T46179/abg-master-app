@@ -1,6 +1,7 @@
 import type { Ref } from "react";
 import { cn } from "../utils";
 import { useHorizontalOverflowState } from "../useHorizontalOverflowState";
+import { TranslationSafeInline } from "./TranslationSafeInline";
 
 export interface PillNavItem {
   key: string;
@@ -50,7 +51,7 @@ export function PillNav(props: PillNavProps) {
           disabled={item.disabled}
           onClick={item.onClick}
         >
-          {item.label}
+          <TranslationSafeInline identity={item.label}>{item.label}</TranslationSafeInline>
         </button>
       ))}
     </div>

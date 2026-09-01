@@ -105,6 +105,12 @@ describe("app routes", () => {
     expect(childPaths).toContain("dev/authored-cases");
   });
 
+  it("uses the friendly recovery view for protected app routes", () => {
+    const shellRoute = appRoutes.find((route) => route.children != null);
+
+    expect(getElementName(shellRoute?.errorElement)).toBe("AppRouteErrorView");
+  });
+
   it("renders the insights scaffold at /insights", () => {
     const shellRoute = appRoutes.find((route) => route.children != null);
     const insightsRoute = shellRoute?.children?.find((route) => route.path === "insights");
