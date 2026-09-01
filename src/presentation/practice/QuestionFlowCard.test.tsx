@@ -172,7 +172,7 @@ describe("QuestionFlowCard", () => {
     expect(popover?.textContent).toContain("PAO2 = FiO2 × (Patmos − PH2O) − PaCO2 / 0.8");
     expect(popover?.textContent).toContain("A–a gradient = PAO2 − PaO2");
     expect(popover?.textContent).toContain("Room-air sea-level shortcut:");
-    expect(popover?.textContent).toContain("PAO2 ≈ 150 − PaCO2 / 0.8");
+    expect(popover?.textContent).toContain("PAO2 ≈ 150 mmHg − PaCO2 / 0.8");
     expect(popover?.textContent).toContain("Note:");
     expect(popover?.textContent).toContain("The shortcut and normal range are mainly for room air at sea level. Normal A–a gradient varies with age, FiO2, and atmospheric pressure.");
     expect(popover?.textContent).not.toContain("612");
@@ -219,6 +219,33 @@ describe("QuestionFlowCard", () => {
     const { container, root } = renderQuestionFlowCard(null);
 
     expect(container.querySelector(".question-flow-card__rule-button")).toBeNull();
+
+    act(() => root.unmount());
+  });
+
+  it("shows the room-air A-a shortcut in kPa when the global preference is kPa", () => {
+    const aaGradientStep: QuestionFlowStep = {
+      key: "aa_gradient_mechanism",
+      label: "A-a gradient",
+      prompt: "Can the observed PaO2 be explained by hypoventilation alone?",
+      options: ["Yes", "No"]
+    };
+    const { container, root } = renderQuestionFlowCard(
+      null,
+      vi.fn(),
+      aaGradientStep,
+      caseItem,
+      null,
+      "kPa"
+    );
+
+    act(() => {
+      container.querySelector<HTMLButtonElement>(".question-flow-card__rule-button")?.click();
+    });
+
+    const popover = container.querySelector<HTMLElement>(".question-flow-card__rule-popover");
+    expect(popover?.textContent).toContain("PAO2 ≈ 20.0 kPa − PaCO2 / 0.8");
+    expect(popover?.textContent).not.toContain("150 mmHg");
 
     act(() => root.unmount());
   });

@@ -1,5 +1,5 @@
 {
-  "contractVersion": "1",
+  "contractVersion": "3",
   "patterns": [
     {
       "id": "explanation.primary_disorder.respiratory_alkalosis",
@@ -122,21 +122,20 @@
       "expectedKPaText": "A PaO₂ of 11.6 kPa might look acceptable in isolation, but this patient is on FiO₂ 0.9 with an oxygen saturation of 79%. This is severe oxygenation failure, not reassuring oxygenation."
     },
     {
+      "id": "explanation.oxygenation_status.niv_pf_ratio",
+      "source": "explanation",
+      "domain": "oxygenation_status",
+      "disposition": "converted",
+      "sourceText": "A PaO₂ of 91 mmHg and SpO₂ of 95% may appear reassuring, but they are being achieved on FiO₂ 0.6. The P/F ratio is approximately 152, indicating substantial oxygenation impairment despite NIV.",
+      "expectedKPaText": "A PaO₂ of 12.1 kPa and SpO₂ of 95% may appear reassuring, but they are being achieved on FiO₂ 0.6. The P/F ratio is approximately 152, indicating substantial oxygenation impairment despite NIV."
+    },
+    {
       "id": "explanation.oxygenation_status.authored_ascii",
       "source": "explanation",
       "domain": "oxygenation_status",
       "disposition": "converted",
       "sourceText": "A PaO2 of 72 mmHg might look only mildly low in isolation, but this patient is on FiO2 0.8. This is severe oxygenation failure in a patient receiving maximal inspired oxygen.",
       "expectedKPaText": "A PaO2 of 9.6 kPa might look only mildly low in isolation, but this patient is on FiO2 0.8. This is severe oxygenation failure in a patient receiving maximal inspired oxygen."
-    },
-    {
-      "id": "explanation.aa_gradient_mechanism.authored",
-      "source": "explanation",
-      "domain": "aa_gradient_mechanism",
-      "disposition": "unchanged",
-      "reason": "A-a gradient prose remains authored in mmHg until it has a dedicated structured renderer.",
-      "sourceText": "Using the alveolar gas equation, PAO₂ ≈ FiO₂ × (760 − 47) − PaCO₂/0.8. Here, PAO₂ is approximately 710 − 250 = 460 mmHg. With a measured PaO₂ of 87 mmHg, the A–a gradient is about 373 mmHg. This is markedly raised, meaning the low PaO₂ cannot be explained by hypoventilation alone; there is impaired oxygen transfer from alveoli to arterial blood.",
-      "expectedKPaText": "Using the alveolar gas equation, PAO₂ ≈ FiO₂ × (760 − 47) − PaCO₂/0.8. Here, PAO₂ is approximately 710 − 250 = 460 mmHg. With a measured PaO₂ of 87 mmHg, the A–a gradient is about 373 mmHg. This is markedly raised, meaning the low PaO₂ cannot be explained by hypoventilation alone; there is impaired oxygen transfer from alveoli to arterial blood."
     },
     {
       "id": "explanation.clinical_context.severe_asthma",
@@ -153,6 +152,14 @@
       "disposition": "converted",
       "sourceText": "Pregnancy normally lowers PaCO₂ through increased minute ventilation. A PaCO₂ of 77 mmHg is therefore profoundly abnormal and should not be dismissed as a pregnancy-related change.",
       "expectedKPaText": "Pregnancy normally lowers PaCO₂ through increased minute ventilation. A PaCO₂ of 10.3 kPa is therefore profoundly abnormal and should not be dismissed as a pregnancy-related change."
+    },
+    {
+      "id": "explanation.clinical_context.niv_failure",
+      "source": "explanation",
+      "domain": "clinical_context",
+      "disposition": "converted",
+      "sourceText": "Despite a PaO₂ of 83.5 mmHg and SpO₂ of 93%, oxygenation remains substantially impaired relative to FiO₂ 0.7. Persistent marked tachypnoea and desaturation with speech after one hour show that NIV is not providing a sustainable response, requiring escalation to invasive ventilation.",
+      "expectedKPaText": "Despite a PaO₂ of 11.1 kPa and SpO₂ of 93%, oxygenation remains substantially impaired relative to FiO₂ 0.7. Persistent marked tachypnoea and desaturation with speech after one hour show that NIV is not providing a sustainable response, requiring escalation to invasive ventilation."
     },
     {
       "id": "explanation.clinical_context.critical_metabolic_acidosis",

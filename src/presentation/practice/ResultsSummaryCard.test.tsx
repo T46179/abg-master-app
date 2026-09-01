@@ -1145,6 +1145,65 @@ describe("ResultsSummaryCard", () => {
     expect(container.querySelector(".ag-equation")?.textContent).toContain("= 31 mmol/L");
   });
 
+  it("replaces A-a prose with the structured unit-aware visual", () => {
+    const summary: CaseSummary = {
+      ...buildSummary([
+        {
+          key: "aa_gradient_mechanism",
+          title: "A-a gradient",
+          body: "The low PaO₂ cannot be explained by hypoventilation alone.",
+          order: 2
+        }
+      ]),
+      analysis: {
+        aaGradient: {
+          formulaVersion: "alveolar_gas_v1",
+          canonicalUnit: "mmHg",
+          inputs: {
+            fio2Fraction: 1,
+            measuredPaCO2MmHg: 81,
+            measuredPaO2MmHg: 78
+          },
+          assumptions: {
+            barometricPressureMmHg: 760,
+            waterVapourPressureMmHg: 47,
+            respiratoryQuotient: 0.8
+          },
+          calculated: {
+            inspiredOxygenPressureMmHg: 713,
+            co2CorrectionMmHg: 101.25,
+            alveolarOxygenPressureMmHg: 611.75,
+            aaGradientMmHg: 533.75
+          },
+          interpretation: {
+            key: "impaired_transfer",
+            tone: "raised",
+            label: "Markedly raised",
+            explanation: "The gradient supports impaired oxygen transfer."
+          }
+        }
+      }
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={summary.caseData}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          pressureUnit="kPa"
+          onNextCase={() => {}}
+        />
+      );
+    });
+
+    expect(container.querySelector(".aag-bars")).not.toBeNull();
+    expect(container.querySelector(".aag-result")?.textContent).toContain("71.2 kPa");
+    expect(container.textContent).toContain("The gradient supports impaired oxygen transfer.");
+    expect(container.textContent).not.toContain("The low PaO₂ cannot be explained by hypoventilation alone.");
+  });
+
   it("supports the retained caseData analysis location for the anion gap visual", () => {
     const baseSummary = buildSummary([
       { key: "anion_gap", title: "Anion Gap Analysis", body: "Fallback anion gap explanation.", order: 2 }

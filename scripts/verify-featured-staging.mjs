@@ -4,6 +4,14 @@ import process from "node:process";
 import { createClient } from "@supabase/supabase-js";
 
 const STAGING_PROJECT_REF = "clpfecuohwzwrgmqzeos";
+const EXPECTED_RELEASE_ID = "featured-authored-006-r1";
+const EXPECTED_CASE_ID = "AUTHORED_006";
+const EXPECTED_QUESTION_KEYS = [
+  "oxygenation_status",
+  "aa_gradient_mechanism",
+  "compensation",
+  "final_diagnosis"
+];
 const envPath = path.resolve(".env.local");
 const env = Object.fromEntries(
   fs.readFileSync(envPath, "utf8")
@@ -86,7 +94,10 @@ if (authError || !authData.user) throw authError ?? new Error("Anonymous Staging
 
 try {
   const statusBefore = await invoke("featured-case-status");
-  assert(typeof statusBefore.releaseId === "string" && statusBefore.releaseId.length > 0, "No active Featured release was returned.");
+  assert(
+    statusBefore.releaseId === EXPECTED_RELEASE_ID,
+    `Expected Featured release ${EXPECTED_RELEASE_ID}, received ${statusBefore.releaseId ?? "none"}.`
+  );
   assert(statusBefore.state === "available", "Fresh verifier should see the Featured Case as available.");
   assert(statusBefore.comparison === null, "An incomplete Featured Case returned a comparison.");
 
@@ -106,15 +117,20 @@ try {
 
   const prepared = await invoke("prepare-featured-case");
   assert(prepared.releaseId === statusBefore.releaseId, "Featured prepare returned a different release.");
-  assert(typeof prepared.slot?.caseData?.case_id === "string", "Featured prepare did not return an authored case.");
+  assert(
+    prepared.slot?.caseData?.case_id === EXPECTED_CASE_ID,
+    `Expected Featured case ${EXPECTED_CASE_ID}, received ${prepared.slot?.caseData?.case_id ?? "none"}.`
+  );
   assert(
     prepared.slot.caseData.protected_payload_mode === "practice_learning",
     "Featured prepare did not return a practice-learning payload."
   );
   assert(
-    prepared.slot.caseData.answer_key?.ph_status === "Acidaemia",
-    "Featured prepare did not return the issued case answer key."
+    JSON.stringify(prepared.slot.caseData.questions_flow?.map(step => step.key)) ===
+      JSON.stringify(EXPECTED_QUESTION_KEYS),
+    "Featured prepare returned an unexpected question sequence."
   );
+  assert(!("analysis" in prepared.slot.caseData), "Featured prepare exposed post-submission analysis.");
   const preparedStepFeedback = prepared.slot.caseData.step_feedback;
   assert(
     preparedStepFeedback == null ||
@@ -150,8 +166,19 @@ try {
   assert(firstCompletion.summary.accuracy === 100, "Staging verifier did not submit a perfect Featured attempt.");
   assertComparison(firstCompletion.comparison, 100);
   assert(
-    firstCompletion.stepResults?.find(result => result.key === "ph_status")?.correct === true,
-    "Server grading disagreed with the issued pH answer key."
+    firstCompletion.stepResults?.length === answers.length &&
+      firstCompletion.stepResults.every(result => result.correct === true),
+    "Server grading disagreed with one or more issued answers."
+  );
+  const aaGradient = firstCompletion.summary?.analysis?.aaGradient;
+  assert(aaGradient?.formulaVersion === "alveolar_gas_v1", "Featured summary omitted the A-a formula version.");
+  assert(
+    aaGradient?.calculated?.aaGradientMmHg === 421.4,
+    "Featured summary returned the wrong canonical A-a gradient."
+  );
+  assert(
+    firstCompletion.summary?.analysis?.compensation?.interpretationKey === "below_expected_range",
+    "Featured summary returned the wrong compensation interpretation."
   );
   assert(!("progress" in firstCompletion), "Featured completion returned normal progression.");
   assert(!("replacementSlot" in firstCompletion), "Featured completion issued a normal replacement slot.");

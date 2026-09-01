@@ -94,16 +94,16 @@ describe("Featured Case draft storage", () => {
 
     saveFeaturedCaseInvitationDismissal(storage, {
       userId: "user-1",
-      releaseId: "featured-authored-004-r4"
+      releaseId: "featured-authored-006-r1"
     });
 
     expect(isFeaturedCaseInvitationDismissed(storage, {
       userId: "user-1",
-      releaseId: "featured-authored-004-r4"
+      releaseId: "featured-authored-006-r1"
     })).toBe(true);
     expect(isFeaturedCaseInvitationDismissed(storage, {
       userId: "user-2",
-      releaseId: "featured-authored-004-r4"
+      releaseId: "featured-authored-006-r1"
     })).toBe(false);
     expect(isFeaturedCaseInvitationDismissed(storage, {
       userId: "user-1",
@@ -115,7 +115,7 @@ describe("Featured Case draft storage", () => {
     const storage = createMemoryStorage();
     saveFeaturedCaseInvitationDismissal(storage, {
       userId: "user-1",
-      releaseId: "featured-authored-004-r4"
+      releaseId: "featured-authored-006-r1"
     });
     saveFeaturedCaseInvitationDismissal(storage, {
       userId: "user-1",
@@ -132,7 +132,7 @@ describe("Featured Case draft storage", () => {
     });
     expect(isFeaturedCaseInvitationDismissed(storage, {
       userId: "user-1",
-      releaseId: "featured-authored-004-r4"
+      releaseId: "featured-authored-006-r1"
     })).toBe(false);
   });
 
@@ -142,7 +142,7 @@ describe("Featured Case draft storage", () => {
 
     expect(isFeaturedCaseInvitationDismissed(storage, {
       userId: "user-1",
-      releaseId: "featured-authored-004-r4"
+      releaseId: "featured-authored-006-r1"
     })).toBe(false);
   });
 

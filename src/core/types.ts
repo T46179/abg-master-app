@@ -215,9 +215,40 @@ export interface AnionGapResult {
   };
 }
 
+export type AAGradientInterpretationTone = "normal" | "raised" | "context";
+
+export interface AAGradientResult {
+  formulaVersion: "alveolar_gas_v1";
+  canonicalUnit: "mmHg";
+  inputs: {
+    fio2Fraction: number;
+    measuredPaCO2MmHg: number;
+    measuredPaO2MmHg: number;
+  };
+  assumptions: {
+    barometricPressureMmHg: 760;
+    waterVapourPressureMmHg: 47;
+    respiratoryQuotient: 0.8;
+  };
+  calculated: {
+    inspiredOxygenPressureMmHg: number;
+    co2CorrectionMmHg: number;
+    alveolarOxygenPressureMmHg: number;
+    aaGradientMmHg: number;
+  };
+  interpretation: {
+    key: string;
+    tone: AAGradientInterpretationTone;
+    label: string;
+    explanation: string;
+    qualifiers?: string[];
+  };
+}
+
 export interface CaseAnalysis {
   compensation?: CompensationResult;
   anionGap?: AnionGapResult;
+  aaGradient?: AAGradientResult;
 }
 
 export type ResultsExplanationPreferenceKey =

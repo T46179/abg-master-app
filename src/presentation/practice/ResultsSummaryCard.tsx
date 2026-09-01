@@ -23,6 +23,7 @@ import { formatElapsed, splitMetrics } from "../../app/viewHelpers";
 import { formatAnswerValue } from "../../core/practice";
 import { MetricInlineText, MetricLabel, MetricReference, MetricValue } from "./MetricText";
 import { AnionGapVisualContent } from "./anionGap/AnionGapVisualContent";
+import { AAGradientVisualContent } from "./aaGradient/AAGradientVisualContent";
 import { CaseMetadataIcons } from "./CaseMetadataIcons";
 import { CompensationVisualContent } from "./compensation/CompensationVisualContent";
 import { SecondaryMetricRail } from "./SecondaryMetricRail";
@@ -349,7 +350,14 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                     ) : null}
                   </div>
                   {isCollapsibleExplanationKey(section.key) && !expandedByKey[section.key] ? null : (
-                    section.key === "anion_gap" ? (
+                    section.key === "aa_gradient_mechanism" ? (
+                      <AAGradientVisualContent
+                        result={props.summary.analysis?.aaGradient ?? props.summary.caseData.analysis?.aaGradient}
+                        fallbackExplanation={section.body}
+                        caseId={props.summary.caseId}
+                        pressureUnit={props.pressureUnit}
+                      />
+                    ) : section.key === "anion_gap" ? (
                       <AnionGapVisualContent
                         result={props.summary.analysis?.anionGap ?? props.summary.caseData.analysis?.anionGap}
                         caseInputs={props.summary.caseData.inputs}

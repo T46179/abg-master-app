@@ -90,7 +90,9 @@ function getCompensationRuleSlug(caseItem: CaseData | null, primaryDisorder: str
 
 type FormulaPopoverType = "compensation" | "aa_gradient";
 
-function AAGradientFormulaPopover() {
+function AAGradientFormulaPopover({ pressureUnit }: { pressureUnit: PressureUnit }) {
+  const shortcut = pressureUnit === "kPa" ? "20.0 kPa" : "150 mmHg";
+
   return (
     <>
       <p className="question-flow-card__rule-popover-label">formula</p>
@@ -103,7 +105,7 @@ function AAGradientFormulaPopover() {
       </p>
       <h3>Room-air sea-level shortcut:</h3>
       <p>
-        PAO<sub>2</sub> &asymp; 150 &minus; PaCO<sub>2</sub> / 0.8
+        PAO<sub>2</sub> &asymp; {shortcut} &minus; PaCO<sub>2</sub> / 0.8
       </p>
       <p className="question-flow-card__rule-popover-label">Note:</p>
       <p>
@@ -245,7 +247,7 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
               aria-label={activeFormulaPopover === "aa_gradient" ? "A-a gradient formula" : "Compensation rule"}
             >
               {activeFormulaPopover === "aa_gradient" ? (
-                <AAGradientFormulaPopover />
+                <AAGradientFormulaPopover pressureUnit={props.pressureUnit ?? "mmHg"} />
               ) : activeCompensationRule ? (
                 <>
                   <p className="question-flow-card__rule-popover-label">Compensation rule</p>

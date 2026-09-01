@@ -24,8 +24,8 @@ const manifest = goldenManifest as {
 
 describe("partial-pressure authored text pattern contract", () => {
   it("contains one stable reviewed golden for every pattern ID", () => {
-    expect(manifest.contractVersion).toBe("1");
-    expect(manifest.patterns).toHaveLength(20);
+    expect(manifest.contractVersion).toBe("3");
+    expect(manifest.patterns).toHaveLength(21);
     expect(new Set(manifest.patterns.map(pattern => pattern.id)).size).toBe(manifest.patterns.length);
 
     for (const pattern of manifest.patterns) {

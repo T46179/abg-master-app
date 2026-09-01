@@ -11,7 +11,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const trackEvent = vi.hoisted(() => vi.fn());
 const featuredState = vi.hoisted(() => ({
   userId: "user-1" as string | null,
-  releaseId: "featured-authored-004-r4"
+  releaseId: "featured-authored-006-r1"
 }));
 
 vi.mock("../../core/analytics", () => ({
@@ -49,7 +49,7 @@ describe("ResultsFeaturedCaseCta", () => {
   beforeEach(() => {
     trackEvent.mockReset();
     featuredState.userId = "user-1";
-    featuredState.releaseId = "featured-authored-004-r4";
+    featuredState.releaseId = "featured-authored-006-r1";
     window.localStorage.clear();
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -76,7 +76,7 @@ describe("ResultsFeaturedCaseCta", () => {
     expect(trackEvent).toHaveBeenCalledWith(
       "featured_case_entry_viewed",
       expect.objectContaining({
-        release_id: "featured-authored-004-r4",
+        release_id: "featured-authored-006-r1",
         entry_source: "results_summary",
         action: "start",
         learner_level: 2,
@@ -92,7 +92,7 @@ describe("ResultsFeaturedCaseCta", () => {
     expect(trackEvent).toHaveBeenCalledWith(
       "featured_case_entry_clicked",
       expect.objectContaining({
-        release_id: "featured-authored-004-r4",
+        release_id: "featured-authored-006-r1",
         entry_source: "results_summary",
         action: "start"
       })

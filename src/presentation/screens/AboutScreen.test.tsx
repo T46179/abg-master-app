@@ -53,7 +53,7 @@ describe("AboutScreen", () => {
     expect(portrait?.alt).toBe("Portrait of Dr Thanh Truong");
     expect(portrait?.getAttribute("src")).toContain("about-portrait.webp");
     expect(container.querySelectorAll(".about-page__stat")).toHaveLength(3);
-    expect(Array.from(container.querySelectorAll(".about-page__stat strong")).map(card => card.textContent)).toEqual(["546", "156", "4"]);
+    expect(Array.from(container.querySelectorAll(".about-page__stat strong")).map(card => card.textContent)).toEqual(["546", "157", "4"]);
     expect(Array.from(container.querySelectorAll(".about-page__stat span")).map(card => card.textContent)).toEqual([
       "Cases completed", "Case Library", "Guides"
     ]);
