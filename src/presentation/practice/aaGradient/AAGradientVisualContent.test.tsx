@@ -102,6 +102,9 @@ describe("AAGradientVisualContent", () => {
     render();
 
     expect(container.querySelector(".aag-result")?.textContent).toContain("534 mmHg");
+    expect(container.querySelector(".aag-result__label")).toBeNull();
+    expect(container.querySelector(".aag-bars__heading")?.textContent)
+      .toBe("Oxygen partial pressure (mmHg)not to scale");
     expect(container.querySelector(".aag-bars__segment--alveolar")?.textContent).toContain("PAO₂ · 612 mmHg");
     expect(container.querySelector(".aag-bars__segment--arterial")?.textContent).toContain("PaO₂ · 78 mmHg");
     expect(container.querySelector(".aag-status")?.textContent).toContain("Markedly raised");
@@ -119,6 +122,8 @@ describe("AAGradientVisualContent", () => {
     render("kPa");
 
     expect(container.querySelector(".aag-result")?.textContent).toContain("71.2 kPa");
+    expect(container.querySelector(".aag-bars__heading")?.textContent)
+      .toBe("Oxygen partial pressure (kPa)not to scale");
     expect(container.querySelector(".aag-bars__segment--alveolar")?.textContent).toContain("81.6 kPa");
     expect(container.querySelector(".aag-visually-hidden")?.textContent).toContain("measured arterial oxygen pressure 10.4 kPa");
     expect(container.querySelector<HTMLElement>(".aag-bars__segment--arterial")?.style.width).toBe(arterialWidth);
@@ -134,15 +139,28 @@ describe("AAGradientVisualContent", () => {
     act(() => toggle?.click());
     expect(toggle?.getAttribute("aria-expanded")).toBe("true");
     expect(container.querySelector(".aag-calc__panel")?.id).toBe(toggle?.getAttribute("aria-controls"));
-    expect(container.textContent).toContain("95.1 − 13.5");
-    expect(container.querySelector(".aag-calc__row--alveolar")?.textContent).toContain("81.6 kPa");
-    expect(container.textContent).toContain("71.2 kPa");
+    expect(Array.from(container.querySelectorAll(".aag-calc__lines li")).map(line => line.textContent))
+      .toEqual([
+        "PAO₂ = 1 × (101.3 − 6.3) − (10.8 ÷ 0.8) = 81.6 kPa",
+        "A–a gradient = 81.6 − 10.4 = 71.2 kPa"
+      ]);
+
+    const formulaButton = container.querySelector<HTMLButtonElement>(".aag-formula-help__button");
+    expect(formulaButton?.getAttribute("aria-label")).toBe("Show A-a gradient formula");
+    act(() => formulaButton?.click());
+    expect(container.querySelector(".aag-formula-help__popover")?.textContent)
+      .toContain("PAO2 ≈ 20.0 kPa − PaCO2 / 0.8");
+    expect(container.querySelector(".aag-formula-help__popover")?.textContent).not.toContain("95.1");
+
+    act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
+    expect(container.querySelector(".aag-formula-help__popover")).toBeNull();
+    expect(document.activeElement).toBe(formulaButton);
 
     render("kPa", "case-two");
     expect(container.querySelector(".aag-calc__panel")).toBeNull();
   });
 
-  it("removes units before hiding labels when measured segment widths become constrained", () => {
+  it("borrows width from the gradient to keep the minimal arterial label in the bar", () => {
     const measurements = mockMeasurements(600);
     restoreMeasurements = measurements.restore;
     render();
@@ -154,9 +172,11 @@ describe("AAGradientVisualContent", () => {
     measurements.dimensions.railWidth = 400;
     act(() => window.dispatchEvent(new Event("resize")));
     expect(container.querySelector(".aag-bars__segment--arterial")?.getAttribute("data-label-mode"))
-      .toBe("hidden");
-    expect(container.querySelector(".aag-bars__callout--arterial")?.textContent)
-      .toContain("Measured arterial oxygen: 78 mmHg");
+      .toBe("compact");
+    expect(container.querySelector(".aag-bars__segment--arterial")?.textContent).toBe("PaO₂ · 78");
+    expect(container.querySelector<HTMLElement>(".aag-bars__segment--arterial")?.style.width)
+      .toBe("19%");
+    expect(container.querySelector(".aag-bars__callout--arterial")).toBeNull();
   });
 
   it("uses the conclusion-only prose fallback for invalid structured results", () => {

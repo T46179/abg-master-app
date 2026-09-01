@@ -145,6 +145,8 @@ function getRenderedExplanationSections(caseSummary: CaseSummary): ExplanationSe
 }
 
 const COLLAPSIBLE_EXPLANATION_KEYS = new Set<ResultsExplanationPreferenceKey>([
+  "oxygenation_status",
+  "aa_gradient_mechanism",
   "primary_disorder",
   "compensation",
   "anion_gap",
@@ -158,6 +160,8 @@ function isCollapsibleExplanationKey(key: ExplanationSection["key"]): key is Res
 
 function getExpandedPreferences(storage?: StorageAdapter | null): ResultsExplanationPreferences {
   return storage?.loadResultsExplanationPreferences() ?? {
+    oxygenation_status: true,
+    aa_gradient_mechanism: true,
     primary_disorder: true,
     compensation: true,
     anion_gap: true,
@@ -370,6 +374,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                         fallbackExplanation={section.body}
                         caseId={props.summary.caseId}
                         pressureUnit={props.pressureUnit}
+                        measuredPaCO2MmHg={props.caseItem.inputs?.gas?.paco2_mmHg}
                       />
                     ) : (
                       <p>

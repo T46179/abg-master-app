@@ -5,7 +5,8 @@ import { PillNav } from "../primitives/PillNav";
 import { formatAnswerValue, getQuestionFlowStepStatus, prettyStepLabel } from "../../core/practice";
 import { InlineFeedbackCard } from "./InlineFeedbackCard";
 import { MetricInlineText } from "./MetricText";
-import { compensationRules } from "../learn/CompensationRules";
+import { AAGradientFormulaContent } from "./aaGradient/AAGradientFormulaContent";
+import { compensationRules, getCompensationRuleUnitNote } from "../learn/CompensationRules";
 
 interface QuestionFlowCardProps {
   caseItem: CaseData | null;
@@ -89,31 +90,6 @@ function getCompensationRuleSlug(caseItem: CaseData | null, primaryDisorder: str
 }
 
 type FormulaPopoverType = "compensation" | "aa_gradient";
-
-function AAGradientFormulaPopover({ pressureUnit }: { pressureUnit: PressureUnit }) {
-  const shortcut = pressureUnit === "kPa" ? "20.0 kPa" : "150 mmHg";
-
-  return (
-    <>
-      <p className="question-flow-card__rule-popover-label">formula</p>
-      <h3>A-a Gradient</h3>
-      <p>
-        PAO<sub>2</sub> = FiO<sub>2</sub> &times; (Patmos &minus; PH<sub>2</sub>O) &minus; PaCO<sub>2</sub> / 0.8
-      </p>
-      <p>
-        A&ndash;a gradient = PAO<sub>2</sub> &minus; PaO<sub>2</sub>
-      </p>
-      <h3>Room-air sea-level shortcut:</h3>
-      <p>
-        PAO<sub>2</sub> &asymp; {shortcut} &minus; PaCO<sub>2</sub> / 0.8
-      </p>
-      <p className="question-flow-card__rule-popover-label">Note:</p>
-      <p>
-        The shortcut and normal range are mainly for room air at sea level. Normal A&ndash;a gradient varies with age, FiO<sub>2</sub>, and atmospheric pressure.
-      </p>
-    </>
-  );
-}
 
 export function QuestionFlowCard(props: QuestionFlowCardProps) {
   const formulaButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -247,13 +223,16 @@ export function QuestionFlowCard(props: QuestionFlowCardProps) {
               aria-label={activeFormulaPopover === "aa_gradient" ? "A-a gradient formula" : "Compensation rule"}
             >
               {activeFormulaPopover === "aa_gradient" ? (
-                <AAGradientFormulaPopover pressureUnit={props.pressureUnit ?? "mmHg"} />
+                <AAGradientFormulaContent pressureUnit={props.pressureUnit ?? "mmHg"} />
               ) : activeCompensationRule ? (
                 <>
                   <p className="question-flow-card__rule-popover-label">Compensation rule</p>
                   <h3>{activeCompensationRule.title}</h3>
                   <p><span>Expected </span>{activeCompensationRule.formula}</p>
                   <p>{activeCompensationRule.range}</p>
+                  {getCompensationRuleUnitNote(activeCompensationRule, props.pressureUnit ?? "mmHg") ? (
+                    <p>{getCompensationRuleUnitNote(activeCompensationRule, props.pressureUnit ?? "mmHg")}</p>
+                  ) : null}
                 </>
               ) : null}
             </div>

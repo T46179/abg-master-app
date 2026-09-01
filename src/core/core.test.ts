@@ -1436,6 +1436,8 @@ describe("storage adapters", () => {
     initialStorage.savePressureUnitPreference("kPa");
     initialStorage.saveLastPracticeDifficulty("advanced");
     initialStorage.saveResultsExplanationPreferences({
+      oxygenation_status: true,
+      aa_gradient_mechanism: true,
       primary_disorder: true,
       compensation: false,
       anion_gap: true,
@@ -1460,6 +1462,8 @@ describe("storage adapters", () => {
     expect(reloadedStorage.loadPressureUnitPreference()).toBe("kPa");
     expect(reloadedStorage.loadLastPracticeDifficulty()).toBe("advanced");
     expect(reloadedStorage.loadResultsExplanationPreferences()).toEqual({
+      oxygenation_status: true,
+      aa_gradient_mechanism: true,
       primary_disorder: true,
       compensation: false,
       anion_gap: true,

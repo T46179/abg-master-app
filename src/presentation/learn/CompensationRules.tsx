@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import type { PressureUnit } from "../../core/types";
 
 export type CompensationRuleCategory = "Metabolic" | "Respiratory";
 export type CompensationRuleTone = "red" | "green" | "amber" | "orange" | "blue" | "violet";
@@ -79,6 +80,16 @@ export const compensationRules: CompensationRule[] = [
     slug: "chronic-respiratory-alkalosis"
   }
 ];
+
+export function getCompensationRuleUnitNote(
+  rule: CompensationRule,
+  pressureUnit: PressureUnit
+): string | null {
+  if (pressureUnit !== "kPa") return null;
+  return rule.category === "Metabolic"
+    ? "To display the result in kPa, multiply by 0.133."
+    : "40 mmHg ≈ 5.3 kPa; a 10 mmHg change ≈ 1.3 kPa.";
+}
 
 const compensationRuleExplanations: Record<CompensationRuleCategory, { title: string; body: ReactNode; note: ReactNode }> = {
   Metabolic: {

@@ -51,6 +51,22 @@ export const publicResources: PublicResource[] = [
 // corresponding change has been released, with the release date as the source of truth.
 export const publicUpdates: PublicUpdate[] = [
 {
+  date: "2026-09-01",
+  version: "v1.4",
+  category: "new",
+  title: "Pressure Unit Switching",
+  summary: "View partial pressures in mmHg or kPa, alongside a new A–a gradient visualiser.",
+  highlights: [
+    "Choose between mmHg and kPa from the Settings menu in the navigation bar. Your preference is remembered across sessions",
+    "Supported pressure values and explanations in Practice and Featured Cases now use your selected unit. Learn content remains in mmHg for now",
+    "Added a new visualiser for A-a gradient calculations to match the compensation and anion gap visualisers",
+    "A new featured case is now available",
+    "UI fixes",
+    "Case library has been refreshed",
+    "Ground work for a brand new feature has been set - stay tuned"
+  ]
+},
+  {
   date: "2026-07-28",
   version: "v1.4",
   category: "improved",

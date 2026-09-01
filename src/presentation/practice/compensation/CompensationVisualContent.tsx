@@ -9,7 +9,7 @@ import {
 } from "react";
 import { Info } from "lucide-react";
 import type { CompensationResult, PressureUnit } from "../../../core/types";
-import { compensationRules } from "../../learn/CompensationRules";
+import { compensationRules, getCompensationRuleUnitNote } from "../../learn/CompensationRules";
 import { MetricInlineText } from "../MetricText";
 import {
   buildCompensationVisualModel,
@@ -24,6 +24,7 @@ interface CompensationVisualContentProps {
   fallbackExplanation: string;
   caseId: string;
   pressureUnit?: PressureUnit;
+  measuredPaCO2MmHg?: number;
 }
 
 type StatusTone = "within" | "below" | "above" | "between" | "context";
@@ -256,7 +257,11 @@ function InterpretationStatus({ model }: { model: CompensationVisualModel }) {
   );
 }
 
-function CompensationFormulaHelp(props: { ruleKey: string | null; caseId: string }) {
+function CompensationFormulaHelp(props: {
+  ruleKey: string | null;
+  caseId: string;
+  pressureUnit: PressureUnit;
+}) {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const containerRef = useRef<HTMLSpanElement | null>(null);
   const popoverId = useId();
@@ -273,7 +278,7 @@ function CompensationFormulaHelp(props: { ruleKey: string | null; caseId: string
 
   useEffect(() => {
     setOpen(false);
-  }, [props.caseId, props.ruleKey]);
+  }, [props.caseId, props.pressureUnit, props.ruleKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -326,6 +331,9 @@ function CompensationFormulaHelp(props: { ruleKey: string | null; caseId: string
               <h5>{rule.title}</h5>
               <p>{rule.formula}</p>
               <p>{rule.range}</p>
+              {getCompensationRuleUnitNote(rule, props.pressureUnit) ? (
+                <p>{getCompensationRuleUnitNote(rule, props.pressureUnit)}</p>
+              ) : null}
             </div>
           ))}
         </div>
@@ -338,6 +346,7 @@ function CalculationDisclosure(props: {
   rows: CompensationCalculationRowVisualModel[];
   ruleKey: string | null;
   caseId: string;
+  pressureUnit: PressureUnit;
   open: boolean;
   onToggle: () => void;
 }) {
@@ -358,7 +367,13 @@ function CalculationDisclosure(props: {
           {props.open ? "Hide calculation" : "Show calculation"}
         </button>
         <div className="cmp-calc__meta">
-          {props.open ? <CompensationFormulaHelp ruleKey={props.ruleKey} caseId={props.caseId} /> : null}
+          {props.open ? (
+            <CompensationFormulaHelp
+              ruleKey={props.ruleKey}
+              caseId={props.caseId}
+              pressureUnit={props.pressureUnit}
+            />
+          ) : null}
         </div>
       </div>
       {props.open ? (
@@ -402,8 +417,11 @@ function QualifierNotice({ messages }: { messages: string[] }) {
 export function CompensationVisualContent(props: CompensationVisualContentProps) {
   const [calculationOpen, setCalculationOpen] = useState(false);
   const model = useMemo(
-    () => buildCompensationVisualModel(props.result, props.fallbackExplanation, { pressureUnit: props.pressureUnit }),
-    [props.fallbackExplanation, props.pressureUnit, props.result]
+    () => buildCompensationVisualModel(props.result, props.fallbackExplanation, {
+      pressureUnit: props.pressureUnit,
+      measuredPaCO2MmHg: props.measuredPaCO2MmHg
+    }),
+    [props.fallbackExplanation, props.measuredPaCO2MmHg, props.pressureUnit, props.result]
   );
 
   useEffect(() => {
@@ -438,6 +456,7 @@ export function CompensationVisualContent(props: CompensationVisualContentProps)
         rows={model.calculationRows}
         ruleKey={model.calculationRuleKey}
         caseId={props.caseId}
+        pressureUnit={props.pressureUnit ?? "mmHg"}
         open={calculationOpen}
         onToggle={() => setCalculationOpen(current => !current)}
       />

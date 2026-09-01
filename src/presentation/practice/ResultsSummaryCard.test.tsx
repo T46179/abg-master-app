@@ -87,6 +87,8 @@ function createStorageAdapter(overrides: Partial<StorageAdapter> = {}): StorageA
     loadLastPracticeDifficulty: vi.fn(() => null),
     saveLastPracticeDifficulty: vi.fn(),
     loadResultsExplanationPreferences: vi.fn(() => ({
+      oxygenation_status: true,
+      aa_gradient_mechanism: true,
       primary_disorder: true,
       compensation: true,
       anion_gap: true,
@@ -327,6 +329,30 @@ describe("ResultsSummaryCard", () => {
       "A-a gradient",
       "Clinical Significance"
     ]);
+
+    const toggles = Array.from(container.querySelectorAll<HTMLButtonElement>(".results-card__detail-toggle"));
+    const oxygenationToggle = toggles.find(button => button.getAttribute("aria-label") === "Collapse Oxygenation");
+    const gradientToggle = toggles.find(button => button.getAttribute("aria-label") === "Collapse A-a gradient");
+    expect(oxygenationToggle).toBeTruthy();
+    expect(gradientToggle).toBeTruthy();
+
+    act(() => oxygenationToggle?.click());
+    expect(container.textContent).not.toContain("Oxygenation body.");
+    expect(container.textContent).toContain("A-a body.");
+    expect(oxygenationToggle?.getAttribute("aria-label")).toBe("Expand Oxygenation");
+
+    act(() => gradientToggle?.click());
+    expect(container.textContent).not.toContain("A-a body.");
+    expect(gradientToggle?.getAttribute("aria-label")).toBe("Expand A-a gradient");
+    expect(storage.saveResultsExplanationPreferences).toHaveBeenLastCalledWith({
+      oxygenation_status: false,
+      aa_gradient_mechanism: false,
+      primary_disorder: true,
+      compensation: true,
+      anion_gap: true,
+      additional_metabolic_process: true,
+      clinical_context: true
+    });
   });
 
   it("preserves oxygenation metric card styling in result review", () => {
@@ -609,6 +635,8 @@ describe("ResultsSummaryCard", () => {
 
   it("collapses only the targeted explanation card body and persists the setting", () => {
     const preferences: ResultsExplanationPreferences = {
+      oxygenation_status: true,
+      aa_gradient_mechanism: true,
       primary_disorder: true,
       compensation: true,
       anion_gap: true,
@@ -657,6 +685,8 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).toContain("Takeaway body.");
     expect(toggle?.getAttribute("aria-label")).toBe("Expand Compensation");
     expect(storage.saveResultsExplanationPreferences).toHaveBeenCalledWith({
+      oxygenation_status: true,
+      aa_gradient_mechanism: true,
       primary_disorder: true,
       compensation: false,
       anion_gap: true,
@@ -684,6 +714,8 @@ describe("ResultsSummaryCard", () => {
 
   it("collapses the additional metabolic process card body and persists the setting", () => {
     const preferences: ResultsExplanationPreferences = {
+      oxygenation_status: true,
+      aa_gradient_mechanism: true,
       primary_disorder: true,
       compensation: true,
       anion_gap: true,
@@ -731,6 +763,8 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).toContain("Takeaway body.");
     expect(additionalToggle?.getAttribute("aria-label")).toBe("Expand Additional Metabolic Process");
     expect(storage.saveResultsExplanationPreferences).toHaveBeenCalledWith({
+      oxygenation_status: true,
+      aa_gradient_mechanism: true,
       primary_disorder: true,
       compensation: true,
       anion_gap: true,
@@ -1101,6 +1135,68 @@ describe("ResultsSummaryCard", () => {
     expect(container.querySelector(".cmp-rail")).not.toBeNull();
     expect(container.textContent).toContain("Below expected range");
     expect(container.textContent).not.toContain("Fallback compensation explanation.");
+  });
+
+  it("passes canonical PaCO2 into respiratory compensation working in the selected unit", () => {
+    const caseItem: CaseData = {
+      ...buildCaseItem("respiratory_acidosis"),
+      inputs: {
+        ...buildCaseItem("respiratory_acidosis").inputs,
+        gas: {
+          ...buildCaseItem("respiratory_acidosis").inputs?.gas,
+          paco2_mmHg: 60
+        }
+      }
+    };
+    const summary: CaseSummary = {
+      ...buildSummary([
+        { key: "compensation", title: "Compensation", body: "Fallback compensation explanation.", order: 1 }
+      ]),
+      caseData: caseItem,
+      analysis: {
+        compensation: {
+          targetAnalyte: "hco3",
+          measuredValue: 31,
+          unit: "mmol/L",
+          comparisonBands: [
+            { id: "expected", role: "expected", kindKey: "primary_expected", labelKey: "expected_range", low: 30, high: 34, midpoint: 32 },
+            { id: "reference", role: "reference", kindKey: "reference", labelKey: "reference_range", low: 22, high: 26 }
+          ],
+          primaryExpectedBandId: "expected",
+          comparisons: [
+            { bandId: "expected", relationship: "within" },
+            { bandId: "reference", relationship: "above" }
+          ],
+          interpretationKey: "within_expected_range",
+          calculation: {
+            ruleKey: "chronic_respiratory_acidosis",
+            displayLines: [
+              "Chronic Respiratory Acidosis: 24 + 4 × ((60 − 40) ÷ 10) = 32 mmol/L",
+              "Expected HCO3: 30 – 34 mmol/L",
+              "Measured HCO3: 31 mmol/L"
+            ]
+          }
+        }
+      }
+    };
+
+    act(() => {
+      root.render(
+        <ResultsSummaryCard
+          summary={summary}
+          caseItem={caseItem}
+          showSummaryReferences={false}
+          showAbnormalHighlighting={false}
+          pressureUnit="kPa"
+          onNextCase={() => {}}
+        />
+      );
+    });
+    act(() => container.querySelector<HTMLButtonElement>(".cmp-calc__toggle")?.click());
+
+    expect(container.querySelector(".cmp-calc__lines > li")?.textContent).toBe(
+      "Chronic Respiratory Acidosis: PaCO₂ 8.0 kPa (60 mmHg) → 24 + 4 × ((60 − 40) ÷ 10) = 32 mmol/L"
+    );
   });
 
   it("replaces anion gap prose with the production structured visual and case-input calculation", () => {

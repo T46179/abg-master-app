@@ -72,7 +72,26 @@ describe("compensation visual model", () => {
       canonical.bands.map(band => [band.lowPos, band.highPos, band.centerPos])
     );
     expect(converted.interpretationKey).toBe(canonical.interpretationKey);
-    expect(converted.calculationRows).toEqual(canonical.calculationRows);
+    expect(converted.calculationRows).toEqual([
+      {
+        id: "formula",
+        parts: [{
+          text: "Winter's Formula: (1.5 × 12) + 8 = 26 mmHg → 26 × 0.133 = 3.5 kPa"
+        }]
+      },
+      {
+        id: "expected",
+        parts: [
+          { text: "Expected PaCO₂: " },
+          { text: "3.2 – 3.7", tone: "primary_expected" },
+          { text: " kPa" }
+        ]
+      },
+      {
+        id: "measured",
+        parts: [{ text: "Measured PaCO₂: 2.9 kPa" }]
+      }
+    ]);
     expect(converted.accessibleDescription).toContain("Measured PaCO₂: 2.9 kPa");
   });
 
@@ -87,6 +106,102 @@ describe("compensation visual model", () => {
     if (model.kind !== "visual") return;
     expect(model.measuredDisplay).toBe("18");
     expect(model.unit).toBe("mmol/L");
+    expect(model.calculationRows[0]?.parts[0]?.text).not.toContain("× 0.133");
+  });
+
+  it("shows selected-unit PaCO2 context while retaining conventional respiratory-rule arithmetic", () => {
+    const respiratoryResult = buildResult({
+      targetAnalyte: "hco3",
+      measuredValue: 31,
+      unit: "mmol/L",
+      comparisonBands: [
+        { id: "expected", role: "expected", kindKey: "primary_expected", labelKey: "expected_range", low: 30, high: 34, midpoint: 32 },
+        { id: "reference", role: "reference", kindKey: "reference", labelKey: "reference_range", low: 22, high: 26 }
+      ],
+      calculation: {
+        ruleKey: "chronic_respiratory_acidosis",
+        displayLines: [
+          "Chronic Respiratory Acidosis: 24 + 4 × ((60 − 40) ÷ 10) = 32 mmol/L",
+          "Expected HCO3: 30 – 34 mmol/L",
+          "Measured HCO3: 31 mmol/L"
+        ]
+      }
+    });
+    const mmHg = buildCompensationVisualModel(respiratoryResult, "Fallback prose", {
+      pressureUnit: "mmHg",
+      measuredPaCO2MmHg: 60
+    });
+    const kPa = buildCompensationVisualModel(respiratoryResult, "Fallback prose", {
+      pressureUnit: "kPa",
+      measuredPaCO2MmHg: 60
+    });
+
+    expect(mmHg.kind).toBe("visual");
+    expect(kPa.kind).toBe("visual");
+    if (mmHg.kind !== "visual" || kPa.kind !== "visual") return;
+    expect(mmHg.calculationRows[0]?.parts[0]?.text).toBe(
+      "Chronic Respiratory Acidosis: PaCO₂ 60 mmHg → 24 + 4 × ((60 − 40) ÷ 10) = 32 mmol/L"
+    );
+    expect(kPa.calculationRows[0]?.parts[0]?.text).toBe(
+      "Chronic Respiratory Acidosis: PaCO₂ 8.0 kPa (60 mmHg) → 24 + 4 × ((60 − 40) ÷ 10) = 32 mmol/L"
+    );
+    expect(kPa.calculationRows.slice(1)).toEqual(mmHg.calculationRows.slice(1));
+  });
+
+  it("keeps metabolic alkalosis working in mmHg and converts its final pressure outputs", () => {
+    const model = buildCompensationVisualModel(buildResult({
+      measuredValue: 50,
+      comparisonBands: [
+        {
+          id: "expected",
+          role: "expected",
+          kindKey: "primary_expected",
+          labelKey: "expected_range",
+          low: 45.4,
+          high: 51.4,
+          midpoint: 48.4
+        },
+        {
+          id: "reference",
+          role: "reference",
+          kindKey: "reference",
+          labelKey: "reference_range",
+          low: 35,
+          high: 45
+        }
+      ],
+      calculation: {
+        ruleKey: "metabolic_alkalosis",
+        displayLines: [
+          "Metabolic Alkalosis: 0.7 × (36 − 24) + 40 = 48.4 mmHg",
+          "Expected PaCO2: 45.4 – 51.4 mmHg",
+          "Measured PaCO2: 50 mmHg"
+        ]
+      }
+    }), "Fallback prose", { pressureUnit: "kPa" });
+
+    expect(model.kind).toBe("visual");
+    if (model.kind !== "visual") return;
+    expect(model.calculationRows).toEqual([
+      {
+        id: "formula",
+        parts: [{
+          text: "Metabolic Alkalosis: 0.7 × (36 − 24) + 40 = 48.4 mmHg → 48.4 × 0.133 = 6.5 kPa"
+        }]
+      },
+      {
+        id: "expected",
+        parts: [
+          { text: "Expected PaCO₂: " },
+          { text: "6.1 – 6.9", tone: "primary_expected" },
+          { text: " kPa" }
+        ]
+      },
+      {
+        id: "measured",
+        parts: [{ text: "Measured PaCO₂: 6.7 kPa" }]
+      }
+    ]);
   });
 
   it("builds semantic standard calculation rows and colours only the expected numbers", () => {

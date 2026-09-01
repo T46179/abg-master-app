@@ -329,6 +329,37 @@ describe("CompensationVisualContent", () => {
     expect(container.querySelector(".cmp-formula-help__popover")).toBeNull();
   });
 
+  it("adds kPa context to respiratory working and its formula help", () => {
+    act(() => {
+      root.render(
+        <CompensationVisualContent
+          result={result}
+          fallbackExplanation="Fallback"
+          caseId="respiratory-kpa"
+          pressureUnit="kPa"
+          measuredPaCO2MmHg={80}
+        />
+      );
+    });
+    act(() => container.querySelector<HTMLButtonElement>(".cmp-calc__toggle")?.click());
+
+    const items = container.querySelectorAll(".cmp-calc__lines > li");
+    expect(items[0]?.textContent).toBe(
+      "Acute: PaCO₂ 10.7 kPa (80 mmHg) → 24 + 1 × ((80 − 40) ÷ 10) = 28 mmol/L"
+    );
+    expect(items[1]?.textContent).toBe(
+      "Chronic: PaCO₂ 10.7 kPa (80 mmHg) → 24 + 4 × ((80 − 40) ÷ 10) = 40 mmol/L"
+    );
+    expect(items[2]?.textContent).toBe(
+      "Expected HCO₃⁻: Acute 26.7 – 29 · Chronic 37 – 41 mmol/L"
+    );
+
+    act(() => container.querySelector<HTMLButtonElement>(".cmp-formula-help__button")?.click());
+    expect(container.querySelector(".cmp-formula-help__popover")?.textContent).toContain(
+      "40 mmHg ≈ 5.3 kPa; a 10 mmHg change ≈ 1.3 kPa."
+    );
+  });
+
   it("shows one standard formula and colours only the standard expected range", () => {
     act(() => {
       root.render(<CompensationVisualContent result={standardResult} fallbackExplanation="Fallback" caseId="standard" />);
@@ -352,9 +383,11 @@ describe("CompensationVisualContent", () => {
     expect(container.querySelector(".cmp-formula-help__popover")?.textContent).toContain(
       "Metabolic Acidosis (Winter's Formula)"
     );
+    expect(container.querySelector(".cmp-formula-help__popover")?.textContent)
+      .not.toContain("multiply by 0.133");
   });
 
-  it("shows kPa labels while leaving calculation values in their authored mmHg", () => {
+  it("keeps the metabolic formula in mmHg and converts its final result, range, and measurement to kPa", () => {
     act(() => {
       root.render(
         <CompensationVisualContent
@@ -371,11 +404,19 @@ describe("CompensationVisualContent", () => {
     expect(container.textContent).not.toContain("Calculation shown in mmHg");
 
     act(() => container.querySelector<HTMLButtonElement>(".cmp-calc__toggle")?.click());
+    expect(container.querySelectorAll(".cmp-calc__lines > li")[0]?.textContent).toBe(
+      "Winter's Formula: (1.5 × 12) + 8 = 26 mmHg → 26 × 0.133 = 3.5 kPa"
+    );
     expect(container.querySelectorAll(".cmp-calc__lines > li")[1]?.textContent).toBe(
-      "Expected PaCO₂: 24 – 28 mmHg"
+      "Expected PaCO₂: 3.2 – 3.7 kPa"
     );
     expect(container.querySelectorAll(".cmp-calc__lines > li")[2]?.textContent).toBe(
-      "Measured PaCO₂: 22 mmHg"
+      "Measured PaCO₂: 2.9 kPa"
+    );
+
+    act(() => container.querySelector<HTMLButtonElement>(".cmp-formula-help__button")?.click());
+    expect(container.querySelector(".cmp-formula-help__popover")?.textContent).toContain(
+      "To display the result in kPa, multiply by 0.133."
     );
   });
 

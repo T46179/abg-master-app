@@ -252,6 +252,8 @@ export interface CaseAnalysis {
 }
 
 export type ResultsExplanationPreferenceKey =
+  | "oxygenation_status"
+  | "aa_gradient_mechanism"
   | "primary_disorder"
   | "compensation"
   | "anion_gap"

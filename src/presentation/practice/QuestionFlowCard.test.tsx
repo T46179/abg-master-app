@@ -223,6 +223,74 @@ describe("QuestionFlowCard", () => {
     act(() => root.unmount());
   });
 
+  it("adds the metabolic-result conversion note to the compensation formula in kPa mode", () => {
+    const compensationStep: QuestionFlowStep = {
+      key: "compensation",
+      label: "Compensation",
+      prompt: "Is compensation appropriate?",
+      options: ["Appropriate", "Inappropriate"]
+    };
+    const compensationCase: CaseData = {
+      ...caseItem,
+      difficulty_level: 2,
+      answer_key: {
+        expected_compensation: {
+          rule: "Metabolic acidosis compensation"
+        } as unknown as string
+      }
+    };
+
+    const { container, root } = renderQuestionFlowCard(
+      null,
+      vi.fn(),
+      compensationStep,
+      compensationCase,
+      null,
+      "kPa"
+    );
+    act(() => container.querySelector<HTMLButtonElement>(".question-flow-card__rule-button")?.click());
+
+    expect(container.querySelector(".question-flow-card__rule-popover")?.textContent).toContain(
+      "To display the result in kPa, multiply by 0.133."
+    );
+
+    act(() => root.unmount());
+  });
+
+  it("adds the pressure equivalence note to respiratory compensation formulas in kPa mode", () => {
+    const compensationStep: QuestionFlowStep = {
+      key: "compensation",
+      label: "Compensation",
+      prompt: "Is compensation appropriate?",
+      options: ["Appropriate", "Inappropriate"]
+    };
+    const compensationCase: CaseData = {
+      ...caseItem,
+      difficulty_level: 2,
+      answer_key: {
+        expected_compensation: {
+          rule: "Chronic respiratory acidosis"
+        } as unknown as string
+      }
+    };
+
+    const { container, root } = renderQuestionFlowCard(
+      null,
+      vi.fn(),
+      compensationStep,
+      compensationCase,
+      null,
+      "kPa"
+    );
+    act(() => container.querySelector<HTMLButtonElement>(".question-flow-card__rule-button")?.click());
+
+    expect(container.querySelector(".question-flow-card__rule-popover")?.textContent).toContain(
+      "40 mmHg ≈ 5.3 kPa; a 10 mmHg change ≈ 1.3 kPa."
+    );
+
+    act(() => root.unmount());
+  });
+
   it("shows the room-air A-a shortcut in kPa when the global preference is kPa", () => {
     const aaGradientStep: QuestionFlowStep = {
       key: "aa_gradient_mechanism",

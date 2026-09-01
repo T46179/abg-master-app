@@ -189,8 +189,19 @@ function rawCalculationRows(lines: string[]): CompensationCalculationRowVisualMo
   }));
 }
 
-function rangeText(band: CompensationBandVisualModel) {
-  return `${formatNumber(band.low)} – ${formatNumber(band.high)}`;
+function rangeDisplayText(band: CompensationBandVisualModel) {
+  return `${band.lowDisplay} – ${band.highDisplay}`;
+}
+
+function addRespiratoryPressureContext(
+  line: string,
+  measuredPaCO2MmHg: number,
+  pressureUnit: PressureUnit
+) {
+  const measuredDisplay = pressureUnit === "kPa"
+    ? `${formatValue(convertMmHgToKPa(measuredPaCO2MmHg), 1)} kPa (${formatNumber(measuredPaCO2MmHg)} mmHg)`
+    : `${formatNumber(measuredPaCO2MmHg)} mmHg`;
+  return line.replace(/^([^:]+):\s*/, `$1: PaCO₂ ${measuredDisplay} → `);
 }
 
 function calculationToneFor(band: CompensationBandVisualModel): CompensationCalculationTone | undefined {
@@ -208,7 +219,10 @@ function buildCalculationRows(
   result: CompensationResult,
   bands: CompensationBandVisualModel[],
   targetLabel: string,
-  lines: string[]
+  lines: string[],
+  displayInKPa: boolean,
+  displayUnit: string,
+  formatDisplayNumber: (value: number) => string
 ): CompensationCalculationRowVisualModel[] {
   if (!lines.length) return [];
 
@@ -225,15 +239,15 @@ function buildCalculationRows(
         id: "expected",
         parts: [
           { text: `Expected ${targetLabel}: Acute ` },
-          { text: rangeText(acuteBand), tone: calculationToneFor(acuteBand) },
+          { text: rangeDisplayText(acuteBand), tone: calculationToneFor(acuteBand) },
           { text: " · Chronic " },
-          { text: rangeText(chronicBand), tone: calculationToneFor(chronicBand) },
-          { text: ` ${result.unit}` }
+          { text: rangeDisplayText(chronicBand), tone: calculationToneFor(chronicBand) },
+          { text: ` ${displayUnit}` }
         ]
       },
       {
         id: "measured",
-        parts: [{ text: `Measured ${targetLabel}: ${formatNumber(result.measuredValue)} ${result.unit}` }]
+        parts: [{ text: `Measured ${targetLabel}: ${formatDisplayNumber(result.measuredValue)} ${displayUnit}` }]
       }
     ];
   }
@@ -241,20 +255,24 @@ function buildCalculationRows(
   const expectedBand = bands.find(band => band.id === result.primaryExpectedBandId)
     ?? bands.find(band => band.role === "expected");
   if (!expectedBand) return rawCalculationRows(lines);
+  const expectedValue = expectedBand.midpoint ?? ((expectedBand.low + expectedBand.high) / 2);
+  const formulaText = displayInKPa
+    ? `${lines[0]} → ${formatNumber(expectedValue)} × 0.133 = ${formatDisplayNumber(expectedValue)} kPa`
+    : lines[0];
 
   return [
-    { id: "formula", parts: [{ text: lines[0] }] },
+    { id: "formula", parts: [{ text: formulaText }] },
     {
       id: "expected",
       parts: [
         { text: `Expected ${targetLabel}: ` },
-        { text: rangeText(expectedBand), tone: calculationToneFor(expectedBand) },
-        { text: ` ${result.unit}` }
+        { text: rangeDisplayText(expectedBand), tone: calculationToneFor(expectedBand) },
+        { text: ` ${displayUnit}` }
       ]
     },
     {
       id: "measured",
-      parts: [{ text: `Measured ${targetLabel}: ${formatNumber(result.measuredValue)} ${result.unit}` }]
+      parts: [{ text: `Measured ${targetLabel}: ${formatDisplayNumber(result.measuredValue)} ${displayUnit}` }]
     }
   ];
 }
@@ -262,7 +280,7 @@ function buildCalculationRows(
 export function buildCompensationVisualModel(
   result: unknown,
   fallbackExplanation: string,
-  options?: { pressureUnit?: PressureUnit }
+  options?: { pressureUnit?: PressureUnit; measuredPaCO2MmHg?: number }
 ): BuiltCompensationVisualModel {
   if (!validateCompensationResult(result)) {
     return {
@@ -298,8 +316,25 @@ export function buildCompensationVisualModel(
   const qualifierMessages = (result.qualifierKeys ?? []).map(
     key => QUALIFIER_LABELS[key] ?? "Additional clinical context applies to this comparison."
   );
-  const calculationLines = result.calculation?.displayLines?.map(line => line.trim()).filter(Boolean) ?? [];
-  const calculationRows = buildCalculationRows(result, bands, targetLabel, calculationLines);
+  const pressureUnit = options?.pressureUnit ?? "mmHg";
+  const measuredPaCO2MmHg = Number(options?.measuredPaCO2MmHg);
+  const calculationLines = (result.calculation?.displayLines ?? [])
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map((line, index) => result.targetAnalyte === "hco3"
+      && Number.isFinite(measuredPaCO2MmHg)
+      && (result.calculation?.ruleKey === "acute_on_chronic_respiratory_acidosis" ? index < 2 : index === 0)
+      ? addRespiratoryPressureContext(line, measuredPaCO2MmHg, pressureUnit)
+      : line);
+  const calculationRows = buildCalculationRows(
+    result,
+    bands,
+    targetLabel,
+    calculationLines,
+    displayInKPa,
+    displayUnit,
+    formatDisplayNumber
+  );
   const relationshipByBand = new Map(result.comparisons.map(comparison => [comparison.bandId, comparison.relationship]));
   const bandDescriptions = bands.map(band => {
     const relationship = relationshipByBand.get(band.id);

@@ -32,6 +32,8 @@ const CALIBRATION_COMPLETION_STORAGE_KEY = "abgmaster_calibrationCompletion";
 const DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced", "master"];
 const CALIBRATION_PLACEMENTS: CalibrationPlacement[] = ["beginner", "intermediate", "advanced"];
 const RESULTS_EXPLANATION_PREFERENCE_KEYS: ResultsExplanationPreferenceKey[] = [
+  "oxygenation_status",
+  "aa_gradient_mechanism",
   "primary_disorder",
   "compensation",
   "anion_gap",
@@ -83,6 +85,8 @@ function createEmptySeenCaseState() {
 
 function createDefaultResultsExplanationPreferences(): ResultsExplanationPreferences {
   return {
+    oxygenation_status: true,
+    aa_gradient_mechanism: true,
     primary_disorder: true,
     compensation: true,
     anion_gap: true,

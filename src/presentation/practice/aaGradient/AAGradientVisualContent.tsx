@@ -9,6 +9,7 @@ import {
 import { Info } from "lucide-react";
 import type { PressureUnit } from "../../../core/types";
 import { MetricInlineText } from "../MetricText";
+import { AAGradientFormulaContent } from "./AAGradientFormulaContent";
 import {
   buildAAGradientVisualModel,
   getAAGradientLabelMode,
@@ -26,6 +27,16 @@ interface AAGradientVisualContentProps {
 
 type BarLabelKey = "alveolar" | "arterial" | "gradient";
 type BarLabelModes = Record<BarLabelKey, AAGradientLabelMode>;
+
+interface BarLayout {
+  labelModes: BarLabelModes;
+  widths: {
+    arterial: number;
+    gradient: number;
+  };
+}
+
+const LABEL_FIT_PADDING_PX = 16;
 
 const DEFAULT_LABEL_MODES: BarLabelModes = {
   alveolar: "full",
@@ -48,15 +59,27 @@ function labelText(
   return mode === "full" ? `${analyte} · ${value} ${unit}` : `${analyte} · ${value}`;
 }
 
-function labelModesMatch(left: BarLabelModes, right: BarLabelModes) {
-  return left.alveolar === right.alveolar
-    && left.arterial === right.arterial
-    && left.gradient === right.gradient;
+function defaultBarLayout(model: AAGradientVisualData): BarLayout {
+  return {
+    labelModes: DEFAULT_LABEL_MODES,
+    widths: {
+      arterial: model.geometry.arterialPercent,
+      gradient: model.geometry.gradientPercent
+    }
+  };
+}
+
+function barLayoutsMatch(left: BarLayout, right: BarLayout) {
+  return left.labelModes.alveolar === right.labelModes.alveolar
+    && left.labelModes.arterial === right.labelModes.arterial
+    && left.labelModes.gradient === right.labelModes.gradient
+    && Math.abs(left.widths.arterial - right.widths.arterial) < 0.0001
+    && Math.abs(left.widths.gradient - right.widths.gradient) < 0.0001;
 }
 
 function OxygenPressureBars({ model }: { model: AAGradientVisualData }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const [labelModes, setLabelModes] = useState<BarLabelModes>(DEFAULT_LABEL_MODES);
+  const [layout, setLayout] = useState<BarLayout>(() => defaultBarLayout(model));
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -79,33 +102,57 @@ function OxygenPressureBars({ model }: { model: AAGradientVisualData }) {
       ) as Record<keyof typeof probes, number>;
       const dimensions = [railWidth, ...Object.values(measured)];
       if (!dimensions.every(Number.isFinite) || dimensions.some(value => value <= 0)) {
-        setLabelModes(current => labelModesMatch(current, DEFAULT_LABEL_MODES) ? current : DEFAULT_LABEL_MODES);
+        const fallback = defaultBarLayout(model);
+        setLayout(current => barLayoutsMatch(current, fallback) ? current : fallback);
         return;
       }
 
-      const available = {
-        alveolar: railWidth,
+      const rawWidths = {
         arterial: railWidth * model.geometry.arterialPercent / 100,
         gradient: railWidth * model.geometry.gradientPercent / 100
       };
-      const next: BarLabelModes = {
+      const labelModes: BarLabelModes = {
         alveolar: getAAGradientLabelMode(
-          available.alveolar,
+          railWidth,
           measured["alveolar-full"],
           measured["alveolar-compact"]
         ),
         arterial: getAAGradientLabelMode(
-          available.arterial,
+          rawWidths.arterial,
           measured["arterial-full"],
           measured["arterial-compact"]
         ),
         gradient: getAAGradientLabelMode(
-          available.gradient,
+          rawWidths.gradient,
           measured["gradient-full"],
           measured["gradient-compact"]
         )
       };
-      setLabelModes(current => labelModesMatch(current, next) ? current : next);
+      const widths = {
+        arterial: model.geometry.arterialPercent,
+        gradient: model.geometry.gradientPercent
+      };
+
+      if (labelModes.arterial === "hidden") {
+        const arterialCompactFloor = measured["arterial-compact"] + LABEL_FIT_PADDING_PX;
+        const borrowedWidth = arterialCompactFloor - rawWidths.arterial;
+        const remainingGradientWidth = rawWidths.gradient - borrowedWidth;
+        const borrowedGradientMode = getAAGradientLabelMode(
+          remainingGradientWidth,
+          measured["gradient-full"],
+          measured["gradient-compact"]
+        );
+
+        if (borrowedWidth > 0 && borrowedGradientMode !== "hidden") {
+          labelModes.arterial = "compact";
+          labelModes.gradient = borrowedGradientMode;
+          widths.arterial = arterialCompactFloor / railWidth * 100;
+          widths.gradient = remainingGradientWidth / railWidth * 100;
+        }
+      }
+
+      const next = { labelModes, widths };
+      setLayout(current => barLayoutsMatch(current, next) ? current : next);
     };
 
     update();
@@ -139,24 +186,24 @@ function OxygenPressureBars({ model }: { model: AAGradientVisualData }) {
     }
   } as const;
   const hiddenKeys = (Object.keys(labels) as BarLabelKey[])
-    .filter(key => labelModes[key] === "hidden");
+    .filter(key => layout.labelModes[key] === "hidden");
 
   return (
     <div className="aag-bars" ref={rootRef}>
       <div className="aag-bars__heading">
-        <span>Shared oxygen pressure scale</span>
-        <span>Values shown in {model.unit}</span>
+        <span>Oxygen partial pressure ({model.unit})</span>
+        <span>not to scale</span>
       </div>
 
       <div className="aag-bars__rail" aria-hidden="true">
         <div className="aag-bars__row">
           <div
             className="aag-bars__segment aag-bars__segment--alveolar"
-            data-label-mode={labelModes.alveolar}
+            data-label-mode={layout.labelModes.alveolar}
           >
-            {labelModes.alveolar === "hidden" ? null : (
+            {layout.labelModes.alveolar === "hidden" ? null : (
               <span className="aag-bars__segment-label">
-                {labelText("PAO₂", labels.alveolar.value, model.unit, labelModes.alveolar)}
+                {labelText("PAO₂", labels.alveolar.value, model.unit, layout.labelModes.alveolar)}
               </span>
             )}
           </div>
@@ -164,23 +211,23 @@ function OxygenPressureBars({ model }: { model: AAGradientVisualData }) {
         <div className="aag-bars__row aag-bars__row--comparison">
           <div
             className="aag-bars__segment aag-bars__segment--arterial"
-            data-label-mode={labelModes.arterial}
-            style={{ width: `${model.geometry.arterialPercent}%` }}
+            data-label-mode={layout.labelModes.arterial}
+            style={{ width: `${layout.widths.arterial}%` }}
           >
-            {labelModes.arterial === "hidden" ? null : (
+            {layout.labelModes.arterial === "hidden" ? null : (
               <span className="aag-bars__segment-label">
-                {labelText("PaO₂", labels.arterial.value, model.unit, labelModes.arterial)}
+                {labelText("PaO₂", labels.arterial.value, model.unit, layout.labelModes.arterial)}
               </span>
             )}
           </div>
           <div
             className="aag-bars__segment aag-bars__segment--gradient"
-            data-label-mode={labelModes.gradient}
-            style={{ width: `${model.geometry.gradientPercent}%` }}
+            data-label-mode={layout.labelModes.gradient}
+            style={{ width: `${layout.widths.gradient}%` }}
           >
-            {labelModes.gradient === "hidden" ? null : (
+            {layout.labelModes.gradient === "hidden" ? null : (
               <span className="aag-bars__segment-label">
-                {labelText("A–a", labels.gradient.value, model.unit, labelModes.gradient)}
+                {labelText("A–a", labels.gradient.value, model.unit, layout.labelModes.gradient)}
               </span>
             )}
           </div>
@@ -216,43 +263,111 @@ function OxygenPressureBars({ model }: { model: AAGradientVisualData }) {
   );
 }
 
+function AAGradientFormulaHelp(props: { pressureUnit: PressureUnit; caseId: string }) {
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const containerRef = useRef<HTMLSpanElement | null>(null);
+  const popoverId = useId();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [props.caseId, props.pressureUnit]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handleDocumentClick(event: MouseEvent) {
+      const target = event.target as Node | null;
+      if (target && containerRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      buttonRef.current?.focus();
+    }
+
+    document.addEventListener("click", handleDocumentClick);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("click", handleDocumentClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open]);
+
+  return (
+    <span className="aag-formula-help" ref={containerRef}>
+      <button
+        ref={buttonRef}
+        className="aag-formula-help__button"
+        type="button"
+        aria-label="Show A-a gradient formula"
+        aria-expanded={open}
+        aria-controls={popoverId}
+        onClick={() => setOpen(current => !current)}
+      >
+        <span className="aag-formula-help__icon" aria-hidden="true" />
+      </button>
+      {open ? (
+        <div
+          className="aag-formula-help__popover question-flow-card__rule-popover"
+          id={popoverId}
+          role="dialog"
+          aria-label="A-a gradient formula"
+        >
+          <AAGradientFormulaContent pressureUnit={props.pressureUnit} />
+        </div>
+      ) : null}
+    </span>
+  );
+}
+
 function AAGradientCalculationDisclosure(props: {
   model: AAGradientVisualData;
+  pressureUnit: PressureUnit;
+  caseId: string;
   open: boolean;
   onToggle: () => void;
 }) {
   const panelId = useId();
+  const rowsByKey = Object.fromEntries(
+    props.model.calculationRows.map(row => [row.key, row])
+  ) as Record<string, AAGradientVisualData["calculationRows"][number]>;
+  const calculationLines = [
+    `PAO₂ = ${rowsByKey.inspired.expression} − (${rowsByKey.correction.expression}) = ${rowsByKey.alveolar.value}`,
+    `A–a gradient = ${rowsByKey.gradient.expression} = ${rowsByKey.gradient.value}`
+  ];
 
   return (
     <div className="aag-calc">
-      <button
-        type="button"
-        className="aag-calc__toggle"
-        aria-expanded={props.open}
-        aria-controls={panelId}
-        onClick={props.onToggle}
-      >
-        <span className="aag-calc__chevron" aria-hidden="true">›</span>
-        {props.open ? "Hide calculation" : "Show calculation"}
-      </button>
+      <div className="aag-calc__header">
+        <button
+          type="button"
+          className="aag-calc__toggle"
+          aria-expanded={props.open}
+          aria-controls={panelId}
+          onClick={props.onToggle}
+        >
+          <span className="aag-calc__chevron" aria-hidden="true">›</span>
+          {props.open ? "Hide calculation" : "Show calculation"}
+        </button>
+        <div className="aag-calc__meta">
+          {props.open ? (
+            <AAGradientFormulaHelp pressureUnit={props.pressureUnit} caseId={props.caseId} />
+          ) : null}
+        </div>
+      </div>
 
       {props.open ? (
         <div className="aag-calc__panel" id={panelId}>
-          <div className="aag-calc__formula" aria-label="A-a gradient formulas">
-            <span>PAO₂ = FiO₂ × (P<sub>atmos</sub> − P<sub>H₂O</sub>) − PaCO₂ / RQ</span>
-            <span>A–a gradient = PAO₂ − PaO₂</span>
-          </div>
-          <div className="aag-calc__rows">
-            {props.model.calculationRows.map(row => (
-              <div className={`aag-calc__row aag-calc__row--${row.key}`} key={row.key}>
-                <div className="aag-calc__row-copy">
-                  <span className="aag-calc__row-label">{row.label}</span>
-                  <span className="aag-calc__row-expression">{row.expression}</span>
-                </div>
-                <strong className="aag-calc__row-value">{row.value}</strong>
-              </div>
+          <ul className="aag-calc__lines">
+            {calculationLines.map(line => (
+              <li key={line}>
+                <MetricInlineText text={line} />
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       ) : null}
     </div>
@@ -294,7 +409,6 @@ export function AAGradientVisualContent(props: AAGradientVisualContentProps) {
   return (
     <div className="aag">
       <div className="aag-result">
-        <span className="aag-result__label">A–a gradient</span>
         <span className="aag-result__value">
           {model.headline.mainValue} <small>{model.unit}</small>
         </span>
@@ -330,6 +444,8 @@ export function AAGradientVisualContent(props: AAGradientVisualContentProps) {
 
       <AAGradientCalculationDisclosure
         model={model}
+        pressureUnit={model.unit}
+        caseId={props.caseId}
         open={calculationOpen}
         onToggle={() => setCalculationOpen(current => !current)}
       />
