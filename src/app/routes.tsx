@@ -14,6 +14,7 @@ import { BloodGasCompensationRulesScreen } from "../presentation/screens/BloodGa
 import { DeltaRatioScreen } from "../presentation/screens/DeltaRatioScreen";
 import { AbgInterpretationScreen } from "../presentation/screens/AbgInterpretationScreen";
 import { AnionGapScreen } from "../presentation/screens/AnionGapScreen";
+import { AAGradientScreen } from "../presentation/screens/AAGradientScreen";
 import { CalibrationScreen } from "../presentation/calibration";
 import { CasePreviewScreen } from "../presentation/screens/CasePreviewScreen";
 import { AuthoredCaseGalleryScreen } from "../presentation/screens/AuthoredCaseGalleryScreen";
@@ -25,6 +26,10 @@ import { FeaturedCaseScreen } from "../presentation/screens/FeaturedCaseScreen";
 import { AppRouteErrorView } from "../presentation/shared/StatusViews";
 
 export const appRoutes: RouteObject[] = [
+  {
+    path: "/a-a-gradient",
+    element: <AAGradientScreen />
+  },
   {
     path: "/about",
     element: <AboutScreen />

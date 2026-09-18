@@ -39,11 +39,11 @@ describe("AboutScreen", () => {
       );
     });
 
-    const link = container.querySelector<HTMLAnchorElement>(".about-page__back");
+    const link = container.querySelector<HTMLAnchorElement>(".public-page-back");
     const headings = Array.from(container.querySelectorAll("h1, h2")).map(heading => heading.textContent);
 
     expect(link?.getAttribute("href")).toBe("/dashboard");
-    expect(link?.textContent).toContain("Explore ABG Master");
+    expect(link?.textContent).toContain("Back to ABG Master");
     expect(headings).toEqual([
       "AboutThe project & the person",
       "ABG MasterA focused learning companion",
@@ -53,7 +53,7 @@ describe("AboutScreen", () => {
     expect(portrait?.alt).toBe("Portrait of Dr Thanh Truong");
     expect(portrait?.getAttribute("src")).toContain("about-portrait.webp");
     expect(container.querySelectorAll(".about-page__stat")).toHaveLength(3);
-    expect(Array.from(container.querySelectorAll(".about-page__stat strong")).map(card => card.textContent)).toEqual(["546", "157", "4"]);
+    expect(Array.from(container.querySelectorAll(".about-page__stat strong")).map(card => card.textContent)).toEqual(["546", "157", "5"]);
     expect(Array.from(container.querySelectorAll(".about-page__stat span")).map(card => card.textContent)).toEqual([
       "Cases completed", "Case Library", "Guides"
     ]);

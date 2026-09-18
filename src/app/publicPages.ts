@@ -18,6 +18,13 @@ export interface PublicUpdate {
 
 export const publicResources: PublicResource[] = [
   {
+    href: "/a-a-gradient/",
+    label: "Methodology",
+    title: "The A–a gradient",
+    subtitle: "The alveolar gas equation",
+    description: "The alveolar–arterial oxygen gradient compares the estimated oxygen tension in the alveoli with the measured oxygen tension in arterial blood."
+  },
+  {
     href: "/abg-interpretation/",
     label: "Core guide",
     title: "ABG Interpretation",

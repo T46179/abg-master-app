@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "../utils";
+import { PublicBackLink } from "../shared/PublicBackLink";
 
 interface PublicPageShellProps {
   children: ReactNode;
@@ -17,6 +18,7 @@ export function PublicPageShell({
   return (
     <main className={cn("comp-rules-page", "public-page-shell", pageClassName)}>
       <article className={cn("comp-rules-page__article", "public-page-shell__article", articleClassName)}>
+        <PublicBackLink />
         {children}
         {showEducationalDisclaimer ? (
           <footer className="comp-rules-page__footer">

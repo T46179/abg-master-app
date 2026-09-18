@@ -204,7 +204,7 @@ export function BloodGasCompensationRulesScreen() {
           </div>
           <div className="comp-rules-page__takeaway-cta">
             <Link className="comp-rules-page__practice-cta" to="/practice">
-              Practice compensation now
+              Practice Compensation Now
               <ArrowRight aria-hidden="true" />
             </Link>
           </div>
@@ -304,7 +304,7 @@ export function BloodGasCompensationRulesScreen() {
             <p>Apply these rules inside full blood gas cases, with worked explanations showing how expected and measured values compare.</p>
           </div>
           <Link to="/practice">
-            Start a practice case
+            Start a Practice Case
             <ArrowRight aria-hidden="true" />
           </Link>
         </section>

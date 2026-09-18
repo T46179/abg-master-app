@@ -117,7 +117,7 @@ const workedExamples: WorkedExample[] = [
       ["Anion gap", "140 - 100 - 12 = 28"],
       ["Delta ratio", "(28 - 12) / (24 - 12) = 1.33"]
     ],
-    result: <>Delta ratio fits HAGMA without an additional metabolic process, but <PaCO2Text /> is far lower than compensation alone would explain. This is why compensation should always be assessed separately from the delta ratio. <Link className="delta-ratio-page__inline-icon-link" to="/blood-gas-compensation-rules/" target="_blank" rel="noopener noreferrer">Review compensation rules <img src={externalLinkIcon} alt="" aria-hidden="true" /></Link></>,
+    result: <>Delta ratio fits HAGMA without an additional metabolic process, but <PaCO2Text /> is far lower than compensation alone would explain. This is why compensation should always be assessed separately from the delta ratio. <Link className="delta-ratio-page__inline-icon-link" to="/blood-gas-compensation-rules/" target="_blank" rel="noopener noreferrer">Review Compensation Rules <img src={externalLinkIcon} alt="" aria-hidden="true" /></Link></>,
     tone: "green"
   }
 ];
@@ -303,7 +303,7 @@ export function DeltaRatioScreen() {
 
         <div className="delta-ratio-page__quick-cta">
           <Link className="comp-rules-page__practice-cta" to="/practice?difficulty=advanced" target="_blank" rel="noopener noreferrer">
-            Test your Blood Gas interpretation
+            Test Your Blood Gas Interpretation
             <ArrowRight aria-hidden="true" />
           </Link>
         </div>
@@ -462,7 +462,7 @@ export function DeltaRatioScreen() {
             <p>Practise DKA, lactic acidosis, toxic alcohols, salicylates, and mixed metabolic patterns with step-by-step feedback.</p>
           </div>
           <Link to="/practice" target="_blank" rel="noopener noreferrer">
-            Start practising
+            Start Practising
             <ArrowRight aria-hidden="true" />
           </Link>
         </section>

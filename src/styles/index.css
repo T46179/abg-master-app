@@ -11638,34 +11638,6 @@ button.learn-progress-dots__dot:focus-visible {
   padding-top: 1rem;
 }
 
-.privacy-page__back {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  width: fit-content;
-  color: var(--color-slate-muted);
-  font-size: 0.85rem;
-  font-weight: 350;
-  line-height: 1.5;
-  text-decoration: none;
-}
-
-.privacy-page__back svg {
-  width: 0.9rem;
-  height: 0.9rem;
-  transition: transform 160ms ease;
-}
-
-.privacy-page__back:hover,
-.privacy-page__back:focus-visible {
-  color: var(--color-slate-strong);
-}
-
-.privacy-page__back:hover svg,
-.privacy-page__back:focus-visible svg {
-  transform: translateX(-0.15rem);
-}
-
 .privacy-page__updated {
   color: var(--color-slate-faint) !important;
   font-size: 0.85rem !important;
@@ -13662,8 +13634,10 @@ button.learn-progress-dots__dot:focus-visible {
   width: min(100%, 68.75rem);
 }
 
-.about-page__back {
+:is(.comp-rules-page, .aa-guide) :is(article, main) > a.public-page-back {
   display: inline-flex;
+  align-self: flex-start;
+  justify-self: start;
   align-items: center;
   gap: 0.5rem;
   color: var(--color-slate-muted);
@@ -13674,13 +13648,13 @@ button.learn-progress-dots__dot:focus-visible {
   text-decoration: none;
 }
 
-.about-page__back svg {
+.public-page-back svg {
   width: 0.875rem;
   height: 0.875rem;
 }
 
-.about-page__back:hover,
-.about-page__back:focus-visible {
+:is(.comp-rules-page, .aa-guide) :is(article, main) > a.public-page-back:hover,
+:is(.comp-rules-page, .aa-guide) :is(article, main) > a.public-page-back:focus-visible {
   color: var(--color-slate-strong);
 }
 

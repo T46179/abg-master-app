@@ -56,6 +56,7 @@ describe("static article SEO generation", () => {
     expect(getSitemapBlock(sitemap, "/delta-ratio/")).toContain("<lastmod>2026-07-27</lastmod>");
     expect(getSitemapBlock(sitemap, "/abg-interpretation/")).toContain("<lastmod>2026-07-27</lastmod>");
     expect(getSitemapBlock(sitemap, "/anion-gap/")).toContain("<lastmod>2026-06-19</lastmod>");
+    expect(getSitemapBlock(sitemap, "/a-a-gradient/")).toContain("<lastmod>2026-09-18</lastmod>");
     expect(getSitemapBlock(sitemap, "/about/")).toContain("<lastmod>2026-07-21</lastmod>");
   });
 });

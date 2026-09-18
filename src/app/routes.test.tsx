@@ -53,6 +53,7 @@ describe("app routes", () => {
   it.each([
     ["/about", "AboutScreen"],
     ["/resources", "ResourcesScreen"],
+    ["/a-a-gradient", "AAGradientScreen"],
     ["/updates", "UpdatesScreen"],
     ["/contact", "ContactScreen"]
   ])("renders the public screen at %s", (path, screenName) => {
@@ -70,6 +71,8 @@ describe("app routes", () => {
     "/abg-interpretation/",
     "/anion-gap",
     "/anion-gap/",
+    "/a-a-gradient",
+    "/a-a-gradient/",
     "/about",
     "/about/",
     "/resources",

@@ -147,7 +147,7 @@ export function AnionGapScreen() {
 
         <div className="comp-rules-page__takeaway-cta">
           <Link className="comp-rules-page__practice-cta" to="/practice" target="_blank" rel="noopener noreferrer">
-            Practice ABG interpretation
+            Practice ABG Interpretation
             <ArrowRight aria-hidden="true" />
           </Link>
         </div>
@@ -283,9 +283,9 @@ export function AnionGapScreen() {
           <p>Once you identify a high-anion-gap metabolic acidosis, the next steps are to check whether respiratory compensation is appropriate and whether there is an additional metabolic process.</p>
           <p>The anion gap tells you that extra acid is present. Compensation rules and the delta ratio help you decide whether that is the whole story.</p>
           <div className="anion-gap-page__next-links">
-            <NextStepLink to="/blood-gas-compensation-rules/">Compensation rules</NextStepLink>
-            <NextStepLink to="/delta-ratio/">Delta ratio</NextStepLink>
-            <NextStepLink to="/abg-interpretation/">ABG interpretation</NextStepLink>
+            <NextStepLink to="/blood-gas-compensation-rules/">Compensation Rules</NextStepLink>
+            <NextStepLink to="/delta-ratio/">Delta Ratio</NextStepLink>
+            <NextStepLink to="/abg-interpretation/">ABG Interpretation</NextStepLink>
           </div>
         </section>
 
@@ -309,7 +309,7 @@ export function AnionGapScreen() {
             <p>Work through realistic ABG cases with step-by-step feedback on anion gap, compensation, and mixed disorders.</p>
           </div>
           <Link to="/practice" target="_blank" rel="noopener noreferrer">
-            Start practising
+            Start Practising
             <ArrowRight aria-hidden="true" />
           </Link>
         </section>

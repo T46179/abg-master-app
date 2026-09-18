@@ -38,30 +38,34 @@ describe("ResourcesScreen", () => {
     const cards = Array.from(container.querySelectorAll<HTMLAnchorElement>(".resources-page__card"));
 
     expect(cards.map(card => card.getAttribute("href"))).toEqual([
+      "/a-a-gradient/",
       "/abg-interpretation/",
       "/anion-gap/",
       "/delta-ratio/",
       "/blood-gas-compensation-rules/"
     ]);
     expect(cards.map(card => card.querySelector(".resources-page__card-topline > span")?.textContent)).toEqual([
+      "Methodology",
       "Core guide",
       "Concept guide",
       "Concept guide",
       "Reference"
     ]);
     expect(cards.map(card => card.querySelector("h2")?.textContent)).toEqual([
+      "The A–a gradientThe alveolar gas equation",
       "ABG InterpretationStep-by-step",
       "Anion GapExplained",
       "Delta RatioWhen the gap doesn't add up",
       "Compensation RulesExpected, not assumed"
     ]);
     expect(cards.map(card => card.querySelector("p")?.textContent)).toEqual([
+      "The alveolar–arterial oxygen gradient compares the estimated oxygen tension in the alveoli with the measured oxygen tension in arterial blood.",
       "A structured walkthrough for reading any arterial blood gas — from pH to compensation, in the order it actually matters.",
       "One of the quickest ways to make sense of a low bicarbonate — and to decide what's actually replacing it.",
       "The follow-up question to the anion gap. Use it to uncover a second, hidden acid–base disorder lurking beneath the obvious one.",
       "The formulas worth memorising, and the reasoning behind them — so you can tell adequate compensation from a mixed picture."
     ]);
-    expect(container.querySelectorAll(".resources-page__card-icon[aria-hidden=\"true\"]")).toHaveLength(4);
+    expect(container.querySelectorAll(".resources-page__card-icon[aria-hidden=\"true\"]")).toHaveLength(5);
     expect(container.querySelector(".comp-rules-page__footer")).toBeNull();
   });
 });
