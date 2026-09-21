@@ -952,6 +952,15 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
     expect(container.textContent).not.toContain("We can't load a new case right now. Please try again.");
   });
 
+  it("shows generic loading copy while waiting for a case", () => {
+    currentState.practiceState.syncState = "idle";
+    currentState.practiceState.syncMessage = null;
+
+    renderScreen();
+
+    expect(container.querySelector("[role='status']")?.textContent).toBe("Loading…");
+  });
+
   it("falls back to the offline unavailable message when no specific message is present", () => {
     Object.defineProperty(window.navigator, "onLine", {
       configurable: true,

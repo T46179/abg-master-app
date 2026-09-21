@@ -1171,7 +1171,7 @@ export function ProtectedPracticeScreen() {
             <div className="status-screen status-screen--loading">
               <div className="loading-chip" role="status" aria-live="polite">
                 <span className="loading-chip__spinner" aria-hidden="true" />
-                <span>Loading cases</span>
+                <span>Loading…</span>
               </div>
             </div>
           )}
