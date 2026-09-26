@@ -20,6 +20,9 @@ interface MainNavProps {
   onCoreFlowLinkClick?: (label: string, destination: string) => void;
   settingsOpen?: boolean;
   pressureUnit?: PressureUnit;
+  pressureUnitLocked?: boolean;
+  examRanges?: boolean;
+  onExamRangesChange?: () => void;
   onToggleSettings?: () => void;
   onCloseSettings?: () => void;
   onPressureUnitChange?: (unit: PressureUnit) => void;
@@ -47,7 +50,8 @@ export function MainNav(props: MainNavProps) {
       ? [{ to: insightsRouteContract.route, label: insightsRouteContract.navigationLabel, description: "Trends from your cases", icon: "insights" as const, end: true }]
       : []),
     { to: "/learn?all=1", label: "Learn", description: "Modules & references", icon: "learn", disabled: !props.learnEnabled },
-    { to: "/practice", label: "Practice", description: "Clinical case sets", icon: "practice" }
+    { to: "/practice", label: "Practice", description: "Clinical case sets", icon: "practice" },
+    { to: "/exam", label: "Exam", description: "Exam Room", icon: "exam" }
   ];
   const activeItem = hideNavigationItems ? undefined : navItems.find(item => {
     if (item.disabled) return false;
@@ -154,6 +158,9 @@ export function MainNav(props: MainNavProps) {
               <SettingsPopover
                 open={Boolean(props.settingsOpen)}
                 pressureUnit={props.pressureUnit ?? "mmHg"}
+                pressureUnitLocked={props.pressureUnitLocked}
+                examRanges={props.examRanges}
+                onExamRangesChange={props.onExamRangesChange}
                 onToggle={props.onToggleSettings}
                 onClose={props.onCloseSettings}
                 onPressureUnitChange={props.onPressureUnitChange}

@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Children, cloneElement, Fragment, isValidElement, type ReactNode } from "react";
 import type { PressureUnit } from "../../core/types";
 import {
   renderPartialPressureText,
@@ -12,6 +12,12 @@ interface MetricLabelProps {
 
 export function MetricLabel({ label }: MetricLabelProps) {
   switch (label) {
+    case "PCO2":
+      return <>PCO<sub>2</sub></>;
+    case "PO2":
+      return <>PO<sub>2</sub></>;
+    case "SaO2":
+      return <>SaO<sub>2</sub></>;
     case "PaCO2":
       return <>PaCO<sub>2</sub></>;
     case "HCO3":
@@ -62,10 +68,19 @@ export function MetricReference({ reference }: { reference: string }) {
   );
 }
 
-const INLINE_METRIC_PATTERN = /(PaCO2|PaO2|FiO2|SpO2|HCO3-?|CO2)/g;
+const INLINE_METRIC_PATTERN = /(?<![A-Za-z0-9])(PaCO[2₂]|PCO[2₂]|PaO[2₂]|PO[2₂]|FiO[2₂]|SpO[2₂]|SaO[2₂]|HCO[3₃][-−⁻]?|CO[2₂]|Na[+⁺]|K[+⁺]|Cl[-−⁻])(?![A-Za-z0-9])/g;
 
 function renderInlineMetricToken(token: string) {
-  switch (token) {
+  const normalized = token.replaceAll("₂", "2").replaceAll("₃", "3").replace(/[−⁻]/g, "-").replaceAll("⁺", "+");
+  switch (normalized) {
+    case "PCO2":
+    case "PO2":
+    case "SaO2":
+      return <MetricLabel label={normalized} />;
+    case "Na+":
+    case "K+":
+    case "Cl-":
+      return <MetricLabel label={normalized.slice(0, -1)} />;
     case "PaCO2":
       return <>PaCO<sub>2</sub></>;
     case "PaO2":
@@ -105,4 +120,18 @@ export function MetricInlineText({ text, pressureUnit, pressureTextContext }: Me
       ))}
     </TranslationSafeInline>
   );
+}
+
+// Format authored text inside native markup without touching existing sub/sup tags
+// or inspecting custom components, input values, or assessment identifiers.
+export function MetricRichText({ children }: { children: ReactNode }) {
+  function format(node: ReactNode): ReactNode {
+    if (typeof node === "string") return <MetricInlineText text={node} />;
+    if (Array.isArray(node)) return Children.map(node, format);
+    if (!isValidElement<{ children?: ReactNode }>(node)) return node;
+    if (node.type === "sub" || node.type === "sup") return node;
+    if (typeof node.type !== "string" && node.type !== Fragment) return node;
+    return cloneElement(node, undefined, Children.map(node.props.children, format));
+  }
+  return <>{Children.map(children, format)}</>;
 }

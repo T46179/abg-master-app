@@ -1,7 +1,7 @@
 // Drawer-local spacing and typography mirror Figma because the shared theme has no reusable tokens for this scale.
 import { useEffect, useRef, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Award, Bell, BookOpen, ChevronRight, LayoutDashboard, Stethoscope, TrendingUp, X, type LucideIcon } from "lucide-react";
+import { Award, Bell, BookOpen, ChevronRight, FileCheck, LayoutDashboard, Stethoscope, TrendingUp, X, type LucideIcon } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { ProgressBar } from "../primitives/ProgressBar";
 import { cn } from "../utils";
@@ -12,7 +12,7 @@ export interface MobileNavDrawerItem {
   label: string;
   description: string;
   end?: boolean;
-  icon: "dashboard" | "insights" | "learn" | "practice";
+  icon: "dashboard" | "insights" | "learn" | "practice" | "exam";
 }
 
 interface MobileNavDrawerProps {
@@ -32,7 +32,8 @@ const iconByName: Record<MobileNavDrawerItem["icon"], LucideIcon> = {
   dashboard: LayoutDashboard,
   insights: TrendingUp,
   learn: BookOpen,
-  practice: Stethoscope
+  practice: Stethoscope,
+  exam: FileCheck
 };
 
 const focusableSelector = [

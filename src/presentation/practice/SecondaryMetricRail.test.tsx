@@ -142,6 +142,7 @@ describe("SecondaryMetricRail", () => {
     const preventDefault = vi.spyOn(wheelEvent, "preventDefault");
     act(() => scrollContainer?.dispatchEvent(wheelEvent));
     expect(preventDefault).toHaveBeenCalled();
+    expect(wheelEvent.defaultPrevented).toBe(true);
     expect(requestAnimationFrame).toHaveBeenCalled();
 
     act(() => indicator?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })));
@@ -156,4 +157,31 @@ describe("SecondaryMetricRail", () => {
     act(() => root.render(renderRail()));
     expect(container.querySelector(".secondary-metric-rail")?.getAttribute("data-show-scroll-hint")).toBe("false");
   });
+  it.each([
+    ["forward", 0, 600, 60, true],
+    ["backward", 200, 600, -60, true],
+    ["past the start", 0, 600, -60, false],
+    ["past the end", 400, 600, 60, false],
+    ["without overflow", 0, 200, 60, false],
+  ])("cancels page scrolling only when moving %s within the rail", (_name, left, width, deltaY, prevented) => {
+    // Live geometry must work even before the overflow hook has updated.
+    vi.mocked(useHorizontalOverflowState).mockReturnValue(buildScrollController());
+    act(() => root.render(<SecondaryMetricRail metrics={[buildMetric("Na")]}
+      contentKey="wheel" showReferences showAbnormalHighlighting={false} />));
+    const node = container.querySelector<HTMLDivElement>(".secondary-metric-rail__scroll")!;
+    Object.defineProperties(node, {
+      clientWidth: { configurable: true, value: 200 },
+      scrollWidth: { configurable: true, value: width },
+      scrollLeft: { configurable: true, value: left, writable: true }
+    });
+    const event = new WheelEvent("wheel", { deltaY, bubbles: true, cancelable: true });
+    act(() => node.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(prevented);
+    if (prevented) {
+      const callback = vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0];
+      act(() => callback(0));
+      expect(deltaY > 0 ? node.scrollLeft > left : node.scrollLeft < left).toBe(true);
+    }
+  });
+
 });

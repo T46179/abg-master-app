@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type WheelEvent } from "react";
+import { useEffect, useId, useRef } from "react";
 import type { CaseMetricDefinition } from "../../core/types";
 import { HorizontalScrollIndicator } from "../primitives/HorizontalScrollIndicator";
 import { useHorizontalOverflowState } from "../useHorizontalOverflowState";
@@ -22,68 +22,75 @@ export function SecondaryMetricRail(props: SecondaryMetricRailProps) {
   const wheelAnimationFrame = useRef<number | null>(null);
   const wheelTargetLeft = useRef<number | null>(null);
 
-  useEffect(() => (
-    () => {
+  useEffect(() => {
+    const node = scrollState.ref.current;
+    if (!node) return;
+
+    function animateWheelScroll() {
+      const targetLeft = wheelTargetLeft.current;
+
+      if (!node || targetLeft === null) {
+        wheelAnimationFrame.current = null;
+        return;
+      }
+
+      const distance = targetLeft - node.scrollLeft;
+
+      if (Math.abs(distance) < 0.8) {
+        node.scrollLeft = targetLeft;
+        wheelAnimationFrame.current = null;
+        wheelTargetLeft.current = null;
+        return;
+      }
+
+      node.scrollLeft += distance * 0.32;
+      wheelAnimationFrame.current = requestAnimationFrame(animateWheelScroll);
+    }
+
+    function normalizeWheelDelta(event: WheelEvent) {
+      const rawDelta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
+        ? event.deltaX
+        : event.deltaY;
+
+      if (event.deltaMode === 1) return rawDelta * 24;
+      if (event.deltaMode === 2) return rawDelta * Math.max(node!.clientWidth, 1);
+      return rawDelta;
+    }
+
+    function handleWheel(event: WheelEvent) {
+      if (!node || node.scrollWidth - node.clientWidth <= 1) return;
+
+      const dominantDelta = normalizeWheelDelta(event);
+
+      if (dominantDelta === 0) return;
+
+      const maxScrollLeft = Math.max(node.scrollWidth - node.clientWidth, 0);
+      const scrollingBackPastStart = dominantDelta < 0 && node.scrollLeft <= 1;
+      const scrollingForwardPastEnd = dominantDelta > 0 && node.scrollLeft >= maxScrollLeft - 1;
+
+      if (scrollingBackPastStart || scrollingForwardPastEnd) return;
+
+      event.preventDefault();
+
+      const currentTarget = wheelTargetLeft.current ?? node.scrollLeft;
+      wheelTargetLeft.current = Math.min(Math.max(currentTarget + dominantDelta, 0), maxScrollLeft);
+
+      if (wheelAnimationFrame.current === null) {
+        wheelAnimationFrame.current = requestAnimationFrame(animateWheelScroll);
+      }
+    }
+
+    // React's delegated wheel listener is passive and cannot cancel page scrolling.
+    node.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      node.removeEventListener("wheel", handleWheel);
       if (wheelAnimationFrame.current !== null) {
         cancelAnimationFrame(wheelAnimationFrame.current);
       }
-    }
-  ), []);
-
-  function animateWheelScroll() {
-    const node = scrollState.ref.current;
-    const targetLeft = wheelTargetLeft.current;
-
-    if (!node || targetLeft === null) {
       wheelAnimationFrame.current = null;
-      return;
-    }
-
-    const distance = targetLeft - node.scrollLeft;
-
-    if (Math.abs(distance) < 0.8) {
-      node.scrollLeft = targetLeft;
-      wheelAnimationFrame.current = null;
-      return;
-    }
-
-    node.scrollLeft += distance * 0.32;
-    wheelAnimationFrame.current = requestAnimationFrame(animateWheelScroll);
-  }
-
-  function normalizeWheelDelta(event: WheelEvent<HTMLDivElement>) {
-    const rawDelta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
-      ? event.deltaX
-      : event.deltaY;
-
-    if (event.deltaMode === 1) return rawDelta * 24;
-    if (event.deltaMode === 2) return rawDelta * Math.max(scrollState.clientWidth, 1);
-    return rawDelta;
-  }
-
-  function handleWheel(event: WheelEvent<HTMLDivElement>) {
-    const node = scrollState.ref.current;
-    if (!scrollState.overflowing || !node) return;
-
-    const dominantDelta = normalizeWheelDelta(event);
-
-    if (dominantDelta === 0) return;
-
-    const maxScrollLeft = Math.max(node.scrollWidth - node.clientWidth, 0);
-    const scrollingBackPastStart = dominantDelta < 0 && node.scrollLeft <= 1;
-    const scrollingForwardPastEnd = dominantDelta > 0 && node.scrollLeft >= maxScrollLeft - 1;
-
-    if (scrollingBackPastStart || scrollingForwardPastEnd) return;
-
-    event.preventDefault();
-
-    const currentTarget = wheelTargetLeft.current ?? node.scrollLeft;
-    wheelTargetLeft.current = Math.min(Math.max(currentTarget + dominantDelta, 0), maxScrollLeft);
-
-    if (wheelAnimationFrame.current === null) {
-      wheelAnimationFrame.current = requestAnimationFrame(animateWheelScroll);
-    }
-  }
+      wheelTargetLeft.current = null;
+    };
+  }, [scrollState.ref, props.contentKey]);
 
   return (
     <div
@@ -102,7 +109,6 @@ export function SecondaryMetricRail(props: SecondaryMetricRailProps) {
         data-overflowing={scrollState.overflowing}
         data-at-start={scrollState.atStart}
         data-at-end={scrollState.atEnd}
-        onWheel={handleWheel}
       >
         <div className="secondary-metric-rail__grid metric-grid metric-grid--secondary metric-grid--scrolling">
           {props.metrics.map(metric => (

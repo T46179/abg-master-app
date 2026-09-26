@@ -15,9 +15,16 @@ import { Surface } from "../primitives/Surface";
 import { LoadingView } from "../shared/StatusViews";
 import { LaunchNotifyModal } from "./LaunchNotifyModal";
 import { MainNav } from "./MainNav";
+import { ExamSittingProvider, useExamSitting } from "../exam/ExamSittingContext";
 import { getMobileNavProgress } from "./mobileNavProgress";
 
 export function AppShell() {
+  return <ExamSittingProvider><AppShellContent /></ExamSittingProvider>;
+}
+
+function AppShellContent() {
+  const { sitting, dispatch: dispatchExam } = useExamSitting();
+  const examActive = Boolean(sitting && sitting.phase !== "complete");
   const { state, patchSessionState, retryPendingSubmissionNow, discardPendingSubmission } = useAppContext();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -118,6 +125,7 @@ export function AppShell() {
   }
 
   function handlePressureUnitChange(pressureUnit: PressureUnit) {
+    if (examActive) return;
     if ((state.sessionState?.pressureUnit ?? "mmHg") === pressureUnit) return;
     patchSessionState({ pressureUnit });
     state.storage?.savePressureUnitPreference(pressureUnit);
@@ -168,7 +176,10 @@ export function AppShell() {
         onCloseMobile={() => setMobileOpen(false)}
         onOpenStayUpdated={handleOpenStayUpdated}
         settingsOpen={settingsOpen}
-        pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"}
+        pressureUnit={examActive ? sitting!.pressureUnit : state.sessionState?.pressureUnit ?? "mmHg"}
+        pressureUnitLocked={examActive}
+        examRanges={examActive && /^\/exam\/?$/.test(location.pathname) ? sitting!.showRanges : undefined}
+        onExamRangesChange={() => dispatchExam({ type: "ranges" })}
         onToggleSettings={handleToggleSettings}
         onCloseSettings={() => setSettingsOpen(false)}
         onPressureUnitChange={handlePressureUnitChange}

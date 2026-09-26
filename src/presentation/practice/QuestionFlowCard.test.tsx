@@ -483,7 +483,8 @@ describe("QuestionFlowCard", () => {
     );
 
     expect(container.querySelector(".inline-feedback__note")?.textContent)
-      .toBe("With a measured PaO₂ of 90 mmHg, the A–a gradient is about 338 mmHg.");
+      .toBe("With a measured PaO2 of 90 mmHg, the A–a gradient is about 338 mmHg.");
+    expect(container.querySelector(".inline-feedback__note sub")?.textContent).toBe("2");
 
     act(() => root.unmount());
   });

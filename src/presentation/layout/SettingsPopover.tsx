@@ -4,6 +4,9 @@ import type { PressureUnit } from "../../core/types";
 interface SettingsPopoverProps {
   open: boolean;
   pressureUnit: PressureUnit;
+  pressureUnitLocked?: boolean;
+  examRanges?: boolean;
+  onExamRangesChange?: () => void;
   onToggle: () => void;
   onClose: () => void;
   onPressureUnitChange: (unit: PressureUnit) => void;
@@ -24,7 +27,11 @@ export function SettingsPopover(props: SettingsPopoverProps) {
     if (!props.open) return;
 
     const animationFrame = window.requestAnimationFrame(() => {
-      unitButtonRefs.current[props.pressureUnit]?.focus();
+      if (props.pressureUnitLocked) {
+        containerRef.current?.querySelector<HTMLButtonElement>('[role="switch"]')?.focus();
+      } else {
+        unitButtonRefs.current[props.pressureUnit]?.focus();
+      }
     });
 
     function handleOutsideMouseDown(event: MouseEvent) {
@@ -47,7 +54,7 @@ export function SettingsPopover(props: SettingsPopoverProps) {
       document.removeEventListener("mousedown", handleOutsideMouseDown);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [props.onClose, props.open, props.pressureUnit]);
+  }, [props.onClose, props.open, props.pressureUnit, props.pressureUnitLocked]);
 
   return (
     <div className="main-nav__settings" ref={containerRef}>
@@ -74,7 +81,7 @@ export function SettingsPopover(props: SettingsPopoverProps) {
           <div className="main-nav__settings-row">
             <div className="main-nav__settings-copy">
               <span className="main-nav__settings-label">Units</span>
-              <span className="main-nav__settings-description">Partial pressure display</span>
+              <span className="main-nav__settings-description">{props.pressureUnitLocked ? "Fixed for this exam" : "Partial pressure display"}</span>
             </div>
             <div className="main-nav__unit-control" role="group" aria-label="Partial pressure display units">
               {PRESSURE_UNITS.map(unit => (
@@ -84,6 +91,7 @@ export function SettingsPopover(props: SettingsPopoverProps) {
                   className="main-nav__unit-option"
                   type="button"
                   aria-pressed={props.pressureUnit === unit}
+                  disabled={props.pressureUnitLocked}
                   onClick={() => props.onPressureUnitChange(unit)}
                 >
                   {unit}
@@ -91,6 +99,17 @@ export function SettingsPopover(props: SettingsPopoverProps) {
               ))}
             </div>
           </div>
+          {props.examRanges !== undefined && props.onExamRangesChange && (
+            <div className="main-nav__settings-row">
+              <div className="main-nav__settings-copy">
+                <span className="main-nav__settings-label">Reference ranges</span>
+                <span className="main-nav__settings-description">Exam display</span>
+              </div>
+              <button type="button" role="switch" aria-label="Exam reference ranges"
+                aria-checked={props.examRanges} className="main-nav__unit-option"
+                onClick={props.onExamRangesChange}>{props.examRanges ? "On" : "Off"}</button>
+            </div>
+          )}
         </div>
       ) : null}
     </div>
