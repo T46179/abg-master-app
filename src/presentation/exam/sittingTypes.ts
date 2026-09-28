@@ -10,6 +10,7 @@ export interface ExamPart {
   instruction?: string;
   marks: number;
   options?: ExamOption[];
+  optionOrder?: "randomised" | "fixed";
   selectN?: number;
   pressureAnswer?: boolean;
   answerUnit?: string;

@@ -1,17 +1,17 @@
 import type { ExamQuestion } from "./sittingTypes";
 
-// GENERATED development-only assessment snapshot: EXAM-0001 a1, EXAM-0002 a2, EXAM-0003 a2.
+// GENERATED development-only assessment snapshot: EXAM-0001 a1, EXAM-0002 a2, EXAM-0003 a2, EXAM-0004 a1, EXAM-0005 a1.
 // Refresh from the private content repository: py -B -m generator.exam_preview
 // Keep the DEV import guard. No rubric, keys, feedback, resources or difficulty.
 // Canonical IDs and authored option order preserved; "concept" means text input, not grading.
 export const demoQuestions: ExamQuestion[] = [
   {
     "id": "EXAM-0001",
-    "scenario": "A 23-year-old male presents to triage breathless. He is visibly cyanotic and has increased work of breathing. His vitals are RR 32/min, SpO2 86% on room air, HR 104 bpm, and BP 128/76 mmHg. He is alert, and his lungs are clear on auscultation. He tells you that he has been using 'poppers' for the last several hours.",
+    "scenario": "A 23-year-old male presents to triage breathless. He is visibly cyanotic, and has increased work of breathing. His vitals are RR 32/min, SpO2 is 86% on room air, HR 104 bpm, and BP 128/76 mmHg. He is alert, and his lungs are clear on auscultation. He tells you that he has been using 'poppers' for the last several hours.",
     "tables": [
       {
         "id": "EXAM-0001-gas",
-        "heading": "Initial VBG",
+        "heading": "Blood Gas",
         "grouping": "Patient 1 · presentation · venous blood",
         "rows": [
           {
@@ -123,6 +123,7 @@ export const demoQuestions: ExamQuestion[] = [
         "prompt": "What is the acid-base process?",
         "marks": 1,
         "instruction": "Select one",
+        "optionOrder": "randomised",
         "options": [
           {
             "id": "EXAM-0001-P1-O1",
@@ -148,6 +149,7 @@ export const demoQuestions: ExamQuestion[] = [
         "prompt": "Which of the following is correct regarding the SpO₂?",
         "marks": 1,
         "instruction": "Select one",
+        "optionOrder": "randomised",
         "options": [
           {
             "id": "EXAM-0001-P2-O1",
@@ -173,6 +175,7 @@ export const demoQuestions: ExamQuestion[] = [
         "prompt": "Assuming otherwise normal gas exchange, which of the following best predicts this patient’s arterial PO₂ on room air at sea level?",
         "marks": 1,
         "instruction": "Select one",
+        "optionOrder": "fixed",
         "options": [
           {
             "id": "EXAM-0001-P3-O1",
@@ -202,6 +205,7 @@ export const demoQuestions: ExamQuestion[] = [
         "prompt": "Which of the following statements is true regarding management of this patient?",
         "marks": 1,
         "instruction": "Select one",
+        "optionOrder": "randomised",
         "options": [
           {
             "id": "EXAM-0001-P4-O1",
@@ -229,7 +233,7 @@ export const demoQuestions: ExamQuestion[] = [
     "tables": [
       {
         "id": "EXAM-0002-gas",
-        "heading": "ABG Values",
+        "heading": "Blood Gas",
         "grouping": "Patient 1 · presentation · arterial blood",
         "rows": [
           {
@@ -347,7 +351,7 @@ export const demoQuestions: ExamQuestion[] = [
       {
         "id": "EXAM-0002-P1",
         "kind": "concept",
-        "prompt": "Name the respiratory acid–base disturbance.",
+        "prompt": "What is the respiratory acid–base disturbance?",
         "marks": 1
       },
       {
@@ -356,6 +360,7 @@ export const demoQuestions: ExamQuestion[] = [
         "prompt": "What is his approximate O2 saturation?",
         "marks": 1,
         "instruction": "Select one",
+        "optionOrder": "fixed",
         "options": [
           {
             "id": "EXAM-0002-P2-O1",
@@ -381,6 +386,7 @@ export const demoQuestions: ExamQuestion[] = [
         "prompt": "Which of the following would typically produce the acid–base pattern shown?",
         "marks": 1,
         "instruction": "Select all that apply",
+        "optionOrder": "randomised",
         "options": [
           {
             "id": "EXAM-0002-P3-O1",
@@ -422,7 +428,7 @@ export const demoQuestions: ExamQuestion[] = [
     "tables": [
       {
         "id": "EXAM-0003-gas",
-        "heading": "Initial VBG",
+        "heading": "Blood Gas",
         "grouping": "Patient 1 · presentation · venous blood",
         "rows": [
           {
@@ -536,6 +542,7 @@ export const demoQuestions: ExamQuestion[] = [
         "prompt": "Which of the following mechanisms best explains the raised PCO2 in this patient?",
         "marks": 1,
         "instruction": "Select one",
+        "optionOrder": "randomised",
         "options": [
           {
             "id": "EXAM-0003-P3-O1",
@@ -554,6 +561,378 @@ export const demoQuestions: ExamQuestion[] = [
             "text": "Renal bicarbonate loss causing compensatory hypoventilation."
           }
         ]
+      }
+    ]
+  },
+  {
+    "id": "EXAM-0004",
+    "scenario": "A 72-year-old male presents with a fever. His BP is 94/60, SpO2 97% on 2L nasal cannula, HR 126bpm and RR is 24. He is confused and unable to answer your questions coherently. This is his blood gas.",
+    "tables": [
+      {
+        "id": "EXAM-0004-gas",
+        "heading": "Blood Gas",
+        "grouping": "Patient 1 · presentation · venous blood",
+        "rows": [
+          {
+            "id": "EXAM-0004-ph",
+            "label": "pH",
+            "value": 7.2,
+            "unit": "",
+            "primary": true,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": 7.35,
+            "refHigh": 7.45
+          },
+          {
+            "id": "EXAM-0004-pco2",
+            "label": "PaCO2",
+            "value": 22,
+            "unit": "mmHg",
+            "primary": true,
+            "oxygenation": false,
+            "pressure": true,
+            "refLow": 35,
+            "refHigh": 45
+          },
+          {
+            "id": "EXAM-0004-po2",
+            "label": "PaO2",
+            "value": 59,
+            "unit": "mmHg",
+            "primary": false,
+            "oxygenation": true,
+            "pressure": true,
+            "refLow": 80,
+            "refHigh": 100
+          },
+          {
+            "id": "EXAM-0004-hco3",
+            "label": "HCO3",
+            "value": 12,
+            "unit": "mmol/L",
+            "primary": true,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": 22,
+            "refHigh": 26
+          },
+          {
+            "id": "EXAM-0004-be",
+            "label": "BE",
+            "value": -19.5,
+            "unit": "mEq/L",
+            "primary": false,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": -2,
+            "refHigh": 2
+          },
+          {
+            "id": "EXAM-0004-na",
+            "label": "Na",
+            "value": 132,
+            "unit": "mmol/L",
+            "primary": false,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": 135,
+            "refHigh": 145
+          },
+          {
+            "id": "EXAM-0004-k",
+            "label": "K",
+            "value": 6.8,
+            "unit": "mmol/L",
+            "primary": false,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": 3.5,
+            "refHigh": 5.0
+          },
+          {
+            "id": "EXAM-0004-cl",
+            "label": "Cl",
+            "value": 95,
+            "unit": "mmol/L",
+            "primary": false,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": 98,
+            "refHigh": 106
+          },
+          {
+            "id": "EXAM-0004-glucose",
+            "label": "Glucose",
+            "value": 6.0,
+            "unit": "mmol/L",
+            "primary": false,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": 3.9,
+            "refHigh": 7.8
+          },
+          {
+            "id": "EXAM-0004-lactate",
+            "label": "Lactate",
+            "value": 7.8,
+            "unit": "mmol/L",
+            "primary": false,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": 0.5,
+            "refHigh": 2.0
+          }
+        ]
+      }
+    ],
+    "parts": [
+      {
+        "id": "EXAM-0004-P1",
+        "kind": "concept",
+        "prompt": "What is your interpretation of his acid-base status?",
+        "marks": 2
+      },
+      {
+        "id": "EXAM-0004-P2",
+        "kind": "single",
+        "prompt": "Which of the following is LEAST likely to produce this acid-base pattern?",
+        "marks": 1,
+        "instruction": "Select one",
+        "optionOrder": "randomised",
+        "options": [
+          {
+            "id": "EXAM-0004-P2-O1",
+            "text": "Severe sepsis."
+          },
+          {
+            "id": "EXAM-0004-P2-O2",
+            "text": "Salicylate toxicity."
+          },
+          {
+            "id": "EXAM-0004-P2-O3",
+            "text": "Acute liver failure."
+          },
+          {
+            "id": "EXAM-0004-P2-O4",
+            "text": "Opioid toxicity."
+          }
+        ]
+      },
+      {
+        "id": "EXAM-0004-P3",
+        "kind": "single",
+        "prompt": "A repeat blood gas two hours later shows the lactate has fallen substantially but remains elevated. Which statement is most accurate?",
+        "marks": 1,
+        "instruction": "Select one",
+        "optionOrder": "randomised",
+        "options": [
+          {
+            "id": "EXAM-0004-P3-O1",
+            "text": "A falling lactate is reassuring, but the trend must be interpreted alongside the patient's clinical response."
+          },
+          {
+            "id": "EXAM-0004-P3-O2",
+            "text": "Persistent lactate elevation proves ongoing tissue hypoperfusion."
+          },
+          {
+            "id": "EXAM-0004-P3-O3",
+            "text": "A falling lactate confirms that adequate resuscitation has been achieved."
+          },
+          {
+            "id": "EXAM-0004-P3-O4",
+            "text": "Lactate is no longer clinically useful once treatment has commenced."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "EXAM-0005",
+    "scenario": "ROSC is achieved in a 32 year-old-woman in her third trimester of pregnancy after a collapse and PEA arrest. She has been intubated, and is on a low-dose adrenaline infusion. An arterial blood gas was taken shortly after.",
+    "tables": [
+      {
+        "id": "EXAM-0005-gas",
+        "heading": "Blood Gas",
+        "grouping": "Patient 1 · presentation · arterial blood",
+        "rows": [
+          {
+            "id": "EXAM-0005-ph",
+            "label": "pH",
+            "value": 6.91,
+            "unit": "",
+            "primary": true,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": 7.35,
+            "refHigh": 7.45
+          },
+          {
+            "id": "EXAM-0005-pco2",
+            "label": "PaCO2",
+            "value": 81,
+            "unit": "mmHg",
+            "primary": true,
+            "oxygenation": false,
+            "pressure": true,
+            "refLow": 35,
+            "refHigh": 45
+          },
+          {
+            "id": "EXAM-0005-hco3",
+            "label": "HCO3",
+            "value": 11,
+            "unit": "mmol/L",
+            "primary": true,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": 22,
+            "refHigh": 26
+          },
+          {
+            "id": "EXAM-0005-be",
+            "label": "BE",
+            "value": -16.5,
+            "unit": "mEq/L",
+            "primary": false,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": -2,
+            "refHigh": 2
+          },
+          {
+            "id": "EXAM-0005-po2",
+            "label": "PaO2",
+            "value": 78,
+            "unit": "mmHg",
+            "primary": false,
+            "oxygenation": true,
+            "pressure": true,
+            "refLow": 80,
+            "refHigh": 100
+          },
+          {
+            "id": "EXAM-0005-fio2",
+            "label": "FiO2",
+            "value": 1.0,
+            "unit": "",
+            "primary": false,
+            "oxygenation": true,
+            "pressure": false
+          },
+          {
+            "id": "EXAM-0005-spo2",
+            "label": "SpO2",
+            "value": 92,
+            "unit": "%",
+            "primary": false,
+            "oxygenation": true,
+            "pressure": false
+          },
+          {
+            "id": "EXAM-0005-na",
+            "label": "Na",
+            "value": 140,
+            "unit": "mmol/L",
+            "primary": false,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": 135,
+            "refHigh": 145
+          },
+          {
+            "id": "EXAM-0005-k",
+            "label": "K",
+            "value": 4.1,
+            "unit": "mmol/L",
+            "primary": false,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": 3.5,
+            "refHigh": 5.0
+          },
+          {
+            "id": "EXAM-0005-cl",
+            "label": "Cl",
+            "value": 110,
+            "unit": "mmol/L",
+            "primary": false,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": 98,
+            "refHigh": 106
+          },
+          {
+            "id": "EXAM-0005-glucose",
+            "label": "Glucose",
+            "value": 13.9,
+            "unit": "mmol/L",
+            "primary": false,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": 3.9,
+            "refHigh": 7.8
+          },
+          {
+            "id": "EXAM-0005-lactate",
+            "label": "Lactate",
+            "value": 5.6,
+            "unit": "mmol/L",
+            "primary": false,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": 0.5,
+            "refHigh": 2.0
+          }
+        ]
+      }
+    ],
+    "parts": [
+      {
+        "id": "EXAM-0005-P1",
+        "kind": "numeric",
+        "prompt": "What is the A-a gradient?",
+        "marks": 1,
+        "pressureAnswer": true
+      },
+      {
+        "id": "EXAM-0005-P2",
+        "kind": "numeric",
+        "prompt": "What is the expected A-a gradient for this patient if she was on room air?",
+        "marks": 1,
+        "pressureAnswer": true
+      },
+      {
+        "id": "EXAM-0005-P3",
+        "kind": "single",
+        "prompt": "Which of the following is true regarding this patient's oxygenation?",
+        "marks": 1,
+        "instruction": "Select one",
+        "optionOrder": "randomised",
+        "options": [
+          {
+            "id": "EXAM-0005-P3-O1",
+            "text": "There is severe impairment of oxygen transfer, with a markedly elevated A-a gradient"
+          },
+          {
+            "id": "EXAM-0005-P3-O2",
+            "text": "The reduced PaO2 is predominantly explained by alveolar hypoventilation from the marked hypercapnia"
+          },
+          {
+            "id": "EXAM-0005-P3-O3",
+            "text": "Oxygenation is impaired, but not severely, because the PaO2 remains above 60 mmHg"
+          },
+          {
+            "id": "EXAM-0005-P3-O4",
+            "text": "The P/F ratio is difficult to interpret because the patient is receiving an FiO2 of 1.0"
+          }
+        ]
+      },
+      {
+        "id": "EXAM-0005-P4",
+        "kind": "concept",
+        "prompt": "Interpret her acid-base status. Show the calculations that support your interpretation.",
+        "marks": 4
       }
     ]
   }

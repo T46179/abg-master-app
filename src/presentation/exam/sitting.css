@@ -30,6 +30,9 @@
 .exam-numeric > span { display: flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 4.5rem; padding-inline: 1rem; background: var(--color-surface-soft); color: var(--color-text-muted); }
 .exam-concept { box-sizing: border-box; width: 100%; margin-top: 1.25rem; padding: 1rem; border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); resize: vertical; font: inherit; color: var(--color-text); background: var(--color-surface); }
 .exam-part-footer { padding-top: 1.25rem; margin-top: 1.5rem; }
+.exam-concept-response { width: 100%; }
+.exam-concept-response .exam-concept { display: block; }
+.exam-concept-count { display: block; margin-top: .25rem; text-align: right; font-size: .75rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .exam-sitting button:disabled { opacity: .4; cursor: default; }
 .exam-sitting button:focus-visible, .exam-sitting input:focus-visible, .exam-sitting textarea:focus-visible { outline: 2px solid var(--color-navy); outline-offset: 3px; }
 .exam-final-review, .exam-complete { width: min(100%, 42rem); box-sizing: border-box; margin-inline: auto; }

@@ -77,6 +77,37 @@ describe("SecondaryMetricRail", () => {
     vi.clearAllMocks();
   });
 
+  it("accepts wheel and horizontal touch gestures over the surrounding card only while enabled", () => {
+    vi.mocked(useHorizontalOverflowState).mockReturnValue(buildScrollController());
+    const interactionRef = { current: container };
+    function render(enabled: boolean) {
+      act(() => root.render(<SecondaryMetricRail metrics={[buildMetric("Na")]} contentKey="card"
+        showReferences={false} showAbnormalHighlighting={false} interactionRef={interactionRef} interactionEnabled={enabled} />));
+    }
+    render(true);
+    const rail = container.querySelector<HTMLElement>(".secondary-metric-rail__scroll")!;
+    Object.defineProperties(rail, { clientWidth: { value: 200 }, scrollWidth: { value: 600 } });
+    const wheel = new WheelEvent("wheel", { deltaY: 80, cancelable: true, bubbles: true });
+    container.dispatchEvent(wheel);
+    expect(wheel.defaultPrevented).toBe(true);
+    expect(requestAnimationFrame).toHaveBeenCalledTimes(1);
+    function touch(type: string, x: number, y: number) {
+      const event = new Event(type, { cancelable: true, bubbles: true });
+      Object.defineProperty(event, "touches", { value: [{ clientX: x, clientY: y }] });
+      container.dispatchEvent(event);
+      return event;
+    }
+    touch("touchstart", 200, 100);
+    expect(touch("touchmove", 120, 103).defaultPrevented).toBe(true);
+    expect(rail.scrollLeft).toBe(80);
+    touch("touchstart", 200, 100);
+    expect(touch("touchmove", 198, 160).defaultPrevented).toBe(false);
+    expect(rail.scrollLeft).toBe(80);
+    render(false);
+    const disabledWheel = new WheelEvent("wheel", { deltaY: 80, cancelable: true });
+    container.dispatchEvent(disabledWheel);
+    expect(disabledWheel.defaultPrevented).toBe(false);
+  });
   it("renders every metric through the same rail-card contract", () => {
     vi.mocked(useHorizontalOverflowState).mockReturnValue(buildScrollController());
 
@@ -154,6 +185,21 @@ describe("SecondaryMetricRail", () => {
       movedFromStart: true,
       scrollLeft: 40
     });
+    act(() => root.render(renderRail()));
+    expect(container.querySelector(".secondary-metric-rail")?.getAttribute("data-show-scroll-hint")).toBe("false");
+  });
+  it("uses the existing overlay hint without a scrollbar and hides it after scrolling", () => {
+    const controller = buildScrollController({ overflowing: true, atStart: true, atEnd: false, clientWidth: 200, scrollWidth: 600, maxScrollLeft: 400 });
+    vi.mocked(useHorizontalOverflowState).mockReturnValue(controller);
+    const renderRail = () => <SecondaryMetricRail metrics={[buildMetric("Na")]} contentKey="hint"
+      showReferences={false} showAbnormalHighlighting={false} indicator="hint" />;
+    act(() => root.render(renderRail()));
+    expect(container.querySelector(".secondary-metric-rail")?.getAttribute("data-show-scroll-hint")).toBe("true");
+    expect(container.querySelector('[role="scrollbar"]')).toBeNull();
+    vi.mocked(useHorizontalOverflowState).mockReturnValue({ ...controller, atStart: false, movedFromStart: true });
+    act(() => root.render(renderRail()));
+    expect(container.querySelector(".secondary-metric-rail")?.getAttribute("data-show-scroll-hint")).toBe("false");
+    vi.mocked(useHorizontalOverflowState).mockReturnValue({ ...controller, overflowing: false });
     act(() => root.render(renderRail()));
     expect(container.querySelector(".secondary-metric-rail")?.getAttribute("data-show-scroll-hint")).toBe("false");
   });

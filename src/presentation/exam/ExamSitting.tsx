@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Dispatch } from "react";
+import { useEffect, useId, useRef, useState, type Dispatch } from "react";
 import { useBlocker } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Clock3, TriangleAlert } from "lucide-react";
 import { Surface } from "../primitives/Surface";
@@ -8,9 +8,12 @@ import { elapsedSeconds, isAnswered, unansweredCount, type SittingAction } from 
 import type { ExamAnswer, ExamPart, SittingState } from "./sittingTypes";
 import "./sitting.css";
 
+const SAQ_CHARACTER_LIMIT = 500;
+
 export function ExamResponse({ part, value, unit, onChange }: {
   part: ExamPart; value: ExamAnswer | undefined; unit: string; onChange: (value: ExamAnswer) => void;
 }) {
+  const counterId = useId();
   if (part.kind === "single" || part.kind === "multiAll" || part.kind === "multiN") {
     const multi = part.kind !== "single";
     const selected = Array.isArray(value) ? value : [];
@@ -35,8 +38,12 @@ export function ExamResponse({ part, value, unit, onChange }: {
       {suffix && <span>{suffix}</span>}
     </div>;
   }
-  return <textarea className="exam-concept" aria-label="Short answer" rows={2} value={text}
-    placeholder="Type your answer" onChange={event => onChange(event.target.value)} />;
+  return <div className="exam-concept-response">
+    <textarea className="exam-concept" aria-label="Short answer" aria-describedby={counterId}
+      rows={2} value={text} maxLength={SAQ_CHARACTER_LIMIT} placeholder="Type your answer"
+      onChange={event => { if (event.target.value.length <= SAQ_CHARACTER_LIMIT) onChange(event.target.value); }} />
+    <span id={counterId} className="exam-concept-count">{text.length} / {SAQ_CHARACTER_LIMIT}</span>
+  </div>;
 }
 
 export function ExitSittingDialog({ onStay, onExit }: { onStay: () => void; onExit: () => void }) {

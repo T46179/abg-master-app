@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useAppContext } from "../../app/AppProvider";
 import { useExamSitting } from "../exam/ExamSittingContext";
 import { ExamSitting } from "../exam/ExamSitting";
+import { prepareExamQuestions } from "../exam/sittingModel";
 import { ExamDashboard } from "../exam/ExamDashboard";
 import { ExamHistory, ExamResults } from "../exam/ExamReview";
 import { initialPrototypeState, mockDrills, mockHistory, mockLatestResult, prototypeConfig } from "../exam/mockData";
 import { buildSetupPresentation, filterAttempts } from "../exam/presentationModel";
 import type { ExamPrototypeState } from "../exam/presentationTypes";
 import "../exam/exam.css";
+
+const DemoResults = import.meta.env.DEV ? lazy(() => import("../exam/ExamResultsPrototype.dev")) : null;
 
 export function ExamScreen() {
   const { state: appState } = useAppContext();
@@ -28,7 +31,7 @@ export function ExamScreen() {
     const pressureUnit = appState.sessionState?.pressureUnit ?? "mmHg";
     try {
       const { demoQuestions } = await import("../exam/demoFixtures.dev");
-      if (mounted.current) dispatch({ type: "start", questions: demoQuestions, pressureUnit, now: Date.now() });
+      if (mounted.current) dispatch({ type: "start", questions: prepareExamQuestions(demoQuestions), pressureUnit, now: Date.now() });
     } catch {
       if (mounted.current) setLaunchError("The demo could not be loaded. Please try again.");
     } finally {
@@ -49,6 +52,8 @@ export function ExamScreen() {
   }
 
   const setup = buildSetupPresentation(state.questionCount, state.caseCount, state.timed, prototypeConfig);
+
+  if (sitting?.phase === "complete" && DemoResults) return <main className="app-shell__page exam-screen"><Suspense fallback={<p>Loading exam explanations…</p>}><DemoResults sitting={sitting} pressureUnit={appState.sessionState?.pressureUnit ?? sitting.pressureUnit} onExit={() => dispatch({ type: "exit" })} /></Suspense></main>;
 
   if (sitting) return <main className="app-shell__page exam-screen"><ExamSitting sitting={sitting} dispatch={dispatch} /></main>;
 

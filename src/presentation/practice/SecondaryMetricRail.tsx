@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, type RefObject } from "react";
 import type { CaseMetricDefinition } from "../../core/types";
 import { HorizontalScrollIndicator } from "../primitives/HorizontalScrollIndicator";
 import { useHorizontalOverflowState } from "../useHorizontalOverflowState";
@@ -14,6 +14,9 @@ interface SecondaryMetricRailProps {
   contentKey: string;
   showReferences: boolean;
   showAbnormalHighlighting: boolean;
+  indicator?: "scrollbar" | "hint";
+  interactionRef?: RefObject<HTMLElement | null>;
+  interactionEnabled?: boolean;
 }
 
 export function SecondaryMetricRail(props: SecondaryMetricRailProps) {
@@ -24,7 +27,28 @@ export function SecondaryMetricRail(props: SecondaryMetricRailProps) {
 
   useEffect(() => {
     const node = scrollState.ref.current;
-    if (!node) return;
+    if (!node || props.interactionEnabled === false) return;
+    const interactionNode = props.interactionRef?.current ?? node;
+    let touch: { x: number; y: number; left: number; horizontal?: boolean } | null = null;
+    function handleTouchStart(event: TouchEvent) {
+      touch = null;
+      // Preserve native swiping when the gesture starts on the rail itself.
+      if (node!.contains(event.target as Node) || event.touches.length !== 1) return;
+      touch = { x: event.touches[0].clientX, y: event.touches[0].clientY, left: node!.scrollLeft };
+    }
+    function handleTouchMove(event: TouchEvent) {
+      if (!touch || event.touches.length !== 1 || node!.scrollWidth <= node!.clientWidth) return;
+      const dx = touch.x - event.touches[0].clientX;
+      const dy = touch.y - event.touches[0].clientY;
+      if (touch.horizontal === undefined) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < 6) return;
+        touch.horizontal = Math.abs(dx) > Math.abs(dy);
+      }
+      if (!touch.horizontal) return;
+      event.preventDefault();
+      node!.scrollLeft = Math.max(0, Math.min(touch.left + dx, node!.scrollWidth - node!.clientWidth));
+    }
+    function handleTouchEnd() { touch = null; }
 
     function animateWheelScroll() {
       const targetLeft = wheelTargetLeft.current;
@@ -81,16 +105,24 @@ export function SecondaryMetricRail(props: SecondaryMetricRailProps) {
     }
 
     // React's delegated wheel listener is passive and cannot cancel page scrolling.
-    node.addEventListener("wheel", handleWheel, { passive: false });
+    interactionNode.addEventListener("wheel", handleWheel, { passive: false });
+    interactionNode.addEventListener("touchstart", handleTouchStart, { passive: true });
+    interactionNode.addEventListener("touchmove", handleTouchMove, { passive: false });
+    interactionNode.addEventListener("touchend", handleTouchEnd);
+    interactionNode.addEventListener("touchcancel", handleTouchEnd);
     return () => {
-      node.removeEventListener("wheel", handleWheel);
+      interactionNode.removeEventListener("wheel", handleWheel);
+      interactionNode.removeEventListener("touchstart", handleTouchStart);
+      interactionNode.removeEventListener("touchmove", handleTouchMove);
+      interactionNode.removeEventListener("touchend", handleTouchEnd);
+      interactionNode.removeEventListener("touchcancel", handleTouchEnd);
       if (wheelAnimationFrame.current !== null) {
         cancelAnimationFrame(wheelAnimationFrame.current);
       }
       wheelAnimationFrame.current = null;
       wheelTargetLeft.current = null;
     };
-  }, [scrollState.ref, props.contentKey]);
+  }, [scrollState.ref, props.contentKey, props.interactionRef, props.interactionEnabled]);
 
   return (
     <div
@@ -132,7 +164,7 @@ export function SecondaryMetricRail(props: SecondaryMetricRailProps) {
           ))}
         </div>
       </div>
-      {scrollState.overflowing ? (
+      {scrollState.overflowing && props.indicator !== "hint" ? (
         <HorizontalScrollIndicator
           className="secondary-metric-rail__indicator"
           scrollState={scrollState}

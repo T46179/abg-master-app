@@ -4,7 +4,7 @@ import {
   type MouseEventHandler,
   type Ref
 } from "react";
-import { Trophy } from "lucide-react";
+import { ExpandCollapseIcon, ResultsDetailCard, ResultsHeaderShell } from "../results/ResultsPresentation";
 import { Surface } from "../primitives/Surface";
 import { ProgressBar } from "../primitives/ProgressBar";
 import timerIcon from "../../assets/icons/timer.svg";
@@ -174,18 +174,6 @@ function getResultsReviewExpandedPreference(storage?: StorageAdapter | null) {
   return storage?.loadResultsReviewExpandedPreference() ?? false;
 }
 
-function ExpandCollapseIcon(props: { expanded: boolean }) {
-  return (
-    <span
-      className={cn(
-        "results-card__collapse-icon",
-        props.expanded ? "results-card__collapse-icon--collapse" : "results-card__collapse-icon--expand"
-      )}
-      aria-hidden="true"
-    />
-  );
-}
-
 interface ResultsSummaryCardProps {
   summary: CaseSummary;
   caseItem: CaseData;
@@ -219,64 +207,26 @@ interface ResultsSummaryHeaderProps {
 }
 
 export function ResultsSummaryHeader(props: ResultsSummaryHeaderProps) {
-  if (props.mode === "featured") {
-    return (
-      <Surface className="results-summary-card">
-        <div className="results-card__hero">
-          <div className="results-card__hero-copy">
-            <span className="results-card__icon" aria-hidden="true">
-              <Trophy />
-            </span>
-            <div className="results-card__hero-text">
-              <h1>Featured Case complete</h1>
-              <p>
-                {getFeaturedComparisonSummaryCopy({
-                  accuracy: props.summary.accuracy,
-                  comparison: props.featuredComparison,
-                  isReplay: Boolean(props.featuredIsReplay)
-                })}
-              </p>
-            </div>
-          </div>
-          <CaseMetadataIcons caseItem={props.summary.caseData} />
-        </div>
-      </Surface>
-    );
-  }
-
-  return (
-    <Surface className="results-summary-card">
-      <div className="results-card__hero">
-        <div className="results-card__hero-copy">
-          <span className="results-card__icon" aria-hidden="true">
-            <Trophy />
-          </span>
-          <div className="results-card__hero-text">
-            <h1>Case complete</h1>
-            <p>You scored {props.summary.accuracy}% and earned {props.summary.totalXpAward} XP.</p>
-          </div>
-        </div>
-        <CaseMetadataIcons caseItem={props.summary.caseData} boostedXp={props.boostedXp} />
+  if (props.mode === "featured") return <ResultsHeaderShell title="Featured Case complete"
+    subtitle={getFeaturedComparisonSummaryCopy({ accuracy: props.summary.accuracy,
+      comparison: props.featuredComparison, isReplay: Boolean(props.featuredIsReplay) })}
+    metadata={<CaseMetadataIcons caseItem={props.summary.caseData} />} />;
+  return <ResultsHeaderShell title="Case complete"
+    subtitle={<>You scored {props.summary.accuracy}% and earned {props.summary.totalXpAward} XP.</>}
+    metadata={<CaseMetadataIcons caseItem={props.summary.caseData} boostedXp={props.boostedXp} />}>
+    <div className="results-summary-card__progress">
+      <div className="dashboard-progress-card__meta">
+        <span>{props.levelLabel ?? `Level ${props.level}`}</span>
+        <span className={props.xpProgressNotice ? "results-summary-card__progress-notice" : undefined}>
+          {props.xpProgressNotice ?? props.xpProgressLabel}
+        </span>
       </div>
-
-      <div className="results-summary-card__progress">
-        <div className="dashboard-progress-card__meta">
-          <span>{props.levelLabel ?? `Level ${props.level}`}</span>
-          <span className={props.xpProgressNotice ? "results-summary-card__progress-notice" : undefined}>
-            {props.xpProgressNotice ?? props.xpProgressLabel}
-          </span>
-        </div>
-        <ProgressBar
-          value={props.progressValue}
-          animate={props.progressAnimate ?? true}
-          animationMode={props.progressAnimationMode}
-          blocked={props.xpProgressBlocked}
-          className={props.progressFlash ? "progress-bar--level-up-flash" : undefined}
-          fillClassName={props.progressFlash ? "progress-bar__fill--level-up-flash" : undefined}
-        />
-      </div>
-    </Surface>
-  );
+      <ProgressBar value={props.progressValue} animate={props.progressAnimate ?? true}
+        animationMode={props.progressAnimationMode} blocked={props.xpProgressBlocked}
+        className={props.progressFlash ? "progress-bar--level-up-flash" : undefined}
+        fillClassName={props.progressFlash ? "progress-bar__fill--level-up-flash" : undefined} />
+    </div>
+  </ResultsHeaderShell>;
 }
 
 export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
@@ -330,29 +280,10 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
             <h3 className="results-card__section-label">Detailed Explanation</h3>
             <div className="results-card__detail-stack">
               {explanationSections.map(section => (
-                <div
-                  key={`${section.key}-${section.order}`}
-                  className={[
-                    "card",
-                    "results-card__detail-card",
-                    isCollapsibleExplanationKey(section.key) && !expandedByKey[section.key] ? "is-collapsed" : "",
-                    section.key === "key_takeaway" ? "results-card__detail-card--takeaway" : ""
-                  ].filter(Boolean).join(" ")}
-                >
-                  <div className="results-card__detail-card-header">
-                    <h4>{section.title}</h4>
-                    {isCollapsibleExplanationKey(section.key) ? (
-                      <button
-                        className="results-card__detail-toggle"
-                        type="button"
-                        aria-expanded={expandedByKey[section.key]}
-                        aria-label={`${expandedByKey[section.key] ? "Collapse" : "Expand"} ${section.title}`}
-                        onClick={() => handleToggleSection(section.key as ResultsExplanationPreferenceKey)}
-                      >
-                        <ExpandCollapseIcon expanded={expandedByKey[section.key]} />
-                      </button>
-                    ) : null}
-                  </div>
+                <ResultsDetailCard key={`${section.key}-${section.order}`} title={section.title}
+                  expanded={!isCollapsibleExplanationKey(section.key) || expandedByKey[section.key]}
+                  onToggle={isCollapsibleExplanationKey(section.key) ? () => handleToggleSection(section.key as ResultsExplanationPreferenceKey) : undefined}
+                  takeaway={section.key === "key_takeaway"}>
                   {isCollapsibleExplanationKey(section.key) && !expandedByKey[section.key] ? null : (
                     section.key === "aa_gradient_mechanism" ? (
                       <AAGradientVisualContent
@@ -386,7 +317,7 @@ export function ResultsSummaryCard(props: ResultsSummaryCardProps) {
                       </p>
                     )
                   )}
-                </div>
+                </ResultsDetailCard>
               ))}
             </div>
           </div>

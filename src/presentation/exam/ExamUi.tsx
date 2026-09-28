@@ -62,15 +62,15 @@ export function AccuracyBar({ percent, tone = scoreTone(percent) }: { percent: n
   </span>;
 }
 
-export function ScoreRing({ percent }: { percent: number }) {
+export function ScoreRing({ percent, label = "scored", className = "" }: { percent: number; label?: string; className?: string }) {
   const radius = 46;
   const circumference = 2 * Math.PI * radius;
-  return <div className="exam-score-ring" style={toneStyle(scoreTone(percent))}>
+  return <div className={`exam-score-ring ${className}`.trim()} style={toneStyle(scoreTone(percent))} data-tone={scoreTone(percent)}>
     <svg viewBox="0 0 120 120" aria-hidden="true">
       <circle cx="60" cy="60" r={radius} fill="none" className="exam-ring-track" strokeWidth="11" />
       <circle cx="60" cy="60" r={radius} fill="none" className="exam-ring-value" strokeWidth="11"
         strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={circumference * (1 - percent / 100)} />
     </svg>
-    <div><strong>{percent}%</strong><span>scored</span></div>
+    <div><strong>{percent}%</strong>{label && <span>{label}</span>}</div>
   </div>;
 }

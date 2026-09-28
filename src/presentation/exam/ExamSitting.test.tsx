@@ -194,7 +194,7 @@ describe("Exam presentation interactions", () => {
       click("Begin mock exam");
       await vi.dynamicImportSettled();
     });
-    expect(container.querySelectorAll(".exam-question-pills button")).toHaveLength(3);
+    expect(container.querySelectorAll(".exam-question-pills button")).toHaveLength(5);
     expect(container.textContent).not.toContain("You're about to begin");
     act(() => container.querySelector<HTMLButtonElement>('[aria-label="Settings"]')!.click());
     expect(container.textContent).toContain("Fixed for this exam");
@@ -205,8 +205,13 @@ describe("Exam presentation interactions", () => {
     act(() => container.querySelector<HTMLButtonElement>(".exam-question-pills button:last-child")!.click());
     while (Array.from(container.querySelectorAll("button")).some(b => b.textContent?.startsWith("Next part"))) click("Next part");
     click("Review exam");
-    expect(container.querySelectorAll(".exam-review-part")).toHaveLength(11);
-    click("Submit anyway");
+    expect(container.querySelectorAll(".exam-review-part")).toHaveLength(18);
+    await act(async () => {
+      click("Submit anyway");
+      await vi.dynamicImportSettled();
+    });
+    expect(container.querySelector('[aria-label="Exam submitted"]')).toBeTruthy();
+    expect(container.textContent).toContain("Grading in progress");
     click("Back to Exam Room");
     expect(container.textContent).toContain("Begin mock exam");
     expect(container.textContent).not.toContain("Fixed for this exam");
@@ -223,6 +228,35 @@ describe("Exam presentation interactions", () => {
     await act(async () => { container.querySelector<HTMLAnchorElement>('a')!.click(); });
     await act(async () => { Array.from(container.querySelectorAll("button")).find(b => b.textContent === "Exit anyway")!.click(); });
     expect(router!.state.location.pathname).toBe("/other");
+  });
+  it("limits written SAQs to 500 characters and updates their associated counter", () => {
+    function Control() {
+      const [value, setValue] = useState<string | string[]>("");
+      return <ExamResponse part={{ id: "saq", kind: "concept", prompt: "Explain", marks: 1 }}
+        value={value} unit="mmHg" onChange={setValue} />;
+    }
+    act(() => root.render(<Control />));
+    const input = container.querySelector("textarea")!;
+    const counter = document.getElementById(input.getAttribute("aria-describedby")!)!;
+    expect(input.maxLength).toBe(500);
+    expect(counter.textContent).toBe("0 / 500");
+    function enter(text: string) {
+      act(() => {
+        Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, text);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    }
+    const answer = " x\n" + "a".repeat(497);
+    enter(answer);
+    expect(input.value).toBe(answer);
+    expect(counter.textContent).toBe("500 / 500");
+    enter(answer + "extra");
+    expect(input.value).toBe(answer);
+    expect(counter.textContent).toBe("500 / 500");
+    enter("shorter");
+    expect(counter.textContent).toBe("7 / 500");
+    enter("");
+    expect(counter.textContent).toBe("0 / 500");
   });
   it.each(["multiAll", "multiN", "concept", "numeric"] as const)("retains raw values for %s controls", kind => {
     let answer: unknown;

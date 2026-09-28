@@ -136,7 +136,7 @@ function MockExam({ state, config, setup, onChange, onBegin, launching }: Dashbo
         <div><span>Passing target</span><strong>{config.passingTarget}%</strong></div>
       </div>
       <button type="button" className="figma-button exam-primary exam-start" onClick={onBegin} disabled={launching}>Begin mock exam <ArrowIcon /></button>
-      {import.meta.env.DEV && onBegin && <p className="exam-footnote">Development demo: three Questions, not recorded. Setup controls do not change this demo.</p>}
+      {import.meta.env.DEV && onBegin && <p className="exam-footnote">Development demo: five Questions (Exam Units) in one session, not recorded. Setup controls do not change this demo.</p>}
       <p className="exam-footnote">You can't pause a timed sitting once it starts.</p>
     </Surface>
   </div>;

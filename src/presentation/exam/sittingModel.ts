@@ -12,6 +12,21 @@ export type SittingAction =
   | { type: "submit"; now: number }
   | { type: "exit" };
 
+// Prepare outside the reducer so React reducer replays cannot reshuffle an attempt.
+export function prepareExamQuestions(questions: ExamQuestion[], random: () => number = Math.random): ExamQuestion[] {
+  return questions.map(question => ({ ...question, parts: question.parts.map(part => {
+    if (!part.options) return { ...part };
+    const options = [...part.options];
+    if (part.optionOrder !== "fixed") {
+      for (let i = options.length - 1; i > 0; i--) {
+        const j = Math.floor(random() * (i + 1));
+        [options[i], options[j]] = [options[j], options[i]];
+      }
+    }
+    return { ...part, options };
+  }) }));
+}
+
 export function isAnswered(value: ExamAnswer | undefined) {
   return Array.isArray(value) ? value.length > 0 : Boolean(value?.trim());
 }
