@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import type { RouteObject } from "react-router-dom";
 import { Navigate, createBrowserRouter } from "react-router-dom";
 import { AppShell } from "../presentation/layout/AppShell";
@@ -23,6 +24,8 @@ import { UpdatesScreen } from "../presentation/screens/UpdatesScreen";
 import { ContactScreen } from "../presentation/screens/ContactScreen";
 import { FeaturedCaseScreen } from "../presentation/screens/FeaturedCaseScreen";
 import { AppRouteErrorView } from "../presentation/shared/StatusViews";
+
+const ExamPilotAuth = import.meta.env.DEV ? lazy(() => import("../presentation/screens/ExamPilotAuthScreen.dev")) : null;
 
 export const appRoutes: RouteObject[] = [
   {
@@ -85,6 +88,7 @@ export const appRoutes: RouteObject[] = [
           { path: "*", element: <Navigate to="/learn" replace /> }
         ]
       },
+      ...(ExamPilotAuth ? [{ path: "dev/exam-pilot", element: <Suspense fallback={<p>Loading…</p>}><ExamPilotAuth /></Suspense> }] : []),
       { path: "exam", element: <ExamScreen /> },
       { path: "leaderboard", element: <LeaderboardScreen /> },
       { path: "*", element: <Navigate to="/" replace /> }

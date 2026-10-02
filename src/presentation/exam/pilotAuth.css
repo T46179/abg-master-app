@@ -1,0 +1,30 @@
+.exam-pilot-auth { max-width: 32rem; margin: 1rem auto; padding: 2rem; background: var(--color-surface); border: 1px solid var(--color-border); }
+.exam-pilot-auth h1 { font-size: 1.5rem; }
+.exam-pilot-auth p { margin-block: 1rem; line-height: 1.6; color: var(--color-text-muted); }
+.exam-pilot-auth form { display: grid; gap: .75rem; margin-top: 1rem; }
+.exam-pilot-auth label { font-size: .875rem; font-weight: 600; }
+.exam-pilot-auth input { width: 100%; box-sizing: border-box; border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: .75rem; font-size: 1rem; color: var(--color-text); background: var(--color-surface); }
+.exam-screen .exam-pilot-button { display: inline-flex; align-items: center; justify-content: center; gap: .65rem; min-height: 44px; padding: .75rem 1.2rem; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); color: var(--exam-navy); font-size: .875rem; font-weight: 600; line-height: 1.4; cursor: pointer; }
+.exam-screen .exam-pilot-button.exam-primary { background: var(--exam-navy); color: var(--color-primary-foreground); border-color: var(--exam-navy); }
+.exam-screen .exam-pilot-button:disabled, .exam-pilot-room__review:disabled { opacity: .5; cursor: default; }
+.exam-pilot-room { max-width: 880px; margin: 0 auto; display: grid; gap: 2rem; }
+.exam-pilot-room__start { display: flex; align-items: center; flex-wrap: wrap; gap: 1.25rem; padding: 1.75rem; background: var(--color-surface); border: 1px solid var(--color-border); }
+.exam-pilot-room__intro { flex: 1 1 220px; }
+.exam-pilot-room__intro p { margin-top: .5rem; color: var(--color-text-muted); font-size: .875rem; line-height: 1.5; }
+.exam-pilot-room__actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.exam-pilot-room__actions p { flex-basis: 100%; color: var(--color-text-muted); font-size: .875rem; line-height: 1.5; }
+.exam-pilot-room__history-heading { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; color: var(--exam-navy); }
+.exam-pilot-room__list { list-style: none; padding: 0; margin: 0; overflow: hidden; background: var(--color-surface); border: 1px solid var(--color-border); }
+.exam-pilot-room__list li + li { border-top: 1px solid var(--color-border); }
+.exam-screen .exam-pilot-room__review { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; min-height: 80px; padding: 1.2rem 1.5rem; border: 0; background: transparent; text-align: left; color: var(--exam-navy); cursor: pointer; }
+.exam-pilot-room__review strong { display: block; font-size: .9375rem; font-weight: 600; }
+.exam-pilot-room__review time { display: block; margin-top: .35rem; font-size: .8125rem; color: var(--color-text-muted); }
+.exam-pilot-room__review:enabled:hover { background: color-mix(in srgb, var(--exam-navy) 4%, var(--color-surface)); }
+.exam-pilot-room__empty { padding: 1.5rem; color: var(--color-text-muted); font-size: .875rem; line-height: 1.6; border: 1px solid var(--color-border); background: var(--color-surface); }
+@media (max-width: 600px) {
+  .exam-pilot-auth { padding: 1.25rem; }
+  .exam-pilot-room__start { padding: 1.25rem; gap: 1rem; }
+  .exam-pilot-room__actions { width: 100%; }
+  .exam-pilot-room__actions .exam-pilot-button { width: 100%; }
+  .exam-screen .exam-pilot-room__review { padding: 1rem 1.25rem; }
+}

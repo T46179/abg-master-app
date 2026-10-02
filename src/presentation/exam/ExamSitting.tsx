@@ -23,6 +23,7 @@ export function ExamResponse({ part, value, unit, onChange }: {
         const checked = multi ? selected.includes(option.id) : value === option.id;
         return <label key={option.id} className="exam-answer-option" data-selected={checked}>
           <input type={multi ? "checkbox" : "radio"} name={part.id} checked={checked}
+            disabled={part.kind === "multiN" && !checked && selected.length >= (part.selectN ?? Infinity)}
             onChange={() => onChange(multi ? checked ? selected.filter(id => id !== option.id) : [...selected, option.id] : option.id)} />
           <span><MetricRichText>{unit === "kPa" && option.textKpa != null ? option.textKpa : option.text}</MetricRichText></span>
         </label>;
@@ -33,7 +34,7 @@ export function ExamResponse({ part, value, unit, onChange }: {
   if (part.kind === "numeric") {
     const suffix = part.pressureAnswer ? unit : part.answerUnit;
     return <div className="exam-numeric">
-      <input aria-label={`Numeric answer${suffix ? " in " + suffix : ""}`} inputMode="decimal"
+      <input aria-label={`Numeric answer${suffix ? " in " + suffix : ""}`} inputMode="decimal" maxLength={128}
         value={text} onChange={event => onChange(event.target.value)} placeholder="Enter value" />
       {suffix && <span>{suffix}</span>}
     </div>;
@@ -60,7 +61,9 @@ export function ExitSittingDialog({ onStay, onExit }: { onStay: () => void; onEx
   </dialog>;
 }
 
-export function ExamSitting({ sitting: s, dispatch }: { sitting: SittingState; dispatch: Dispatch<SittingAction> }) {
+export function ExamSitting({ sitting: s, dispatch, onExitConfirmed, disabled = false }: { sitting: SittingState; dispatch: Dispatch<SittingAction>; onExitConfirmed?: () => Promise<void>; disabled?: boolean }) {
+  const [exitError, setExitError] = useState(false);
+  const exiting = useRef(false);
   const [now, setNow] = useState(Date.now);
   const heading = useRef<HTMLHeadingElement>(null);
   const active = s.phase !== "complete";
@@ -100,6 +103,7 @@ export function ExamSitting({ sitting: s, dispatch }: { sitting: SittingState; d
   </div>;
 
   return <div className="exam-sitting">
+    <fieldset className="exam-sitting-controls" disabled={disabled}>
     <div className="exam-sitting-bar">
       <div className="exam-question-position">
         <nav className="exam-question-pills" aria-label="Exam Questions">
@@ -116,7 +120,7 @@ export function ExamSitting({ sitting: s, dispatch }: { sitting: SittingState; d
 
     {s.phase === "review" ? <Surface className="exam-final-review">
       <h1 className="section-header__eyebrow" ref={heading} tabIndex={-1}>Before you submit</h1>
-      <p className="exam-review-intro">Check your answers below. You can make changes until you submit. After submission, <strong>your answers can’t be changed</strong>.</p>
+      <p className="exam-review-intro">Check your answers below. After submission, <strong>your answers can’t be changed</strong>.</p>
       {s.questions.map((question, qi) => <section key={question.id} className="exam-review-group">
         <h2>Question {qi + 1}</h2>
         {question.parts.map((p, index) => <button className="exam-review-part" key={p.id} onClick={() => jump(qi, index)}>
@@ -159,9 +163,16 @@ export function ExamSitting({ sitting: s, dispatch }: { sitting: SittingState; d
         </div>
       </Surface>
     </div>}
+    </fieldset>
+    {exitError && <p role="alert">Exit could not be confirmed. Reconnect and try again.</p>}
     {(blocker.state === "blocked") && <ExitSittingDialog
       onStay={() => { if (blocker.state === "blocked") blocker.reset(); }}
-      onExit={() => { dispatch({ type: "exit" }); if (blocker.state === "blocked") blocker.proceed(); }} />}
+      onExit={() => {
+        if (exiting.current) return;
+        if (!onExitConfirmed) { dispatch({ type: "exit" }); if (blocker.state === "blocked") blocker.proceed(); return; }
+        exiting.current = true; setExitError(false);
+        void onExitConfirmed().then(() => { if (blocker.state === "blocked") blocker.proceed(); }, () => { setExitError(true); if (blocker.state === "blocked") blocker.reset(); }).finally(() => { exiting.current = false; });
+      }} />}
   </div>;
 }
 

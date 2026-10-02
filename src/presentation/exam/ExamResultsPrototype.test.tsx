@@ -70,8 +70,9 @@ it("opens a question-specific report, selects one reason and resets after dismis
   let dialog = container.querySelector("dialog")!;
   expect(dialog.open).toBe(true);
   expect(dialog.querySelector("h2")?.textContent).toBe("Question 1");
-  expect(dialog.querySelector(".exam-report-dialog__id")?.textContent).toBe("q1");
+  expect(dialog.querySelector(".exam-report-dialog__id")).toBeNull();
   const submit = dialog.querySelector<HTMLButtonElement>(".exam-report-dialog__submit")!;
+  expect(submit.textContent).toBe("Submit");
   expect(submit.disabled).toBe(true);
   const reasons = dialog.querySelectorAll<HTMLInputElement>('input[type="radio"]');
   act(() => reasons[0].click());
@@ -108,9 +109,10 @@ it("releases teaching immediately while marks are pending, preserving raw respon
   expect(container.textContent).toContain("Fallback two");
 });
 it("preserves navigation and disclosures while delayed marks populate", () => {
-  expect(panel(1).querySelector(".exam-results__scenario-text")?.hasAttribute("hidden")).toBe(true);
-  click("Expand Scenario", panel(1)); click("Collapse Part 1", panel(1)); click("Question 2");
-  click("Expand Scenario", panel(2));
+  expect(panel(1).querySelector(".exam-results__scenario-text")?.hasAttribute("hidden")).toBe(false);
+  expect(panel(1).querySelector(".exam-results__part-body")?.hasAttribute("hidden")).toBe(true);
+  click("Expand Part 1", panel(1)); click("Collapse Part 1", panel(1)); click("Question 2");
+  click("Collapse Scenario", panel(2)); click("Expand Scenario", panel(2));
   act(() => vi.advanceTimersByTime(16000));
   expect(panel(2).hidden).toBe(false);
   expect(panel(2).querySelector('[aria-label="Collapse Scenario"]')?.getAttribute("aria-expanded")).toBe("true");
@@ -129,7 +131,7 @@ it("withholds totals on failure and retries only the failed Part", () => {
   expect(container.textContent).toContain("Final score unavailable");
   expect(container.textContent).toContain("Some grading could not be completed");
   expect(container.textContent).toContain("1 Part could not be graded at this time.");
-  expect(container.querySelector(".exam-results__retry p")?.textContent).toBe("This is a technical problem — your submission is safe and already-graded Parts are shown below. There is no need to resubmit or retake this exam. Grading will complete and update automatically when available.");
+  expect(container.querySelector(".exam-results__retry p")?.textContent).toBe("This is a technical problem — your submission is safe and already-graded Parts are shown below. There is no need to resubmit or retake this exam. Retry grading when available. Completed Parts will keep their marks.");
   expect(container.querySelector(".exam-results__ring")).toBeNull();
   expect(panel(1).querySelector(".exam-results__criteria")).toBeNull();
   expect(panel(2).querySelector(".exam-results__part")?.getAttribute("data-status")).toBe("completed");
@@ -146,7 +148,7 @@ it("withholds totals on failure and retries only the failed Part", () => {
 });
 it("uses display preferences without reinterpreting the submitted response or restarting grading", () => {
   act(() => vi.advanceTimersByTime(9200));
-  click("Collapse Part 1", panel(1)); click("Question 2");
+  click("Expand Part 1", panel(1)); click("Collapse Part 1", panel(1)); click("Question 2");
   render(sitting, "mmHg");
   expect(container.querySelector(".exam-results__metadata dd")?.textContent).toBe("1 / 2");
   expect(container.textContent).toContain("Model answer one in mmHg");

@@ -2,6 +2,7 @@ import type { PressureUnit } from "../../core/types";
 import type { ExamAnswer, ExamQuestion, SittingState } from "./sittingTypes";
 
 export type SittingAction =
+  | { type: "hydrate"; sitting: SittingState }
   | { type: "start"; questions: ExamQuestion[]; pressureUnit: PressureUnit; now: number }
   | { type: "jump"; questionIndex: number; partIndex?: number }
   | { type: "answer"; partId: string; value: ExamAnswer }
@@ -37,6 +38,7 @@ export function elapsedSeconds(state: SittingState, now: number) {
   return Math.max(0, Math.floor(((state.finishedAt ?? now) - state.startedAt) / 1000));
 }
 export function sittingReducer(state: SittingState | null, action: SittingAction): SittingState | null {
+  if (action.type === "hydrate") return action.sitting;
   if (action.type === "exit") return null;
   if (action.type === "start") {
     if (state && state.phase !== "complete") return state;

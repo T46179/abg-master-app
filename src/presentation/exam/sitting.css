@@ -85,3 +85,5 @@
   .exam-sitting-bar .exam-elapsed { font-size: .8rem; gap: .25rem; }
   .exam-sitting-bar .exam-pill { padding-inline: .5rem; font-size: .75rem; }
 }
+
+.exam-sitting-controls { border: 0; padding: 0; margin: 0; min-width: 0; }

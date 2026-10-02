@@ -159,8 +159,8 @@ export const demoFeedback: ExamFeedback = {
     ],
     "difficulty": 3,
     "takeaway": {
-      "mmHg": "If SpO2 appears to be stuck around 85% despite high-flow oxygen, especially with a normal PaO2, thing methaemoglobinaemia",
-      "kPa": "If SpO2 appears to be stuck around 85% despite high-flow oxygen, especially with a normal PaO2, thing methaemoglobinaemia"
+      "mmHg": "If SpO2 appears to be stuck around 85% despite high-flow oxygen, especially with a normal PaO2, think methaemoglobinaemia",
+      "kPa": "If SpO2 appears to be stuck around 85% despite high-flow oxygen, especially with a normal PaO2, think methaemoglobinaemia"
     }
   },
   "EXAM-0002-P1": {
@@ -517,12 +517,12 @@ export const demoFeedback: ExamFeedback = {
   },
   "EXAM-0005-P1": {
     "answer": {
-      "mmHg": "A-a gradient is 533 mmHg",
-      "kPa": "A-a gradient is 71.1 kPa"
+      "mmHg": "A-a gradient is 534 mmHg",
+      "kPa": "A-a gradient is 71.2 kPa"
     },
     "reasoning": {
-      "mmHg": "A-a gradient is 533 mmHg",
-      "kPa": "A-a gradient is 71.1 kPa"
+      "mmHg": "A-a gradient is 534 mmHg",
+      "kPa": "A-a gradient is 71.2 kPa"
     },
     "primaryObjective": "oxygenation.assess",
     "criteria": [],
@@ -550,10 +550,10 @@ export const demoFeedback: ExamFeedback = {
             "aaGradientMmHg": 533.75
           },
           "interpretation": {
-            "key": "exam_calculation",
-            "tone": "context",
-            "label": "Calculated A-a gradient",
-            "explanation": "Interpret the gradient alongside the inspired oxygen concentration and clinical context."
+            "key": "raised_aa_gradient",
+            "tone": "raised",
+            "label": "Raised A-a gradient",
+            "explanation": "This is profoundly elevated and indicates severe impairment of oxygen transfer."
           }
         }
       }
@@ -563,12 +563,12 @@ export const demoFeedback: ExamFeedback = {
   },
   "EXAM-0005-P2": {
     "answer": {
-      "mmHg": "Expected A-a gradient is 12 mmHg",
-      "kPa": "Expected A-a gradient is 1.6 kPa"
+      "mmHg": "12 mmHg",
+      "kPa": "1.6 kPa"
     },
     "reasoning": {
-      "mmHg": "Normal Gradient Estimate (in mmHg) = (Age/4) + 4 -> (32/4) + 4 = 12 mmHg",
-      "kPa": "Normal Gradient Estimate (in mmHg) = (Age/4) + 4 -> (32/4) + 4 = 1.6 kPa"
+      "mmHg": "Normal Gradient Estimate (in mmHg) = (Age/4) + 4 -> (32/4) + 4 = 12 mmHg.\n\nThis equation only applies when the patient is breathing room air.",
+      "kPa": "Normal Gradient Estimate (in mmHg) = (Age/4) + 4 -> (32/4) + 4 = 1.6 kPa.\n\nThis equation only applies when the patient is breathing room air."
     },
     "primaryObjective": "oxygenation.assess",
     "criteria": [],
@@ -583,8 +583,8 @@ export const demoFeedback: ExamFeedback = {
       "kPa": "There is severe impairment of oxygen transfer."
     },
     "reasoning": {
-      "mmHg": "Her calculated A-a gradient is approximately 533 mmHg. This is profoundly elevated and indicates severe impairment of oxygen transfer.",
-      "kPa": "Her calculated A-a gradient is approximately 533 mmHg. This is profoundly elevated and indicates severe impairment of oxygen transfer."
+      "mmHg": "Her calculated A-a gradient is approximately 534 mmHg. This is profoundly elevated and indicates severe impairment of oxygen transfer.",
+      "kPa": "Her calculated A-a gradient is approximately 71.2 kPa. This is profoundly elevated and indicates severe impairment of oxygen transfer."
     },
     "primaryObjective": "oxygenation.assess",
     "criteria": [],
@@ -621,26 +621,26 @@ export const demoFeedback: ExamFeedback = {
       "kPa": "Triple Disorder: HAGMA + NAGMA + Respiratory Acidosis"
     },
     "reasoning": {
-      "mmHg": "Using the supplied bicarbonate of 11 mmol/L:\n\nAnion gap = Na - Cl - HCO3 = 140 - 110 - 11 = 19 mmol/L. This is elevated relative to a normal gap of 12 mmol/L, supporting a high anion gap metabolic acidosis.\n\nDelta ratio = (19 - 12) / (24 - 11) = 7/13 = 0.54. The bicarbonate fall is greater than the rise in anion gap, supporting an additional normal anion gap metabolic acidosis.\n\nWinter's formula: expected PaCO2 (mmHg) = 1.5 x 11 + 8 = 24.5 mmHg, with an expected range of 22.5 mmHg to 26.5 mmHg. The measured PaCO2 of 81 mmHg is well above this range, indicating an additional respiratory acidosis.\n\nSummary: high anion gap metabolic acidosis, normal anion gap metabolic acidosis and respiratory acidosis - a triple acid-base disorder.",
-      "kPa": "Using the supplied bicarbonate of 11 mmol/L:\n\nAnion gap = Na - Cl - HCO3 = 140 - 110 - 11 = 19 mmol/L. This is elevated relative to a normal gap of 12 mmol/L, supporting a high anion gap metabolic acidosis.\n\nDelta ratio = (19 - 12) / (24 - 11) = 7/13 = 0.54. The bicarbonate fall is greater than the rise in anion gap, supporting an additional normal anion gap metabolic acidosis.\n\nWinter's formula: expected PaCO2 (mmHg) = 1.5 x 11 + 8 = 3.3 kPa, with an expected range of 3.0 kPa to 3.5 kPa. The measured PaCO2 of 10.8 kPa is well above this range, indicating an additional respiratory acidosis.\n\nSummary: high anion gap metabolic acidosis, normal anion gap metabolic acidosis and respiratory acidosis - a triple acid-base disorder."
+      "mmHg": "Using the supplied bicarbonate of 11 mmol/L\n\nAnion gap = Na - Cl - HCO3 = 140 - 110 - 11 = 19 mmol/L. This is elevated relative to a normal gap of 12 mmol/L, supporting a high anion gap metabolic acidosis.\n\nDelta ratio = (19 - 12) / (24 - 11) = 7/13 = 0.54. The bicarbonate fall is greater than the rise in anion gap, supporting an additional normal anion gap metabolic acidosis.\n\nWinter's formula: expected PaCO2 (mmHg) = 1.5 x 11 + 8 = 24.5 mmHg, with an expected range of 22.5 mmHg to 26.5 mmHg. The measured PaCO2 of 81 mmHg is well above this range, indicating an additional respiratory acidosis.\n\nSummary: high anion gap metabolic acidosis, normal anion gap metabolic acidosis and respiratory acidosis - a triple acid-base disorder.",
+      "kPa": "Using the supplied bicarbonate of 11 mmol/L\n\nAnion gap = Na - Cl - HCO3 = 140 - 110 - 11 = 19 mmol/L. This is elevated relative to a normal gap of 12 mmol/L, supporting a high anion gap metabolic acidosis.\n\nDelta ratio = (19 - 12) / (24 - 11) = 7/13 = 0.54. The bicarbonate fall is greater than the rise in anion gap, supporting an additional normal anion gap metabolic acidosis.\n\nWinter's formula: expected PaCO2 (mmHg) = 1.5 x 11 + 8 = 3.3 kPa, with an expected range of 3.0 kPa to 3.5 kPa. The measured PaCO2 of 10.8 kPa is well above this range, indicating an additional respiratory acidosis.\n\nSummary: high anion gap metabolic acidosis, normal anion gap metabolic acidosis and respiratory acidosis - a triple acid-base disorder."
     },
     "primaryObjective": "mixed_disorders.recognise",
     "criteria": [
       {
-        "id": "interpret_triple_disorder",
-        "label": "Identifies the mixed acid-base disorder"
+        "id": "calculate_expected_pco2",
+        "label": "Calculates expected PaCO2 with correct interpretation"
       },
       {
         "id": "calculate_anion_gap",
-        "label": "Calculates the anion gap"
+        "label": "Calculates the anion gap with correct interpretation"
       },
       {
         "id": "calculate_delta_ratio",
-        "label": "Calculates the delta ratio"
+        "label": "Calculates the delta ratio with correct interpretation"
       },
       {
-        "id": "calculate_expected_pco2",
-        "label": "Calculates expected PaCO2"
+        "id": "interpret_triple_disorder",
+        "label": "Identifies the mixed acid-base disorder"
       }
     ],
     "display": "resources_with_text_fallback",

@@ -4,7 +4,7 @@ import { Flag, X } from "lucide-react";
 const reasons = ["Incorrect answer or marking", "Values or data look wrong", "Unclear or ambiguous wording",
   "Typo or formatting issue", "Image or visualiser problem", "Something else"];
 
-function ReportProblemDialog({ number, questionId, onClose }: { number: number; questionId: string; onClose: () => void }) {
+function ReportProblemDialog({ number, onClose }: { number: number; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const detailsId = useId();
@@ -20,7 +20,6 @@ function ReportProblemDialog({ number, questionId, onClose }: { number: number; 
       <button type="button" className="exam-report-dialog__close" aria-label="Close report dialog" onClick={onClose}><X size={18} /></button>
       <p className="exam-report-dialog__eyebrow"><Flag size={15} />Report a problem</p>
       <h2 id={titleId}>Question {number}</h2>
-      <p className="exam-report-dialog__id">{questionId}</p>
       <fieldset><legend>What went wrong?</legend><div className="exam-report-dialog__reasons">
         {reasons.map(item => <label key={item} data-selected={reason === item}>
           <input type="radio" name={titleId} value={item} checked={reason === item} onChange={() => setReason(item)} />{item}
@@ -31,7 +30,7 @@ function ReportProblemDialog({ number, questionId, onClose }: { number: number; 
     </div>
     <div className="exam-report-dialog__footer">
       <button type="button" onClick={onClose}>Cancel</button>
-      <button type="button" className="exam-report-dialog__submit" disabled={!reason}>Submit Report</button>
+      <button type="button" className="exam-report-dialog__submit" disabled={!reason}>Submit</button>
     </div>
   </dialog>;
 }
@@ -42,6 +41,6 @@ export function QuestionProblemReport({ number, questionId }: { number: number; 
   function close() { setOpen(false); trigger.current?.focus(); }
   return <div className="exam-question-report">
     <button ref={trigger} type="button" onClick={() => setOpen(true)}><Flag size={14} />Report a problem with this question</button>
-    {open && <ReportProblemDialog number={number} questionId={questionId} onClose={close} />}
+    {open && <ReportProblemDialog key={questionId} number={number} onClose={close} />}
   </div>;
 }

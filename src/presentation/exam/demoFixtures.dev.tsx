@@ -790,17 +790,6 @@ export const demoQuestions: ExamQuestion[] = [
             "refHigh": 26
           },
           {
-            "id": "EXAM-0005-be",
-            "label": "BE",
-            "value": -16.5,
-            "unit": "mEq/L",
-            "primary": false,
-            "oxygenation": false,
-            "pressure": false,
-            "refLow": -2,
-            "refHigh": 2
-          },
-          {
             "id": "EXAM-0005-po2",
             "label": "PaO2",
             "value": 78,
@@ -828,6 +817,17 @@ export const demoQuestions: ExamQuestion[] = [
             "primary": false,
             "oxygenation": true,
             "pressure": false
+          },
+          {
+            "id": "EXAM-0005-be",
+            "label": "BE",
+            "value": -16.5,
+            "unit": "mEq/L",
+            "primary": false,
+            "oxygenation": false,
+            "pressure": false,
+            "refLow": -2,
+            "refHigh": 2
           },
           {
             "id": "EXAM-0005-na",

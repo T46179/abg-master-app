@@ -178,7 +178,7 @@ function AppShellContent() {
         settingsOpen={settingsOpen}
         pressureUnit={examActive ? sitting!.pressureUnit : state.sessionState?.pressureUnit ?? "mmHg"}
         pressureUnitLocked={examActive}
-        examRanges={examActive && /^\/exam\/?$/.test(location.pathname) ? sitting!.showRanges : undefined}
+        examRanges={examActive && /^\/(exam|dev\/exam-pilot)\/?$/.test(location.pathname) ? sitting!.showRanges : undefined}
         onExamRangesChange={() => dispatchExam({ type: "ranges" })}
         onToggleSettings={handleToggleSettings}
         onCloseSettings={() => setSettingsOpen(false)}
