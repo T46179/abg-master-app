@@ -4,8 +4,8 @@ import ExamPilotRuntime from "../exam/ExamPilotRuntime.dev";
 import "../exam/exam.css";
 import "../exam/pilotAuth.css";
 
-// Development-only harness. It deliberately cannot fall back to the app's
-// production/Practice project when separate staging credentials are missing.
+// Used by local development and the explicit hosted Exam pilot build.
+// Separate credentials prevent falling back to the production/Practice project.
 export default function ExamPilotAuthScreen() {
   const client = useMemo(() => {
     const url = import.meta.env.VITE_EXAM_PILOT_SUPABASE_URL;
@@ -95,7 +95,7 @@ export default function ExamPilotAuthScreen() {
   return <main className="app-shell__page exam-screen">
     {(!signedIn || access?.status !== "allowed" || error) && <section className="exam-pilot-auth surface">
       <h1>Exam pilot sign-in</h1>
-      {!client ? <p>Staging sign-in is not configured for this local preview.</p> : <>
+      {!client ? <p>Staging sign-in is not configured.</p> : <>
         {checking ? <p role="status">Checking sign-in…</p> : signedIn ? <>
           <p role="status">{access?.status === "allowed" ? "Your account has pilot access." : access?.status === "closed" ? "You’re signed in. The Exam pilot is not open yet." : access?.status === "not_invited" ? "You’re signed in, but this account does not have pilot access." : "You’re signed in. Pilot access has not been verified."}</p>
         </> : <>

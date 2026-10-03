@@ -2,7 +2,7 @@
 
 import { isValidElement } from "react";
 import { matchRoutes } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { appRoutes } from "./routes";
 
 function getElementName(element: unknown) {
@@ -153,5 +153,33 @@ describe("app routes", () => {
 
     expect(wildcardProps.to).toBe("/learn");
     expect(wildcardProps.replace).toBe(true);
+  });
+});
+
+
+describe("hosted Exam pilot routing", () => {
+  it("opens the connected pilot at /exam and redirects the old development URL", async () => {
+    vi.stubEnv("DEV", false);
+    vi.stubEnv("MODE", "exam-pilot");
+    vi.resetModules();
+    try {
+      const { appRoutes: pilotRoutes } = await import("./routes");
+      const children = pilotRoutes.find(route => route.children)?.children;
+      const examElement = children?.find(route => route.path === "exam")?.element;
+      expect(isValidElement(examElement) && examElement.type).toBe(Symbol.for("react.suspense"));
+      expect(getElementProps(children?.find(route => route.path === "dev/exam-pilot")?.element)).toMatchObject({ to: "/exam", replace: true });
+    } finally { vi.unstubAllEnvs(); vi.resetModules(); }
+  });
+
+  it("keeps the connected pilot excluded from the normal production routes", async () => {
+    vi.stubEnv("DEV", false);
+    vi.stubEnv("MODE", "production");
+    vi.resetModules();
+    try {
+      const { appRoutes: productionRoutes } = await import("./routes");
+      const children = productionRoutes.find(route => route.children)?.children;
+      expect(children?.some(route => route.path === "dev/exam-pilot")).toBe(false);
+      expect(getElementName(children?.find(route => route.path === "exam")?.element)).toBe("ExamScreen");
+    } finally { vi.unstubAllEnvs(); vi.resetModules(); }
   });
 });

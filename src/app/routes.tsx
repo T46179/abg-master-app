@@ -25,7 +25,8 @@ import { ContactScreen } from "../presentation/screens/ContactScreen";
 import { FeaturedCaseScreen } from "../presentation/screens/FeaturedCaseScreen";
 import { AppRouteErrorView } from "../presentation/shared/StatusViews";
 
-const ExamPilotAuth = import.meta.env.DEV ? lazy(() => import("../presentation/screens/ExamPilotAuthScreen.dev")) : null;
+const hostedExamPilot = import.meta.env.MODE === "exam-pilot";
+const ExamPilotAuth = (import.meta.env.DEV || hostedExamPilot) ? lazy(() => import("../presentation/screens/ExamPilotAuthScreen.dev")) : null;
 
 export const appRoutes: RouteObject[] = [
   {
@@ -88,8 +89,8 @@ export const appRoutes: RouteObject[] = [
           { path: "*", element: <Navigate to="/learn" replace /> }
         ]
       },
-      ...(ExamPilotAuth ? [{ path: "dev/exam-pilot", element: <Suspense fallback={<p>Loading…</p>}><ExamPilotAuth /></Suspense> }] : []),
-      { path: "exam", element: <ExamScreen /> },
+      ...(ExamPilotAuth ? [{ path: "dev/exam-pilot", element: hostedExamPilot ? <Navigate to="/exam" replace /> : <Suspense fallback={<p>Loading…</p>}><ExamPilotAuth /></Suspense> }] : []),
+      { path: "exam", element: hostedExamPilot && ExamPilotAuth ? <Suspense fallback={<p>Loading…</p>}><ExamPilotAuth /></Suspense> : <ExamScreen /> },
       { path: "leaderboard", element: <LeaderboardScreen /> },
       { path: "*", element: <Navigate to="/" replace /> }
     ]
