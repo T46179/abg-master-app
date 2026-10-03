@@ -169,14 +169,14 @@ export const demoFeedback: ExamFeedback = {
       "kPa": "Respiratory acidosis."
     },
     "reasoning": {
-      "mmHg": "The pH is below 7.35, indicating acidaemia. PaCO2 is elevated, identifying a respiratory acidifying process: retained carbon dioxide increases hydrogen ion concentration and lowers pH.",
-      "kPa": "The pH is below 7.35, indicating acidaemia. PaCO2 is elevated, identifying a respiratory acidifying process: retained carbon dioxide increases hydrogen ion concentration and lowers pH."
+      "mmHg": "The pH is acidaemic. PaCO2 is markedly elevated, suggesting a respiratory acidifying process: retained carbon dioxide increases hydrogen ion concentration and lowers pH.",
+      "kPa": "The pH is acidaemic. PaCO2 is markedly elevated, suggesting a respiratory acidifying process: retained carbon dioxide increases hydrogen ion concentration and lowers pH."
     },
     "primaryObjective": "acid_base.primary_process",
     "criteria": [
       {
         "id": "identify_respiratory_acidosis",
-        "label": "Identifies an isolated respiratory acidosis"
+        "label": "Identifies respiratory acidosis"
       }
     ],
     "display": "resources_with_text_fallback",
@@ -190,8 +190,8 @@ export const demoFeedback: ExamFeedback = {
       "kPa": "His O2 saturation is approximately 80–85%."
     },
     "reasoning": {
-      "mmHg": "A PaO2 of 50 mmHg corresponds to approximately 80–85% SaO2 on the standard oxygen-haemoglobin dissociation curve. Below about 60 mmHg, the curve is steep, so relatively small falls in PaO2 cause substantial falls in saturation.",
-      "kPa": "A PaO2 of 6.7 kPa corresponds to approximately 80–85% SaO2 on the standard oxygen-haemoglobin dissociation curve. Below about 8.0 kPa, the curve is steep, so relatively small falls in PaO2 cause substantial falls in saturation."
+      "mmHg": "A PaO2 of 50 mmHg corresponds to approximately 80% SaO2 on the standard oxygen-haemoglobin dissociation curve. Below about 60 mmHg, the curve is steep, so relatively small falls in PaO2 cause substantial falls in saturation.",
+      "kPa": "A PaO2 of 6.7 kPa corresponds to approximately 80% SaO2 on the standard oxygen-haemoglobin dissociation curve. Below about 8.0 kPa, the curve is steep, so relatively small falls in PaO2 cause substantial falls in saturation."
     },
     "primaryObjective": "oxygenation.assess",
     "criteria": [],
@@ -206,8 +206,8 @@ export const demoFeedback: ExamFeedback = {
   },
   "EXAM-0002-P3": {
     "answer": {
-      "mmHg": "Sedative intoxication, brainstem stroke, and high cervical spinal cord injury can all cause acute alveolar hypoventilation, leading to CO₂ retention and an isolated acute respiratory acidosis.",
-      "kPa": "Sedative intoxication, brainstem stroke, and high cervical spinal cord injury can all cause acute alveolar hypoventilation, leading to CO₂ retention and an isolated acute respiratory acidosis."
+      "mmHg": "Sedative intoxication, brainstem stroke, and high cervical spinal cord injury.",
+      "kPa": "Sedative intoxication, brainstem stroke, and high cervical spinal cord injury."
     },
     "reasoning": {
       "mmHg": "Acute pulmonary embolism more commonly causes hyperventilation and an acute respiratory alkalosis. Salicylate toxicity classically produces respiratory alkalosis, often with a concurrent high-anion-gap metabolic acidosis. Stable severe COPD with chronic CO₂ retention produces a chronic respiratory acidosis with renal bicarbonate compensation rather than an isolated acute respiratory acidosis.",
@@ -262,7 +262,7 @@ export const demoFeedback: ExamFeedback = {
     "criteria": [
       {
         "id": "identify_metabolic_acidosis",
-        "label": "Identifies metabolic acidosis"
+        "label": "Identifies concurrent metabolic acidosis"
       },
       {
         "id": "identify_respiratory_acidosis",
@@ -602,14 +602,14 @@ export const demoFeedback: ExamFeedback = {
         "id": "EXAM-0005-P3-O3",
         "text": {
           "mmHg": "PaO2 must be interpreted in the context of FiO2. A PaO2 of 78 mmHg on an FiO2 of 1.0 represents severe oxygenation impairment despite being above 60 mmHg.",
-          "kPa": "PaO2 must be interpreted in the context of FiO2. A PaO2 of 78 mmHg on an FiO2 of 1.0 represents severe oxygenation impairment despite being above 60 mmHg."
+          "kPa": "PaO2 must be interpreted in the context of FiO2. A PaO2 of 10.4 kPa on an FiO2 of 1.0 represents severe oxygenation impairment despite being above 8.0 kPa."
         }
       },
       {
         "id": "EXAM-0005-P3-O4",
         "text": {
           "mmHg": "The P/F ratio remains interpretable at an FiO2 of 1.0. Here, PaO2 78 mmHg on FiO2 1.0 gives a P/F ratio of approximately 78, indicating severe impairment of oxygenation.",
-          "kPa": "The P/F ratio remains interpretable at an FiO2 of 1.0. Here, PaO2 78 mmHg on FiO2 1.0 gives a P/F ratio of approximately 78, indicating severe impairment of oxygenation."
+          "kPa": "The P/F ratio remains interpretable at an FiO2 of 1.0. Here, PaO2 10.4 kPa on FiO2 1.0 gives a P/F ratio of approximately 78, indicating severe impairment of oxygenation."
         }
       }
     ],

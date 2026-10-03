@@ -351,7 +351,7 @@ export const demoQuestions: ExamQuestion[] = [
       {
         "id": "EXAM-0002-P1",
         "kind": "concept",
-        "prompt": "What is the respiratory acid–base disturbance?",
+        "prompt": "What is the primary acid–base disturbance?",
         "marks": 1
       },
       {
@@ -920,7 +920,8 @@ export const demoQuestions: ExamQuestion[] = [
           },
           {
             "id": "EXAM-0005-P3-O3",
-            "text": "Oxygenation is impaired, but not severely, because the PaO2 remains above 60 mmHg"
+            "text": "Oxygenation is impaired, but not severely, because the PaO2 remains above 60 mmHg",
+            "textKpa": "Oxygenation is impaired, but not severely, because the PaO2 remains above 8.0 kPa"
           },
           {
             "id": "EXAM-0005-P3-O4",

@@ -43,7 +43,7 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); });
 it("saves raw answers and shows teaching with pending marks only after acceptance", async () => {
- await mount(); await click("Start 3-question exam");
+ await mount(); await click("Start Exam");
  const textarea = container.querySelector("textarea")!;
  await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(textarea, "  raw answer  "); textarea.dispatchEvent(new Event("input", { bubbles: true })); });
  expect(attempt.answers.part).toBe("  raw answer  ");
@@ -57,7 +57,7 @@ it("saves raw answers and shows teaching with pending marks only after acceptanc
  expect(invoke.mock.calls.filter(c => c[1].body.operation === "start")).toHaveLength(1);
 });
 it("locks review after a lost submission response and recovers Results without resubmitting", async () => {
- await mount(); await click("Start 3-question exam"); await click("Review exam");
+ await mount(); await click("Start Exam"); await click("Review exam");
  loseSubmission = true; await click("Submit anyway");
  expect(container.textContent).not.toContain("Teaching explanation");
  expect(container.querySelector('fieldset')!.disabled).toBe(true);
@@ -66,7 +66,7 @@ it("locks review after a lost submission response and recovers Results without r
  expect(invoke.mock.calls.filter(c => c[1].body.operation === "submit")).toHaveLength(1);
 });
 it("reload recovers the same questions and saved raw answer through read and claim", async () => {
- await mount(); await click("Start 3-question exam");
+ await mount(); await click("Start Exam");
  const textarea = container.querySelector("textarea")!;
  await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(textarea, "saved draft"); textarea.dispatchEvent(new Event("input", { bubbles: true })); });
  await act(async () => root.unmount()); root = createRoot(container); await mount(); await click("Recover attempt");
@@ -75,7 +75,7 @@ it("reload recovers the same questions and saved raw answer through read and cla
 });
 
 it("navigation waits for server abandonment and stays in the exam on failure", async () => {
- await mount(); await click("Start 3-question exam");
+ await mount(); await click("Start Exam");
  await act(async () => { void router.navigate("/away"); });
  expect(container.querySelector("dialog")).not.toBeNull();
  invoke.mockResolvedValueOnce({ error: new Error("offline") });
@@ -90,7 +90,7 @@ it("navigation waits for server abandonment and stays in the exam on failure", a
 
 it("automatically renders completed server marks without a manual refresh control", async () => {
  vi.useFakeTimers();
- await mount(); await click("Start 3-question exam"); await click("Review exam"); await click("Submit anyway");
+ await mount(); await click("Start Exam"); await click("Review exam"); await click("Submit anyway");
  attempt = { ...attempt, gradingStatus: "completed", marksAwarded: 1, parts: [{ partId: "part", status: "completed", marksAwarded: 1, marksAvailable: 2, criteria: { a: 0, b: 1 } }],
    feedback: { ...attempt.feedback!, part: { ...attempt.feedback!.part, criteria: [{ id: "a", label: "First criterion" }, { id: "b", label: "Second criterion" }] } } };
  await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
@@ -102,9 +102,27 @@ it("automatically renders completed server marks without a manual refresh contro
 });
 it("retries failed grading through its own operation without resubmitting", async () => {
  vi.useFakeTimers();
- await mount(); await click("Start 3-question exam"); await click("Review exam"); await click("Submit anyway");
+ await mount(); await click("Start Exam"); await click("Review exam"); await click("Submit anyway");
  attempt = { ...attempt, gradingStatus: "failed", canRetryGrading: true, parts: [{ partId: "part", status: "failed" }] };
  await act(async () => { await vi.advanceTimersByTimeAsync(3000); }); await click("Retry grading");
  expect(invoke.mock.calls.filter(c => c[1].body.operation === "retry_grading")).toHaveLength(1);
  expect(invoke.mock.calls.filter(c => c[1].body.operation === "submit")).toHaveLength(1);
+});
+
+it("reports against the displayed attempt and keeps confirmation inside the popup", async () => {
+ vi.useFakeTimers();
+ await mount(); await click("Start Exam"); await click("Review exam"); await click("Submit anyway");
+ await click("Report a problem with this question");
+ await act(async () => container.querySelector<HTMLInputElement>('input[type="radio"]')!.click());
+ invoke.mockResolvedValueOnce({data:{reportId:"12345678-1234-1234-1234-123456789abc"}});
+ await click("Submit");
+ const report=invoke.mock.calls.find(c=>c[1].body.operation==='report_problem')![1].body.input;
+ expect(report.attemptId).toBe('test-attempt'); expect(report.questionId).toBe('test-unit'); expect(report.details).toBe('');
+ expect(container.querySelector('dialog')!.textContent).toContain('Report Submitted.');
+ expect(container.querySelector('section[aria-label="Exam pilot"] > p[role="status"]')).toBeNull();
+ await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+ expect(container.querySelector('dialog')!.textContent).toContain('Report Submitted.');
+ await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Close report dialog"]')!.click());
+ expect(container.querySelector('dialog')).toBeNull();
+ expect(invoke.mock.calls.filter(c=>c[1].body.operation==='submit')).toHaveLength(1);
 });

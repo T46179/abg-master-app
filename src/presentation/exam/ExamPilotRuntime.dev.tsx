@@ -131,7 +131,16 @@ export default function ExamPilotRuntime({ client, userId, canStart }: { client:
     {sitting && attempt ? sitting.phase === "complete" ? <>
       {refreshError && <p role="status">{refreshError}</p>}
       <ExamResultsPresentation sitting={sitting} pressureUnit={state.sessionState?.pressureUnit ?? sitting.pressureUnit}
+        notice={<aside className="exam-results__feedback" aria-label="Exam feedback">
+          <p>Help us improve with a quick anonymous survey</p>
+          <a href="https://docs.google.com/forms/d/e/1FAIpQLSdxV6GEYCp5m4jBC4yEu095YjVQtniDPmO3r1HpmywDOND43Q/viewform?usp=publish-editor"
+            target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" aria-label="Share your feedback (opens in a new tab)">Share your feedback <span aria-hidden="true">↗</span></a>
+        </aside>}
         feedback={attempt.feedback ?? {}} grades={Object.fromEntries((attempt.parts ?? []).map(p => [p.partId, { status: p.status, score: p.marksAwarded ?? undefined, criteria: p.criteria ?? undefined }]))}
+        onReport={async input => {
+          const receipt = await session.call<{ reportId: string }>("report_problem", { ...input, attemptId: attempt.id });
+          if (typeof receipt?.reportId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(receipt.reportId)) throw new Error("Invalid report receipt");
+        }}
         onRetry={attempt.canRetryGrading && !busy ? () => void run(async () => show(await session.call<RuntimeAttempt>("retry_grading", { attemptId: attempt.id }))) : undefined}
         onExit={() => { if (session.journal?.attemptId === attempt.id) session.clear(); updateSitting({ type: "exit" }); setAttempt(null); void run(loadRoom); }} />
     </> : <>
@@ -142,14 +151,14 @@ export default function ExamPilotRuntime({ client, userId, canStart }: { client:
       <header className="exam-page-heading"><p className="exam-eyebrow">Exam practice</p><h1>Exam Room</h1><p>Put your knowledge into practice, then review your answers and feedback.</p></header>
       <section className="exam-pilot-room__start surface" aria-labelledby="pilot-exam-title">
       <span className="exam-icon-badge"><BookOpen size={22} aria-hidden="true" /></span>
-      <div className="exam-pilot-room__intro"><h2 id="pilot-exam-title">Pilot exam</h2><p>3 questions · Calculations and interpretation</p></div>
+      <div className="exam-pilot-room__intro"><h2 id="pilot-exam-title">Test exam</h2><p>3 questions · Calculations and interpretation</p></div>
       <div className="exam-pilot-room__actions">
       {current || session.journal ? <>
         <p>An attempt is available for recovery in its original browser.</p>
         <button className="exam-pilot-button exam-primary" disabled={busy || !ready} onClick={() => void run(() => openAttempt(true))}>Recover attempt</button>
         {current && <button className="exam-pilot-button" disabled={busy} onClick={() => setExitOpen(true)}>Abandon attempt</button>}
         {exitOpen && current && <ExitSittingDialog onStay={() => setExitOpen(false)} onExit={() => void run(async () => { await session.abandon(current); setExitOpen(false); await loadRoom(); })} />}
-      </> : <button className="exam-pilot-button exam-primary" disabled={!canStart || !ready || busy} onClick={() => void run(() => openAttempt(false))}>Start 3-question exam<ArrowRight size={18} aria-hidden="true" /></button>}
+      </> : <button className="exam-pilot-button exam-primary" disabled={!canStart || !ready || busy} onClick={() => void run(() => openAttempt(false))}>Start Exam<ArrowRight size={18} aria-hidden="true" /></button>}
       </div></section>
       <section className="exam-pilot-room__history" aria-labelledby="exam-history-title">
         <div className="exam-pilot-room__history-heading"><History size={20} aria-hidden="true" /><h2 id="exam-history-title">Submitted exams</h2></div>

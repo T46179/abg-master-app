@@ -6,7 +6,7 @@ import type { ExamPart, SittingState } from "./sittingTypes";
 import { MetricRichText } from "../practice/MetricText";
 import { ExamResultValues } from "./ExamResultValues";
 import { ScoreRing } from "./ExamUi";
-import { QuestionProblemReport } from "./ReportProblemDialog";
+import { QuestionProblemReport, type SubmitProblemReport } from "./ReportProblemDialog";
 import { CompensationVisualContent } from "../practice/compensation/CompensationVisualContent";
 import { AnionGapVisualContent } from "../practice/anionGap/AnionGapVisualContent";
 import { buildCompensationVisualModel } from "../practice/compensation/compensationVisualModel";
@@ -157,9 +157,9 @@ function PartCard({ part, index, sitting, status, score, unit, feedback, criteri
 }
 
 export interface PartGrade { status: GradingStatus; score?: number; criteria?: Record<string, number> }
-export default function ExamResultsPresentation({ sitting, onExit, pressureUnit = sitting.pressureUnit, feedback, grades, onRetry, notice }: {
+export default function ExamResultsPresentation({ sitting, onExit, pressureUnit = sitting.pressureUnit, feedback, grades, onRetry, notice, onReport }: {
   sitting: SittingState; onExit: () => void; pressureUnit?: PressureUnit;
-  feedback: Record<string, PartFeedback>; grades: Record<string, PartGrade>; onRetry?: () => void; notice?: ReactNode;
+  feedback: Record<string, PartFeedback>; grades: Record<string, PartGrade>; onRetry?: () => void; notice?: ReactNode; onReport?: SubmitProblemReport;
 }) {
   const parts = sitting.questions.flatMap(q => q.parts);
   const [selected, setSelected] = useState(0);
@@ -181,8 +181,8 @@ export default function ExamResultsPresentation({ sitting, onExit, pressureUnit 
   const elapsed = Math.floor(Math.max(0, (sitting.finishedAt ?? sitting.startedAt) - sitting.startedAt) / 1000);
   const statusText = allDone ? "Grading complete" : failed ? "Some grading could not be completed" : "Grading in progress";
   return <div className="exam-results">
-    {notice}
     <button type="button" className="exam-results__back" onClick={onExit}><ChevronLeft size={16} aria-hidden="true" />Back to Exam Room</button>
+    {notice}
     <section className="exam-results__summary" aria-label="Exam submitted" data-failed={failed > 0} data-pending={!allDone && !failed}>
       <div className="exam-results__summary-main">
         <div className="exam-results__score">
@@ -223,7 +223,7 @@ export default function ExamResultsPresentation({ sitting, onExit, pressureUnit 
         <PartCard key={part.id} part={part} index={pi} sitting={sitting} status={statuses[part.id] ?? "pending"}
           score={grades[part.id]?.score ?? 0} unit={pressureUnit} feedback={feedback[part.id]} criteria={grades[part.id]?.criteria} retryAvailable={!!onRetry} />
       )}</div>
-      {selected === qi && <QuestionProblemReport number={qi + 1} questionId={question.id} />}
+      {selected === qi && <QuestionProblemReport number={qi + 1} questionId={question.id} onSubmit={onReport} />}
     </section>)}
     <button type="button" className="exam-results__exit" onClick={onExit}>Back to Exam Room</button>
   </div>;

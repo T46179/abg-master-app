@@ -24,6 +24,7 @@ export default function ExamPilotAuthScreen() {
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   const inFlight = useRef(false);
+  const checkedUser = useRef("");
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
@@ -35,8 +36,6 @@ export default function ExamPilotAuthScreen() {
     if (!client) { setChecking(false); return; }
     let cancelled = false;
     setChecking(true);
-    setAccess(null);
-    setError("");
     void (async () => {
       try {
         const identity = await readExamIdentity(client);
@@ -44,13 +43,24 @@ export default function ExamPilotAuthScreen() {
         setSignedIn(identity.status === "signed_in");
         setUserId(identity.status === "signed_in" ? identity.userId : "");
         if (identity.status === "signed_in") {
+          // Preserve the confirmed same-account view during routine rechecks.
+          // Never carry access approval across a change of account.
+          if (checkedUser.current !== identity.userId) setAccess(null);
+          checkedUser.current = identity.userId;
           setCode("");
           setSentTo("");
           const next = await readExamAccess(client);
-          if (!cancelled) setAccess(next);
+          if (!cancelled) { setAccess(next); setError(""); }
+        } else {
+          checkedUser.current = "";
+          setAccess(null);
+          setError("");
         }
       } catch {
-        if (!cancelled) setError("We couldn’t check your sign-in or pilot access. Please try again.");
+        if (!cancelled) {
+          setAccess(null);
+          setError("We couldn’t check your sign-in or pilot access. Please try again.");
+        }
       } finally { if (!cancelled) setChecking(false); }
     })();
     return () => { cancelled = true; };
@@ -105,6 +115,6 @@ export default function ExamPilotAuthScreen() {
         {error && <div role="alert"><p>{error}</p><button className="exam-pilot-button" disabled={busy || checking} onClick={() => setRevision(n => n + 1)}>Retry access check</button></div>}
       </>}
     </section>}
-    {client && signedIn && userId && <ExamPilotRuntime key={userId} client={client} userId={userId} canStart={access?.status === "allowed"} />}
+    {client && signedIn && userId && (!checking || access !== null) && <ExamPilotRuntime key={userId} client={client} userId={userId} canStart={access?.status === "allowed"} />}
   </main>;
 }

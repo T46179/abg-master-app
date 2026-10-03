@@ -79,7 +79,7 @@ it("opens a question-specific report, selects one reason and resets after dismis
   act(() => reasons[1].click());
   expect(reasons[0].checked).toBe(false);
   expect(reasons[1].checked).toBe(true);
-  expect(submit.disabled).toBe(false);
+  expect(submit.disabled).toBe(true); // Illustrative prototype has no reporting backend.
   click("Cancel", dialog);
   expect(container.querySelector("dialog")).toBeNull();
   expect(document.activeElement?.textContent).toBe("Report a problem with this question");

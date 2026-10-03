@@ -12,11 +12,12 @@ import ExamPilotAuthScreen from "./ExamPilotAuthScreen.dev";
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let container: HTMLDivElement;
 let root: Root;
+let authChanged: () => void;
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("VITE_EXAM_PILOT_SUPABASE_URL", "https://clpfecuohwzwrgmqzeos.supabase.co");
   vi.stubEnv("VITE_EXAM_PILOT_SUPABASE_ANON_KEY", "public");
-  mocks.createExamAuthClient.mockReturnValue({ auth: { onAuthStateChange: () => ({ data: { subscription: { unsubscribe: mocks.unsubscribe } } }), signOut: mocks.signOut } });
+  mocks.createExamAuthClient.mockReturnValue({ auth: { onAuthStateChange: (callback: () => void) => { authChanged = callback; return { data: { subscription: { unsubscribe: mocks.unsubscribe } } }; }, signOut: mocks.signOut } });
   mocks.readExamIdentity.mockResolvedValue({ status: "signed_out" });
   mocks.readExamAccess.mockResolvedValue({ status: "closed", allowedUnitCounts: [] });
   mocks.requestExamCode.mockResolvedValue(undefined);
@@ -79,4 +80,58 @@ it("access approval shows the runtime without the sign-in banner or sign-out con
   expect(container.textContent).not.toContain("Exam pilot sign-in");
   expect(container.textContent).not.toContain("Sign out");
   expect(container.querySelector("#exam-email")).toBeNull();
+});
+
+it("keeps same-account verification silent and the runtime mounted", async () => {
+  mocks.readExamIdentity.mockResolvedValue({ status: "signed_in", userId: "owner" });
+  mocks.readExamAccess.mockResolvedValue({ status: "allowed", allowedUnitCounts: [3] });
+  await render(); const runtime=container.querySelector("main > div")!;
+  let finish!: (value: unknown) => void;
+  mocks.readExamAccess.mockImplementationOnce(() => new Promise(resolve => { finish=resolve; }));
+  await act(async () => authChanged());
+  expect(container.textContent).not.toContain("Checking sign-in");
+  expect(container.textContent).not.toContain("Exam pilot sign-in");
+  expect(container.querySelector("main > div")).toBe(runtime);
+  await act(async () => finish({status:"allowed",allowedUnitCounts:[3]}));
+  expect(container.textContent).not.toContain("Exam pilot sign-in");
+});
+it("shows a genuine background failure and supports silent successful recovery", async () => {
+  mocks.readExamIdentity.mockResolvedValue({ status: "signed_in", userId: "owner" });
+  mocks.readExamAccess.mockResolvedValue({ status: "allowed", allowedUnitCounts: [3] });
+  await render(); mocks.readExamAccess.mockRejectedValueOnce(new Error("offline"));
+  await act(async () => authChanged());
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("couldn’t check");
+  await act(async () => container.querySelector<HTMLButtonElement>('[role="alert"] button')!.click());
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+  expect(container.textContent).not.toContain("Exam pilot sign-in");
+});
+it("shows access revocation and session expiry after background verification", async () => {
+  mocks.readExamIdentity.mockResolvedValue({ status: "signed_in", userId: "owner" });
+  mocks.readExamAccess.mockResolvedValue({ status: "allowed", allowedUnitCounts: [3] });
+  await render(); mocks.readExamAccess.mockResolvedValueOnce({ status: "not_invited", allowedUnitCounts: [] });
+  await act(async () => authChanged()); expect(container.textContent).toContain("does not have pilot access");
+  mocks.readExamIdentity.mockResolvedValueOnce({ status: "signed_out" });
+  await act(async () => authChanged()); expect(container.querySelector("#exam-email")).toBeTruthy();
+  expect(container.textContent).not.toContain("Runtime connected");
+});
+it("does not carry an access approval to a different account", async () => {
+  mocks.readExamIdentity.mockResolvedValue({ status: "signed_in", userId: "owner" });
+  mocks.readExamAccess.mockResolvedValue({ status: "allowed", allowedUnitCounts: [3] });
+  await render(); mocks.readExamIdentity.mockResolvedValueOnce({ status: "signed_in", userId: "other" });
+  let finish!: (value: unknown) => void;
+  mocks.readExamAccess.mockImplementationOnce(() => new Promise(resolve => { finish=resolve; }));
+  await act(async () => authChanged()); expect(container.textContent).toContain("Checking sign-in");
+  await act(async () => finish({ status: "not_invited", allowedUnitCounts: [] }));
+  expect(container.textContent).toContain("does not have pilot access");
+});
+
+it("keeps the first verification visible until the initial access check completes", async () => {
+  mocks.readExamIdentity.mockResolvedValue({ status: "signed_in", userId: "owner" });
+  let finish!: (value: unknown) => void;
+  mocks.readExamAccess.mockImplementationOnce(() => new Promise(resolve => { finish=resolve; }));
+  await render(); expect(container.textContent).toContain("Checking sign-in");
+  expect(container.textContent).not.toContain("Runtime connected");
+  await act(async () => finish({status:"allowed",allowedUnitCounts:[3]}));
+  expect(container.textContent).toContain("Runtime connected");
+  expect(container.textContent).not.toContain("Exam pilot sign-in");
 });
