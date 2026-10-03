@@ -23,7 +23,8 @@ The build validates that both app and Exam target staging with public keys.
 Optional monitoring variables should use staging-specific settings.
 
 This explicit Vite mode includes the connected pilot at `/exam`, redirects `/dev/exam-pilot`
-to `/exam`, and leaves development demos excluded. Local development and the normal production
+to `/exam`, and leaves development demos excluded. In this mode only, `/exam` skips
+Practice calibration so fresh browsers can reach pilot sign-in directly. Local development and the normal production
 build retain their existing routes. The hosted build does not generate GitHub Pages' root
 `404.html`: Cloudflare's default SPA fallback supports direct links and reloads.
 It also generates `robots.txt` and a `noindex, nofollow` response header for staging.

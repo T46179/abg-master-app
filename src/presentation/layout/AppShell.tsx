@@ -49,12 +49,13 @@ function AppShellContent() {
     hasSummary: Boolean(state.practiceState.lastCaseSummary),
     hasPendingSubmission: Boolean(state.practiceState.pendingSubmission)
   });
-  const shouldHoldLearnerRoute = shouldHoldLearnerRouteForCalibration({
+  const isHostedExamPilotRoute = import.meta.env.MODE === "exam-pilot" && /^\/exam\/?$/.test(location.pathname);
+  const shouldHoldLearnerRoute = !isHostedExamPilotRoute && shouldHoldLearnerRouteForCalibration({
     pathname: location.pathname,
     calibration: state.calibrationState,
     hasMeaningfulProgress
   });
-  const shouldRedirectToCalibration = shouldRedirectToCalibrationOnboarding({
+  const shouldRedirectToCalibration = !isHostedExamPilotRoute && shouldRedirectToCalibrationOnboarding({
     pathname: location.pathname,
     calibration: state.calibrationState,
     hasMeaningfulProgress
