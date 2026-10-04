@@ -9,7 +9,9 @@ import { useExamSitting } from "./ExamSittingContext";
 import ExamResultsPresentation from "./ExamResultsPresentation";
 
 type HistoryItem = { id: string; finishedAt: string; marksAvailable: number };
-export default function ExamPilotRuntime({ client, userId, canStart }: { client: SupabaseClient; userId: string; canStart: boolean }) {
+type PilotProps = { client: SupabaseClient; userId: string; canStart: boolean; unitCount?: number };
+
+export default function ExamPilotRuntime({ client, userId, canStart, unitCount }: PilotProps) {
   const { state } = useAppContext();
   const { sitting, dispatch: updateSitting } = useExamSitting();
   const [attempt, setAttempt] = useState<RuntimeAttempt | null>(null);
@@ -151,7 +153,7 @@ export default function ExamPilotRuntime({ client, userId, canStart }: { client:
       <header className="exam-page-heading"><p className="exam-eyebrow">Exam practice</p><h1>Exam Room</h1><p>Put your knowledge into practice, then review your answers and feedback.</p></header>
       <section className="exam-pilot-room__start surface" aria-labelledby="pilot-exam-title">
       <span className="exam-icon-badge"><BookOpen size={22} aria-hidden="true" /></span>
-      <div className="exam-pilot-room__intro"><h2 id="pilot-exam-title">Test exam</h2><p>3 questions · Calculations and interpretation</p></div>
+      <div className="exam-pilot-room__intro"><h2 id="pilot-exam-title">Test exam</h2><p>{unitCount !== undefined && `${unitCount} ${unitCount === 1 ? "question" : "questions"} · `}Calculations and interpretation</p></div>
       <div className="exam-pilot-room__actions">
       {current || session.journal ? <>
         <p>An attempt is available for recovery in its original browser.</p>

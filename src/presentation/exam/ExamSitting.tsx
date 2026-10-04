@@ -139,8 +139,15 @@ export function ExamSitting({ sitting: s, dispatch, onExitConfirmed, disabled = 
         </button>
       </div>
     </Surface> : <div className="exam-sitting-content">
+      {part.stimulusSectionIds && q.sections ? part.stimulusSectionIds.map(id => {
+        const section = q.sections!.find(s => s.id === id);
+        if (section?.type === "text") return <Surface key={id} className="exam-scenario"><span className="section-header__eyebrow">Clinical scenario</span><div><MetricRichText>{section.content}</MetricRichText></div></Surface>;
+        const table = section?.type === "data_table" ? q.tables.find(t => t.id === section.tableId) : undefined;
+        return table ? <ExamValues key={id} table={table} pressureUnit={s.pressureUnit} showRanges={s.showRanges} /> : null;
+      }) : <>
       {q.scenario && <Surface className="exam-scenario"><span className="section-header__eyebrow">Clinical scenario</span><div><MetricRichText>{q.scenario}</MetricRichText></div></Surface>}
       {q.tables.map(table => <ExamValues key={table.id} table={table} pressureUnit={s.pressureUnit} showRanges={s.showRanges} />)}
+      </>}
       <Surface className="exam-part-card">
         <div className="exam-part-heading">
           <nav className="exam-part-pills" aria-label="Question Parts">
@@ -150,7 +157,7 @@ export function ExamSitting({ sitting: s, dispatch, onExitConfirmed, disabled = 
           </nav>
           <span className="exam-small">{part.marks} {part.marks === 1 ? "mark" : "marks"}</span>
         </div>
-        {part.additionalContext && <div><MetricRichText>{part.additionalContext}</MetricRichText></div>}
+        {part.additionalContext && <div className="exam-part-context"><MetricRichText>{part.additionalContext}</MetricRichText></div>}
         <h1 className="exam-part-prompt" ref={heading} tabIndex={-1}><MetricRichText>{part.prompt}</MetricRichText></h1>
         {part.instruction && <p className="exam-small"><MetricRichText>{part.instruction}</MetricRichText></p>}
         <ExamResponse part={part} value={s.answers[part.id]} unit={s.pressureUnit}

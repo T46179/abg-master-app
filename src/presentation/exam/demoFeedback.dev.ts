@@ -255,8 +255,8 @@ export const demoFeedback: ExamFeedback = {
       "kPa": "Mixed metabolic acidosis and respiratory acidosis."
     },
     "reasoning": {
-      "mmHg": "The pH of 7.22 indicates acidaemia. The raised venous PCO2 of 61 mmHg and reduced bicarbonate of 20 mmol/L both act in the acidifying direction. A reduced bicarbonate is not the expected compensatory response to respiratory acidosis; respiratory compensation for metabolic acidosis would lower PCO2. The supplied values therefore support a mixed metabolic and respiratory acidosis rather than a simple disturbance with appropriate compensation.",
-      "kPa": "The pH of 7.22 indicates acidaemia. The raised venous PCO2 of 8.1 kPa and reduced bicarbonate of 20 mmol/L both act in the acidifying direction. A reduced bicarbonate is not the expected compensatory response to respiratory acidosis; respiratory compensation for metabolic acidosis would lower PCO2. The supplied values therefore support a mixed metabolic and respiratory acidosis rather than a simple disturbance with appropriate compensation."
+      "mmHg": "The pH of 7.14 indicates acidaemia. Bicarbonate of 20 mmol/L supports metabolic acidosis. Using Winter's formula, the expected PCO2 is approximately 38 mmHg, with a range of 36-40 mmHg. The measured PCO2 of 61 mmHg is substantially above this range, supporting an additional primary respiratory acidosis. The reduced bicarbonate is not compensation for respiratory acidosis, which would ordinarily increase bicarbonate.\n\nSummary: mixed metabolic and respiratory acidosis.",
+      "kPa": "The pH of 7.14 indicates acidaemia. Bicarbonate of 20 mmol/L supports metabolic acidosis. Using Winter's formula, the expected PCO2 is approximately 38 mmHg, with a range of 36-40 mmHg. The measured PCO2 of 8.1 kPa is substantially above this range, supporting an additional primary respiratory acidosis. The reduced bicarbonate is not compensation for respiratory acidosis, which would ordinarily increase bicarbonate.\n\nSummary: mixed metabolic and respiratory acidosis."
     },
     "primaryObjective": "mixed_disorders.recognise",
     "criteria": [
@@ -370,8 +370,8 @@ export const demoFeedback: ExamFeedback = {
       "kPa": "This is a mixed disorder (HAGMA + Respiratory Alkalosis)"
     },
     "reasoning": {
-      "mmHg": "The expected PCO2 is 26 mmHg, while the measured PCO2 is 22 mmHg. This does not fit isolated respiratory compensation and indicates an additional respiratory alkalosis. The elevated anion gap of 25 also suggests a HAGMA. There is no additional metabolic process to this HAGMA.",
-      "kPa": "The expected PCO2 is 3.5 kPa, while the measured PCO2 is 2.9 kPa. This does not fit isolated respiratory compensation and indicates an additional respiratory alkalosis. The elevated anion gap of 25 also suggests a HAGMA. There is no additional metabolic process to this HAGMA."
+      "mmHg": "The expected PCO2 is 26 mmHg, while the measured PCO2 is 18 mmHg. This does not fit isolated respiratory compensation and indicates an additional respiratory alkalosis. The elevated anion gap of 25 also suggests a HAGMA. The delta ratio does not suggest an additional metabolic process to this HAGMA.",
+      "kPa": "The expected PCO2 is 3.5 kPa, while the measured PCO2 is 2.4 kPa. This does not fit isolated respiratory compensation and indicates an additional respiratory alkalosis. The elevated anion gap of 25 also suggests a HAGMA. The delta ratio does not suggest an additional metabolic process to this HAGMA."
     },
     "primaryObjective": "mixed_disorders.recognise",
     "criteria": [
@@ -390,7 +390,7 @@ export const demoFeedback: ExamFeedback = {
         "kind": "compensation",
         "result": {
           "targetAnalyte": "paco2",
-          "measuredValue": 22.0,
+          "measuredValue": 18.0,
           "unit": "mmHg",
           "comparisonBands": [
             {
@@ -428,12 +428,12 @@ export const demoFeedback: ExamFeedback = {
             "displayLines": [
               "Winter's Formula: (1.5 × 12) + 8 = 26 mmHg",
               "Expected PaCO2: 24 – 28 mmHg",
-              "Measured PaCO2: 22 mmHg"
+              "Measured PaCO2: 18 mmHg"
             ]
           },
           "primaryExpectedBandId": "primary_expected"
         },
-        "measuredPaCO2MmHg": 22
+        "measuredPaCO2MmHg": 18
       }
     ],
     "rationales": [],
@@ -617,12 +617,12 @@ export const demoFeedback: ExamFeedback = {
   },
   "EXAM-0005-P4": {
     "answer": {
-      "mmHg": "Triple Disorder: HAGMA + NAGMA + Respiratory Acidosis",
-      "kPa": "Triple Disorder: HAGMA + NAGMA + Respiratory Acidosis"
+      "mmHg": "Mixed respiratory and metabolic acidosis, with a lactic component.",
+      "kPa": "Mixed respiratory and metabolic acidosis, with a lactic component."
     },
     "reasoning": {
-      "mmHg": "Using the supplied bicarbonate of 11 mmol/L\n\nAnion gap = Na - Cl - HCO3 = 140 - 110 - 11 = 19 mmol/L. This is elevated relative to a normal gap of 12 mmol/L, supporting a high anion gap metabolic acidosis.\n\nDelta ratio = (19 - 12) / (24 - 11) = 7/13 = 0.54. The bicarbonate fall is greater than the rise in anion gap, supporting an additional normal anion gap metabolic acidosis.\n\nWinter's formula: expected PaCO2 (mmHg) = 1.5 x 11 + 8 = 24.5 mmHg, with an expected range of 22.5 mmHg to 26.5 mmHg. The measured PaCO2 of 81 mmHg is well above this range, indicating an additional respiratory acidosis.\n\nSummary: high anion gap metabolic acidosis, normal anion gap metabolic acidosis and respiratory acidosis - a triple acid-base disorder.",
-      "kPa": "Using the supplied bicarbonate of 11 mmol/L\n\nAnion gap = Na - Cl - HCO3 = 140 - 110 - 11 = 19 mmol/L. This is elevated relative to a normal gap of 12 mmol/L, supporting a high anion gap metabolic acidosis.\n\nDelta ratio = (19 - 12) / (24 - 11) = 7/13 = 0.54. The bicarbonate fall is greater than the rise in anion gap, supporting an additional normal anion gap metabolic acidosis.\n\nWinter's formula: expected PaCO2 (mmHg) = 1.5 x 11 + 8 = 3.3 kPa, with an expected range of 3.0 kPa to 3.5 kPa. The measured PaCO2 of 10.8 kPa is well above this range, indicating an additional respiratory acidosis.\n\nSummary: high anion gap metabolic acidosis, normal anion gap metabolic acidosis and respiratory acidosis - a triple acid-base disorder."
+      "mmHg": "The pH of 6.91 indicates profound acidaemia. The reduced bicarbonate of 16 mmol/L and lactate of 5.6 mmol/L support metabolic acidosis with a lactic component.\n\nWinter's formula: expected PaCO2 = 1.5 x 16 + 8 = 32 mmHg, with an expected range of 30 mmHg to 34 mmHg. The measured PaCO2 of 81 mmHg is substantially above this range, indicating an additional primary respiratory acidosis.\n\nAnion gap = Na - Cl - HCO3 = 140 - 110 - 16 = 14 mmol/L. This is only mildly elevated relative to the assumed normal gap of 12 mmol/L. Albumin contributes substantially to the normal anion gap; a reduced albumin can mask a larger accumulation of unmeasured anions. Albumin is not supplied, so an albumin-corrected gap cannot be calculated.\n\nDelta ratio = (14 - 12) / (24 - 16) = 2/8 = 0.25. Under conventional assumptions, this low ratio suggests a normal-gap metabolic component. However, pregnancy normally produces respiratory alkalosis with renal compensation, lowering baseline bicarbonate to approximately 18-22 mmol/L. Using 24 mmol/L therefore overestimates the fall from her likely pregnancy baseline. The small uncorrected gap elevation and unknown albumin further limit interpretation. An additional NAGMA is possible, but cannot be established confidently from this ratio alone.\n\nSummary: mixed respiratory and metabolic acidosis, with a lactic component. Specific HAGMA/NAGMA classification is less certain.",
+      "kPa": "The pH of 6.91 indicates profound acidaemia. The reduced bicarbonate of 16 mmol/L and lactate of 5.6 mmol/L support metabolic acidosis with a lactic component.\n\nWinter's formula: expected PaCO2 = 1.5 x 16 + 8 = 4.3 kPa, with an expected range of 4.0 kPa to 4.5 kPa. The measured PaCO2 of 10.8 kPa is substantially above this range, indicating an additional primary respiratory acidosis.\n\nAnion gap = Na - Cl - HCO3 = 140 - 110 - 16 = 14 mmol/L. This is only mildly elevated relative to the assumed normal gap of 12 mmol/L. Albumin contributes substantially to the normal anion gap; a reduced albumin can mask a larger accumulation of unmeasured anions. Albumin is not supplied, so an albumin-corrected gap cannot be calculated.\n\nDelta ratio = (14 - 12) / (24 - 16) = 2/8 = 0.25. Under conventional assumptions, this low ratio suggests a normal-gap metabolic component. However, pregnancy normally produces respiratory alkalosis with renal compensation, lowering baseline bicarbonate to approximately 18-22 mmol/L. Using 24 mmol/L therefore overestimates the fall from her likely pregnancy baseline. The small uncorrected gap elevation and unknown albumin further limit interpretation. An additional NAGMA is possible, but cannot be established confidently from this ratio alone.\n\nSummary: mixed respiratory and metabolic acidosis, with a lactic component. Specific HAGMA/NAGMA classification is less certain."
     },
     "primaryObjective": "mixed_disorders.recognise",
     "criteria": [
@@ -640,7 +640,7 @@ export const demoFeedback: ExamFeedback = {
       },
       {
         "id": "interpret_triple_disorder",
-        "label": "Identifies the mixed acid-base disorder"
+        "label": "Identifies mixed respiratory and metabolic acidosis"
       }
     ],
     "display": "resources_with_text_fallback",

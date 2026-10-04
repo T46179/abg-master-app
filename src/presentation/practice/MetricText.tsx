@@ -68,6 +68,21 @@ export function MetricReference({ reference }: { reference: string }) {
   );
 }
 
+export interface MetricComparisonDisplay {
+  initialValue: string;
+  referenceRange?: string;
+}
+
+/** Display only: pairing and unit conversion belong to the caller. */
+export function MetricComparisonFooter({ comparison, showReference }: {
+  comparison: MetricComparisonDisplay; showReference: boolean;
+}) {
+  return <div className="metric-card__comparison">
+    <span className="metric-card__comparison-initial"><span>INITIAL</span><strong>{comparison.initialValue}</strong></span>
+    {showReference && comparison.referenceRange && <span className="metric-card__comparison-reference"><span>REF</span><strong>{comparison.referenceRange}</strong></span>}
+  </div>;
+}
+
 const INLINE_METRIC_PATTERN = /(?<![A-Za-z0-9])(PaCO[2₂]|PCO[2₂]|PaO[2₂]|PO[2₂]|FiO[2₂]|SpO[2₂]|SaO[2₂]|HCO[3₃][-−⁻]?|CO[2₂]|Na[+⁺]|K[+⁺]|Cl[-−⁻])(?![A-Za-z0-9])/g;
 
 function renderInlineMetricToken(token: string) {

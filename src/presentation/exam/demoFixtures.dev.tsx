@@ -239,7 +239,7 @@ export const demoQuestions: ExamQuestion[] = [
           {
             "id": "EXAM-0002-ph",
             "label": "pH",
-            "value": 7.09,
+            "value": 7.2,
             "unit": "",
             "primary": true,
             "oxygenation": false,
@@ -434,7 +434,7 @@ export const demoQuestions: ExamQuestion[] = [
           {
             "id": "EXAM-0003-ph",
             "label": "pH",
-            "value": 7.22,
+            "value": 7.14,
             "unit": "",
             "primary": true,
             "oxygenation": false,
@@ -576,7 +576,7 @@ export const demoQuestions: ExamQuestion[] = [
           {
             "id": "EXAM-0004-ph",
             "label": "pH",
-            "value": 7.2,
+            "value": 7.45,
             "unit": "",
             "primary": true,
             "oxygenation": false,
@@ -587,7 +587,7 @@ export const demoQuestions: ExamQuestion[] = [
           {
             "id": "EXAM-0004-pco2",
             "label": "PaCO2",
-            "value": 22,
+            "value": 18,
             "unit": "mmHg",
             "primary": true,
             "oxygenation": false,
@@ -616,17 +616,6 @@ export const demoQuestions: ExamQuestion[] = [
             "pressure": false,
             "refLow": 22,
             "refHigh": 26
-          },
-          {
-            "id": "EXAM-0004-be",
-            "label": "BE",
-            "value": -19.5,
-            "unit": "mEq/L",
-            "primary": false,
-            "oxygenation": false,
-            "pressure": false,
-            "refLow": -2,
-            "refHigh": 2
           },
           {
             "id": "EXAM-0004-na",
@@ -781,7 +770,7 @@ export const demoQuestions: ExamQuestion[] = [
           {
             "id": "EXAM-0005-hco3",
             "label": "HCO3",
-            "value": 11,
+            "value": 16,
             "unit": "mmol/L",
             "primary": true,
             "oxygenation": false,

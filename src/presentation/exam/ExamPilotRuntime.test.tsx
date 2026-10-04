@@ -16,8 +16,8 @@ let loseSubmission = false;
 let router: ReturnType<typeof createMemoryRouter>;
 const invoke = vi.fn();
 const client = { functions: { invoke } } as unknown as SupabaseClient;
-async function mount() {
- router = createMemoryRouter([{ path: "/", element: <ExamSittingProvider><ExamPilotRuntime client={client} userId="test-owner" canStart /></ExamSittingProvider> }, { path: "/away", element: <p>Away</p> }]);
+async function mount(unitCount = 3) {
+ router = createMemoryRouter([{ path: "/", element: <ExamSittingProvider><ExamPilotRuntime client={client} userId="test-owner" canStart unitCount={unitCount} /></ExamSittingProvider> }, { path: "/away", element: <p>Away</p> }]);
  await act(async () => { root.render(<RouterProvider router={router} />); });
 }
 async function click(text: string) {
@@ -41,7 +41,7 @@ beforeEach(() => {
  });
  container = document.createElement("div"); document.body.append(container); root = createRoot(container);
 });
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); });
+afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 it("saves raw answers and shows teaching with pending marks only after acceptance", async () => {
  await mount(); await click("Start Exam");
  const textarea = container.querySelector("textarea")!;
@@ -125,4 +125,16 @@ it("reports against the displayed attempt and keeps confirmation inside the popu
  await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Close report dialog"]')!.click());
  expect(container.querySelector('dialog')).toBeNull();
  expect(invoke.mock.calls.filter(c=>c[1].body.operation==='submit')).toHaveLength(1);
+});
+
+it("uses the account count and the connected runtime on localhost", async () => {
+ vi.stubGlobal("location", { hostname: "127.0.0.1" });
+ await mount(4);
+ expect(container.textContent).toContain("4 questions");
+ expect(container.textContent).not.toContain("Local preview");
+ await click("Start Exam");
+ expect(invoke.mock.calls.some(c => c[1].body.operation === "start")).toBe(true);
+});
+it("retains the three-Unit tester description", async () => {
+ await mount(); expect(container.textContent).toContain("3 questions");
 });

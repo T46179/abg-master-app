@@ -2,7 +2,7 @@ import { Component, useId, useState, type ReactNode } from "react";
 import { Check, ChevronDown, ChevronLeft, CircleDashed, CirclePlus, Lightbulb, RotateCcw, Wrench, X } from "lucide-react";
 import type { PressureUnit } from "../../core/types";
 import type { GradingStatus, PartFeedback } from "./resultsTypes";
-import type { ExamPart, SittingState } from "./sittingTypes";
+import type { ExamPart, ExamQuestion, ExamTable, SittingState } from "./sittingTypes";
 import { MetricRichText } from "../practice/MetricText";
 import { ExamResultValues } from "./ExamResultValues";
 import { ScoreRing } from "./ExamUi";
@@ -104,6 +104,56 @@ function Scenario({ children }: { children: ReactNode }) {
   </section>;
 }
 
+type ReviewView = { id: string; scenario: ReactNode[]; table?: ExamTable };
+
+function reviewViews(question: ExamQuestion): ReviewView[] | undefined {
+  if (!question.sections?.length || !question.parts.length) return;
+  const views: ReviewView[] = [];
+  const seen = new Set<string>();
+  for (const part of question.parts) {
+    if (!part.stimulusSectionIds?.length) return;
+    const id = JSON.stringify(part.stimulusSectionIds);
+    if (seen.has(id)) continue;
+    const view: ReviewView = { id, scenario: [] };
+    for (const sectionId of part.stimulusSectionIds) {
+      const section = question.sections.find(section => section.id === sectionId);
+      if (!section) return;
+      if (section.type === "text") view.scenario.push(<div key={section.id}>{section.content}</div>);
+      else {
+        // Keep the full review when a selection cannot fit a single gas card.
+        if (view.table) return;
+        view.table = question.tables.find(table => table.id === section.tableId);
+        if (!view.table) return;
+      }
+    }
+    seen.add(id);
+    views.push(view);
+  }
+  return views;
+}
+
+function CaseReview({ question, pressureUnit, visible }: { question: ExamQuestion; pressureUnit: PressureUnit; visible: boolean }) {
+  const views = reviewViews(question);
+  const [selected, setSelected] = useState<string | null>(null);
+  const current = views?.find(view => view.id === selected) ?? views?.[0];
+  const hasScenario = current ? current.scenario.length > 0 : Boolean(question.scenario);
+  const tables = current ? current.table ? [current.table] : [] : question.tables;
+  if (!hasScenario && !tables.length) return null;
+  return <>
+    <div className="exam-results__case-header">
+      <h3 className="exam-results__eyebrow exam-results__case-heading">Case Review</h3>
+      {views && views.length > 1 && <div className="exam-results__scenario-selector" role="group" aria-label="Case review scenario">
+        {views.map((view, index) => <button type="button" key={view.id} aria-pressed={current?.id === view.id}
+          onClick={() => setSelected(view.id)}>{index === 0 ? "Initial" : views.length === 2 ? "Follow-up" : `Follow-up ${index}`}</button>)}
+      </div>}
+    </div>
+    {hasScenario && <Scenario key={`scenario:${current?.id ?? "shared"}`}>{current ? current.scenario : question.scenario}</Scenario>}
+    {!!tables.length && <div className="exam-results__case-values" key={`values:${current?.id ?? "shared"}`}>
+      {tables.map(table => <ExamResultValues key={table.id} table={table} pressureUnit={pressureUnit} visible={visible} />)}
+    </div>}
+  </>;
+}
+
 function PartCard({ part, index, sitting, status, score, unit, feedback, criteria, retryAvailable }: {
   part: ExamPart; index: number; sitting: SittingState; status: GradingStatus; score: number; unit: PressureUnit; feedback?: PartFeedback; criteria?: Record<string, number>; retryAvailable: boolean;
 }) {
@@ -120,6 +170,10 @@ function PartCard({ part, index, sitting, status, score, unit, feedback, criteri
     : unanswered ? "muted" : score === part.marks ? "green" : score ? "amber" : "coral";
   const StatusIcon = !resolved ? status === "failed" ? Wrench : CircleDashed
     : unanswered ? CircleDashed : score === part.marks ? Check : score ? CirclePlus : X;
+  const criteriaScore = feedback?.criteria.reduce((sum, criterion) => sum + (criteria?.[criterion.id] ?? 0), 0) ?? 0;
+  const criteriaTotal = feedback?.criteria.length ?? 0;
+  const summaryTone = criteriaScore === criteriaTotal ? "green" : criteriaScore > 0 ? "amber" : "coral";
+  const SummaryIcon = criteriaScore === criteriaTotal ? Check : criteriaScore > 0 ? CirclePlus : X;
   return <section className="exam-results__part" data-tone={tone} data-status={status}>
     <div className="exam-results__part-heading">
       <span className="exam-results__part-number" aria-hidden="true">{index + 1}</span>
@@ -143,7 +197,12 @@ function PartCard({ part, index, sitting, status, score, unit, feedback, criteri
       {feedback && <>
         {resolved && criteria && !!feedback.criteria.length && <div className="exam-results__criteria">
           <h4 className="exam-results__eyebrow">Criterion breakdown</h4>
-          <ul aria-label="Criterion marks">{feedback.criteria.map((criterion) =>
+          <ul aria-label="Criterion marks">{feedback.criteriaSummaryLabel ?
+            <li data-tone={summaryTone}>
+              <SummaryIcon size={15} aria-hidden="true" />
+              <span><MetricRichText>{feedback.criteriaSummaryLabel}</MetricRichText></span>
+              <strong>{criteriaScore} / {criteriaTotal}</strong>
+            </li> : feedback.criteria.map((criterion) =>
             <li key={criterion.id} data-tone={criteria[criterion.id] === 1 ? "green" : "coral"}>
               {criteria[criterion.id] === 1 ? <Check size={15} aria-hidden="true" /> : <X size={15} aria-hidden="true" />}
               <span><MetricRichText>{criterion.label}</MetricRichText></span><strong>{criteria[criterion.id] === 1 ? "1 / 1" : "0 / 1"}</strong>
@@ -212,11 +271,7 @@ export default function ExamResultsPresentation({ sitting, onExit, pressureUnit 
     </nav>
     {sitting.questions.map((question, qi) => <section key={question.id} hidden={selected !== qi} aria-label={`Question ${qi + 1} results`} className="exam-results__question">
       <h2>Question {qi + 1}</h2>
-      {(question.scenario || question.tables.length > 0) && <h3 className="exam-results__eyebrow exam-results__case-heading">Case Review</h3>}
-      {question.scenario && <Scenario>{question.scenario}</Scenario>}
-      {!!question.tables.length && <div className="exam-results__case-values">
-        {question.tables.map(table => <ExamResultValues key={table.id} table={table} pressureUnit={pressureUnit} visible={selected === qi} />)}
-      </div>}
+      <CaseReview question={question} pressureUnit={pressureUnit} visible={selected === qi} />
       <div className="exam-results__parts">
         <h3 className="exam-results__eyebrow">Question Breakdown</h3>
         {question.parts.map((part, pi) =>

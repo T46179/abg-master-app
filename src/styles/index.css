@@ -13927,3 +13927,32 @@ button.learn-progress-dots__dot:focus-visible {
   }
 }
 
+
+/* Optional repeat-value footer; ordinary metric cards keep their existing layout. */
+.metric-card__comparison {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: .4rem;
+  margin-top: .85rem;
+  padding-top: .65rem;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-faint);
+  font-size: .7rem;
+}
+.metric-card__comparison-initial, .metric-card__comparison-reference {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .3rem;
+  white-space: nowrap;
+}
+.metric-card__comparison-reference { justify-self: end; color: var(--color-text-muted); }
+.metric-card__comparison span > span { font-size: .6rem; letter-spacing: .06em; color: var(--color-text-faint); }
+.metric-card__comparison strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (max-width: 639px) {
+  .metric-card--comparison .metric-card__comparison { font-size: .55rem; gap: .15rem; }
+  .metric-card--comparison .metric-card__comparison span > span { font-size: .45rem; letter-spacing: 0; }
+  .metric-card--comparison .metric-card__comparison-initial,
+  .metric-card--comparison .metric-card__comparison-reference { gap: .12rem; }
+  .value-panels__card .metric-card--comparison .metric-card__value small { display: inline; font-size: .62rem; }
+}

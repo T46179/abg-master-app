@@ -15,6 +15,7 @@ export interface ExamPart {
   pressureAnswer?: boolean;
   answerUnit?: string;
   additionalContext?: ReactNode;
+  stimulusSectionIds?: string[];
 }
 export interface ExamMetric {
   id: string;
@@ -27,11 +28,17 @@ export interface ExamMetric {
   reference?: string;
   refLow?: number;
   refHigh?: number;
+  analyteId?: string;
+  initialValue?: number | string;
 }
 export interface ExamTable { id: string; heading: string; grouping: string; rows: ExamMetric[] }
+export type ExamStimulusSection =
+  | { id: string; type: "text"; content: ReactNode }
+  | { id: string; type: "data_table"; tableId: string };
 export interface ExamQuestion {
   id: string;
   scenario?: ReactNode;
+  sections?: ExamStimulusSection[];
   tables: ExamTable[];
   parts: ExamPart[];
 }

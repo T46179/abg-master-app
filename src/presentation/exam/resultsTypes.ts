@@ -14,6 +14,7 @@ export interface PartFeedback {
   difficulty?: number;
   primaryObjective: string;
   criteria: Array<{ id: string; label: string }>;
+  criteriaSummaryLabel?: string;
   display: "resources_with_text_fallback" | "text_and_resources";
   resources: ResultResource[];
 }

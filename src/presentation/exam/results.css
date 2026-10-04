@@ -96,6 +96,13 @@
 .exam-results .exam-results__eyebrow { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; letter-spacing: .12em; text-transform: uppercase; color: var(--result-muted); }
 .exam-results .exam-results__case-heading { margin-top: 16px; }
 .exam-results__case-heading + .exam-results__scenario, .exam-results__case-heading + .exam-results__case-values { margin-top: 12px; }
+.exam-results__case-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.exam-results .exam-results__case-header .exam-results__case-heading { margin: 0; white-space: nowrap; }
+.exam-results__case-header + .exam-results__scenario, .exam-results__case-header + .exam-results__case-values { margin-top: 12px; }
+.exam-results__scenario-selector { display: flex; flex-shrink: 0; gap: 2px; padding: 3px; border-radius: 999px; background: color-mix(in srgb, var(--result-navy) 5%, white); }
+.exam-results__scenario-selector button { padding: 7px 18px; border: 0; border-radius: 999px; background: transparent; color: var(--result-muted); font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.exam-results__scenario-selector button[aria-pressed="true"] { background: var(--result-navy); color: white; }
+.exam-results__scenario-selector button:focus-visible { outline: 2px solid var(--result-blue); outline-offset: 2px; }
 .exam-results__scenario { margin-top: 16px; border: 1px solid var(--result-border); border-radius: 16px; background: white; }
 .exam-results__scenario-text { padding: 0 20px 20px; font-size: 14.5px; line-height: 1.625; color: var(--result-soft); }
 .exam-results__case-values { display: grid; gap: 12px; margin-top: 16px; }
@@ -181,6 +188,10 @@
 .exam-results__failure-note { color: var(--result-amber); font-size: 13px; }
 .exam-results .exam-results__exit { width: 100%; margin-top: 32px; padding: 14px 20px; font-size: 15px; }
 @media (max-width: 639px) {
+  .exam-results__case-header { gap: 6px; }
+  .exam-results .exam-results__case-header .exam-results__case-heading { font-size: 10px; letter-spacing: .08em; }
+  .exam-results__scenario-selector { gap: 1px; padding: 2px; }
+  .exam-results__scenario-selector button { padding: 6px 7px; font-size: 10px; }
   .exam-results__core-values { gap: 12px 8px; }
   .exam-results__metric { flex-direction: column; align-items: center; justify-content: flex-start; }
   .exam-results__core-values .metric-card__value { flex-wrap: wrap; justify-content: center; }

@@ -1,11 +1,11 @@
 import { convertMmHgToKPa, formatValue } from "../../core/metrics";
 import type { CaseMetricDefinition, PressureUnit } from "../../core/types";
 import { Surface } from "../primitives/Surface";
-import { MetricLabel, MetricReference, MetricValue } from "../practice/MetricText";
+import { MetricComparisonFooter, type MetricComparisonDisplay, MetricLabel, MetricReference, MetricValue } from "../practice/MetricText";
 import { SecondaryMetricRail } from "../practice/SecondaryMetricRail";
 import type { ExamMetric, ExamTable } from "./sittingTypes";
 
-export function presentExamMetric(row: ExamMetric, pressureUnit: PressureUnit): CaseMetricDefinition & { renderedValue: string } {
+export function presentExamMetric(row: ExamMetric, pressureUnit: PressureUnit, includeComparison = false): CaseMetricDefinition & { renderedValue: string; comparison?: MetricComparisonDisplay } {
   const convert = Boolean(row.pressure && pressureUnit === "kPa");
   const unit = row.pressure ? pressureUnit : row.unit;
   const precision: Record<string, number> = {
@@ -31,23 +31,29 @@ export function presentExamMetric(row: ExamMetric, pressureUnit: PressureUnit): 
     label: row.label, displayLabel: row.label, value: Number(displayValue), decimals,
     unit: row.label === "FiO2" ? "" : unit, renderedValue,
     reference: row.label === "FiO2" ? "" : reference,
+    ...(includeComparison && row.initialValue != null ? { comparison: {
+      initialValue: decimals == null ? String(convert ? convertMmHgToKPa(row.initialValue) : row.initialValue)
+        : formatValue(convert ? convertMmHgToKPa(row.initialValue) : row.initialValue, decimals),
+      referenceRange: low != null && high != null ? `${rangeValue(low)} - ${rangeValue(high)}` : undefined,
+    } } : {}),
     abnormal: false, pressureUnitConvertible: row.pressure,
     group: row.oxygenation ? "oxygenation" : undefined
   };
 }
 export function ExamValues({ table, pressureUnit, showRanges }: { table: ExamTable; pressureUnit: PressureUnit; showRanges: boolean }) {
   const primary = table.rows.filter(r => r.primary);
-  const secondary = table.rows.filter(r => !r.primary).map(r => presentExamMetric(r, pressureUnit));
+  const secondary = table.rows.filter(r => !r.primary).map(r => presentExamMetric(r, pressureUnit, true));
   return <section className="exam-values" aria-label={table.heading}>
     {primary.length > 0 && <Surface className="value-panels__card value-panels__card--primary">
       <div className="value-panels__header"><span className="section-header__eyebrow">ABG values</span></div>
       <div className="metric-grid metric-grid--primary">
         {primary.map(row => {
-          const metric = presentExamMetric(row, pressureUnit);
-          return <article key={row.id} className={`metric-card${row.oxygenation ? " metric-card--oxygenation" : ""}${row.pressure ? " metric-card--pressure-unit-convertible" : ""}`}>
+          const metric = presentExamMetric(row, pressureUnit, true);
+          return <article key={row.id} className={`metric-card${metric.comparison ? " metric-card--comparison" : ""}${row.oxygenation ? " metric-card--oxygenation" : ""}${row.pressure ? " metric-card--pressure-unit-convertible" : ""}`}>
             <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
             <MetricValue renderedValue={metric.renderedValue} unit={metric.unit} />
-            {showRanges && <MetricReference reference={metric.reference} />}
+            {metric.comparison ? <MetricComparisonFooter comparison={metric.comparison} showReference={showRanges} />
+              : showRanges && <MetricReference reference={metric.reference} />}
           </article>;
         })}
       </div>

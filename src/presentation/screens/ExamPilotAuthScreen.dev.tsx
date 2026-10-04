@@ -115,6 +115,6 @@ export default function ExamPilotAuthScreen() {
         {error && <div role="alert"><p>{error}</p><button className="exam-pilot-button" disabled={busy || checking} onClick={() => setRevision(n => n + 1)}>Retry access check</button></div>}
       </>}
     </section>}
-    {client && signedIn && userId && (!checking || access !== null) && <ExamPilotRuntime key={userId} client={client} userId={userId} canStart={access?.status === "allowed"} />}
+    {client && signedIn && userId && (!checking || access !== null) && <ExamPilotRuntime key={userId} client={client} userId={userId} canStart={access?.status === "allowed"} unitCount={access?.allowedUnitCounts.length === 1 ? access.allowedUnitCounts[0] : undefined} />}
   </main>;
 }

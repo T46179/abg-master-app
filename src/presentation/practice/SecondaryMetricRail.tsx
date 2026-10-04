@@ -3,10 +3,11 @@ import type { CaseMetricDefinition } from "../../core/types";
 import { HorizontalScrollIndicator } from "../primitives/HorizontalScrollIndicator";
 import { useHorizontalOverflowState } from "../useHorizontalOverflowState";
 import { cn } from "../utils";
-import { MetricLabel, MetricReference, MetricValue } from "./MetricText";
+import { MetricComparisonFooter, type MetricComparisonDisplay, MetricLabel, MetricReference, MetricValue } from "./MetricText";
 
 type RenderableMetric = CaseMetricDefinition & {
   renderedValue: string;
+  comparison?: MetricComparisonDisplay;
 };
 
 interface SecondaryMetricRailProps {
@@ -150,6 +151,7 @@ export function SecondaryMetricRail(props: SecondaryMetricRailProps) {
                 "metric-card",
                 "metric-card--secondary",
                 "metric-card--scroll-item",
+                metric.comparison ? "metric-card--comparison" : null,
                 metric.group === "oxygenation" ? "metric-card--oxygenation" : null
               )}
             >
@@ -159,7 +161,8 @@ export function SecondaryMetricRail(props: SecondaryMetricRailProps) {
                 unit={metric.unit}
                 abnormal={props.showAbnormalHighlighting && metric.abnormal}
               />
-              {props.showReferences ? <MetricReference reference={metric.reference} /> : null}
+              {metric.comparison ? <MetricComparisonFooter comparison={metric.comparison} showReference={props.showReferences} />
+                : props.showReferences ? <MetricReference reference={metric.reference} /> : null}
             </article>
           ))}
         </div>
