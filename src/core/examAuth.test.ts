@@ -72,6 +72,16 @@ describe("Exam permanent authentication", () => {
     expect(await readExamAccess(client)).toEqual({ status: "allowed", allowedUnitCounts: [3] });
     expect(functions.invoke).toHaveBeenCalledWith("exam-access", { body: {} });
   });
+  it("validates category support and retains catalogue labels", async () => {
+    const { client, functions } = fixture();
+    const categories = [{ category_id: "mechanical_ventilation", label: "Mechanical ventilation" }];
+    functions.invoke.mockResolvedValue({ data: { status: "allowed", allowedUnitCounts: [3], customisationCategories: categories }, error: null });
+    expect((await readExamAccess(client)).customisationCategories).toEqual(categories);
+    for (const registry of [null, [null], [...categories, ...categories], [{ category_id: "bad id", label: "Bad" }], [{ category_id: "ok", label: "" }]]) {
+      functions.invoke.mockResolvedValue({ data: { status: "allowed", allowedUnitCounts: [3], customisationCategories: registry }, error: null });
+      await expect(readExamAccess(client)).rejects.toThrow("could not be checked");
+    }
+  });
   it.each([null, { status: "allowed", allowedUnitCounts: [] }, { status: "allowed", allowedUnitCounts: [6] }, { status: "not_invited", allowedUnitCounts: [3] }])("fails closed for invalid access payload %j", async data => {
     const { client, functions } = fixture();
     functions.invoke.mockResolvedValue({ data, error: null });

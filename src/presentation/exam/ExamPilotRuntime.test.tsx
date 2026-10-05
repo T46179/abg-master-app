@@ -16,8 +16,9 @@ let loseSubmission = false;
 let router: ReturnType<typeof createMemoryRouter>;
 const invoke = vi.fn();
 const client = { functions: { invoke } } as unknown as SupabaseClient;
-async function mount(unitCount = 3) {
- router = createMemoryRouter([{ path: "/", element: <ExamSittingProvider><ExamPilotRuntime client={client} userId="test-owner" canStart unitCount={unitCount} /></ExamSittingProvider> }, { path: "/away", element: <p>Away</p> }]);
+const categories = [{ category_id: "toxicology_management", label: "Toxicology management and antidotes" }, { category_id: "mechanical_ventilation", label: "Mechanical ventilation" }];
+async function mount(unitCount = 3, customisationCategories: typeof categories = []) {
+ router = createMemoryRouter([{ path: "/", element: <ExamSittingProvider><ExamPilotRuntime client={client} userId="test-owner" canStart unitCount={unitCount} customisationCategories={customisationCategories} /></ExamSittingProvider> }, { path: "/away", element: <p>Away</p> }]);
  await act(async () => { root.render(<RouterProvider router={router} />); });
 }
 async function click(text: string) {
@@ -27,10 +28,11 @@ async function click(text: string) {
 beforeEach(() => {
  Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function (this: HTMLDialogElement) { this.open = true; } });
  localStorage.clear(); invoke.mockReset(); loseSubmission = false;
- attempt = { id: "test-attempt", status: "active", revision: 0, pressureUnit: "kPa", createdAt: new Date().toISOString(), presentedAt: null, finishedAt: null, answers: {}, questions: [{ id: "test-unit", tables: [], parts: [{ id: "part", kind: "concept", prompt: "Explain your answer", marks: 2 }] }] };
+ attempt = { id: "test-attempt", marksAvailable: 2, status: "active", revision: 0, pressureUnit: "kPa", createdAt: new Date().toISOString(), presentedAt: null, finishedAt: null, answers: {}, questions: [{ id: "test-unit", tables: [], parts: [{ id: "part", kind: "concept", prompt: "Explain your answer", marks: 2 }] }] };
  invoke.mockImplementation(async (_name, { body: { operation, input } }) => {
    if (operation === "current") return { data: { attempt: null } };
    if (operation === "history") return { data: { attempts: [] } };
+   if (operation === "start") attempt = { ...attempt, examKind: input.examKind, excludedCategories: input.excludedCategories };
    if (operation === "present") attempt = { ...attempt, revision: attempt.revision + 1, presentedAt: new Date().toISOString() };
    if (operation === "save") attempt = { ...attempt, revision: attempt.revision + 1, answers: input.answers };
    if (operation === "submit") {
@@ -137,4 +139,58 @@ it("uses the account count and the connected runtime on localhost", async () => 
 });
 it("retains the three-Unit tester description", async () => {
  await mount(); expect(container.textContent).toContain("3 questions");
+});
+
+it("defaults to Mock, remembers Custom inclusions without erasing them, and sends only Custom exclusions", async () => {
+  localStorage.setItem("abgm-exam-custom-clpfecuohwzwrgmqzeos-test-owner", '["mechanical_ventilation"]');
+  await mount(3, categories);
+  expect(container.querySelector('[aria-pressed="true"]')?.textContent).toBe("Mock Exam");
+  await click("Custom Exam");
+  expect(container.textContent).toContain("Standard ABG interpretation remains included.");
+  const switches = [...container.querySelectorAll<HTMLButtonElement>('[role="switch"]')];
+  expect(switches.map(b => b.getAttribute("aria-checked"))).toEqual(["true", "false"]);
+  await act(async () => switches[0].click());
+  await click("Mock Exam");
+  expect(JSON.parse(localStorage.getItem("abgm-exam-custom-clpfecuohwzwrgmqzeos-test-owner")!)).toEqual(["mechanical_ventilation", "toxicology_management"]);
+  await click("Start Exam");
+  expect(invoke.mock.calls.find(c => c[1].body.operation === "start")![1].body.input).toMatchObject({ examKind: "mock", excludedCategories: [] });
+});
+it("sends catalogue exclusions and hides setup while a start needs recovery", async () => {
+  await mount(3, categories); await click("Custom Exam");
+  await act(async () => container.querySelector<HTMLButtonElement>('[role="switch"]')!.click());
+  invoke.mockResolvedValueOnce({ error: new Error("lost start") });
+  await click("Start Exam");
+  const input = invoke.mock.calls.find(c => c[1].body.operation === "start")![1].body.input;
+  expect(input).toMatchObject({ examKind: "custom", excludedCategories: ["toxicology_management"] });
+  expect(container.querySelector('[aria-label="Exam type"]')).toBeNull();
+  localStorage.setItem("abgm-exam-custom-clpfecuohwzwrgmqzeos-test-owner", '[]');
+  await click("Recover saved attempt");
+  const starts = invoke.mock.calls.filter(c => c[1].body.operation === "start");
+  expect(starts[1][1].body.input).toEqual(input);
+});
+it("disables Custom with a legacy backend and does not share another user's preferences", async () => {
+  localStorage.setItem("abgm-exam-custom-clpfecuohwzwrgmqzeos-another-owner", '["mechanical_ventilation"]');
+  await mount();
+  expect([...container.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent === "Custom Exam")?.disabled).toBe(true);
+});
+it("withholds a connected final score when the persisted denominator is inconsistent", async () => {
+  await mount(); await click("Start Exam"); await click("Review exam");
+  attempt = { ...attempt, marksAvailable: 99, gradingStatus: "completed", parts: [{ partId: "part", status: "completed", marksAwarded: 2 }] };
+  await click("Submit anyway");
+  expect(container.textContent).toContain("Final score unavailable");
+  expect(container.textContent).toContain("saved marks total does not match");
+});
+
+it("keeps a Custom exam with no exclusions labelled Custom in Results", async () => {
+  await mount(3, categories); await click("Custom Exam"); await click("Start Exam");
+  await click("Review exam"); await click("Submit anyway");
+  expect(container.textContent).toContain("Custom Exam · All Parts included");
+});
+it("shows saved history exclusions using catalogue labels", async () => {
+  const original = invoke.getMockImplementation()!;
+  invoke.mockImplementation(async (...args) => args[1].body.operation === "history"
+    ? { data: { attempts: [{ id: "history", finishedAt: "2026-10-05T00:00:00Z", marksAvailable: 8, examKind: "custom", excludedCategories: ["mechanical_ventilation"] }] } }
+    : original(...args));
+  await mount(3, categories);
+  expect(container.textContent).toContain("Custom Exam · Excluded: Mechanical ventilation");
 });

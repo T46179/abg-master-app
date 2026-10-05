@@ -28,3 +28,8 @@
   .exam-pilot-room__actions .exam-pilot-button { width: 100%; }
   .exam-screen .exam-pilot-room__review { padding: 1rem 1.25rem; }
 }
+
+.exam-pilot-room__setup { flex-basis: 100%; min-width: 0; border: 0; padding: 0; margin: 0; }
+.exam-pilot-room__setup .exam-segments { margin-block: .75rem; }
+.exam-pilot-room__setup h3 { margin-block: 1rem .5rem; }
+.exam-pilot-room__review span span { display: block; margin-block: .35rem; font-size: .8125rem; color: var(--color-text-muted); }

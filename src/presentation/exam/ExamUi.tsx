@@ -20,7 +20,7 @@ export function BackLink({ onClick }: { onClick: () => void }) {
 
 export function SegmentedControl<T extends string | number>({ label, options, value, onChange }: {
   label: string;
-  options: { value: T; label: string }[];
+  options: { value: T; label: string; disabled?: boolean }[];
   value: T;
   onChange: (value: T) => void;
 }) {
@@ -28,6 +28,7 @@ export function SegmentedControl<T extends string | number>({ label, options, va
     {options.map(option => <button
       type="button"
       key={option.value}
+      disabled={option.disabled}
       aria-pressed={value === option.value}
       onClick={() => onChange(option.value)}
     >{option.label}</button>)}

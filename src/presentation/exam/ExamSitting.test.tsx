@@ -94,7 +94,9 @@ describe("Exam presentation interactions", () => {
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
   let router: ReturnType<typeof createMemoryRouter> | undefined;
+  let deliveredQuestions: ExamQuestion[];
   beforeEach(() => {
+    deliveredQuestions = questions;
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -127,7 +129,7 @@ describe("Exam presentation interactions", () => {
         onToggle={() => {}} onClose={() => {}} onPressureUnitChange={setUnit} />
       <Link to="/other">Leave area</Link>
       {sitting ? <ExamSitting sitting={sitting} dispatch={dispatch} /> :
-        <button onClick={() => dispatch({ type: "start", questions, pressureUnit: unit, now: Date.now() })}>Start</button>}
+        <button onClick={() => dispatch({ type: "start", questions: deliveredQuestions, pressureUnit: unit, now: Date.now() })}>Start</button>}
     </>;
   }
   function mount() {
@@ -137,6 +139,22 @@ describe("Exam presentation interactions", () => {
     act(() => root.render(<RouterProvider router={router!} />));
     click("Start");
   }
+  it.each([0, 1, 3])("numbers and navigates retained Parts after omission at index %i", omitted => {
+    const authored: ExamPart[] = Array.from({ length: 4 }, (_, i) => ({ id: `stable-${i + 1}`, kind: "concept", marks: 1, prompt: `Authored prompt ${i + 1}` }));
+    const retained = authored.filter((_, i) => i !== omitted);
+    deliveredQuestions = [{ id: "custom", tables: [], parts: retained }];
+    mount();
+    expect([...container.querySelectorAll(".exam-part-pills button")].map(b => b.getAttribute("aria-label"))).toEqual(["Part 1, not answered", "Part 2, not answered", "Part 3, not answered"]);
+    expect(container.textContent).toContain(retained[0].prompt);
+    click("Next part"); expect(container.textContent).toContain(retained[1].prompt);
+    click("Previous"); expect(container.textContent).toContain(retained[0].prompt);
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Part 3, not answered"]')!.click());
+    expect(container.textContent).toContain(retained[2].prompt);
+    click("Review exam");
+    expect(container.querySelectorAll(".exam-review-part")).toHaveLength(3);
+    expect([...container.querySelectorAll(".exam-review-part-label")].map(n => n.textContent)).toEqual(["Part 1", "Part 2", "Part 3"]);
+    expect(container.textContent).not.toContain(authored[omitted].prompt);
+  });
   it("navigates across Questions, reviews all Parts, keeps edits and completes without a fake result", () => {
     mount();
     expect(container.querySelector('button[aria-label="Question 1"]')?.getAttribute("aria-current")).toBe("step");

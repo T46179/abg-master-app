@@ -2,18 +2,37 @@ import { ArrowRight, BookOpen, History } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAppContext } from "../../app/AppProvider";
-import { ExamRuntimeError, ExamRuntimeSession, encodeAnswers, runtimeCall, toSitting, type RuntimeAttempt } from "../../core/examRuntime";
+import { ExamRuntimeError, ExamRuntimeSession, encodeAnswers, runtimeCall, toSitting, type RuntimeAttempt, type ExamKind } from "../../core/examRuntime";
+import type { CustomisationCategory } from "../../core/examAuth";
+import { SegmentedControl, ToggleRow } from "./ExamUi";
 import { ExamSitting, ExitSittingDialog } from "./ExamSitting";
 import { sittingReducer, type SittingAction } from "./sittingModel";
 import { useExamSitting } from "./ExamSittingContext";
 import ExamResultsPresentation from "./ExamResultsPresentation";
 
-type HistoryItem = { id: string; finishedAt: string; marksAvailable: number };
-type PilotProps = { client: SupabaseClient; userId: string; canStart: boolean; unitCount?: number };
+type HistoryItem = { id: string; finishedAt: string; marksAvailable: number; examKind?: ExamKind; excludedCategories?: string[] };
+type PilotProps = { client: SupabaseClient; userId: string; canStart: boolean; unitCount?: number; customisationCategories?: CustomisationCategory[]; environment?: string };
 
-export default function ExamPilotRuntime({ client, userId, canStart, unitCount }: PilotProps) {
+export default function ExamPilotRuntime({ client, userId, canStart, unitCount, customisationCategories = [], environment = "clpfecuohwzwrgmqzeos" }: PilotProps) {
   const { state } = useAppContext();
   const { sitting, dispatch: updateSitting } = useExamSitting();
+  const preferenceKey = `abgm-exam-custom-${environment}-${userId}`;
+  const [examKind, setExamKind] = useState<ExamKind>("mock");
+  const [customExclusions, setCustomExclusions] = useState<string[]>(() => {
+    try { const saved: unknown = JSON.parse(localStorage.getItem(preferenceKey) ?? "[]");
+      return Array.isArray(saved) ? [...new Set(saved.filter((id): id is string => typeof id === "string"))].sort() : [];
+    } catch { return []; }
+  });
+  function setIncluded(id: string, included: boolean) {
+    const next = included ? customExclusions.filter(c => c !== id) : [...new Set([...customExclusions, id])].sort();
+    setCustomExclusions(next);
+    try { localStorage.setItem(preferenceKey, JSON.stringify(next)); } catch { /* Setup remains usable when preference storage fails. */ }
+  }
+  function configurationLabel(item: { examKind?: ExamKind; excludedCategories?: string[] }) {
+    const label = item.examKind === "custom" ? "Custom Exam" : "Mock Exam";
+    const exclusions = item.excludedCategories ?? [];
+    return `${label} · ${exclusions.length ? "Excluded: " + exclusions.map(id => customisationCategories.find(c => c.category_id === id)?.label ?? id).join(", ") : "All Parts included"}`;
+  }
   const [attempt, setAttempt] = useState<RuntimeAttempt | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -25,15 +44,16 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount }
   const [exitOpen, setExitOpen] = useState(false);
   const inFlight = useRef(false);
   const session = useMemo(() => {
-    try { return new ExamRuntimeSession(runtimeCall(client), localStorage, `abgm-exam-pilot-clpfecuohwzwrgmqzeos-${userId}`); }
+    try { return new ExamRuntimeSession(runtimeCall(client), localStorage, `abgm-exam-pilot-${environment}-${userId}`); }
     catch { return null; }
-  }, [client, userId]);
+  }, [client, userId, environment]);
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; updateSitting({ type: "exit" }); }; }, [updateSitting]);
   function failure(cause: unknown) {
     const code = cause instanceof ExamRuntimeError ? cause.code : "EXAM_UNAVAILABLE";
     setError(/CONFLICT/.test(code) ? "This attempt changed in another tab. Your local answers are retained. Close the other tab before recovering."
       : code === "EXAM_DEVICE_REQUIRED" ? "This attempt can only be continued in the browser where it started. You can abandon it here."
+      : code === "EXAM_INVALID_CONFIGURATION" ? "This Custom Exam configuration is unavailable. Refresh your access and try again."
       : /INVALID|ANSWER|SELECTION|NUMERIC|TEXT/.test(code) ? "The server could not accept an answer. Check numeric values and required selections before trying again."
       : code === "EXAM_GRADING_COOLDOWN" ? "Please wait 30 seconds before retrying grading."
       : code === "EXAM_PILOT_CLOSED" ? "New pilot attempts are not open yet."
@@ -60,7 +80,7 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount }
   }
   async function openAttempt(recover: boolean) {
     if (!session) return;
-    let next = recover ? await session.recover() : await session.start(state.sessionState?.pressureUnit ?? "mmHg");
+    let next = recover ? await session.recover() : await session.start(state.sessionState?.pressureUnit ?? "mmHg", { examKind, excludedCategories: examKind === "custom" ? customExclusions.filter(id => customisationCategories.some(c => c.category_id === id)) : [] });
     if (next.status === "active") {
       if (session.journal?.submission) next = await session.submit(session.journal.submission.answers);
       else {
@@ -132,7 +152,8 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount }
     </div>}
     {sitting && attempt ? sitting.phase === "complete" ? <>
       {refreshError && <p role="status">{refreshError}</p>}
-      <ExamResultsPresentation sitting={sitting} pressureUnit={state.sessionState?.pressureUnit ?? sitting.pressureUnit}
+      <p>{configurationLabel(attempt)}</p>
+      <ExamResultsPresentation marksAvailable={attempt.marksAvailable ?? Number.NaN} gradingStatus={attempt.gradingStatus} sitting={sitting} pressureUnit={state.sessionState?.pressureUnit ?? sitting.pressureUnit}
         notice={<aside className="exam-results__feedback" aria-label="Exam feedback">
           <p>Help us improve with a quick anonymous survey</p>
           <a href="https://docs.google.com/forms/d/e/1FAIpQLSdxV6GEYCp5m4jBC4yEu095YjVQtniDPmO3r1HpmywDOND43Q/viewform?usp=publish-editor"
@@ -153,7 +174,17 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount }
       <header className="exam-page-heading"><p className="exam-eyebrow">Exam practice</p><h1>Exam Room</h1><p>Put your knowledge into practice, then review your answers and feedback.</p></header>
       <section className="exam-pilot-room__start surface" aria-labelledby="pilot-exam-title">
       <span className="exam-icon-badge"><BookOpen size={22} aria-hidden="true" /></span>
-      <div className="exam-pilot-room__intro"><h2 id="pilot-exam-title">Test exam</h2><p>{unitCount !== undefined && `${unitCount} ${unitCount === 1 ? "question" : "questions"} · `}Calculations and interpretation</p></div>
+      <div className="exam-pilot-room__intro"><h2 id="pilot-exam-title">{examKind === "custom" ? "Custom Exam" : "Mock Exam"}</h2><p>{unitCount !== undefined && `${unitCount} ${unitCount === 1 ? "question" : "questions"} · `}Calculations and interpretation</p></div>
+      {!current && !session.journal && <fieldset className="exam-pilot-room__setup" disabled={busy || !ready}>
+        <legend className="exam-field-label">Exam type</legend>
+        <SegmentedControl<ExamKind> label="Exam type" value={examKind} onChange={setExamKind}
+          options={[{ value: "mock", label: "Mock Exam" }, { value: "custom", label: "Custom Exam", disabled: !customisationCategories.length }]} />
+        {examKind === "custom" && <section aria-label="Customise"><h3>Customise</h3>
+          {customisationCategories.map(category => <ToggleRow key={category.category_id} label={category.label} hint="Include these specialist Parts"
+            checked={!customExclusions.includes(category.category_id)} onChange={included => setIncluded(category.category_id, included)} />)}
+          <p className="exam-small">Standard ABG interpretation remains included.</p>
+        </section>}
+      </fieldset>}
       <div className="exam-pilot-room__actions">
       {current || session.journal ? <>
         <p>An attempt is available for recovery in its original browser.</p>
@@ -167,7 +198,7 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount }
         {!ready ? <p className="exam-pilot-room__empty" role="status">Loading your exams…</p> : !history.length ? <p className="exam-pilot-room__empty surface">Your submitted exams will appear here for you to review.</p> :
           <ul className="exam-pilot-room__list surface">{history.map(item => <li key={item.id}>
             <button className="exam-pilot-room__review" disabled={busy} onClick={() => void run(async () => show(await session.call<RuntimeAttempt>("read", { attemptId: item.id })))}>
-              <span><strong>Review exam</strong><time dateTime={item.finishedAt}>{new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(item.finishedAt))}</time></span>
+              <span><strong>Review exam</strong><span>{configurationLabel(item)}</span><time dateTime={item.finishedAt}>{new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(item.finishedAt))}</time></span>
               <ArrowRight size={18} aria-hidden="true" />
             </button>
           </li>)}</ul>}

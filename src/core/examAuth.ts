@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-export type ExamAccess = { status: "allowed" | "closed" | "not_invited"; allowedUnitCounts: number[] };
+export type CustomisationCategory = { category_id: string; label: string };
+export type ExamAccess = { status: "allowed" | "closed" | "not_invited"; allowedUnitCounts: number[]; customisationCategories?: CustomisationCategory[] };
 export type ExamIdentity = { status: "signed_out" } | { status: "signed_in"; userId: string };
 const clients = new Map<string, SupabaseClient>();
 
@@ -51,5 +52,10 @@ export async function readExamAccess(client: SupabaseClient): Promise<ExamAccess
     || (data.status !== "allowed" && data.allowedUnitCounts.length)) {
     throw new Error("Pilot access could not be checked. Please try again.");
   }
-  return { status: data.status, allowedUnitCounts: data.allowedUnitCounts };
+  const categories: unknown = data.customisationCategories;
+  if (categories !== undefined && (!Array.isArray(categories) || !categories.every(c => c && typeof c.category_id === "string" && /^[a-z][a-z0-9_]*$/.test(c.category_id) && typeof c.label === "string" && c.label.trim()) || new Set(categories.map(c => c.category_id)).size !== categories.length)) {
+    throw new Error("Pilot access could not be checked. Please try again.");
+  }
+  return { status: data.status, allowedUnitCounts: data.allowedUnitCounts,
+    ...(categories !== undefined ? { customisationCategories: categories as CustomisationCategory[] } : {}) };
 }

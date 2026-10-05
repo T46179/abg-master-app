@@ -104,28 +104,29 @@ function Scenario({ children }: { children: ReactNode }) {
   </section>;
 }
 
-type ReviewView = { id: string; scenario: ReactNode[]; table?: ExamTable };
+type ReviewView = { id: string; label: string; scenario: ReactNode[]; tables: ExamTable[] };
 
 function reviewViews(question: ExamQuestion): ReviewView[] | undefined {
   if (!question.sections?.length || !question.parts.length) return;
   const views: ReviewView[] = [];
   const seen = new Set<string>();
   for (const part of question.parts) {
-    if (!part.stimulusSectionIds?.length) return;
-    const id = JSON.stringify(part.stimulusSectionIds);
+    // Legacy Parts use all shared context. Explicit selectors never fall back to
+    // unrelated sections when a view has more than one table or a missing ID.
+    const sectionIds = part.stimulusSectionIds ?? question.sections.map(section => section.id);
+    const id = JSON.stringify(sectionIds);
     if (seen.has(id)) continue;
-    const view: ReviewView = { id, scenario: [] };
-    for (const sectionId of part.stimulusSectionIds) {
+    const view: ReviewView = { id, label: "", scenario: [], tables: [] };
+    for (const sectionId of sectionIds) {
       const section = question.sections.find(section => section.id === sectionId);
-      if (!section) return;
+      if (!section) continue;
       if (section.type === "text") view.scenario.push(<div key={section.id}>{section.content}</div>);
       else {
-        // Keep the full review when a selection cannot fit a single gas card.
-        if (view.table) return;
-        view.table = question.tables.find(table => table.id === section.tableId);
-        if (!view.table) return;
+        const table = question.tables.find(table => table.id === section.tableId);
+        if (table) view.tables.push(table);
       }
     }
+    view.label = view.tables.map(table => table.heading).join(" / ") || `Scenario ${views.length + 1}`;
     seen.add(id);
     views.push(view);
   }
@@ -136,15 +137,15 @@ function CaseReview({ question, pressureUnit, visible }: { question: ExamQuestio
   const views = reviewViews(question);
   const [selected, setSelected] = useState<string | null>(null);
   const current = views?.find(view => view.id === selected) ?? views?.[0];
-  const hasScenario = current ? current.scenario.length > 0 : Boolean(question.scenario);
-  const tables = current ? current.table ? [current.table] : [] : question.tables;
+  const hasScenario = views ? Boolean(current?.scenario.length) : Boolean(question.scenario);
+  const tables = views ? current?.tables ?? [] : question.tables;
   if (!hasScenario && !tables.length) return null;
   return <>
     <div className="exam-results__case-header">
       <h3 className="exam-results__eyebrow exam-results__case-heading">Case Review</h3>
       {views && views.length > 1 && <div className="exam-results__scenario-selector" role="group" aria-label="Case review scenario">
-        {views.map((view, index) => <button type="button" key={view.id} aria-pressed={current?.id === view.id}
-          onClick={() => setSelected(view.id)}>{index === 0 ? "Initial" : views.length === 2 ? "Follow-up" : `Follow-up ${index}`}</button>)}
+        {views.map(view => <button type="button" key={view.id} aria-pressed={current?.id === view.id}
+          onClick={() => setSelected(view.id)}>{view.label}</button>)}
       </div>}
     </div>
     {hasScenario && <Scenario key={`scenario:${current?.id ?? "shared"}`}>{current ? current.scenario : question.scenario}</Scenario>}
@@ -216,7 +217,8 @@ function PartCard({ part, index, sitting, status, score, unit, feedback, criteri
 }
 
 export interface PartGrade { status: GradingStatus; score?: number; criteria?: Record<string, number> }
-export default function ExamResultsPresentation({ sitting, onExit, pressureUnit = sitting.pressureUnit, feedback, grades, onRetry, notice, onReport }: {
+export default function ExamResultsPresentation({ sitting, onExit, pressureUnit = sitting.pressureUnit, feedback, grades, onRetry, notice, onReport, marksAvailable, gradingStatus }: {
+  marksAvailable?: number; gradingStatus?: GradingStatus;
   sitting: SittingState; onExit: () => void; pressureUnit?: PressureUnit;
   feedback: Record<string, PartFeedback>; grades: Record<string, PartGrade>; onRetry?: () => void; notice?: ReactNode; onReport?: SubmitProblemReport;
 }) {
@@ -233,25 +235,28 @@ export default function ExamResultsPresentation({ sitting, onExit, pressureUnit 
   }));
   const completed = parts.filter(p => statuses[p.id] === "completed").length;
   const failed = parts.filter(p => statuses[p.id] === "failed").length;
-  const allDone = completed === parts.length;
-  const available = parts.reduce((sum, p) => sum + p.marks, 0);
+  const includedMarks = parts.reduce((sum, p) => sum + p.marks, 0);
+  const integrityError = marksAvailable !== undefined && (!Number.isInteger(marksAvailable) || marksAvailable <= 0 || marksAvailable !== includedMarks);
+  const unresolved = failed > 0 || integrityError || gradingStatus === "failed";
+  const allDone = completed === parts.length && !unresolved && (gradingStatus === undefined || gradingStatus === "completed");
+  const available = marksAvailable ?? includedMarks;
   const awarded = parts.reduce((sum, p) => sum + (grades[p.id]?.score ?? 0), 0);
   const percent = available ? Math.round(awarded / available * 100) : 0;
   const elapsed = Math.floor(Math.max(0, (sitting.finishedAt ?? sitting.startedAt) - sitting.startedAt) / 1000);
-  const statusText = allDone ? "Grading complete" : failed ? "Some grading could not be completed" : "Grading in progress";
+  const statusText = allDone ? "Grading complete" : unresolved ? "Some grading could not be completed" : "Grading in progress";
   return <div className="exam-results">
     <button type="button" className="exam-results__back" onClick={onExit}><ChevronLeft size={16} aria-hidden="true" />Back to Exam Room</button>
     {notice}
-    <section className="exam-results__summary" aria-label="Exam submitted" data-failed={failed > 0} data-pending={!allDone && !failed}>
+    <section className="exam-results__summary" aria-label="Exam submitted" data-failed={unresolved} data-pending={!allDone && !unresolved}>
       <div className="exam-results__summary-main">
         <div className="exam-results__score">
-          {!failed ? <ScoreRing percent={allDone ? percent : 0} label="" className="exam-results__ring" /> : <div className="exam-results__unresolved-ring" aria-hidden="true">
+          {!unresolved ? <ScoreRing percent={allDone ? percent : 0} label="" className="exam-results__ring" /> : <div className="exam-results__unresolved-ring" aria-hidden="true">
             <Wrench size={24} />
           </div>}
           <div className="exam-results__marks" role="status" aria-live="polite">
-            <span className="exam-results__badge" data-tone={allDone ? "green" : failed ? "amber" : "muted"}><span aria-hidden="true">●</span>{statusText}</span>
-            <h1>{allDone ? <>{awarded} <span>/ {available} marks</span></> : failed ? "Final score unavailable" : "This may take a moment..."}</h1>
-            {!allDone && <p>{failed ? `${failed} ${failed === 1 ? "Part" : "Parts"} could not be graded at this time.` : "You can start reviewing your answers below"}</p>}
+            <span className="exam-results__badge" data-tone={allDone ? "green" : unresolved ? "amber" : "muted"}><span aria-hidden="true">●</span>{statusText}</span>
+            <h1>{allDone ? <>{awarded} <span>/ {available} marks</span></> : unresolved ? "Final score unavailable" : "This may take a moment..."}</h1>
+            {!allDone && <p>{integrityError ? "The saved marks total does not match this attempt. Your submission is retained for review." : unresolved && !failed ? "The grading summary could not be verified. Your submission is retained for review." : failed ? `${failed} ${failed === 1 ? "Part" : "Parts"} could not be graded at this time.` : "You can start reviewing your answers below"}</p>}
           </div>
         </div>
         <dl className="exam-results__metadata">
@@ -260,7 +265,7 @@ export default function ExamResultsPresentation({ sitting, onExit, pressureUnit 
           <div><dd>{Math.floor(elapsed / 60)}m {elapsed % 60}s</dd><dt>Exam time</dt></div>
         </dl>
       </div>
-      {!!failed && <div className="exam-results__retry">
+      {!!failed && !integrityError && <div className="exam-results__retry">
         <p>This is a technical problem — your submission is safe and already-graded Parts are shown below. There is no need to resubmit or retake this exam. Retry grading when available. Completed Parts will keep their marks.</p>
         {onRetry && <button type="button" onClick={onRetry}><RotateCcw size={16} aria-hidden="true" />Retry grading</button>}
       </div>}

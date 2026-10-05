@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { ExamRuntimeSession, encodeAnswers, toSitting, type RuntimeAttempt, type RuntimeCall } from "./examRuntime";
+import { ExamRuntimeSession, ExamRuntimeError, encodeAnswers, toSitting, type RuntimeAttempt, type RuntimeCall } from "./examRuntime";
 const base = (): RuntimeAttempt => ({ id: "attempt", status: "active", revision: 0, pressureUnit: "kPa", createdAt: "2026-09-29T00:00:00Z", presentedAt: null, finishedAt: null, answers: {}, questions: [{ id: "unit", tables: [], parts: [{ id: "number", kind: "numeric", prompt: "Value", marks: 1, pressureAnswer: true }, { id: "text", kind: "concept", prompt: "Explain", marks: 2 }] }] });
 function harness() {
   const entries = new Map<string, string>();
@@ -78,4 +78,27 @@ it("submitted recovery does not claim a writer or regrade", async () => {
   const h = harness(); await h.session.start("kPa"); await h.session.submit({ text: "x" });
   h.invoke.mockClear(); await h.session.recover();
   expect(h.invoke.mock.calls.map(c => c[0])).toEqual(["read"]);
+});
+
+it("freezes Custom configuration before a lost start acknowledgement and ignores later preferences", async () => {
+  const h = harness(); h.invoke.mockRejectedValueOnce(new Error("lost"));
+  await expect(h.session.start("kPa", { examKind: "custom", excludedCategories: ["mechanical_ventilation", "toxicology_management", "mechanical_ventilation"] })).rejects.toThrow();
+  const stored = JSON.parse(h.entries.get("owner")!);
+  expect(stored).toMatchObject({ examKind: "custom", excludedCategories: ["mechanical_ventilation", "toxicology_management"] });
+  const reloaded = new ExamRuntimeSession(h.call, h.storage, "owner");
+  await reloaded.start("mmHg", { examKind: "mock", excludedCategories: [] });
+  expect(h.invoke.mock.calls.at(-1)![1]).toMatchObject({ requestId: stored.requestId, pressureUnit: "kPa", examKind: "custom", excludedCategories: stored.excludedCategories });
+});
+it("recovers a legacy pending-start journal as Mock", async () => {
+  const h = harness(); h.entries.set("owner", JSON.stringify({ requestId: "old", recoveryKey: "key", pressureUnit: "kPa" }));
+  const reloaded = new ExamRuntimeSession(h.call, h.storage, "owner"); await reloaded.recover();
+  expect(h.invoke.mock.calls[0][1]).toMatchObject({ examKind: "mock", excludedCategories: [] });
+});
+
+it("allows a new setup after a definite configuration rejection without discarding uncertain requests", async () => {
+  const h = harness(); h.invoke.mockRejectedValueOnce(new ExamRuntimeError("EXAM_INVALID_CONFIGURATION"));
+  await expect(h.session.start("kPa", { examKind: "custom", excludedCategories: ["retired"] })).rejects.toThrow("EXAM_INVALID_CONFIGURATION");
+  expect(h.session.journal).toBeNull(); expect(h.entries.has("owner")).toBe(false);
+  await h.session.start("kPa");
+  expect(h.invoke.mock.calls.at(-1)![1]).toMatchObject({ examKind: "mock", excludedCategories: [] });
 });
