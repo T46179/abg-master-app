@@ -79,21 +79,22 @@ const resultCases: CaseResultPresentation[] = [
 ]
 
 const attempts: AttemptPresentation[] = [
-  { id: 1, kind: "mock", title: "Full mock exam", detail: "8 cases · timed", date: "27 Aug 2026", cases: 8, score: 78 },
-  { id: 2, kind: "drill", title: "Delta ratio drill", detail: "10 questions", date: "26 Aug 2026", cases: 10, score: 40 },
-  { id: 3, kind: "mock", title: "Full mock exam", detail: "10 cases · timed", date: "24 Aug 2026", cases: 10, score: 72 },
-  { id: 4, kind: "drill", title: "Compensation drill", detail: "15 questions", date: "22 Aug 2026", cases: 15, score: 67 },
-  { id: 5, kind: "mock", title: "Full mock exam", detail: "5 cases · untimed", date: "20 Aug 2026", cases: 5, score: 84 },
-  { id: 6, kind: "drill", title: "Anion gap drill", detail: "10 questions", date: "19 Aug 2026", cases: 10, score: 90 },
+  { id: "A-1042", kind: "mock", date: "4 Oct 2026", time: "19:42", finishedAt: "2026-10-04T19:42:00+11:00", exclusions: [], cases: 8, elapsed: "1h 12m", awarded: null, available: 96, status: "pending" },
+  { id: "A-1039", kind: "custom", date: "1 Oct 2026", time: "08:15", finishedAt: "2026-10-01T08:15:00+10:00", exclusions: ["Paediatrics", "Toxicology"], cases: 5, elapsed: "41m", awarded: 44, available: 60, status: "completed" },
+  { id: "A-1031", kind: "mock", date: "27 Sep 2026", time: "21:03", finishedAt: "2026-09-27T21:03:00+10:00", exclusions: [], cases: 8, elapsed: "1h 18m", awarded: 75, available: 96, status: "completed" },
+  { id: "A-1027", kind: "custom", date: "24 Sep 2026", time: "13:30", finishedAt: "2026-09-24T13:30:00+10:00", exclusions: ["Obstetrics"], cases: 6, elapsed: "52m", awarded: null, available: 72, status: "failed" },
+  { id: "A-1020", kind: "mock", date: "20 Sep 2026", time: "18:47", finishedAt: "2026-09-20T18:47:00+10:00", exclusions: [], cases: 10, elapsed: "1h 34m", awarded: 82, available: 120, status: "completed" },
+  { id: "A-1014", kind: "custom", date: "16 Sep 2026", time: "07:58", finishedAt: "2026-09-16T07:58:00+10:00", exclusions: ["Paediatrics"], cases: 4, elapsed: "29m", awarded: 41, available: 48, status: "completed" },
+  { id: "A-1009", kind: "mock", date: "11 Sep 2026", time: "20:20", finishedAt: "2026-09-11T20:20:00+10:00", exclusions: [], cases: 8, elapsed: "1h 21m", awarded: 63, available: 96, status: "completed" },
 ]
 
 
 export const prototypeConfig: ExamPrototypeConfig = {
   questionCounts: [5, 10, 15, 20],
-  caseMinimum: 5,
-  caseMaximum: 10,
+  caseMinimum: 3,
+  caseMaximum: 5,
   minutesPerDrillQuestion: 0.75,
-  minutesPerCase: 4,
+  minutesPerCase: 12,
   passingTarget: 80
 };
 
@@ -103,8 +104,11 @@ export const initialPrototypeState: ExamPrototypeState = {
   selectedDrill: "compensation",
   selectedRule: "met-acidosis",
   questionCount: 10,
-  caseCount: 8,
+  caseCount: 3,
   timed: true,
+  examKind: "mock",
+  excludedCategories: [],
+  showRanges: true,
   adaptive: true,
   revealWorking: true,
   historyFilter: "all"

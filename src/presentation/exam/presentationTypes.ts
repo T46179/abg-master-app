@@ -1,7 +1,9 @@
 // Presentation-only types. These are not production Exam content or result contracts.
-export type ExamView = "exam" | "results" | "history";
+export type ExamView = "exam" | "results" | "history" | "error-log";
 export type ExamMode = "drills" | "mock";
-export type HistoryFilter = "all" | "mock" | "drill";
+export type SittingKind = "mock" | "custom";
+export type SpecialistCategory = "mechanical_ventilation" | "toxicology_management";
+export type HistoryFilter = "all" | SittingKind;
 export type ExamTone = "blue" | "coral" | "purple" | "green" | "navy";
 export type DrillIcon = "gap" | "scale" | "split" | "lung" | "droplet";
 
@@ -11,8 +13,8 @@ export interface DrillPresentation {
   blurb: string;
   tone: ExamTone;
   icon: DrillIcon;
-  accuracy: number;
-  attempted: number;
+  accuracy: number | null;
+  attempted: number | null;
   rules?: { key: string; label: string; hint: string }[];
 }
 export interface ExamPrototypeState {
@@ -23,6 +25,9 @@ export interface ExamPrototypeState {
   questionCount: number;
   caseCount: number;
   timed: boolean;
+  examKind: SittingKind;
+  excludedCategories: SpecialistCategory[];
+  showRanges: boolean;
   adaptive: boolean;
   revealWorking: boolean;
   historyFilter: HistoryFilter;
@@ -65,16 +70,27 @@ export interface LatestResultPresentation {
   summary: SummaryTilePresentation[];
 }
 export interface AttemptPresentation {
-  id: number;
-  kind: "mock" | "drill";
-  title: string;
-  detail: string;
+  id: string;
+  kind: SittingKind;
   date: string;
+  time: string;
+  finishedAt: string;
+  exclusions: string[];
   cases: number;
-  score: number;
+  elapsed: string;
+  awarded: number | null;
+  available: number;
+  status: "completed" | "pending" | "failed";
+  canRetryGrading?: boolean;
 }
 export interface HistoryPresentation {
   attempts: AttemptPresentation[];
-  summary: SummaryTilePresentation[];
+  submitted?: number;
+  counts?: Record<HistoryFilter, number>;
+  average: number | null;
+  best: number | null;
+  trend: number[];
+  totalCases: number;
+  awaiting: number;
 }
 

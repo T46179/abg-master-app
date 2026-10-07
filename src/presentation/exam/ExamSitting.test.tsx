@@ -207,9 +207,9 @@ describe("Exam presentation interactions", () => {
       { path: "/exam", element: <ExamScreen /> }
     ] }], { initialEntries: ["/exam"] });
     act(() => root.render(<RouterProvider router={router!} />));
-    click("Mock Exam");
+    click("Exam");
     await act(async () => {
-      click("Begin mock exam");
+      click("Begin");
       await vi.dynamicImportSettled();
     });
     expect(container.querySelectorAll(".exam-question-pills button")).toHaveLength(5);
@@ -231,7 +231,7 @@ describe("Exam presentation interactions", () => {
     expect(container.querySelector('[aria-label="Exam submitted"]')).toBeTruthy();
     expect(container.textContent).toContain("Grading in progress");
     click("Back to Exam Room");
-    expect(container.textContent).toContain("Begin mock exam");
+    expect(container.textContent).toContain("Begin");
     expect(container.textContent).not.toContain("Fixed for this exam");
   });
   it("confirms route navigation and allows staying before exit", async () => {

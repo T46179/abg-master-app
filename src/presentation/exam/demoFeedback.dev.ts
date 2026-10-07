@@ -39,6 +39,11 @@ export const demoFeedback: ExamFeedback = {
         }
       }
     ],
+    "errorLog": {
+      "partConceptIds": [
+        "respiratory_alkalosis_recognition"
+      ]
+    },
     "difficulty": 2
   },
   "EXAM-0001-P2": {
@@ -77,6 +82,11 @@ export const demoFeedback: ExamFeedback = {
         }
       }
     ],
+    "errorLog": {
+      "partConceptIds": [
+        "methaemoglobinaemia_oxygen_measurements"
+      ]
+    },
     "difficulty": 3,
     "takeaway": {
       "mmHg": "Other important causes of methaemoglobinaemia include nitrates and nitrites, local anaesthetics, dapsone, and sulfonamides.",
@@ -119,6 +129,11 @@ export const demoFeedback: ExamFeedback = {
         }
       }
     ],
+    "errorLog": {
+      "partConceptIds": [
+        "methaemoglobinaemia_oxygen_measurements"
+      ]
+    },
     "difficulty": 3
   },
   "EXAM-0001-P4": {
@@ -157,6 +172,11 @@ export const demoFeedback: ExamFeedback = {
         }
       }
     ],
+    "errorLog": {
+      "partConceptIds": [
+        "methaemoglobinaemia_management"
+      ]
+    },
     "difficulty": 3,
     "takeaway": {
       "mmHg": "If SpO2 appears to be stuck around 85% despite high-flow oxygen, especially with a normal PaO2, think methaemoglobinaemia",
@@ -182,6 +202,13 @@ export const demoFeedback: ExamFeedback = {
     "display": "resources_with_text_fallback",
     "resources": [],
     "rationales": [],
+    "errorLog": {
+      "criterionConceptIds": {
+        "identify_respiratory_acidosis": [
+          "respiratory_acidosis_recognition"
+        ]
+      }
+    },
     "difficulty": 1
   },
   "EXAM-0002-P2": {
@@ -198,6 +225,11 @@ export const demoFeedback: ExamFeedback = {
     "display": "resources_with_text_fallback",
     "resources": [],
     "rationales": [],
+    "errorLog": {
+      "partConceptIds": [
+        "oxyhaemoglobin_dissociation_curve"
+      ]
+    },
     "difficulty": 3,
     "takeaway": {
       "mmHg": "For the standard O2-Hb dissociation curve (approximates):\n- PaO2 60 mmHg → SaO2 ≈ 90%\n- PaO2 50 mmHg → SaO2 ≈ 80–85%\n- PaO2 40 mmHg → SaO2 ≈ 75%\n- PaO2 27 mmHg → SaO2 ≈ 50%",
@@ -218,6 +250,11 @@ export const demoFeedback: ExamFeedback = {
     "display": "resources_with_text_fallback",
     "resources": [],
     "rationales": [],
+    "errorLog": {
+      "partConceptIds": [
+        "acute_respiratory_acidosis_causes"
+      ]
+    },
     "difficulty": 3
   },
   "EXAM-0002-P4": {
@@ -243,6 +280,16 @@ export const demoFeedback: ExamFeedback = {
     "display": "resources_with_text_fallback",
     "resources": [],
     "rationales": [],
+    "errorLog": {
+      "criterionConceptIds": {
+        "identify_vq_mismatch": [
+          "oxygen_induced_hypercapnia_mechanisms"
+        ],
+        "identify_haldane_effect": [
+          "oxygen_induced_hypercapnia_mechanisms"
+        ]
+      }
+    },
     "difficulty": 4,
     "takeaway": {
       "mmHg": "Loss of hypoxic drive is commonly blamed for oxygen-induced hypercapnia, but it is not the main mechanism.",
@@ -272,6 +319,16 @@ export const demoFeedback: ExamFeedback = {
     "display": "resources_with_text_fallback",
     "resources": [],
     "rationales": [],
+    "errorLog": {
+      "criterionConceptIds": {
+        "identify_metabolic_acidosis": [
+          "metabolic_acidosis_recognition"
+        ],
+        "identify_respiratory_acidosis": [
+          "respiratory_acidosis_recognition"
+        ]
+      }
+    },
     "difficulty": 3,
     "takeaway": {
       "mmHg": "When PCO2 is raised and bicarbonate is reduced in an acidotic patient, consider two primary acidifying processes.",
@@ -342,6 +399,11 @@ export const demoFeedback: ExamFeedback = {
       }
     ],
     "rationales": [],
+    "errorLog": {
+      "partConceptIds": [
+        "respiratory_compensation_metabolic_acidosis"
+      ]
+    },
     "difficulty": 3
   },
   "EXAM-0003-P3": {
@@ -358,6 +420,11 @@ export const demoFeedback: ExamFeedback = {
     "display": "resources_with_text_fallback",
     "resources": [],
     "rationales": [],
+    "errorLog": {
+      "partConceptIds": [
+        "acute_respiratory_acidosis_causes"
+      ]
+    },
     "difficulty": 3,
     "takeaway": {
       "mmHg": "Identify the mechanism supported by the case without assuming that it explains every component of a mixed disorder.",
@@ -437,6 +504,16 @@ export const demoFeedback: ExamFeedback = {
       }
     ],
     "rationales": [],
+    "errorLog": {
+      "criterionConceptIds": {
+        "identify_hagma": [
+          "hagma_recognition"
+        ],
+        "identify_respiratory_alkalosis": [
+          "respiratory_alkalosis_recognition"
+        ]
+      }
+    },
     "difficulty": 4
   },
   "EXAM-0004-P2": {
@@ -475,6 +552,11 @@ export const demoFeedback: ExamFeedback = {
         }
       }
     ],
+    "errorLog": {
+      "partConceptIds": [
+        "hagma_respiratory_alkalosis_causes"
+      ]
+    },
     "difficulty": 3
   },
   "EXAM-0004-P3": {
@@ -513,6 +595,11 @@ export const demoFeedback: ExamFeedback = {
         }
       }
     ],
+    "errorLog": {
+      "partConceptIds": [
+        "lactate_trend_interpretation"
+      ]
+    },
     "difficulty": 2.0
   },
   "EXAM-0005-P1": {
@@ -559,6 +646,11 @@ export const demoFeedback: ExamFeedback = {
       }
     ],
     "rationales": [],
+    "errorLog": {
+      "partConceptIds": [
+        "aa_gradient_calculation_interpretation"
+      ]
+    },
     "difficulty": 2.0
   },
   "EXAM-0005-P2": {
@@ -575,6 +667,11 @@ export const demoFeedback: ExamFeedback = {
     "display": "resources_with_text_fallback",
     "resources": [],
     "rationales": [],
+    "errorLog": {
+      "partConceptIds": [
+        "aa_gradient_calculation_interpretation"
+      ]
+    },
     "difficulty": 3.0
   },
   "EXAM-0005-P3": {
@@ -613,6 +710,11 @@ export const demoFeedback: ExamFeedback = {
         }
       }
     ],
+    "errorLog": {
+      "partConceptIds": [
+        "aa_gradient_calculation_interpretation"
+      ]
+    },
     "difficulty": 3.0
   },
   "EXAM-0005-P4": {
@@ -646,6 +748,22 @@ export const demoFeedback: ExamFeedback = {
     "display": "resources_with_text_fallback",
     "resources": [],
     "rationales": [],
+    "errorLog": {
+      "criterionConceptIds": {
+        "calculate_expected_pco2": [
+          "respiratory_compensation_metabolic_acidosis"
+        ],
+        "calculate_anion_gap": [
+          "anion_gap_calculation_interpretation"
+        ],
+        "calculate_delta_ratio": [
+          "delta_ratio_calculation_interpretation"
+        ],
+        "interpret_triple_disorder": [
+          "mixed_acid_base_disorder_recognition"
+        ]
+      }
+    },
     "difficulty": 3.0,
     "takeaway": {
       "mmHg": "The body's buffer system is quite substantial. To achieve a pH this low usually requires multiple acidotic processes occuring simultaneously",

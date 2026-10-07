@@ -46,18 +46,20 @@ export function buildLatestResultPresentation(input: {
   };
 }
 export function buildHistoryPresentation(attempts: AttemptPresentation[]): HistoryPresentation {
-  const mocks = attempts.filter(row => row.kind === "mock");
-  const average = mocks.length ? Math.round(mocks.reduce((sum, row) => sum + row.score, 0) / mocks.length) : 0;
-  const best = mocks.length ? Math.max(...mocks.map(row => row.score)) : 0;
+  const ordered = [...attempts].sort((a, b) => Date.parse(b.finishedAt) - Date.parse(a.finishedAt));
+  const scores = ordered.map(attemptPercent).filter((score): score is number => score !== null);
   return {
-    attempts,
-    summary: [
-      { value: String(attempts.length), label: "Total sittings" },
-      { value: String(mocks.length), label: "Mock exams" },
-      { value: `${average}%`, label: "Avg mock score" },
-      { value: `${best}%`, label: "Best mock", tone: "green" }
-    ]
+    attempts: ordered,
+    average: scores.length ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : null,
+    best: scores.length ? Math.max(...scores) : null,
+    trend: [...scores].reverse(),
+    totalCases: ordered.reduce((sum, row) => sum + row.cases, 0),
+    awaiting: ordered.filter(row => row.status !== "completed").length
   };
+}
+export function attemptPercent(attempt: AttemptPresentation): number | null {
+  return attempt.status === "completed" && attempt.awarded !== null && attempt.available > 0
+    ? displayPercent(attempt.awarded, attempt.available) : null;
 }
 export function filterAttempts(attempts: AttemptPresentation[], filter: HistoryFilter) {
   return attempts.filter(row => filter === "all" || row.kind === filter);

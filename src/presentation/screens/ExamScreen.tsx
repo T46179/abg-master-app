@@ -11,6 +11,8 @@ import type { ExamPrototypeState } from "../exam/presentationTypes";
 import "../exam/exam.css";
 
 const DemoResults = import.meta.env.DEV ? lazy(() => import("../exam/ExamResultsPrototype.dev")) : null;
+const DemoErrorLog = import.meta.env.DEV ? lazy(() => import("../exam/ExamErrorLogPrototype.dev")) : null;
+const DemoLatestResult = import.meta.env.DEV ? lazy(() => import("../exam/ExamLatestResultPreview.dev")) : null;
 
 export function ExamScreen() {
   const { state: appState } = useAppContext();
@@ -70,15 +72,20 @@ export function ExamScreen() {
           onSelectDrill={selectDrill}
           onBegin={import.meta.env.DEV ? beginDemo : undefined}
           launching={launching}
+          errorLogCount={import.meta.env.DEV ? 5 : undefined}
         />
       )}
-      {state.view === "results" && (
+      {state.view === "results" && (DemoLatestResult ?
+        <Suspense fallback={<p>Loading exam explanations…</p>}><DemoLatestResult pressureUnit={appState.sessionState?.pressureUnit ?? "mmHg"} onExit={() => updateState({ view: "exam" })} /></Suspense> : (
         <ExamResults
           result={mockLatestResult}
           onBack={() => updateState({ view: "exam" })}
           onHistory={() => updateState({ view: "history" })}
         />
-      )}
+      ))}
+      {state.view === "error-log" && DemoErrorLog && <Suspense fallback={<p>Loading error log…</p>}>
+        <DemoErrorLog onBack={() => updateState({ view: "exam" })} onOpenResult={() => updateState({ view: "results" })} />
+      </Suspense>}
       {state.view === "history" && (
         <ExamHistory
           history={mockHistory}

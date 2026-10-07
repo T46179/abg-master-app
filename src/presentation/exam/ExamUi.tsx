@@ -35,14 +35,14 @@ export function SegmentedControl<T extends string | number>({ label, options, va
   </div>;
 }
 
-export function ToggleRow({ label, hint, checked, onChange }: {
-  label: string; hint: string; checked: boolean; onChange: (checked: boolean) => void;
+export function ToggleRow({ label, hint, checked, onChange, disabled }: {
+  label: string; hint?: string; checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean;
 }) {
   const id = useId();
   return <div className="exam-toggle-row">
-    <div><div id={id} className="exam-field-label">{label}</div><p id={`${id}-hint`} className="exam-small">{hint}</p></div>
-    <button type="button" className="exam-toggle" role="switch" aria-checked={checked}
-      aria-labelledby={id} aria-describedby={`${id}-hint`} onClick={() => onChange(!checked)}>
+    <div><div id={id} className="exam-field-label">{label}</div>{hint && <p id={`${id}-hint`} className="exam-small">{hint}</p>}</div>
+    <button type="button" className="exam-toggle" role="switch" disabled={disabled} aria-checked={checked}
+      aria-labelledby={id} aria-describedby={hint ? `${id}-hint` : undefined} onClick={() => onChange(!checked)}>
       <span />
     </button>
   </div>;

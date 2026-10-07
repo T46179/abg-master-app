@@ -1,7 +1,7 @@
 import { Surface } from "../primitives/Surface";
-import { ArrowIcon, CheckIcon, ChevronRightIcon, CrossIcon, DotIcon, HistoryIcon, LayersIcon, SplitIcon } from "./ExamIcons";
-import { AccuracyBar, BackLink, IconBadge, ScoreRing, SegmentedControl, SummaryTiles, toneStyle } from "./ExamUi";
-import { scoreTone } from "./presentationModel";
+import { ArrowIcon, CheckIcon, ChevronRightIcon, CrossIcon, DotIcon, HistoryIcon, LayersIcon, ReportIcon, SplitIcon } from "./ExamIcons";
+import { AccuracyBar, BackLink, IconBadge, ScoreRing, SummaryTiles, toneStyle } from "./ExamUi";
+import { attemptPercent, scoreTone } from "./presentationModel";
 import type { AttemptPresentation, HistoryFilter, HistoryPresentation, LatestResultPresentation } from "./presentationTypes";
 
 export function ExamResults({ result, onBack, onHistory }: {
@@ -65,36 +65,75 @@ export function ExamResults({ result, onBack, onHistory }: {
   </div>;
 }
 
-export function ExamHistory({ history, attempts, filter, onFilterChange, onBack, onOpen }: {
+export function ExamHistory({ history, attempts, filter, onFilterChange, onBack, onOpen, onRetry, onLoadMore, total, loading, busy, unavailable }: {
   history: HistoryPresentation;
   attempts: AttemptPresentation[];
   filter: HistoryFilter;
   onFilterChange: (filter: HistoryFilter) => void;
   onBack: () => void;
-  onOpen: () => void;
+  onOpen: (id: string) => void;
+  onRetry?: (id: string) => void;
+  onLoadMore?: () => void;
+  total?: number; loading?: boolean; busy?: boolean; unavailable?: boolean;
 }) {
+  const filters: { value: HistoryFilter; label: string; count: number }[] = [
+    { value: "all", label: "All", count: history.counts?.all ?? history.attempts.length },
+    { value: "mock", label: "Mock", count: history.counts?.mock ?? history.attempts.filter(row => row.kind === "mock").length },
+    { value: "custom", label: "Custom", count: history.counts?.custom ?? history.attempts.filter(row => row.kind === "custom").length }
+  ];
+  const stats = [
+    { value: String(history.submitted ?? history.attempts.length), label: "Submitted" },
+    { value: history.best === null ? "—" : `${history.best}%`, label: "Best score" },
+    { value: String(history.totalCases), label: "Cases sat" },
+    { value: String(history.awaiting), label: "Awaiting grade", note: history.awaiting > 0 }
+  ];
   return <div className="exam-history">
     <BackLink onClick={onBack} />
-    <header><p className="exam-eyebrow">Exam Room</p><h1>Past attempts</h1></header>
-    <SummaryTiles tiles={history.summary} />
+    <header><p className="exam-eyebrow">Exam Room</p><h1>Past attempts</h1><p className="exam-history-description">Every submitted sitting, kept exactly as you answered it — cases, values, marks and model answers. Abandoned exams aren't recorded.</p></header>
+    <Surface className="exam-history-summary">
+      <div className="exam-history-average">
+        <p className="exam-eyebrow">Average score · graded sittings</p>
+        <div className="exam-history-trend-row">
+          <strong className="exam-history-average-value">{history.average ?? "—"}{history.average !== null && <span>%</span>}</strong>
+          {!!history.trend.length && <div className="exam-history-trend" role="img" aria-label={`Graded scores, oldest to latest: ${history.trend.map(score => `${score}%`).join(", ")}`}>
+            {history.trend.map((score, index) => <span key={index} title={`${score}%`} aria-hidden="true" style={{ height: `${Math.max(12, score)}%` }} />)}
+          </div>}
+        </div>
+        <p className="exam-small">{unavailable ? "Scores unavailable" : history.trend.length ? `Last ${history.trend.length} graded sittings, oldest → latest` : "No graded sittings yet"}</p>
+      </div>
+      <div className="exam-history-stats">{stats.map(stat => <div key={stat.label}>
+        <strong>{unavailable ? "—" : stat.value}{stat.note && <span className="exam-awaiting-dot" aria-hidden="true" />}</strong><span className="exam-eyebrow">{stat.label}</span>
+      </div>)}</div>
+    </Surface>
     <div className="exam-history-filters">
-      <SegmentedControl label="Past attempts filter" value={filter} onChange={onFilterChange}
-        options={[{ value: "all", label: "All" }, { value: "mock", label: "Mock exams" }, { value: "drill", label: "Drills" }]} />
+      <div className="exam-segments" role="group" aria-label="Past attempts filter">{filters.map(item => <button type="button" key={item.value} aria-pressed={filter === item.value} onClick={() => onFilterChange(item.value)}>{item.label}{!unavailable && <span>{item.count}</span>}</button>)}</div>
+      <span className="exam-history-order">Most recent first</span>
     </div>
     <Surface className="exam-attempt-list">
-      {attempts.map(attempt => <button type="button" className="exam-attempt-row" key={attempt.id} onClick={onOpen}>
-        <IconBadge tone={attempt.kind === "mock" ? "navy" : "purple"}>
-          {attempt.kind === "mock" ? <LayersIcon /> : <SplitIcon />}
-        </IconBadge>
-        <span className="exam-attempt-copy">
-          <span className="exam-attempt-title"><strong>{attempt.title}</strong>{attempt.kind === "mock" && <span className="exam-mock-tag">Mock</span>}</span>
-          <span className="exam-small">{attempt.detail} · {attempt.date}</span>
-        </span>
-        <span className="exam-attempt-bar"><AccuracyBar percent={attempt.score} /></span>
-        <strong className="exam-attempt-score exam-accent" style={toneStyle(scoreTone(attempt.score))}>{attempt.score}%</strong>
-        <span className="exam-attempt-chevron" aria-hidden="true"><ChevronRightIcon /></span>
-      </button>)}
-      {!attempts.length && <p className="exam-empty">No attempts in this filter yet.</p>}
+      <div className="exam-history-columns" aria-hidden="true"><span>Sitting</span><span>Time</span><span>Marks</span><span>Score</span><span /></div>
+      <ul className="exam-history-entries">{attempts.map(attempt => {
+        const percent = attemptPercent(attempt);
+        const label = attempt.kind === "mock" ? "Mock exam" : "Custom exam";
+        return <li className="exam-history-entry" key={attempt.id}>
+          <button type="button" className="exam-attempt-open" disabled={busy} onClick={() => onOpen(attempt.id)} aria-label={`Review ${label}, ${attempt.date} at ${attempt.time}`}>
+            <IconBadge>{attempt.kind === "mock" ? <LayersIcon /> : <SplitIcon />}</IconBadge>
+            <span className="exam-attempt-copy">
+              <span className="exam-attempt-title"><strong>{label}</strong><span className="exam-attempt-case-count">· {attempt.cases} cases</span>
+                {attempt.status !== "completed" && <span className="exam-grading-chip" data-status={attempt.status}><span aria-hidden="true" />{attempt.status === "pending" ? "Grading" : "Grading failed"}</span>}
+              </span>
+              <span className="exam-attempt-detail"><time dateTime={attempt.finishedAt}>{attempt.date} · {attempt.time}</time>{!!attempt.exclusions.length && <><span className="exam-exclusion-divider" aria-hidden="true">|</span><span className="exam-exclusion-label">Excl.</span>{attempt.exclusions.map(exclusion => <span className="exam-exclusion-tag" key={exclusion}>{exclusion}</span>)}</>}</span>
+            </span>
+          </button>
+          <span className="exam-history-time"><span className="exam-mobile-label">Time </span>{attempt.elapsed}</span>
+          <span className="exam-history-marks"><span className="exam-mobile-label">Marks </span>{attempt.status === "completed" ? attempt.awarded ?? "—" : "—"}<span>/{attempt.available}</span></span>
+          <div className="exam-history-score">{percent !== null ? <>
+            <span className="exam-history-score-bar" data-low={percent < 60} aria-hidden="true"><span style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} /></span><strong>{percent}%</strong>
+          </> : attempt.status === "failed" ? <button type="button" className="exam-retry-grading" disabled={busy || !onRetry || !attempt.canRetryGrading} onClick={() => onRetry?.(attempt.id)}>Retry grading</button> : <span className="exam-history-marking">{attempt.status === "pending" ? "Marking…" : "—"}</span>}</div>
+          <span className="exam-history-chevron" aria-hidden="true"><ChevronRightIcon /></span>
+        </li>;
+      })}</ul>
+      {!attempts.length && <p className="exam-empty">{loading ? "Loading your exams…" : unavailable ? "Your exams couldn’t be loaded. Please retry." : "No attempts in this filter yet."}</p>}
+      <footer className="exam-history-footer"><span>Showing <strong>{attempts.length}</strong> of <strong>{unavailable ? "—" : total ?? attempts.length}</strong></span>{onLoadMore && <button type="button" className="figma-button figma-button--secondary" disabled={loading || busy} onClick={onLoadMore}>{loading ? "Loading…" : "Load more"}</button>}<span><ReportIcon />Retakes &amp; objective breakdown coming soon</span></footer>
     </Surface>
   </div>;
 }

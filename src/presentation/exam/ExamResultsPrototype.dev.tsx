@@ -3,12 +3,16 @@ import type { PressureUnit } from "../../core/types";
 import type { GradingStatus } from "./resultsTypes";
 import type { SittingState } from "./sittingTypes";
 import { demoFeedback } from "./demoFeedback.dev";
+import { demoErrorLogSave } from "./errorLogFixtures.dev";
 import ExamResultsPresentation from "./ExamResultsPresentation";
-export default function ExamResultsPrototype({ sitting, onExit, pressureUnit = sitting.pressureUnit }: {
-  sitting: SittingState; onExit: () => void; pressureUnit?: PressureUnit;
+export default function ExamResultsPrototype({ sitting, onExit, pressureUnit = sitting.pressureUnit, initiallyComplete = false }: {
+  sitting: SittingState; onExit: () => void; pressureUnit?: PressureUnit; initiallyComplete?: boolean;
 }) {
   const parts = sitting.questions.flatMap(q => q.parts);
-  const [statuses, setStatuses] = useState<Record<string, GradingStatus>>({});
+  const [savedExamples, setSavedExamples] = useState<Record<string, string[]>>({});
+  const errorLogPresentation = Object.fromEntries(Object.entries(demoErrorLogSave).map(([partId, concepts]) =>
+    [partId, concepts.map(c => ({ ...c, saved: c.saved || savedExamples[partId]?.includes(c.id) }))]));
+  const [statuses, setStatuses] = useState<Record<string, GradingStatus>>(() => initiallyComplete ? Object.fromEntries(parts.map(part => [part.id, "completed"])) : {});
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   function clearTimers() { timers.current.forEach(clearTimeout); timers.current = []; }
   function startSimulation() {
@@ -19,7 +23,7 @@ export default function ExamResultsPrototype({ sitting, onExit, pressureUnit = s
     });
   }
   // Review preferences are deliberately excluded: only a new submitted snapshot restarts the demo.
-  useEffect(() => { startSimulation(); return clearTimers; }, [sitting]);
+  useEffect(() => { if (!initiallyComplete) startSimulation(); return clearTimers; }, [sitting, initiallyComplete]);
   function retryFailed() {
     const failedIds = parts.filter(part => statuses[part.id] === "failed").map(part => part.id);
     if (!failedIds.length) return;
@@ -34,9 +38,12 @@ export default function ExamResultsPrototype({ sitting, onExit, pressureUnit = s
     return [part.id, { status: statuses[part.id] ?? "pending", score,
       criteria: Object.fromEntries((demoFeedback[part.id]?.criteria ?? []).map((c, i) => [c.id, i < score ? 1 : 0])) }];
   }));
-  return <ExamResultsPresentation sitting={sitting} onExit={onExit} pressureUnit={pressureUnit} feedback={demoFeedback} grades={grades} onRetry={retryFailed} notice={
+  return <ExamResultsPresentation sitting={sitting} onExit={onExit} pressureUnit={pressureUnit} feedback={demoFeedback} grades={grades} errorLogPresentation={errorLogPresentation}
+    onErrorLogSave={async (partId, ids) => setSavedExamples(current => ({ ...current, [partId]: [...new Set([...(current[partId] ?? []), ...ids])] }))}
+    onRetry={retryFailed} notice={
     <aside className="exam-results__prototype">
       <strong>Development preview</strong> — marks and criterion decisions are illustrative, not an assessment of your answers. Nothing is saved.
+      <p>Error log examples: Question 1 Part 2 (single), Question 3 Part 2 (numeric), Question 5 Part 1 (already saved), Question 5 Part 4 (multiple). Saves are temporary and do not update the Error log page.</p>
       <details><summary>Preview grading states</summary><div className="exam-results__controls">
         <button type="button" onClick={startSimulation}>Replay grading delay</button>
         <button type="button" onClick={() => { clearTimers(); setStatuses(Object.fromEntries(parts.map(p => [p.id, "completed"]))); }}>Complete grading</button>

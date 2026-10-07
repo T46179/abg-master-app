@@ -1,11 +1,14 @@
-import { Component, useId, useState, type ReactNode } from "react";
+import { Component, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, ChevronLeft, CircleDashed, CirclePlus, Lightbulb, RotateCcw, Wrench, X } from "lucide-react";
 import type { PressureUnit } from "../../core/types";
-import type { GradingStatus, PartFeedback } from "./resultsTypes";
+import type { GradingStatus, PartFeedback, PartGrade } from "./resultsTypes";
+import { isCompletedPartGrade } from "./resultsModel";
 import type { ExamPart, ExamQuestion, ExamTable, SittingState } from "./sittingTypes";
 import { MetricRichText } from "../practice/MetricText";
 import { ExamResultValues } from "./ExamResultValues";
 import { ScoreRing } from "./ExamUi";
+import { ErrorLogSave } from "./ErrorLogSave";
+import type { ErrorLogSaveConcept, ErrorLogSavePresentation } from "./errorLogTypes";
 import { QuestionProblemReport, type SubmitProblemReport } from "./ReportProblemDialog";
 import { CompensationVisualContent } from "../practice/compensation/CompensationVisualContent";
 import { AnionGapVisualContent } from "../practice/anionGap/AnionGapVisualContent";
@@ -155,10 +158,16 @@ function CaseReview({ question, pressureUnit, visible }: { question: ExamQuestio
   </>;
 }
 
-function PartCard({ part, index, sitting, status, score, unit, feedback, criteria, retryAvailable }: {
+function PartCard({ part, index, sitting, status, score, unit, feedback, criteria, retryAvailable, errorLogConcepts, onErrorLogSave, errorLogBusy, initiallyOpen }: {
   part: ExamPart; index: number; sitting: SittingState; status: GradingStatus; score: number; unit: PressureUnit; feedback?: PartFeedback; criteria?: Record<string, number>; retryAvailable: boolean;
+  errorLogConcepts?: readonly ErrorLogSaveConcept[];
+  onErrorLogSave?: (ids: string[]) => Promise<void>;
+  errorLogBusy?: boolean;
+  initiallyOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(initiallyOpen));
+  const card = useRef<HTMLElement>(null);
+  useEffect(() => { if (initiallyOpen) card.current?.scrollIntoView?.({ block: "start" }); }, [initiallyOpen]);
   const id = useId();
   const resolved = status === "completed";
   const unanswered = !hasAnswer(sitting, part);
@@ -175,7 +184,7 @@ function PartCard({ part, index, sitting, status, score, unit, feedback, criteri
   const criteriaTotal = feedback?.criteria.length ?? 0;
   const summaryTone = criteriaScore === criteriaTotal ? "green" : criteriaScore > 0 ? "amber" : "coral";
   const SummaryIcon = criteriaScore === criteriaTotal ? Check : criteriaScore > 0 ? CirclePlus : X;
-  return <section className="exam-results__part" data-tone={tone} data-status={status}>
+  return <section ref={card} className="exam-results__part" data-tone={tone} data-status={status}>
     <div className="exam-results__part-heading">
       <span className="exam-results__part-number" aria-hidden="true">{index + 1}</span>
       <div className="exam-results__prompt"><MetricRichText>{part.prompt}</MetricRichText></div>
@@ -210,27 +219,28 @@ function PartCard({ part, index, sitting, status, score, unit, feedback, criteri
             </li>)}</ul>
         </div>}
         <Teaching feedback={feedback} unit={unit} part={part} />
+        {resolved && score < part.marks && !!errorLogConcepts?.length && <ErrorLogSave concepts={errorLogConcepts} onSave={onErrorLogSave} busy={errorLogBusy} />}
         {feedback.difficulty != null && <p className="exam-results__difficulty">Difficulty <span>{feedback.difficulty}/5</span></p>}
       </>}
     </div>
   </section>;
 }
 
-export interface PartGrade { status: GradingStatus; score?: number; criteria?: Record<string, number> }
-export default function ExamResultsPresentation({ sitting, onExit, pressureUnit = sitting.pressureUnit, feedback, grades, onRetry, notice, onReport, marksAvailable, gradingStatus }: {
+export type { PartGrade } from "./resultsTypes";
+export default function ExamResultsPresentation({ sitting, onExit, pressureUnit = sitting.pressureUnit, feedback, grades, onRetry, notice, onReport, marksAvailable, gradingStatus, errorLogPresentation, onErrorLogSave, errorLogBusy, initialPartId }: {
   marksAvailable?: number; gradingStatus?: GradingStatus;
   sitting: SittingState; onExit: () => void; pressureUnit?: PressureUnit;
   feedback: Record<string, PartFeedback>; grades: Record<string, PartGrade>; onRetry?: () => void; notice?: ReactNode; onReport?: SubmitProblemReport;
+  errorLogPresentation?: ErrorLogSavePresentation;
+  onErrorLogSave?: (partId: string, ids: string[]) => Promise<void>;
+  errorLogBusy?: boolean;
+  initialPartId?: string;
 }) {
   const parts = sitting.questions.flatMap(q => q.parts);
-  const [selected, setSelected] = useState(0);
+  const [selected, setSelected] = useState(() => Math.max(0, sitting.questions.findIndex(q => q.parts.some(p => p.id === initialPartId))));
   const statuses = Object.fromEntries(parts.map(part => {
     const grade = grades[part.id];
-    const expectedCriteria = feedback[part.id]?.criteria ?? [];
-    const validCriteria = !expectedCriteria.length || (grade?.criteria && Object.keys(grade.criteria).length === expectedCriteria.length
-      && expectedCriteria.every(c => grade.criteria![c.id] === 0 || grade.criteria![c.id] === 1)
-      && expectedCriteria.reduce((sum, c) => sum + grade.criteria![c.id], 0) === grade.score);
-    const valid = validCriteria && grade?.status === "completed" && Number.isInteger(grade.score) && grade.score! >= 0 && grade.score! <= part.marks;
+    const valid = isCompletedPartGrade(part, feedback[part.id], grade);
     return [part.id, grade?.status === "completed" && !valid ? "failed" : grade?.status ?? "pending"];
   }));
   const completed = parts.filter(p => statuses[p.id] === "completed").length;
@@ -281,7 +291,9 @@ export default function ExamResultsPresentation({ sitting, onExit, pressureUnit 
         <h3 className="exam-results__eyebrow">Question Breakdown</h3>
         {question.parts.map((part, pi) =>
         <PartCard key={part.id} part={part} index={pi} sitting={sitting} status={statuses[part.id] ?? "pending"}
-          score={grades[part.id]?.score ?? 0} unit={pressureUnit} feedback={feedback[part.id]} criteria={grades[part.id]?.criteria} retryAvailable={!!onRetry} />
+          score={grades[part.id]?.score ?? 0} unit={pressureUnit} feedback={feedback[part.id]} criteria={grades[part.id]?.criteria} retryAvailable={!!onRetry}
+          initiallyOpen={part.id === initialPartId} errorLogConcepts={!integrityError ? errorLogPresentation?.[part.id] : undefined}
+          onErrorLogSave={onErrorLogSave ? ids => onErrorLogSave(part.id, ids) : undefined} errorLogBusy={errorLogBusy} />
       )}</div>
       {selected === qi && <QuestionProblemReport number={qi + 1} questionId={question.id} onSubmit={onReport} />}
     </section>)}

@@ -102,3 +102,12 @@ it("allows a new setup after a definite configuration rejection without discardi
   await h.session.start("kPa");
   expect(h.invoke.mock.calls.at(-1)![1]).toMatchObject({ examKind: "mock", excludedCategories: [] });
 });
+
+it("retains selected count and display settings across an uncertain start and recovery", async () => {
+ const h=harness();h.invoke.mockRejectedValueOnce(new Error("offline"));
+ await expect(h.session.start("kPa",{examKind:"mock",excludedCategories:[],unitCount:5,showTimer:false,showRanges:false})).rejects.toThrow();
+ const restored=new ExamRuntimeSession(h.call,h.storage,"owner");await restored.start("mmHg",{examKind:"custom",excludedCategories:[],unitCount:3});
+ expect(h.invoke.mock.calls[1][1]).toMatchObject({unitCount:5,examKind:"mock",pressureUnit:"kPa"});
+ expect(restored.journal).toMatchObject({showTimer:false,showRanges:false});
+ restored.setDisplayPreferences(true,false);expect(JSON.parse(h.entries.get("owner")!)).toMatchObject({showTimer:true,showRanges:false});
+});
