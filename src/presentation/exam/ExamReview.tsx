@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Surface } from "../primitives/Surface";
 import { ArrowIcon, CheckIcon, ChevronRightIcon, CrossIcon, DotIcon, HistoryIcon, LayersIcon, ReportIcon, SplitIcon } from "./ExamIcons";
 import { AccuracyBar, BackLink, IconBadge, ScoreRing, SummaryTiles, toneStyle } from "./ExamUi";
@@ -76,6 +77,18 @@ export function ExamHistory({ history, attempts, filter, onFilterChange, onBack,
   onLoadMore?: () => void;
   total?: number; loading?: boolean; busy?: boolean; unavailable?: boolean;
 }) {
+  const [pagination, setPagination] = useState({ filter, count: 10 });
+  const visibleCount = pagination.filter === filter ? pagination.count : 10;
+  const visibleAttempts = attempts.slice(0, visibleCount);
+  const hasMore = attempts.length > visibleCount || !!onLoadMore;
+  function loadMore() {
+    setPagination({ filter, count: Math.min(visibleCount, attempts.length) + 10 });
+    if (attempts.length <= visibleCount) onLoadMore?.();
+  }
+  function changeFilter(nextFilter: HistoryFilter) {
+    setPagination({ filter: nextFilter, count: 10 });
+    onFilterChange(nextFilter);
+  }
   const filters: { value: HistoryFilter; label: string; count: number }[] = [
     { value: "all", label: "All", count: history.counts?.all ?? history.attempts.length },
     { value: "mock", label: "Mock", count: history.counts?.mock ?? history.attempts.filter(row => row.kind === "mock").length },
@@ -84,34 +97,34 @@ export function ExamHistory({ history, attempts, filter, onFilterChange, onBack,
   const stats = [
     { value: String(history.submitted ?? history.attempts.length), label: "Submitted" },
     { value: history.best === null ? "—" : `${history.best}%`, label: "Best score" },
-    { value: String(history.totalCases), label: "Cases sat" },
+    { value: String(history.totalCases), label: "Cases" },
     { value: String(history.awaiting), label: "Awaiting grade", note: history.awaiting > 0 }
   ];
   return <div className="exam-history">
     <BackLink onClick={onBack} />
-    <header><p className="exam-eyebrow">Exam Room</p><h1>Past attempts</h1><p className="exam-history-description">Every submitted sitting, kept exactly as you answered it — cases, values, marks and model answers. Abandoned exams aren't recorded.</p></header>
+    <header><h1>Past attempts</h1><p className="exam-history-description">Revisit your completed exams to review your answers, marks and explanations, and track your progress over time.</p></header>
     <Surface className="exam-history-summary">
       <div className="exam-history-average">
-        <p className="exam-eyebrow">Average score · graded sittings</p>
+        <p className="exam-eyebrow">Average score</p>
         <div className="exam-history-trend-row">
           <strong className="exam-history-average-value">{history.average ?? "—"}{history.average !== null && <span>%</span>}</strong>
           {!!history.trend.length && <div className="exam-history-trend" role="img" aria-label={`Graded scores, oldest to latest: ${history.trend.map(score => `${score}%`).join(", ")}`}>
             {history.trend.map((score, index) => <span key={index} title={`${score}%`} aria-hidden="true" style={{ height: `${Math.max(12, score)}%` }} />)}
           </div>}
         </div>
-        <p className="exam-small">{unavailable ? "Scores unavailable" : history.trend.length ? `Last ${history.trend.length} graded sittings, oldest → latest` : "No graded sittings yet"}</p>
+        <p className="exam-small">{unavailable ? "Scores unavailable" : history.trend.length ? `Last ${history.trend.length} sessions` : "No graded sittings yet"}</p>
       </div>
       <div className="exam-history-stats">{stats.map(stat => <div key={stat.label}>
         <strong>{unavailable ? "—" : stat.value}{stat.note && <span className="exam-awaiting-dot" aria-hidden="true" />}</strong><span className="exam-eyebrow">{stat.label}</span>
       </div>)}</div>
     </Surface>
     <div className="exam-history-filters">
-      <div className="exam-segments" role="group" aria-label="Past attempts filter">{filters.map(item => <button type="button" key={item.value} aria-pressed={filter === item.value} onClick={() => onFilterChange(item.value)}>{item.label}{!unavailable && <span>{item.count}</span>}</button>)}</div>
+      <div className="exam-segments" role="group" aria-label="Past attempts filter">{filters.map(item => <button type="button" key={item.value} aria-pressed={filter === item.value} onClick={() => changeFilter(item.value)}>{item.label}{!unavailable && <span>{item.count}</span>}</button>)}</div>
       <span className="exam-history-order">Most recent first</span>
     </div>
     <Surface className="exam-attempt-list">
       <div className="exam-history-columns" aria-hidden="true"><span>Sitting</span><span>Time</span><span>Marks</span><span>Score</span><span /></div>
-      <ul className="exam-history-entries">{attempts.map(attempt => {
+      <ul className="exam-history-entries">{visibleAttempts.map(attempt => {
         const percent = attemptPercent(attempt);
         const label = attempt.kind === "mock" ? "Mock exam" : "Custom exam";
         return <li className="exam-history-entry" key={attempt.id}>
@@ -133,7 +146,7 @@ export function ExamHistory({ history, attempts, filter, onFilterChange, onBack,
         </li>;
       })}</ul>
       {!attempts.length && <p className="exam-empty">{loading ? "Loading your exams…" : unavailable ? "Your exams couldn’t be loaded. Please retry." : "No attempts in this filter yet."}</p>}
-      <footer className="exam-history-footer"><span>Showing <strong>{attempts.length}</strong> of <strong>{unavailable ? "—" : total ?? attempts.length}</strong></span>{onLoadMore && <button type="button" className="figma-button figma-button--secondary" disabled={loading || busy} onClick={onLoadMore}>{loading ? "Loading…" : "Load more"}</button>}<span><ReportIcon />Retakes &amp; objective breakdown coming soon</span></footer>
+      <footer className="exam-history-footer"><span>Showing <strong>{visibleAttempts.length}</strong> of <strong>{unavailable ? "—" : total ?? attempts.length}</strong></span>{hasMore && <button type="button" className="figma-button figma-button--secondary" disabled={loading || busy} onClick={loadMore}>{loading ? "Loading…" : "Load more"}</button>}</footer>
     </Surface>
   </div>;
 }

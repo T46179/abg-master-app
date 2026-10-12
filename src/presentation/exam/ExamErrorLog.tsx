@@ -39,18 +39,17 @@ export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, on
   return <div className="exam-error-log">
     <BackLink onClick={onBack} />
     <header className="exam-error-log__heading">
-      <p className="exam-eyebrow">Exam Room</p>
       <h1>Error log</h1>
-      <p>Concepts you chose to save from Results, each with the Parts that tripped you up. Archive once it's clicked — saving a new example reopens it.</p>
+      <p>Keep track of challenging concepts from your exams. Reinforce your understanding with focused drills, and use your error log to guide revision alongside your other study resources.</p>
     </header>
     {actionError && <p role="alert">{actionError}</p>}
     {concepts.length === 0 ? <div className="exam-error-log__empty exam-error-log__empty--initial">
       <span className="exam-error-log__empty-icon"><FlagIcon /></span>
-      <h2>Nothing saved yet</h2>
-      <p>When reviewing a result, use <strong>Add to error log</strong> on any Part to save the concept behind it. It'll appear here to work through.</p>
+      <h2>Your Error Log is empty</h2>
+      <p>Save concepts from your exam results to keep track of areas for improvement. Use <strong>Add to error log</strong> to include it here to guide your revision.</p>
       {onOpenResult && <button type="button" disabled={busy} className="figma-button exam-primary" onClick={onOpenResult}>Review latest result <ArrowIcon /></button>}
     </div> : <div className="exam-error-log__grid">
-      <div>
+      <div className="exam-error-log__main">
         <div className="exam-error-log__toolbar">
           <div className="exam-segments exam-error-log__tabs" role="group" aria-label="Error log status">
             {([
@@ -89,7 +88,7 @@ export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, on
                 {c.examplesLoading && <p role="status">Loading saved examples…</p>}
                 {c.examplesError && <p role="alert">{c.examplesError} <button type="button" className="exam-error-log__text-button" onClick={() => onLoadMore?.(c.id)}>Retry</button></p>}
                 {c.hasMoreExamples && !c.examplesError && <button type="button" className="exam-error-log__text-button" disabled={c.examplesLoading} onClick={() => onLoadMore?.(c.id)}>Load more</button>}
-                <div className="exam-error-log__footer"><span>{arch ? "Examples are kept while archived." : "Archiving keeps every example."}</span>
+                <div className="exam-error-log__footer">
                   <button type="button" disabled={busy} className={`figma-button exam-error-log__archive${arch ? " figma-button--secondary" : " exam-primary"}`} onClick={() => arch ? onRestore?.(c.id) : onArchive?.(c.id)}>
                     {arch ? <><HistoryIcon /> Restore to review</> : <><CheckIcon /> Archive</>}
                   </button>
@@ -101,7 +100,7 @@ export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, on
             {topic === null ? <>
               <span className="exam-error-log__empty-icon exam-error-log__empty-icon--done"><CheckIcon /></span>
               <h2>Nothing awaiting review</h2>
-              <p>Everything you've saved is archived. New examples saved from Results will reopen their concept here.</p>
+              <p>There is nothing currently to review. You can revisit archived concepts at anytime, or save new examples from your exam results</p>
               {done.length > 0 && <button type="button" className="exam-error-log__text-button" onClick={() => setTab("archived")}>View {done.length} archived</button>}
             </> : <><h2>Nothing awaiting review in {topicLabel}</h2><button type="button" className="exam-error-log__text-button" onClick={() => setTopic(null)}>Clear topic filter</button></>}
           </div>}

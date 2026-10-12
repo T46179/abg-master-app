@@ -83,7 +83,7 @@ export function MetricComparisonFooter({ comparison, showReference }: {
   </div>;
 }
 
-const INLINE_METRIC_PATTERN = /(?<![A-Za-z0-9])(PaCO[2₂]|PCO[2₂]|PaO[2₂]|PO[2₂]|FiO[2₂]|SpO[2₂]|SaO[2₂]|HCO[3₃][-−⁻]?|CO[2₂]|Na[+⁺]|K[+⁺]|Cl[-−⁻])(?![A-Za-z0-9])/g;
+const INLINE_METRIC_PATTERN = /(?<![A-Za-z0-9])(PaCO[2₂]|PCO[2₂]|PaO[2₂]|PO[2₂]|FiO[2₂]|SpO[2₂]|SaO[2₂]|HCO[3₃][-−⁻]?|CO[2₂]|O[2₂]|Na[+⁺]|K[+⁺]|Cl[-−⁻])(?![A-Za-z0-9])/g;
 
 function renderInlineMetricToken(token: string) {
   const normalized = token.replaceAll("₂", "2").replaceAll("₃", "3").replace(/[−⁻]/g, "-").replaceAll("⁺", "+");
@@ -109,6 +109,8 @@ function renderInlineMetricToken(token: string) {
       return <>HCO<sub>3</sub><sup>-</sup></>;
     case "CO2":
       return <>CO<sub>2</sub></>;
+    case "O2":
+      return <>O<sub>2</sub></>;
     default:
       return token;
   }

@@ -1,5 +1,6 @@
 import { useId, type ReactNode, type ReactElement } from "react";
 import { Surface } from "../primitives/Surface";
+import type { PressureUnit } from "../../core/types";
 import {
   ArrowIcon, CheckIcon, DropletIcon, FlagIcon, GapIcon, HistoryIcon, InfoIcon, LayersIcon,
   LungIcon, ReportIcon, ScaleIcon, SplitIcon
@@ -19,6 +20,8 @@ interface DashboardProps {
   setup: ReturnType<typeof buildSetupPresentation>;
   onChange: (patch: Partial<ExamPrototypeState>) => void;
   onSelectDrill: (key: string) => void;
+  pressureUnit: PressureUnit;
+  onPressureUnitChange: (unit: PressureUnit) => void;
   onBegin?: () => void;
   launching?: boolean;
   errorLogCount?: number;
@@ -44,12 +47,11 @@ export function ExamDashboard(props: DashboardProps) {
           <HistoryIcon /> Past attempts
         </button>
         {(props.connected || props.errorLogCount !== undefined) && <button type="button" className="figma-button figma-button--secondary exam-pill" onClick={() => onChange({ view: "error-log" })}>
-          <FlagIcon /> Error log {props.errorLogCount !== undefined && <span className="exam-error-log-count">{props.errorLogCount}</span>}
+          <FlagIcon /> Error log {props.errorLogCount !== undefined && props.errorLogCount > 0 && <span className="exam-error-log-count">{props.errorLogCount}</span>}
         </button>}
       </div>
     </div>
     <header className="exam-page-heading">
-      <p className="exam-eyebrow">Exam Room</p>
       <h1>Preparing for exams?</h1>
       <p>Consistent, spaced practice works best. Try one exam per day, review your mistakes, then use Focused Drills to target your weak areas.</p>
     </header>
@@ -119,17 +121,16 @@ const specialistTopics: { key: SpecialistCategory; label: string; info: string; 
   { key: "toxicology_management", label: "Toxicology", info: "Include or exclude toxicology management and antidote questions. Overdose and poisoning cases may still appear.", Icon: DropletIcon }
 ];
 
-function InfoTip({ text, align = "right" }: { text: string; align?: "left" | "right" }) {
+function InfoTip({ text, align = "right", children }: { text: string; align?: "left" | "right"; children?: ReactNode }) {
   const id = useId();
   return <span className={`exam-info-tip exam-info-tip--${align}`}>
     <button type="button" aria-label={text} aria-describedby={id}><InfoIcon /></button>
-    <span id={id} role="tooltip">{text}</span>
+    <span id={id} role="tooltip">{children ?? text}</span>
   </span>;
 }
 
-function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisabled, caseCounts = [3, 5], startContent, customDisabled }: DashboardProps) {
+function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisabled, caseCounts = [3, 5], startContent, customDisabled, pressureUnit, onPressureUnitChange }: DashboardProps) {
   const custom = state.examKind === "custom";
-  const includedTopics = 6 - (custom ? state.excludedCategories.length : 0);
   const kinds: { key: SittingKind; label: string; description: string }[] = [
     { key: "mock", label: "Standard Exam", description: "default settings" },
     { key: "custom", label: "Custom Exam", description: "Choose what's included" }
@@ -137,28 +138,35 @@ function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisab
   return <div className="exam-workspace exam-mock-workspace" data-kind={state.examKind}>
     <Surface className="exam-mock-overview">
       <div className="exam-mock-hero">
-        <div className="exam-hero-top"><span className="exam-hero-badge">Exam mode</span><span>AI-graded · marked against criteria</span></div>
+        <div className="exam-hero-top"><span className="exam-hero-badge">Exam mode</span></div>
         <div className="exam-hero-copy" key={state.examKind}>
-          <h2>{custom ? "Build your own exam" : "Sit the full mock exam"}</h2>
+          <h2>{custom ? "Build your own exam" : "Your Session"}</h2>
           <p>{custom
-            ? "Same marked, multi-part cases, tuned to you. Leave out specialist ventilation or toxicology and antidote questions, and sit what you're ready for."
-            : "Mixed clinical cases testing blood-gas interpretation, calculations, physiology and reasoning, including specialist ventilation and toxicology. Scored as one sitting."}</p>
+            ? "Tailor your exam to your study needs. Adjust your settings, exclude selected topics and practise with the same structured questions and detailed feedback."
+            : "Practise exam-style questions across a range of clinical scenarios, testing your blood-gas interpretation, applied knowledge and clinical reasoning in a realistic exam setting."}</p>
         </div>
         <div className="exam-hero-stats">
           <div><strong>{state.caseCount}</strong><span>Cases</span></div>
-          <div><strong>{includedTopics}/6</strong><span>Topics</span></div>
+          <div><strong>{pressureUnit}</strong><span>Pressure Unit</span></div>
+          <div><strong>{state.showRanges ? "On" : "Off"}</strong><span>Reference Ranges</span></div>
           <div><strong>{state.timed ? "On" : "Off"}</strong><span>Timer</span></div>
         </div>
       </div>
       <div className="exam-features">
-        <Feature icon={<ReportIcon />} title="Marked in detail" body="Marks for every part, with model answers and explanations." />
-        <Feature icon={<LayersIcon />} title="Credit for elements" body="SAQs earn marks for each correct element you get down." />
-        <Feature icon={<HistoryIcon />} title="Reopen any attempt" body="Review completed exams from Past Attempts, any time." />
+        <Feature icon={<ReportIcon />} title="Graded SAQ" body="Develop your written responses with criterion-based marking and feedback."
+          info={<InfoTip text="About SAQ marking" align="left">
+            <strong>About SAQ marking</strong><br />
+            Short-answer responses are graded by AI against predefined marking criteria. AI marking may occasionally be inaccurate.
+            <br /><br />
+            <strong>Patient confidentiality:</strong> Do not include real patient information or identifiable clinical details in your responses.
+          </InfoTip>} />
+        <Feature icon={<LayersIcon />} title="Detailed Question Review" body="Review your marks, model answers and worked explanations for every question." />
+        <Feature icon={<HistoryIcon />} title="Complement your study" body="Identify gaps in your knowledge and focus your study where it matters most." />
       </div>
     </Surface>
     <Surface as="aside" className="exam-setup exam-sitting-setup" aria-labelledby="exam-build-title">
       <fieldset className="exam-setup-fields" disabled={setupLocked}>
-      <div className="exam-build-heading"><div><h3 id="exam-build-title">Build your sitting</h3><p className="exam-small">Use recommended settings, or customise your exam</p></div></div>
+      <div className="exam-build-heading"><div><h3 id="exam-build-title">Build your session</h3></div></div>
       <div className="exam-kind-picker" role="group" aria-label="Sitting type" data-kind={state.examKind}>
         <span className="exam-picker-highlight" aria-hidden="true" />
         {kinds.map(kind => <button type="button" key={kind.key} disabled={kind.key === "custom" && customDisabled} aria-pressed={state.examKind === kind.key} onClick={() => onChange({ examKind: kind.key })}>
@@ -190,18 +198,27 @@ function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisab
       </div>
       <ToggleRow label="Show timer" checked={state.timed} onChange={timed => onChange({ timed })} />
       <ToggleRow label="Reference ranges" checked={state.showRanges} onChange={showRanges => onChange({ showRanges })} />
+      <div className="exam-toggle-row">
+        <span className="exam-field-label">Unit</span>
+        <div className="main-nav__unit-control" role="group" aria-label="Partial pressure display units">
+          {(["mmHg", "kPa"] as const).map(unit => <button type="button" key={unit}
+            className="main-nav__unit-option" aria-pressed={pressureUnit === unit}
+            onClick={() => onPressureUnitChange(unit)}>{unit}</button>)}
+        </div>
+      </div>
       <div className="exam-suggested-time"><span>Suggested time</span><strong>~{state.caseCount === 3 ? 15 : 30} min</strong></div>
       </fieldset>
-      {startContent ?? <><button type="button" className="figma-button exam-primary exam-start" onClick={onBegin} disabled={launching || beginDisabled}>Begin <ArrowIcon /></button>
-      <p className="exam-footnote">Once started, you can’t stop.</p></>}
+      {startContent ?? <button type="button" className="figma-button exam-primary exam-start" onClick={onBegin} disabled={launching || beginDisabled} aria-busy={launching || undefined}>
+        {launching ? <><span role="status">Preparing your session</span><span className="figma-button__spinner" aria-hidden="true" /></> : <>Begin <ArrowIcon /></>}
+      </button>}
     </Surface>
   </div>;
 }
 
-function Feature({ icon, title, body }: { icon: ReactElement; title: string; body: string }) {
+function Feature({ icon, title, body, info }: { icon: ReactElement; title: string; body: string; info?: ReactNode }) {
   return <div className="exam-feature">
     <IconBadge>{icon}</IconBadge>
     <h4>{title}</h4>
-    <p>{body}</p>
+    <p>{body}{info && <> {info}</>}</p>
   </div>;
 }

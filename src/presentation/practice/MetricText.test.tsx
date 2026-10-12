@@ -80,7 +80,14 @@ describe("Exam notation", () => {
     expect(element.querySelector("strong sub")?.textContent).toBe("2");
   });
   it("does not format tokens embedded in unrelated words", () => {
-    const markup = renderToStaticMarkup(<MetricInlineText text="xSpO2 SpO2suffix G6PD" />);
+    const markup = renderToStaticMarkup(<MetricInlineText text="xSpO2 SpO2suffix xO2 O2suffix G6PD" />);
     expect(markup).not.toContain("<sub>");
   });
+});
+
+it("formats standalone oxygen in prompts and hyphenated takeaway text", () => {
+ const element = document.createElement("div");
+ element.innerHTML = renderToStaticMarkup(<MetricRichText>{"What is his approximate O2 saturation? For the standard O2-Hb curve; O₂."}</MetricRichText>);
+ expect(element.textContent).toBe("What is his approximate O2 saturation? For the standard O2-Hb curve; O2.");
+ expect(element.querySelectorAll("sub")).toHaveLength(3);
 });

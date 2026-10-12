@@ -77,8 +77,8 @@
 .exam-estimate { display: flex; flex-direction: column; gap: .5rem; margin-top: 1.25rem; padding: 1rem; border-radius: var(--radius-sm); background: var(--color-surface-muted); font-size: .8125rem; }
 .exam-estimate > div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
 .exam-estimate span { color: var(--color-text-muted); }
-.exam-mock-overview { overflow: hidden; }
-.exam-mock-hero { padding: clamp(1.5rem, 3vw, 2rem); background: linear-gradient(135deg, var(--exam-navy), var(--color-navy-soft)); color: var(--color-primary-foreground); }
+.exam-mock-overview { overflow: visible; }
+.exam-mock-hero { border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: clamp(1.5rem, 3vw, 2rem); background: linear-gradient(135deg, var(--exam-navy), var(--color-navy-soft)); color: var(--color-primary-foreground); }
 .exam-hero-badge { display: inline-block; padding: .25rem .75rem; border-radius: 999px; background: rgb(255 255 255 / 15%); font-size: .6875rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
 .exam-mock-hero h2 { margin-top: 1rem; font-size: 1.875rem; }
 .exam-mock-hero > p { margin-top: .5rem; max-width: 44ch; font-size: .90625rem; line-height: 1.65; color: rgb(255 255 255 / 70%); }
@@ -350,7 +350,7 @@
   .exam-history-score { grid-column: 2; grid-row: 1; }
 }
 @media (max-width: 639px) {
-  .exam-mock-workspace .exam-mock-hero { padding: 1.5rem; }
+  .exam-mock-workspace .exam-mock-hero { border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 1.5rem; }
   .exam-screen .exam-mock-workspace .exam-sitting-setup { padding: 1.25rem; }
   .exam-history-entry { padding: 1.25rem; }
   .exam-attempt-open { gap: .75rem; }
@@ -374,6 +374,7 @@
 .exam-drill-card[data-unavailable] .exam-number { color: var(--color-text-muted); }
 .exam-screen button:disabled { cursor: default; }
 .exam-recovery-actions { display: grid; gap: .6rem; }
+.exam-recovery-actions > p { color: var(--color-text-muted); font-size: .8125rem; font-weight: 400; line-height: 1.4; }
 .exam-history-footer { flex-wrap: wrap; gap: .75rem; }
 
 .exam-case-picker[data-options="1"] { grid-template-columns: minmax(0, 1fr); }

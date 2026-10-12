@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
@@ -7,7 +7,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ExamSittingProvider } from "./ExamSittingContext";
 import ExamPilotRuntime from "./ExamPilotRuntime.dev";
 import type { RuntimeAttempt } from "../../core/examRuntime";
-vi.mock("../../app/AppProvider", () => ({ useAppContext: () => ({ state: { sessionState: { pressureUnit: "kPa" } } }) }));
+const unitPreferences = vi.hoisted(() => ({ patchSessionState: vi.fn(), savePressureUnitPreference: vi.fn() }));
+vi.mock("../../app/AppProvider", () => ({ useAppContext: () => {
+ const [pressureUnit, setPressureUnit] = useState<"mmHg" | "kPa">("kPa");
+ unitPreferences.patchSessionState.mockImplementation((patch: { pressureUnit: "mmHg" | "kPa" }) => setPressureUnit(patch.pressureUnit));
+ return { state: { sessionState: { pressureUnit }, storage: { savePressureUnitPreference: unitPreferences.savePressureUnitPreference } }, patchSessionState: unitPreferences.patchSessionState };
+} }));
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
@@ -33,7 +38,7 @@ async function click(text: string) {
 }
 beforeEach(() => {
  Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function (this: HTMLDialogElement) { this.open = true; } });
- localStorage.clear(); invoke.mockReset(); loseSubmission = false;
+ localStorage.clear(); invoke.mockReset(); unitPreferences.patchSessionState.mockReset(); unitPreferences.savePressureUnitPreference.mockReset(); loseSubmission = false;
  attempt = { id: "test-attempt", marksAvailable: 2, status: "active", revision: 0, pressureUnit: "kPa", createdAt: new Date().toISOString(), presentedAt: null, finishedAt: null, answers: {}, questions: [{ id: "test-unit", tables: [], parts: [{ id: "part", kind: "concept", prompt: "Explain your answer", marks: 2 }] }] };
  invoke.mockImplementation(async (_name, { body: { operation, input } }) => {
    if (operation === "current") return { data: { attempt: null } };
@@ -323,4 +328,80 @@ it("applies and recovers the timer and reference-range choices",async()=>{
  await click("Begin");expect(container.textContent).toContain("Show timer");
  const journal=JSON.parse(localStorage.getItem("abgm-exam-pilot-clpfecuohwzwrgmqzeos-test-owner")!);expect(journal).toMatchObject({showTimer:false,showRanges:false,unitCount:3});
  await act(async()=>root.unmount());root=createRoot(container);await mount();await click("Recover attempt");expect(container.textContent).toContain("Show timer");
+});
+
+it("keeps dashboard units in sync with the global preference and starts with the selected unit", async () => {
+ await mount();
+ const unitButton = (unit: string) => container.querySelector<HTMLButtonElement>(`[aria-label="Partial pressure display units"] button[aria-pressed="${unit === "kPa" ? "true" : "false"}"]`)!;
+ expect(unitButton("kPa").textContent).toBe("kPa");
+ await click("mmHg");
+ expect(unitPreferences.patchSessionState).toHaveBeenCalledWith({ pressureUnit: "mmHg" });
+ expect(unitPreferences.savePressureUnitPreference).toHaveBeenCalledWith("mmHg");
+ expect(container.querySelector('[aria-label="Partial pressure display units"] button[aria-pressed="true"]')?.textContent).toBe("mmHg");
+ await act(async () => { unitPreferences.patchSessionState({ pressureUnit: "kPa" }); });
+ expect(container.querySelector('[aria-label="Partial pressure display units"] button[aria-pressed="true"]')?.textContent).toBe("kPa");
+ await click("mmHg"); await click("Begin");
+ expect(invoke.mock.calls.find(call => call[1].body.operation === "start")?.[1].body.input.pressureUnit).toBe("mmHg");
+});
+it("keeps the preparing button visible through assembly and opening the first question", async () => {
+ await mount();
+ const defaultInvoke = invoke.getMockImplementation()!;
+ let releaseStart!: () => void;
+ let releasePresent!: () => void;
+ const startGate = new Promise<void>(resolve => { releaseStart = resolve; });
+ const presentGate = new Promise<void>(resolve => { releasePresent = resolve; });
+ invoke.mockImplementation(async (...args) => {
+   if (args[1].body.operation === "start") await startGate;
+   if (args[1].body.operation === "present") await presentGate;
+   return defaultInvoke(...args);
+ });
+ await click("Begin");
+ const preparingButton = () => [...container.querySelectorAll("button")].find(button => button.textContent?.trim() === "Preparing your session");
+ expect(preparingButton()?.disabled).toBe(true);
+ expect(preparingButton()?.getAttribute("aria-busy")).toBe("true");
+ expect(preparingButton()?.querySelector(".figma-button__spinner")).toBeTruthy();
+ await act(async () => { preparingButton()!.click(); });
+ expect(invoke.mock.calls.filter(call => call[1].body.operation === "start")).toHaveLength(1);
+ await act(async () => { releaseStart(); });
+ expect(invoke.mock.calls.some(call => call[1].body.operation === "present")).toBe(true);
+ expect(preparingButton()?.querySelector(".figma-button__spinner")).toBeTruthy();
+ expect(container.textContent).not.toContain("Recover attempt");
+ await act(async () => { releasePresent(); });
+ expect(preparingButton()).toBeUndefined();
+ expect(container.querySelector("textarea")).toBeTruthy();
+});
+
+it("clears the preparing state and offers recovery if starting fails", async () => {
+ await mount();
+ invoke.mockResolvedValueOnce({ error: new Error("offline") });
+ await click("Begin");
+ expect(container.textContent).not.toContain("Preparing your session");
+ expect(container.querySelector(".figma-button__spinner")).toBeNull();
+ expect(container.querySelector('[role="alert"]')).toBeTruthy();
+ expect([...container.querySelectorAll("button")].find(button => button.textContent?.trim() === "Recover attempt")?.disabled).toBe(false);
+});
+it("shows ten past attempts at a time and keeps Load more until all attempts are shown", async () => {
+ const rows = Array.from({ length: 25 }, (_, index) => row(`00000000-0000-0000-0000-${String(index + 1).padStart(12, "0")}`));
+ const defaultInvoke = invoke.getMockImplementation()!;
+ invoke.mockImplementation(async (...args) => {
+   if (args[1].body.operation !== "history_page") return defaultInvoke(...args);
+   const more = !!args[1].body.input.cursor;
+   return { data: { ...historyPage(rows), attempts: more ? rows.slice(20) : rows.slice(0, 20),
+     nextCursor: more ? null : { id: rows[19].id, finishedAt: rows[19].finishedAt } } };
+ });
+ await mount(); await click("Past attempts");
+ expect(container.querySelectorAll(".exam-history-entry")).toHaveLength(10);
+ expect(container.querySelector(".exam-history-footer")?.textContent).toContain("Showing 10 of 25");
+ expect(container.textContent).not.toContain("Retakes & objective breakdown coming soon");
+ const requests = invoke.mock.calls.filter(call => call[1].body.operation === "history_page").length;
+ await click("Load more");
+ expect(container.querySelectorAll(".exam-history-entry")).toHaveLength(20);
+ expect(invoke.mock.calls.filter(call => call[1].body.operation === "history_page")).toHaveLength(requests);
+ await click("Load more");
+ expect(container.querySelectorAll(".exam-history-entry")).toHaveLength(25);
+ expect(container.querySelector(".exam-history-footer")?.textContent).toContain("Showing 25 of 25");
+ expect(container.querySelector(".exam-history-footer button")).toBeNull();
+ const mockFilter = [...container.querySelectorAll('[aria-label="Past attempts filter"] button')].find(button => button.textContent?.startsWith("Mock"))!;
+ await act(async () => { (mockFilter as HTMLButtonElement).click(); });
+ expect(container.querySelectorAll(".exam-history-entry")).toHaveLength(10);
 });

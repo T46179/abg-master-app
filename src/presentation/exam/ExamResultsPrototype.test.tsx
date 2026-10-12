@@ -51,7 +51,7 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); expect(vi.getTimerCount()).toBe(0); container.remove(); vi.useRealTimers(); vi.restoreAllMocks(); });
 it("renders EXAM-0002 P2 takeaway as a list in the selected review units", () => {
   const value: SittingState = { ...sitting, questions: [{ id: "q1", tables: [], parts: [
-    { id: "EXAM-0002-P2", kind: "single", prompt: "Saturation", marks: 1 }
+    { id: "EXAM-0002-P2", kind: "single", prompt: "What is his approximate O2 saturation?", marks: 1 }
   ] }], answers: {} };
   for (const [unit, pressures] of [["mmHg", ["60", "50", "40", "27"]], ["kPa", ["8.0", "6.7", "5.3", "3.6"]]] as const) {
     render(value, unit);
@@ -61,6 +61,8 @@ it("renders EXAM-0002 P2 takeaway as a list in the selected review units", () =>
       pressures.map((pressure, index) => `PaO2 ${pressure} ${unit} → SaO2 ≈ ${["90%", "80–85%", "75%", "50%"][index]}`)
     );
     expect(takeaway.querySelectorAll("p")).toHaveLength(1);
+    expect(takeaway.querySelector("p sub")?.textContent).toBe("2");
+    expect(container.querySelector(".exam-results__prompt sub")?.textContent).toBe("2");
     expect(takeaway.querySelectorAll("li sub")).toHaveLength(8);
   }
 });

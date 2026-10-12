@@ -81,7 +81,7 @@ it("retries failed example loads and hides the latest-result action when there i
   await act(async () => root.render(<ConnectedExamErrorLog log={log} onBack={vi.fn()} onOpenExample={vi.fn()} />));
   await click("Retry"); expect(examples).toHaveBeenCalledTimes(2);
   await act(async () => root.render(<ConnectedExamErrorLog log={{ ...log, data: { ...state(), entries: [], toReviewCount: 0 } }} onBack={vi.fn()} onOpenExample={vi.fn()} />));
-  expect(container.textContent).toContain("Nothing saved yet");
+  expect(container.textContent).toContain("Your Error Log is empty");
   expect(container.textContent).not.toContain("Review latest result");
 });
 

@@ -23,7 +23,7 @@ const setupConfig: ExamPrototypeConfig = { questionCounts: [5, 10, 15, 20], case
 type PilotProps = { client: SupabaseClient; userId: string; canStart: boolean; unitCount?: number; allowedUnitCounts?: number[]; customisationCategories?: CustomisationCategory[]; environment?: string };
 
 export default function ExamPilotRuntime({ client, userId, canStart, unitCount, allowedUnitCounts, customisationCategories = [], environment = "clpfecuohwzwrgmqzeos" }: PilotProps) {
-  const { state } = useAppContext();
+  const { state, patchSessionState } = useAppContext();
   const { sitting, dispatch: updateSitting } = useExamSitting();
   const preferenceKey = `abgm-exam-custom-${environment}-${userId}`;
   const [examKind, setExamKind] = useState<ExamKind>("mock");
@@ -62,6 +62,7 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
   const resultOrigin = useRef<"exam" | "history" | "error-log">("exam");
   const roomGeneration = useRef(0);
   const [busy, setBusy] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const answerError = error.includes("server could not accept an answer");
@@ -260,11 +261,16 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
           onRetry={id => void run(async () => { await session.call<RuntimeAttempt>("retry_grading", { attemptId: id }); await history.refresh(); })}
           onLoadMore={history.data?.page.nextCursor ? () => void history.loadMore() : undefined}
           total={history.data?.page.total} loading={history.loading} busy={busy} /> : <ExamDashboard
+          pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"}
+          onPressureUnitChange={pressureUnit => {
+            patchSessionState({ pressureUnit });
+            state.storage?.savePressureUnitPreference(pressureUnit);
+          }}
           connected state={{ ...setupState, examKind, excludedCategories: customExclusions.filter(id => id === "mechanical_ventilation" || id === "toxicology_management") }}
           drills={unavailableDrills} drillsUnavailable customDisabled={!customisationCategories.length} config={setupConfig}
           setup={buildSetupPresentation(setupState.questionCount, setupState.caseCount, setupState.timed, setupConfig)}
-          caseCounts={counts} launching={busy} beginDisabled={!canStart || !ready || !counts.includes(setupState.caseCount)} setupLocked={busy || !ready || !!current || !!session.journal}
-          latestDisabled={!history.latestAttemptId} errorLogCount={errorLog.error ? undefined : errorLog.data?.toReviewCount}
+          caseCounts={counts} launching={preparing} beginDisabled={!canStart || !ready || !counts.includes(setupState.caseCount)} setupLocked={busy || !ready || !!current || !!session.journal}
+          latestDisabled={busy || !history.latestAttemptId} errorLogCount={errorLog.error ? undefined : errorLog.data?.toReviewCount}
           onSelectDrill={key => setSetupState(old => ({ ...old, selectedDrill: key, selectedRule: unavailableDrills.find(d => d.key === key)?.rules?.[0]?.key ?? "" }))}
           onChange={patch => {
             if (patch.view === "results" && history.latestAttemptId) { void run(() => openResult(history.latestAttemptId!, "exam")); return; }
@@ -272,9 +278,13 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
             if (patch.examKind) setExamKind(patch.examKind);
             if (patch.excludedCategories) { setCustomExclusions(patch.excludedCategories); try { localStorage.setItem(preferenceKey, JSON.stringify(patch.excludedCategories)); } catch { /* Keep setup usable. */ } }
             setSetupState(old => ({ ...old, ...patch }));
-          }} onBegin={() => void run(() => openAttempt(false))}
-          startContent={current || session.journal ? <div className="exam-recovery-actions">
-            <p>An attempt is available for recovery in its original browser.</p>
+          }} onBegin={() => void run(async () => {
+            setPreparing(true);
+            try { await openAttempt(false); }
+            finally { if (mounted.current) setPreparing(false); }
+          })}
+          startContent={!preparing && (current || session.journal) ? <div className="exam-recovery-actions">
+            <p>Would you like to recover your previous session?</p>
             <button className="figma-button exam-primary" disabled={busy || !ready} onClick={() => void run(() => openAttempt(true))}>Recover attempt</button>
             {current && <button className="figma-button figma-button--secondary" disabled={busy} onClick={() => setExitOpen(true)}>Abandon attempt</button>}
           </div> : undefined} />}

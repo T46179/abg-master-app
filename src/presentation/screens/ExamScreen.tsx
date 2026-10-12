@@ -15,7 +15,7 @@ const DemoErrorLog = import.meta.env.DEV ? lazy(() => import("../exam/ExamErrorL
 const DemoLatestResult = import.meta.env.DEV ? lazy(() => import("../exam/ExamLatestResultPreview.dev")) : null;
 
 export function ExamScreen() {
-  const { state: appState } = useAppContext();
+  const { state: appState, patchSessionState } = useAppContext();
   const { sitting, dispatch } = useExamSitting();
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState("");
@@ -64,6 +64,11 @@ export function ExamScreen() {
       {launchError && <p role="alert">{launchError}</p>}
       {state.view === "exam" && (
         <ExamDashboard
+          pressureUnit={appState.sessionState?.pressureUnit ?? "mmHg"}
+          onPressureUnitChange={pressureUnit => {
+            patchSessionState({ pressureUnit });
+            appState.storage?.savePressureUnitPreference(pressureUnit);
+          }}
           state={state}
           drills={mockDrills}
           config={prototypeConfig}
