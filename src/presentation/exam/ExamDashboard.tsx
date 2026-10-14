@@ -13,6 +13,8 @@ const drillIcons: Record<DrillIcon, () => ReactElement> = {
   gap: GapIcon, scale: ScaleIcon, split: SplitIcon, lung: LungIcon, droplet: DropletIcon
 };
 
+import type { ExamFeedbackToneControls } from "./useExamFeedbackTone";
+
 interface DashboardProps {
   state: ExamPrototypeState;
   drills: DrillPresentation[];
@@ -22,6 +24,7 @@ interface DashboardProps {
   onSelectDrill: (key: string) => void;
   pressureUnit: PressureUnit;
   onPressureUnitChange: (unit: PressureUnit) => void;
+  feedbackPreference?: ExamFeedbackToneControls;
   onBegin?: () => void;
   launching?: boolean;
   errorLogCount?: number;
@@ -129,7 +132,8 @@ function InfoTip({ text, align = "right", children }: { text: string; align?: "l
   </span>;
 }
 
-function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisabled, caseCounts = [3, 5], startContent, customDisabled, pressureUnit, onPressureUnitChange }: DashboardProps) {
+function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisabled, caseCounts = [3, 5], startContent, customDisabled, pressureUnit, onPressureUnitChange, feedbackPreference }: DashboardProps) {
+  const disclaimerId = useId();
   const custom = state.examKind === "custom";
   const kinds: { key: SittingKind; label: string; description: string }[] = [
     { key: "mock", label: "Standard Exam", description: "default settings" },
@@ -153,15 +157,20 @@ function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisab
         </div>
       </div>
       <div className="exam-features">
-        <Feature icon={<ReportIcon />} title="Graded SAQ" body="Develop your written responses with criterion-based marking and feedback."
+        <Feature icon={<ReportIcon />} title="Graded Short Answers" body="Develop your written responses with structured, criterion-based marking designed to reflect exam-style assessment."
           info={<InfoTip text="About SAQ marking" align="left">
             <strong>About SAQ marking</strong><br />
-            Short-answer responses are graded by AI against predefined marking criteria. AI marking may occasionally be inaccurate.
+            Short-answer responses are marked by AI against predefined criteria. AI marking may contain inaccuracies.
             <br /><br />
-            <strong>Patient confidentiality:</strong> Do not include real patient information or identifiable clinical details in your responses.
+            <strong>Patient confidentiality</strong><br />
+            Do not include real patient information or identifiable clinical details in your answers.
           </InfoTip>} />
         <Feature icon={<LayersIcon />} title="Detailed Question Review" body="Review your marks, model answers and worked explanations for every question." />
-        <Feature icon={<HistoryIcon />} title="Complement your study" body="Identify gaps in your knowledge and focus your study where it matters most." />
+        <Feature icon={<HistoryIcon />} title="Personalised feedback" body="Get feedback on your written answers. Choose from three styles: supportive, professional, or ruthlessly honest."
+          info={<InfoTip text="About personalised feedback" align="left">
+            <strong>About personalised feedback</strong><br />
+            Feedback is AI-generated and may occasionally contain inaccuracies. It is provided for educational purposes and does not affect your marks or the model answers.
+          </InfoTip>} />
       </div>
     </Surface>
     <Surface as="aside" className="exam-setup exam-sitting-setup" aria-labelledby="exam-build-title">
@@ -206,9 +215,34 @@ function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisab
             onClick={() => onPressureUnitChange(unit)}>{unit}</button>)}
         </div>
       </div>
+      {feedbackPreference && <section className="exam-feedback-tone" aria-label="Feedback preference">
+        <div className="exam-toggle-row">
+          <span className="exam-field-label">Feedback</span>
+          <div className="main-nav__unit-control" role="group" aria-label="Feedback tone">
+            {(["professional", "supportive", "ruthless"] as const).map(tone => <button type="button" key={tone}
+              className="main-nav__unit-option" aria-pressed={feedbackPreference.tone === tone}
+              disabled={feedbackPreference.busy || !feedbackPreference.ready}
+              onClick={() => void feedbackPreference.select(tone)}>{tone[0].toUpperCase() + tone.slice(1)}</button>)}
+          </div>
+        </div>
+        {feedbackPreference.busy && !feedbackPreference.ready && <p className="exam-feedback-tone__status" role="status">
+          Loading feedback preference…</p>}
+        {feedbackPreference.tone === "ruthless" && !feedbackPreference.acknowledged && <>
+          <p id={disclaimerId} className="exam-feedback-tone__warning">Ruthless feedback may contain sarcasm, mockery and some very questionable encouragement. It's all in good fun, but don't expect sympathy. Your marks and clinical explanations remain unchanged.</p>
+          <label className="exam-feedback-tone__acknowledgement"><input type="checkbox"
+            checked={feedbackPreference.acknowledged} disabled={feedbackPreference.busy || !feedbackPreference.ready}
+            aria-describedby={disclaimerId} onChange={event => feedbackPreference.acknowledge(event.target.checked)} />
+            <span>I understand</span></label>
+        </>}
+        {feedbackPreference.error && <div className="exam-feedback-tone__error" role="alert">
+          <p>{feedbackPreference.error}</p>
+          <button type="button" className="figma-button figma-button--secondary exam-pill"
+            disabled={feedbackPreference.busy} onClick={() => void feedbackPreference.retry()}>Retry feedback preference</button>
+        </div>}
+      </section>}
       <div className="exam-suggested-time"><span>Suggested time</span><strong>~{state.caseCount === 3 ? 15 : 30} min</strong></div>
       </fieldset>
-      {startContent ?? <button type="button" className="figma-button exam-primary exam-start" onClick={onBegin} disabled={launching || beginDisabled} aria-busy={launching || undefined}>
+      {startContent ?? <button type="button" className="figma-button exam-primary exam-start" onClick={onBegin} disabled={launching || beginDisabled || (feedbackPreference && !feedbackPreference.canBegin)} aria-busy={launching || undefined}>
         {launching ? <><span role="status">Preparing your session</span><span className="figma-button__spinner" aria-hidden="true" /></> : <>Begin <ArrowIcon /></>}
       </button>}
     </Surface>

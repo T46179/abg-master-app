@@ -380,3 +380,13 @@
 .exam-case-picker[data-options="1"] { grid-template-columns: minmax(0, 1fr); }
 .exam-case-picker[data-options="1"] .exam-picker-highlight { width: calc(100% - .5rem); transform: none; }
 .exam-case-picker[data-options="2"][data-index="1"] .exam-picker-highlight { transform: translateX(100%); }
+
+/* Account feedback preference follows the existing Unit control. */
+.exam-feedback-tone .exam-toggle-row { flex-wrap: wrap; gap: .75rem; }
+.exam-feedback-tone .main-nav__unit-control { max-width: 100%; flex-wrap: wrap; }
+.exam-screen .exam-feedback-tone__warning { margin-top: .75rem; color: #b45309; font-size: .8125rem; line-height: 1.6; }
+.exam-feedback-tone__acknowledgement { display: flex; align-items: flex-start; gap: .5rem; margin-top: .625rem; color: var(--color-text-soft); font-size: .8125rem; cursor: pointer; }
+.exam-feedback-tone__acknowledgement input { width: 1rem; height: 1rem; flex: 0 0 1rem; margin: .125rem 0 0; accent-color: #b45309; }
+.exam-screen .exam-feedback-tone__status { margin-top: .5rem; color: var(--color-text-muted); font-size: .75rem; }
+.exam-feedback-tone__error { margin-top: .625rem; color: #b45309; font-size: .8125rem; line-height: 1.5; }
+.exam-feedback-tone__error button { margin-top: .5rem; }

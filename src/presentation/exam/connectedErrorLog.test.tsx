@@ -37,7 +37,7 @@ it("preserves selections after failure, blocks repeated saves and waits for conf
   await act(async () => container.querySelector<HTMLInputElement>("input")!.click());
   await click("Add 1 to error log");
   expect(container.querySelector<HTMLButtonElement>("button")!.disabled).toBe(true);
-  expect(container.textContent).not.toContain("Already saved");
+  expect(container.textContent).not.toContain("Saved");
   await act(async () => first.reject(new Error("offline")));
   expect(container.querySelector<HTMLInputElement>("input")!.checked).toBe(true);
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
@@ -45,9 +45,9 @@ it("preserves selections after failure, blocks repeated saves and waits for conf
   await act(async () => second.resolve());
   expect(save).toHaveBeenCalledTimes(2);
   expect(save.mock.calls[1][0]).toEqual(["calculation"]);
-  expect(container.textContent).not.toContain("Already saved");
+  expect(container.textContent).not.toContain("Saved");
   await act(async () => root.render(<ErrorLogSave concepts={[{ ...concepts[0], saved: true }, concepts[1]]} onSave={save} />));
-  expect(container.textContent).toContain("Calculation· Already saved");
+  expect(container.textContent).toContain("Calculation· Saved");
 });
 
 it("loads examples only once on expansion, paginates and uses the exact saved Part", async () => {

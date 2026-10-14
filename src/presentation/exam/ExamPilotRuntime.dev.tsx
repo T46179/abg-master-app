@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAppContext } from "../../app/AppProvider";
 import { ExamRuntimeError, ExamRuntimeSession, encodeAnswers, runtimeCall, toSitting, type RuntimeAttempt, type ExamKind } from "../../core/examRuntime";
@@ -9,6 +10,8 @@ import { useExamSitting } from "./ExamSittingContext";
 import ExamResultsPresentation from "./ExamResultsPresentation";
 import { ConnectedExamErrorLog } from "./ConnectedExamErrorLog";
 import { useExamErrorLog } from "./useExamErrorLog";
+import { useExamFeedback } from "./useExamFeedback";
+import { useExamFeedbackTone } from "./useExamFeedbackTone";
 import { derivePartErrorLogCandidates } from "./errorLogModel";
 import type { ErrorLogSavePresentation } from "./errorLogTypes";
 
@@ -20,9 +23,27 @@ import { unavailableDrills } from "./drillDefinitions";
 import { buildSetupPresentation } from "./presentationModel";
 import type { ExamPrototypeState, ExamPrototypeConfig } from "./presentationTypes";
 const setupConfig: ExamPrototypeConfig = { questionCounts: [5, 10, 15, 20], caseMinimum: 3, caseMaximum: 5, minutesPerDrillQuestion: 1, minutesPerCase: 5, passingTarget: 60 };
+type RoomView = "exam" | "history" | "error-log";
+type ExamNavigation = { account: string; view: RoomView | "results"; attemptId?: string; partId?: string; origin?: RoomView; returnKey?: string };
 type PilotProps = { client: SupabaseClient; userId: string; canStart: boolean; unitCount?: number; allowedUnitCounts?: number[]; customisationCategories?: CustomisationCategory[]; environment?: string };
 
 export default function ExamPilotRuntime({ client, userId, canStart, unitCount, allowedUnitCounts, customisationCategories = [], environment = "clpfecuohwzwrgmqzeos" }: PilotProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const account = `${environment}:${userId}`;
+  const navigation: ExamNavigation | undefined = location.state?.examNavigation?.account === account ? location.state.examNavigation : undefined;
+  const resultCache = useMemo(() => new Map<string, RuntimeAttempt>(), [account]);
+  const [navigationRevision, setNavigationRevision] = useState(0);
+  const [pendingResult, setPendingResult] = useState<RuntimeAttempt | null>(null);
+  function pushView(view: ExamNavigation) {
+    void navigate(`${location.pathname}${location.search}${location.hash}`, {
+      state: { ...location.state, examNavigation: { ...view, account, returnKey: location.key } },
+    });
+  }
+  function backToRoom() {
+    if (navigation?.returnKey) void navigate(-1);
+    else enterRoom(resultOrigin.current);
+  }
   const { state, patchSessionState } = useAppContext();
   const { sitting, dispatch: updateSitting } = useExamSitting();
   const preferenceKey = `abgm-exam-custom-${environment}-${userId}`;
@@ -74,11 +95,14 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
     catch { return null; }
   }, [client, userId, environment]);
   useEffect(() => { ++sourceOpenVersion.current; setAttempt(null); setCurrent(null); setReady(false); setRoomView("exam"); setReviewPartId(undefined); setError(""); }, [session]);
+  const feedbackPreference = useExamFeedbackTone(session?.call, account);
   const history = useExamHistory(session?.call, `${environment}:${userId}`, !attempt && roomView !== "error-log");
   const historyView = useMemo(() => history.data
     ? historyPresentation(history.data.page, history.data.rows, Object.fromEntries(customisationCategories.map(c => [c.category_id, c.label])))
     : { attempts: [], average: null, best: null, trend: [], totalCases: 0, awaiting: 0 }, [history.data, customisationCategories]);
   const errorLog = useExamErrorLog(session?.call, `${environment}:${userId}`, attempt?.status === "submitted" ? attempt.id : undefined);
+  const supportsFeedback = attempt?.feedbackTone !== undefined;
+  const aiFeedback = useExamFeedback(session?.call, account, supportsFeedback && attempt?.status === "submitted" ? attempt.id : undefined);
   const errorLogPresentation = useMemo<ErrorLogSavePresentation>(() => {
     if (!attempt || !errorLog.data || errorLog.data.attemptId !== attempt.id) return {};
     const answers = toSitting(attempt).answers;
@@ -125,9 +149,10 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
     try { await action(); } catch (cause) { if (mounted.current) failure(cause); }
     finally { inFlight.current = false; if (mounted.current) setBusy(false); }
   }
-  function show(next: RuntimeAttempt) {
+  function show(next: RuntimeAttempt, recordResult = false) {
     if (!mounted.current) return;
     setAttempt(next);
+    if (recordResult && next.status === "submitted") setPendingResult(next);
     if (next.status === "active" || next.status === "submitted") {
       const display = session?.journal?.attemptId === next.id ? session.journal : undefined;
       updateSitting({ type: "hydrate", sitting: { ...toSitting(next), showTimer: display?.showTimer ?? true, showRanges: display?.showRanges ?? true } });
@@ -142,17 +167,59 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
     catch (cause) { if (mounted.current && sourceOpenVersion.current === request) throw cause; return; }
     if (!mounted.current || sourceOpenVersion.current !== request) return;
     if (next.id !== attemptId || next.status !== "submitted" || (partId && !next.questions.some(q => q.parts.some(p => p.id === partId)))) throw new Error("Saved source unavailable");
-    resultOrigin.current = origin; setReviewPartId(partId); show(next);
+    resultCache.set(next.id, next);
+    pushView({ account, view: "results", attemptId: next.id, partId, origin });
   }
   function enterRoom(view: "exam" | "history" | "error-log") {
+    pushView({ account, view });
+  }
+  function restoreRoom(view: RoomView) {
     ++sourceOpenVersion.current;
+    setAttempt(null); setReviewPartId(undefined); updateSitting({ type: "exit" });
     setRoomView(view);
     if (view === "error-log") void errorLog.refresh();
     else void history.refresh();
     void loadRoom().catch(cause => { if (mounted.current) failure(cause); });
   }
+  // Record only screen identity in browser history; answers and grades stay in the runtime.
+  useEffect(() => {
+    const entry: ExamNavigation | undefined = location.state?.examNavigation?.account === account ? location.state.examNavigation : undefined;
+    const request = ++sourceOpenVersion.current;
+    if (entry?.view === "results" && entry.attemptId) {
+      resultOrigin.current = entry.origin ?? "exam";
+      setReviewPartId(entry.partId);
+      const cached = resultCache.get(entry.attemptId);
+      if (cached) show(cached);
+      else if (session) {
+        setAttempt(null); updateSitting({ type: "exit" });
+        setBusy(true);
+        void session.call<RuntimeAttempt>("read", { attemptId: entry.attemptId }).then(next => {
+          if (!mounted.current || sourceOpenVersion.current !== request) return;
+          if (next.id !== entry.attemptId || next.status !== "submitted" || (entry.partId && !next.questions.some(q => q.parts.some(p => p.id === entry.partId)))) throw new Error("Saved source unavailable");
+          resultCache.set(next.id, next); show(next);
+        }).catch(cause => { if (mounted.current && sourceOpenVersion.current === request) failure(cause); })
+          .finally(() => { if (mounted.current && sourceOpenVersion.current === request) setBusy(false); });
+      }
+    } else {
+      if (session && session.journal?.attemptId === attempt?.id && attempt?.status === "submitted") session.clear();
+      restoreRoom(entry?.view === "history" || entry?.view === "error-log" ? entry.view : "exam");
+      setBusy(false);
+    }
+    return () => { ++sourceOpenVersion.current; };
+  }, [location.key, session, navigationRevision]);
+  useEffect(() => {
+    if (attempt?.status === "submitted") resultCache.set(attempt.id, attempt);
+  }, [attempt, resultCache]);
+  // Navigate after hydration so the active-sitting exit guard sees completed Results.
+  useEffect(() => {
+    if (!pendingResult || sitting?.phase !== "complete") return;
+    resultCache.set(pendingResult.id, pendingResult);
+    setPendingResult(null);
+    pushView({ account, view: "results", attemptId: pendingResult.id, origin: resultOrigin.current });
+  }, [pendingResult, sitting?.phase]);
   async function openAttempt(recover: boolean) {
     if (!session) return;
+    if (!recover && !await feedbackPreference.confirmForStart()) return;
     resultOrigin.current = "exam";
     let next = recover ? await session.recover() : await session.start(state.sessionState?.pressureUnit ?? "mmHg", { examKind, unitCount: setupState.caseCount, showTimer: setupState.timed, showRanges: setupState.showRanges, excludedCategories: examKind === "custom" ? customExclusions.filter(id => customisationCategories.some(c => c.category_id === id)) : [] });
     if (next.status === "active") {
@@ -162,7 +229,7 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
         next = await session.present(next.questions[0].id);
       }
     }
-    show(next);
+    show(next, next.status === "submitted");
   }
   async function leave() {
     if (!session || !attempt) return;
@@ -172,7 +239,7 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
   function dispatch(action: SittingAction) {
     if (!session || !sitting || busy || (error && !answerError) || session.journal?.submission) return;
     if (action.type === "submit") {
-      void run(async () => show(await session.submit(encodeAnswers(sitting)))); return;
+      void run(async () => show(await session.submit(encodeAnswers(sitting)), true)); return;
     }
     if (action.type === "exit") { setExitOpen(true); return; }
     const next = sittingReducer(sitting, action);
@@ -218,7 +285,8 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
   return <section aria-label="Exam pilot">
     {error && <div role="alert"><p>{error}</p>
       <button className="exam-pilot-button" disabled={busy} onClick={() => void run(async () => {
-        if (session.journal) await openAttempt(true); else await loadRoom();
+        if (navigation?.view === "results") setNavigationRevision(value => value + 1);
+        else if (session.journal) await openAttempt(true); else await loadRoom();
       })}>{session.journal?.submission ? "Check submission / retry" : session.journal ? "Recover saved attempt" : "Retry"}</button>
       {!session.journal?.submission && error.includes("another tab") && <button className="exam-pilot-button" disabled={busy} onClick={() => void run(async () => {
         session.keepServerDraft(); await openAttempt(true);
@@ -229,9 +297,10 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
     </div>}
     {sitting && attempt ? sitting.phase === "complete" ? <>
       {refreshError && <p role="status">{refreshError}</p>}
-      <p>{configurationLabel(attempt)}</p>
+      {attempt.examKind === "custom" && <p>{configurationLabel(attempt)}</p>}
       <ExamResultsPresentation key={`${attempt.id}:${reviewPartId ?? "default"}`} initialPartId={reviewPartId}
         errorLogPresentation={errorLogPresentation} errorLogBusy={errorLog.busy} onErrorLogSave={errorLog.save}
+        aiFeedback={supportsFeedback ? aiFeedback : undefined}
         marksAvailable={attempt.marksAvailable ?? Number.NaN} gradingStatus={attempt.gradingStatus} sitting={sitting} pressureUnit={state.sessionState?.pressureUnit ?? sitting.pressureUnit}
         notice={<>{errorLog.error && <p role="alert">{errorLog.error} <button type="button" onClick={() => void errorLog.refresh()}>Retry Error log</button></p>}<aside className="exam-results__feedback" aria-label="Exam feedback">
           <p>Help us improve with a quick anonymous survey</p>
@@ -244,23 +313,24 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
           if (typeof receipt?.reportId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(receipt.reportId)) throw new Error("Invalid report receipt");
         }}
         onRetry={attempt.canRetryGrading && !busy ? () => void run(async () => show(await session.call<RuntimeAttempt>("retry_grading", { attemptId: attempt.id }))) : undefined}
-        onExit={() => { if (session.journal?.attemptId === attempt.id) session.clear(); updateSitting({ type: "exit" }); setAttempt(null); setReviewPartId(undefined); setRoomView(resultOrigin.current); void run(loadRoom); }} />
+        onExit={backToRoom} />
     </> : <>
       <ExamSitting sitting={sitting} dispatch={dispatch} onExitConfirmed={() => session.abandon(attempt.id)} disabled={busy || (!!error && !answerError) || !!session.journal?.submission} />
       {exitOpen && <ExitSittingDialog onStay={() => setExitOpen(false)} onExit={() => void run(leave)} />}
     </> : <>
       {roomView === "error-log" ? <ConnectedExamErrorLog key={`${environment}:${userId}`} log={errorLog}
-        onBack={() => enterRoom("exam")} onOpenExample={(id, partId) => openResult(id, "error-log", partId)}
+        onBack={backToRoom} onOpenExample={(id, partId) => openResult(id, "error-log", partId)}
         onOpenLatest={history.latestAttemptId ? () => openResult(history.latestAttemptId!, "error-log") : undefined} /> : <>
         {history.error && <p role="alert">{history.error} <button type="button" disabled={history.loading} onClick={() => void history.refresh()}>Retry history</button></p>}
         {roomView === "history" ? <ExamHistory
           history={historyView} unavailable={!history.data}
           attempts={historyView.attempts}
-          filter={history.filter} onFilterChange={history.setFilter} onBack={() => enterRoom("exam")}
+          filter={history.filter} onFilterChange={history.setFilter} onBack={backToRoom}
           onOpen={id => void run(() => openResult(id, "history"))}
           onRetry={id => void run(async () => { await session.call<RuntimeAttempt>("retry_grading", { attemptId: id }); await history.refresh(); })}
           onLoadMore={history.data?.page.nextCursor ? () => void history.loadMore() : undefined}
           total={history.data?.page.total} loading={history.loading} busy={busy} /> : <ExamDashboard
+          feedbackPreference={feedbackPreference}
           pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"}
           onPressureUnitChange={pressureUnit => {
             patchSessionState({ pressureUnit });

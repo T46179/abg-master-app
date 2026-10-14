@@ -8,6 +8,7 @@ export type WireAnswers = Record<string, ExamAnswer | { text: string; unit: stri
 export interface RuntimeAttempt {
   id: string; status: "active" | "submitted" | "abandoned" | "invalidated"; revision: number;
   pressureUnit: PressureUnit; createdAt: string; presentedAt: string | null; finishedAt: string | null;
+  feedbackTone?: "professional" | "supportive" | "ruthless";
   marksAvailable?: number; examKind?: ExamKind; excludedCategories?: string[];
   questions: ExamQuestion[]; answers: WireAnswers; feedback?: ExamFeedback;
   gradingStatus?: "pending" | "completed" | "failed"; marksAwarded?: number | null; canRetryGrading?: boolean;

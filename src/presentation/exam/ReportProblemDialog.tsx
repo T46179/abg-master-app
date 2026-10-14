@@ -4,11 +4,13 @@ import { Flag, LoaderCircle, X } from "lucide-react";
 const reasons = ["Incorrect answer or marking", "Values or data look wrong", "Unclear or ambiguous wording",
   "Typo or formatting issue", "Image or visualiser problem", "Something else"];
 
-export interface ProblemReportInput { requestId: string; questionId: string; reason: string; details: string }
+export interface ProblemReportInput { requestId: string; questionId: string; reason: string; details: string;
+  target?: "feedback"; generationId?: string; partId?: string }
+interface FeedbackReportTarget { generationId: string; partId: string; partNumber: number }
 export type SubmitProblemReport = (input: ProblemReportInput) => Promise<void>;
 
-function ReportProblemDialog({ number, questionId, onClose, onSubmit }: {
-  number: number; questionId: string; onClose: () => void; onSubmit?: SubmitProblemReport;
+function ReportProblemDialog({ number, questionId, onClose, onSubmit, feedbackTarget }: {
+  number: number; questionId: string; onClose: () => void; onSubmit?: SubmitProblemReport; feedbackTarget?: FeedbackReportTarget;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -26,7 +28,8 @@ function ReportProblemDialog({ number, questionId, onClose, onSubmit }: {
     if (!onSubmit || !reason || submitted || sending.current || details.length > 2000) return;
     sending.current = true; setBusy(true); setError("");
     requestId.current ??= crypto.randomUUID();
-    try { await onSubmit({ requestId: requestId.current, questionId, reason, details }); setSubmitted(true); }
+    try { await onSubmit({ requestId: requestId.current, questionId, reason, details,
+      ...(feedbackTarget ? { target: "feedback" as const, generationId: feedbackTarget.generationId, partId: feedbackTarget.partId } : {}) }); setSubmitted(true); }
     catch { setError("We couldn’t submit your report. Please try again."); }
     finally { sending.current = false; setBusy(false); }
   }
@@ -45,7 +48,7 @@ function ReportProblemDialog({ number, questionId, onClose, onSubmit }: {
         <p>Thank you for your feedback. We will look into it as soon as possible.</p>
       </div> : <>
       <p className="exam-report-dialog__eyebrow"><Flag size={15} />Report a problem</p>
-      <h2 id={titleId}>Question {number}</h2>
+      <h2 id={titleId}>{feedbackTarget ? <>Feedback for Question {number}, Part {feedbackTarget.partNumber}</> : <>Question {number}</>}</h2>
       <fieldset disabled={busy}><legend>What went wrong?</legend><div className="exam-report-dialog__reasons">
         {reasons.map(item => <label key={item} data-selected={reason === item}>
           <input type="radio" name={titleId} value={item} checked={reason === item} onChange={() => { changed(); setReason(item); }} />{item}
@@ -72,5 +75,19 @@ export function QuestionProblemReport({ number, questionId, onSubmit }: {
   return <div className="exam-question-report">
     <button ref={trigger} type="button" onClick={() => setOpen(true)}><Flag size={14} />Report a problem with this question</button>
     {open && <ReportProblemDialog key={questionId} number={number} questionId={questionId} onClose={close} onSubmit={onSubmit} />}
+  </div>;
+}
+
+
+export function FeedbackProblemReport({ number, questionId, partNumber, partId, generationId, onSubmit }: {
+  number: number; questionId: string; partNumber: number; partId: string; generationId: string; onSubmit?: SubmitProblemReport;
+}) {
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  function close() { setOpen(false); trigger.current?.focus(); }
+  return <div className="exam-ai-feedback__report">
+    <button ref={trigger} type="button" onClick={() => setOpen(true)}>Report a problem with this feedback</button>
+    {open && <ReportProblemDialog key={generationId + ":" + partId} number={number} questionId={questionId}
+      feedbackTarget={{ generationId, partId, partNumber }} onClose={close} onSubmit={onSubmit} />}
   </div>;
 }

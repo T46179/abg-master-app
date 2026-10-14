@@ -5,10 +5,19 @@ import { Surface } from "../primitives/Surface";
 import { MetricRichText } from "../practice/MetricText";
 import { ExamValues } from "./ExamValues";
 import { elapsedSeconds, isAnswered, unansweredCount, type SittingAction } from "./sittingModel";
-import type { ExamAnswer, ExamPart, SittingState } from "./sittingTypes";
+import type { ExamAnswer, ExamPart, ExamQuestion, SittingState } from "./sittingTypes";
 import "./sitting.css";
 
 const SAQ_CHARACTER_LIMIT = 500;
+
+// Compare scenario text identities, so gas-only changes do not create a new section.
+function scenarioKey(question: ExamQuestion, part: ExamPart): string {
+  const stories = question.sections?.filter(section => section.type === "text") ?? [];
+  const selected = part.stimulusSectionIds
+    ? stories.filter(section => part.stimulusSectionIds!.includes(section.id))
+    : stories.slice(0, 1);
+  return JSON.stringify(selected.map(section => section.id));
+}
 
 export function ExamResponse({ part, value, unit, onChange }: {
   part: ExamPart; value: ExamAnswer | undefined; unit: string; onChange: (value: ExamAnswer) => void;
@@ -68,10 +77,12 @@ export function ExamSitting({ sitting: s, dispatch, onExitConfirmed, disabled = 
   const heading = useRef<HTMLHeadingElement>(null);
   const active = s.phase !== "complete";
   const blocker = useBlocker(({ currentLocation, nextLocation }) =>
-    active && (currentLocation.pathname !== nextLocation.pathname || currentLocation.search !== nextLocation.search));
+    active && currentLocation.key !== nextLocation.key);
   const q = s.questions[s.questionIndex];
   const pi = s.partIndices[q.id] ?? 0;
   const part = q.parts[pi];
+  const initialScenarioId = q.sections?.find(section => section.type === "text")?.id;
+  const scenarioKeys = q.parts.map(p => scenarioKey(q, p));
   useEffect(() => {
     if (!active) return;
     const timer = window.setInterval(() => setNow(Date.now()), 500);
@@ -141,7 +152,7 @@ export function ExamSitting({ sitting: s, dispatch, onExitConfirmed, disabled = 
     </Surface> : <div className="exam-sitting-content">
       {part.stimulusSectionIds && q.sections ? part.stimulusSectionIds.map(id => {
         const section = q.sections!.find(s => s.id === id);
-        if (section?.type === "text") return <Surface key={id} className="exam-scenario"><span className="section-header__eyebrow">Clinical scenario</span><div><MetricRichText>{section.content}</MetricRichText></div></Surface>;
+        if (section?.type === "text") return <Surface key={id} className="exam-scenario"><span className="section-header__eyebrow exam-scenario-heading">Clinical scenario{section.id !== initialScenarioId && <span className="exam-scenario-updated">Updated</span>}</span><div><MetricRichText>{section.content}</MetricRichText></div></Surface>;
         const table = section?.type === "data_table" ? q.tables.find(t => t.id === section.tableId) : undefined;
         return table ? <ExamValues key={id} table={table} pressureUnit={s.pressureUnit} showRanges={s.showRanges} /> : null;
       }) : <>
@@ -151,9 +162,12 @@ export function ExamSitting({ sitting: s, dispatch, onExitConfirmed, disabled = 
       <Surface className="exam-part-card">
         <div className="exam-part-heading">
           <nav className="exam-part-pills" aria-label="Question Parts">
-            {q.parts.map((p, index) => <button key={p.id} aria-current={index === pi ? "step" : undefined}
-              aria-label={`Part ${index + 1}, ${isAnswered(s.answers[p.id]) ? "answered" : "not answered"}`}
-              onClick={() => jump(s.questionIndex, index)}>{index + 1}{isAnswered(s.answers[p.id]) && <span aria-hidden="true"> ·</span>}</button>)}
+            {q.parts.map((p, index) => <span key={p.id} className="exam-part-step">
+              {index > 0 && scenarioKeys[index] !== scenarioKeys[index - 1] && <span className="exam-part-divider" aria-hidden="true" />}
+              <button aria-current={index === pi ? "step" : undefined}
+                aria-label={`Part ${index + 1}, ${isAnswered(s.answers[p.id]) ? "answered" : "not answered"}`}
+                onClick={() => jump(s.questionIndex, index)}>{index + 1}{isAnswered(s.answers[p.id]) && <span aria-hidden="true"> ·</span>}</button>
+            </span>)}
           </nav>
           <span className="exam-small">{part.marks} {part.marks === 1 ? "mark" : "marks"}</span>
         </div>

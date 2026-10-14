@@ -18,6 +18,7 @@ let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 let attempt: RuntimeAttempt;
 let loseSubmission = false;
+let savedFeedbackTone = "professional";
 let router: ReturnType<typeof createMemoryRouter>;
 const invoke = vi.fn();
 const client = { functions: { invoke } } as unknown as SupabaseClient;
@@ -28,8 +29,8 @@ function historyPage(rows: any[] = []) {
  summary: { submitted: rows.length, average: null, best: null, trend: [], totalCases: rows.reduce((n,r)=>n+r.caseCount,0), awaiting: rows.length, pending: rows.length } };
 }
 function row(id: string, kind = "mock", exclusions: string[] = []) { return { id, createdAt: "2026-10-05T00:00:00Z", presentedAt: null, finishedAt: "2026-10-05T00:10:00Z", marksAvailable: 4, marksAwarded: null, caseCount: 3, examKind: kind, excludedCategories: exclusions, gradingStatus: "pending", canRetryGrading: false }; }
-async function mount(unitCount = 3, customisationCategories: typeof categories = [], allowedUnitCounts?: number[]) {
- router = createMemoryRouter([{ path: "/", element: <ExamSittingProvider><ExamPilotRuntime client={client} userId="test-owner" canStart unitCount={unitCount} allowedUnitCounts={allowedUnitCounts} customisationCategories={customisationCategories} /></ExamSittingProvider> }, { path: "/away", element: <p>Away</p> }]);
+async function mount(unitCount = 3, customisationCategories: typeof categories = [], allowedUnitCounts?: number[], initialEntries?: Array<{ pathname: string; state?: unknown }>) {
+ router = createMemoryRouter([{ path: "/", element: <ExamSittingProvider><ExamPilotRuntime client={client} userId="test-owner" canStart unitCount={unitCount} allowedUnitCounts={allowedUnitCounts} customisationCategories={customisationCategories} /></ExamSittingProvider> }, { path: "/away", element: <p>Away</p> }], { initialEntries });
  await act(async () => { root.render(<RouterProvider router={router} />); });
 }
 async function click(text: string) {
@@ -38,9 +39,11 @@ async function click(text: string) {
 }
 beforeEach(() => {
  Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function (this: HTMLDialogElement) { this.open = true; } });
- localStorage.clear(); invoke.mockReset(); unitPreferences.patchSessionState.mockReset(); unitPreferences.savePressureUnitPreference.mockReset(); loseSubmission = false;
+ savedFeedbackTone = "professional"; localStorage.clear(); invoke.mockReset(); unitPreferences.patchSessionState.mockReset(); unitPreferences.savePressureUnitPreference.mockReset(); loseSubmission = false;
  attempt = { id: "test-attempt", marksAvailable: 2, status: "active", revision: 0, pressureUnit: "kPa", createdAt: new Date().toISOString(), presentedAt: null, finishedAt: null, answers: {}, questions: [{ id: "test-unit", tables: [], parts: [{ id: "part", kind: "concept", prompt: "Explain your answer", marks: 2 }] }] };
  invoke.mockImplementation(async (_name, { body: { operation, input } }) => {
+   if (operation === "preference_read") return { data: { feedbackTone: savedFeedbackTone } };
+   if (operation === "preference_update") { savedFeedbackTone = input.feedbackTone; return { data: { feedbackTone: savedFeedbackTone } }; }
    if (operation === "current") return { data: { attempt: null } };
    if (operation === "history_page") return { data: historyPage() };
    if (operation === "start") attempt = { ...attempt, examKind: input.examKind, excludedCategories: input.excludedCategories };
@@ -169,7 +172,8 @@ it("defaults to Mock, remembers Custom inclusions without erasing them, and send
 it("sends catalogue exclusions and hides setup while a start needs recovery", async () => {
   await mount(3, categories); await click("Custom ExamChoose what's included");
   await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Include Toxicology"]')!.click());
-  invoke.mockResolvedValueOnce({ error: new Error("lost start") });
+  const original = invoke.getMockImplementation()!; let failStart = true;
+  invoke.mockImplementation(async (...args) => { if (args[1].body.operation === "start" && failStart) { failStart = false; return { error: new Error("lost start") }; } return original(...args); });
   await click("Begin");
   const input = invoke.mock.calls.find(c => c[1].body.operation === "start")![1].body.input;
   expect(input).toMatchObject({ examKind: "custom", excludedCategories: ["toxicology_management"] });
@@ -216,7 +220,9 @@ it("opens a saved example's exact historical Question and Part, then returns to 
     entries: [{ conceptId: "calculation", status: "to_review", exampleCount: 1, createdAt: "2026-10-07T00:00:00Z", lastSavedAt: "2026-10-07T00:00:00Z", archivedAt: null, reopenedAt: null }],
     attemptId: null, savedSources: {}, toReviewCount: 1 };
   invoke.mockImplementation(async (_name, { body: { operation, input } }) => {
-    if (operation === "current") return { data: { attempt: null } };
+    if (operation === "preference_read") return { data: { feedbackTone: savedFeedbackTone } };
+   if (operation === "preference_update") { savedFeedbackTone = input.feedbackTone; return { data: { feedbackTone: savedFeedbackTone } }; }
+   if (operation === "current") return { data: { attempt: null } };
     if (operation === "history_page") return { data: historyPage([row(id)]) };
     if (operation === "error_log_list") return { data: { ...log, attemptId: input.attemptId ?? null } };
     if (operation === "error_log_examples") return { data: { examples: [{ id, attemptId: id, unitId: "second-unit", partId: "target", prompt: "Historical target", questionNumber: 2, partNumber: 1,
@@ -233,6 +239,11 @@ it("opens a saved example's exact historical Question and Part, then returns to 
   expect(selected.hasAttribute("hidden")).toBe(false);
   expect(selected.querySelector('.exam-results__part-toggle')?.getAttribute("aria-expanded") ?? selected.querySelector('button[aria-expanded]')?.getAttribute("aria-expanded")).toBe("true");
   expect(scroll).toHaveBeenCalled();
+  await act(async () => { await router.navigate(-1); });
+  expect(container.querySelector(".exam-error-log h1")?.textContent).toBe("Error log");
+  await act(async () => { await router.navigate(1); });
+  expect(container.querySelector('[aria-label="Question 2"]')!.getAttribute("aria-pressed")).toBe("true");
+  expect(container.querySelector('[aria-label="Question 2 results"]')!.hasAttribute("hidden")).toBe(false);
   await click("Back to Exam Room");
   expect(container.querySelector(".exam-error-log h1")?.textContent).toBe("Error log");
   expect(invoke.mock.calls.find(c => c[1].body.operation === "read")![1].body.input).toEqual({ attemptId: id });
@@ -252,7 +263,9 @@ it("derives connected controls from frozen mappings and confirms saves for only 
     entries: saved ? [{ conceptId: "calculation", status: "to_review", exampleCount: 1, createdAt: attempt.finishedAt, lastSavedAt: attempt.finishedAt, archivedAt: null, reopenedAt: null }] : [],
     attemptId: source, savedSources: source && saved ? { part: ["calculation"] } : {}, toReviewCount: saved ? 1 : 0 }; }
   invoke.mockImplementation(async (_name, { body: { operation, input } }) => {
-    if (operation === "current") return { data: { attempt: null } };
+    if (operation === "preference_read") return { data: { feedbackTone: savedFeedbackTone } };
+   if (operation === "preference_update") { savedFeedbackTone = input.feedbackTone; return { data: { feedbackTone: savedFeedbackTone } }; }
+   if (operation === "current") return { data: { attempt: null } };
     if (operation === "history_page") return { data: historyPage([row(id)]) };
     if (operation === "error_log_list") return { data: log(input.attemptId ?? null) };
     if (operation === "error_log_save") {
@@ -268,12 +281,12 @@ it("derives connected controls from frozen mappings and confirms saves for only 
   await act(async () => container.querySelector<HTMLButtonElement>('.exam-results__part-toggle')!.click());
   await click("Add to error log");
   expect(container.textContent).toContain("Couldn’t confirm the save");
-  expect(container.textContent).not.toContain("Already saved");
+  expect(container.textContent).not.toContain("Saved");
   await click("Add to error log");
   const parts = [...container.querySelectorAll('.exam-results__part')];
-  expect(parts[0].textContent).toContain("Already saved");
+  expect(parts[0].textContent).toContain("Saved");
   expect(parts[1].textContent).toContain("Add to error log");
-  expect(parts[1].textContent).not.toContain("Already saved");
+  expect(parts[1].textContent).not.toContain("Saved");
   expect(invoke.mock.calls.filter(c => c[1].body.operation === "error_log_save").map(c => c[1].body.input))
     .toEqual([{ attemptId: id, partId: "part", conceptIds: ["calculation"] }, { attemptId: id, partId: "part", conceptIds: ["calculation"] }]);
 });
@@ -373,7 +386,8 @@ it("keeps the preparing button visible through assembly and opening the first qu
 
 it("clears the preparing state and offers recovery if starting fails", async () => {
  await mount();
- invoke.mockResolvedValueOnce({ error: new Error("offline") });
+ const original = invoke.getMockImplementation()!; let failStart = true;
+ invoke.mockImplementation(async (...args) => { if (args[1].body.operation === "start" && failStart) { failStart = false; return { error: new Error("offline") }; } return original(...args); });
  await click("Begin");
  expect(container.textContent).not.toContain("Preparing your session");
  expect(container.querySelector(".figma-button__spinner")).toBeNull();
@@ -404,4 +418,128 @@ it("shows ten past attempts at a time and keeps Load more until all attempts are
  const mockFilter = [...container.querySelectorAll('[aria-label="Past attempts filter"] button')].find(button => button.textContent?.startsWith("Mock"))!;
  await act(async () => { (mockFilter as HTMLButtonElement).click(); });
  expect(container.querySelectorAll(".exam-history-entry")).toHaveLength(10);
+});
+it("browser Back and Forward follow history and saved Results without starting another exam", async () => {
+ const id = "12345678-1234-1234-1234-123456789abc";
+ const original = invoke.getMockImplementation()!;
+ invoke.mockImplementation(async (...args) => args[1].body.operation === "history_page" ? { data: historyPage([row(id, "custom")]) } : original(...args));
+ attempt = { ...attempt, id, status: "submitted", finishedAt: "2026-10-05T00:10:00Z", feedback: {}, parts: [{ partId: "part", status: "pending" }] };
+ await mount(); await click("Past attempts"); await click("Custom1");
+ await act(async () => container.querySelector<HTMLButtonElement>(".exam-attempt-open")!.click());
+ expect(container.querySelector(".exam-results")).not.toBeNull();
+ await act(async () => { await router.navigate(-1); });
+ expect(container.textContent).toContain("Past attempts");
+ expect(container.querySelector('[aria-label="Past attempts filter"] [aria-pressed="true"]')?.textContent).toContain("Custom");
+ await act(async () => { await router.navigate(1); });
+ expect(container.querySelector(".exam-results")).not.toBeNull();
+ await act(async () => { await router.navigate(-1); await router.navigate(-1); });
+ expect(container.textContent).toContain("Build your session");
+ expect(invoke.mock.calls.filter(c => c[1].body.operation === "start")).toHaveLength(0);
+});
+it("browser Back within the same Exam URL still protects an active sitting", async () => {
+ await mount(); await click("Past attempts"); await click("Back to Exam Room");
+ // Returning with the UI Back button leaves the history screen available to Forward.
+ await act(async () => { await router.navigate(1); });
+ await act(async () => { await router.navigate(-1); });
+ await click("Begin");
+ await act(async () => { void router.navigate(1); });
+ expect(container.querySelector("dialog")).not.toBeNull();
+ expect(container.querySelector("textarea")).not.toBeNull();
+ await click("Stay");
+ expect(invoke.mock.calls.filter(c => c[1].body.operation === "abandon")).toHaveLength(0);
+});
+
+it("reload restores a historical Results entry through the owned runtime read", async () => {
+ const id = "12345678-1234-1234-1234-123456789abc";
+ attempt = { ...attempt, id, status: "submitted", finishedAt: "2026-10-05T00:10:00Z", feedback: {}, parts: [{ partId: "part", status: "pending" }] };
+ await mount(3, [], undefined, [{ pathname: "/", state: { examNavigation: { account: "clpfecuohwzwrgmqzeos:test-owner", view: "results", attemptId: id, partId: "part", origin: "error-log" } } }]);
+ expect(container.querySelector(".exam-results")).not.toBeNull();
+ expect(invoke.mock.calls.find(c => c[1].body.operation === "read")![1].body.input).toEqual({ attemptId: id });
+ expect(localStorage.getItem("abgm-exam-pilot-clpfecuohwzwrgmqzeos-test-owner")).toBeNull();
+});
+it("history entries from another account do not reopen its Results", async () => {
+ await mount(3, [], undefined, [{ pathname: "/", state: { examNavigation: { account: "clpfecuohwzwrgmqzeos:another-user", view: "results", attemptId: "12345678-1234-1234-1234-123456789abc" } } }]);
+ expect(container.textContent).toContain("Build your session");
+ expect(invoke.mock.calls.filter(c => c[1].body.operation === "read")).toHaveLength(0);
+});
+
+it("connects feedback without automatic generation and restores saved votes on Results revisit",async()=>{
+ const id="12345678-1234-1234-1234-123456789abc";
+ attempt={...attempt,id,feedbackTone:"professional",status:"submitted",gradingStatus:"completed",marksAwarded:1,
+  answers:{part:"My answer"},finishedAt:"2026-10-13T00:00:00Z",
+  parts:[{partId:"part",status:"completed",marksAwarded:1,marksAvailable:2,criteria:{c1:1,c2:0}}],
+  feedback:{part:{answer:{mmHg:"Expected answer",kPa:"Expected answer"},reasoning:{mmHg:"Worked explanation",kPa:"Worked explanation"},
+   primaryObjective:"test",display:"text_and_resources",resources:[],criteria:[{id:"c1",label:"First criterion"},{id:"c2",label:"Second criterion"}]}}};
+ let saved:any={attemptId:id,generationId:null,status:"not_requested",parts:[],canRetry:false,retryAfter:null};
+ const original=invoke.getMockImplementation()!;
+ invoke.mockImplementation(async(...args)=>{
+  const {operation,input}=args[1].body;
+  if(operation==="feedback_request"){saved={...saved,generationId:id,status:"completed",parts:[{partId:"part",status:"completed",text:"Use the original 80 mmHg comparison.",helpful:null}]};return {data:saved};}
+  if(operation==="feedback_read")return {data:saved};
+  if(operation==="feedback_vote"){saved={...saved,parts:[{...saved.parts[0],helpful:input.helpful}]};return {data:saved};}
+  return original(...args);
+ });
+ await mount(3,[],undefined,[{pathname:"/",state:{examNavigation:{account:"clpfecuohwzwrgmqzeos:test-owner",view:"results",attemptId:id,partId:"part",origin:"exam"}}}]);
+ expect(invoke.mock.calls.some(c=>c[1].body.operation==="feedback_request")).toBe(false);
+ await click("Get Feedback");
+ expect(container.textContent).toContain("Use the original 80 mmHg comparison.");
+ expect(invoke.mock.calls.filter(c=>c[1].body.operation==="feedback_request")).toHaveLength(1);
+ await click("No");expect(container.textContent).toContain("Report a problem with this feedback");
+ await click("Back to Exam Room");await act(async()=>root.unmount());root=createRoot(container); await mount(3,[],undefined,[{pathname:"/",state:{examNavigation:{account:"clpfecuohwzwrgmqzeos:test-owner",view:"results",attemptId:id,partId:"part",origin:"exam"}}}]);
+ expect(container.textContent).toContain("Use the original 80 mmHg comparison.");
+ expect(container.textContent).toContain("Report a problem with this feedback");
+ expect(invoke.mock.calls.filter(c=>c[1].body.operation==="feedback_request")).toHaveLength(1);
+});
+
+it("places Feedback below Unit, saves Ruthless and requires the exact disclaimer acknowledgement before Begin", async () => {
+ await mount();
+ const fields=container.querySelector(".exam-setup-fields")!;
+ expect(fields.innerHTML.indexOf('aria-label="Partial pressure display units"')).toBeLessThan(fields.innerHTML.indexOf('aria-label="Feedback tone"'));
+ await click("Ruthless");
+ expect(container.querySelector(".exam-feedback-tone__warning")?.textContent).toBe("Ruthless feedback may contain sarcasm, mockery and some very questionable encouragement. It's all in good fun, but don't expect sympathy. Your marks and clinical explanations remain unchanged.");
+ const begin=()=>[...container.querySelectorAll<HTMLButtonElement>("button")].find(b=>b.textContent?.trim()==="Begin")!;
+ expect(begin().disabled).toBe(true);
+ expect(invoke.mock.calls.filter(c=>c[1].body.operation==="start")).toHaveLength(0);
+ expect(savedFeedbackTone).toBe("ruthless");
+ await act(async()=>container.querySelector<HTMLInputElement>(".exam-feedback-tone__acknowledgement input")!.click());
+ expect(begin().disabled).toBe(false);
+ expect(container.querySelector(".exam-feedback-tone__warning")).toBeNull();
+ expect(container.querySelector(".exam-feedback-tone__acknowledgement")).toBeNull();
+ await click("Supportive"); await click("Ruthless");
+ expect(container.querySelector(".exam-feedback-tone__warning")).not.toBeNull();
+ expect(begin().disabled).toBe(true);
+ const callsBeforeAcknowledgement=invoke.mock.calls.length;
+ await act(async()=>container.querySelector<HTMLInputElement>(".exam-feedback-tone__acknowledgement input")!.click());
+ expect(invoke.mock.calls).toHaveLength(callsBeforeAcknowledgement);
+ expect(container.querySelector(".exam-feedback-tone__warning")).toBeNull();
+ expect(begin().disabled).toBe(false);
+ await click("Begin");
+ const operations=invoke.mock.calls.map(c=>c[1].body.operation);
+ const start=operations.indexOf("start");
+ expect(operations[start-1]).toBe("preference_update");
+ expect(invoke.mock.calls[start-1][1].body.input).toEqual({feedbackTone:"ruthless"});
+ expect(invoke.mock.calls.filter(c=>c[1].body.operation==="start")).toHaveLength(1);
+});
+
+it("restores a saved Supportive tone on reload without a Ruthless disclaimer", async () => {
+ await mount(); await click("Supportive");
+ expect(savedFeedbackTone).toBe("supportive");
+ expect(container.querySelector(".exam-feedback-tone__warning")).toBeNull();
+ await act(async()=>root.unmount());root=createRoot(container);await mount();
+ expect(container.querySelector('[aria-label="Feedback tone"] button[aria-pressed="true"]')?.textContent).toBe("Supportive");
+ expect(container.querySelector(".exam-feedback-tone__acknowledgement")).toBeNull();
+});
+
+it("blocks Begin while a tone save fails and retries the selected preference", async () => {
+ const original=invoke.getMockImplementation()!;let fail=true;
+ invoke.mockImplementation(async(...args)=>args[1].body.operation==="preference_update"&&fail?{error:new Error("offline")}:original(...args));
+ await mount(); await click("Supportive");
+ expect(container.querySelector(".exam-feedback-tone__error")?.textContent).toContain("Couldn’t save your feedback preference.");
+ expect([...container.querySelectorAll<HTMLButtonElement>("button")].find(b=>b.textContent?.trim()==="Begin")!.disabled).toBe(true);
+ expect(invoke.mock.calls.filter(c=>c[1].body.operation==="start")).toHaveLength(0);
+ fail=false;await click("Retry feedback preference");
+ expect(savedFeedbackTone).toBe("supportive");
+ expect(container.querySelector(".exam-feedback-tone__error")).toBeNull();
+ await click("Begin");
+ expect(invoke.mock.calls.filter(c=>c[1].body.operation==="start")).toHaveLength(1);
 });

@@ -16,6 +16,8 @@ import { buildCompensationVisualModel } from "../practice/compensation/compensat
 import { buildAnionGapVisualModel } from "../practice/anionGap/anionGapVisualModel";
 import { AAGradientVisualContent } from "../practice/aaGradient/AAGradientVisualContent";
 import { buildAAGradientVisualModel } from "../practice/aaGradient/aaGradientVisualModel";
+import { ExamFeedbackCard } from "./ExamFeedbackCard";
+import type { ExamFeedbackControls } from "./useExamFeedback";
 import "./results.css";
 
 class ResourceBoundary extends Component<{ children: ReactNode; onFailure: () => void }, { failed: boolean }> {
@@ -158,12 +160,12 @@ function CaseReview({ question, pressureUnit, visible }: { question: ExamQuestio
   </>;
 }
 
-function PartCard({ part, index, sitting, status, score, unit, feedback, criteria, retryAvailable, errorLogConcepts, onErrorLogSave, errorLogBusy, initiallyOpen }: {
+function PartCard({ part, index, sitting, status, score, unit, feedback, criteria, retryAvailable, errorLogConcepts, onErrorLogSave, errorLogBusy, initiallyOpen, personalisedFeedback }: {
   part: ExamPart; index: number; sitting: SittingState; status: GradingStatus; score: number; unit: PressureUnit; feedback?: PartFeedback; criteria?: Record<string, number>; retryAvailable: boolean;
   errorLogConcepts?: readonly ErrorLogSaveConcept[];
   onErrorLogSave?: (ids: string[]) => Promise<void>;
   errorLogBusy?: boolean;
-  initiallyOpen?: boolean;
+  initiallyOpen?: boolean; personalisedFeedback?: ReactNode;
 }) {
   const [open, setOpen] = useState(Boolean(initiallyOpen));
   const card = useRef<HTMLElement>(null);
@@ -218,6 +220,7 @@ function PartCard({ part, index, sitting, status, score, unit, feedback, criteri
               <span><MetricRichText>{criterion.label}</MetricRichText></span><strong>{criteria[criterion.id] === 1 ? "1 / 1" : "0 / 1"}</strong>
             </li>)}</ul>
         </div>}
+        {personalisedFeedback}
         <Teaching feedback={feedback} unit={unit} part={part} />
         {resolved && score < part.marks && !!errorLogConcepts?.length && <ErrorLogSave concepts={errorLogConcepts} onSave={onErrorLogSave} busy={errorLogBusy} />}
         {feedback.difficulty != null && <p className="exam-results__difficulty">Difficulty <span>{feedback.difficulty}/5</span></p>}
@@ -227,14 +230,14 @@ function PartCard({ part, index, sitting, status, score, unit, feedback, criteri
 }
 
 export type { PartGrade } from "./resultsTypes";
-export default function ExamResultsPresentation({ sitting, onExit, pressureUnit = sitting.pressureUnit, feedback, grades, onRetry, notice, onReport, marksAvailable, gradingStatus, errorLogPresentation, onErrorLogSave, errorLogBusy, initialPartId }: {
+export default function ExamResultsPresentation({ sitting, onExit, pressureUnit = sitting.pressureUnit, feedback, grades, onRetry, notice, onReport, marksAvailable, gradingStatus, errorLogPresentation, onErrorLogSave, errorLogBusy, initialPartId, aiFeedback }: {
   marksAvailable?: number; gradingStatus?: GradingStatus;
   sitting: SittingState; onExit: () => void; pressureUnit?: PressureUnit;
   feedback: Record<string, PartFeedback>; grades: Record<string, PartGrade>; onRetry?: () => void; notice?: ReactNode; onReport?: SubmitProblemReport;
   errorLogPresentation?: ErrorLogSavePresentation;
   onErrorLogSave?: (partId: string, ids: string[]) => Promise<void>;
   errorLogBusy?: boolean;
-  initialPartId?: string;
+  initialPartId?: string; aiFeedback?: ExamFeedbackControls;
 }) {
   const parts = sitting.questions.flatMap(q => q.parts);
   const [selected, setSelected] = useState(() => Math.max(0, sitting.questions.findIndex(q => q.parts.some(p => p.id === initialPartId))));
@@ -292,6 +295,10 @@ export default function ExamResultsPresentation({ sitting, onExit, pressureUnit 
         {question.parts.map((part, pi) =>
         <PartCard key={part.id} part={part} index={pi} sitting={sitting} status={statuses[part.id] ?? "pending"}
           score={grades[part.id]?.score ?? 0} unit={pressureUnit} feedback={feedback[part.id]} criteria={grades[part.id]?.criteria} retryAvailable={!!onRetry}
+          personalisedFeedback={aiFeedback && allDone && part.kind === "concept" && hasAnswer(sitting, part)
+            && (grades[part.id]?.score ?? 0) < part.marks && !!feedback[part.id]?.criteria.length
+            ? <ExamFeedbackCard partId={part.id} marksLost={part.marks - (grades[part.id]?.score ?? 0)}
+              questionId={question.id} questionNumber={qi + 1} partNumber={pi + 1} controls={aiFeedback} onReport={onReport} /> : undefined}
           initiallyOpen={part.id === initialPartId} errorLogConcepts={!integrityError ? errorLogPresentation?.[part.id] : undefined}
           onErrorLogSave={onErrorLogSave ? ids => onErrorLogSave(part.id, ids) : undefined} errorLogBusy={errorLogBusy} />
       )}</div>

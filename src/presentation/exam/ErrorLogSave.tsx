@@ -23,7 +23,7 @@ export function ErrorLogSave({ concepts, onSave, busy = false }: {
     finally { pending.current = false; setSaving(false); }
   }
   function savedTag(label: string) {
-    return <span className="exam-results__error-saved"><CheckIcon /><span>{label}</span><span>· Already saved</span></span>;
+    return <span className="exam-results__error-saved"><CheckIcon /><span>{label}</span><span>· Saved</span></span>;
   }
   if (!concepts.length) return null;
   return <div className="exam-results__error-log">

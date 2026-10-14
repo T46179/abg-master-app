@@ -139,6 +139,60 @@ describe("Exam presentation interactions", () => {
     act(() => root.render(<RouterProvider router={router!} />));
     click("Start");
   }
+  function scenarioQuestion(): ExamQuestion {
+    return { id: "two-scenarios", sections: [
+      { id: "initial-story", type: "text", content: "Initial clinical story" },
+      { id: "initial-gas", type: "data_table", tableId: "gas-1" },
+      { id: "updated-story", type: "text", content: "Updated clinical story" },
+      { id: "updated-gas", type: "data_table", tableId: "gas-2" },
+    ], tables: [], parts: Array.from({ length: 5 }, (_, index) => ({
+      id: `scenario-part-${index}`, kind: "concept", marks: 1, prompt: `Scenario prompt ${index + 1}`,
+      stimulusSectionIds: index < 3 ? ["initial-story", "initial-gas"] : ["updated-story", "updated-gas"],
+    })) };
+  }
+  it("groups Parts by scenario and shows Updated only for the later scenario", () => {
+    deliveredQuestions = [scenarioQuestion()]; mount();
+    const divider = container.querySelector(".exam-part-divider")!;
+    expect(container.querySelectorAll(".exam-part-divider")).toHaveLength(1);
+    expect(divider.parentElement?.querySelector("button")?.textContent).toBe("4");
+    expect(divider.getAttribute("aria-hidden")).toBe("true");
+    expect(container.querySelector(".exam-scenario-updated")).toBeNull();
+    for (const index of [3, 4]) {
+      act(() => container.querySelectorAll<HTMLButtonElement>(".exam-part-pills button")[index].click());
+      expect(container.querySelector(".exam-scenario-updated")?.textContent).toBe("Updated");
+      expect(container.querySelector(".exam-scenario")?.textContent).toContain("Updated clinical story");
+      expect(container.querySelector(".exam-scenario")?.textContent).not.toContain("Initial clinical story");
+    }
+    for (const index of [0, 1, 2]) {
+      act(() => container.querySelectorAll<HTMLButtonElement>(".exam-part-pills button")[index].click());
+      expect(container.querySelector(".exam-scenario-updated")).toBeNull();
+      expect(container.querySelector(".exam-scenario")?.textContent).toContain("Initial clinical story");
+    }
+  });
+  it("keeps the scenario boundary at the correct retained Part after Custom omissions", () => {
+    const question = scenarioQuestion(); question.parts = question.parts.filter((_, i) => i !== 1 && i !== 3);
+    deliveredQuestions = [question]; mount();
+    expect(container.querySelector(".exam-part-divider")?.parentElement?.querySelector("button")?.textContent).toBe("3");
+    act(() => container.querySelectorAll<HTMLButtonElement>(".exam-part-pills button")[2].click());
+    expect(container.querySelector(".exam-scenario-updated")?.textContent).toBe("Updated");
+  });
+  it("does not split Parts for a gas-only change or a single scenario", () => {
+    const question = scenarioQuestion();
+    question.parts = question.parts.slice(0, 2);
+    question.parts[1].stimulusSectionIds = ["initial-story", "updated-gas"];
+    deliveredQuestions = [question]; mount(); click("Next part");
+    expect(container.querySelector(".exam-part-divider")).toBeNull();
+    expect(container.querySelector(".exam-scenario-updated")).toBeNull();
+  });
+  it("places a boundary at each of multiple scenario transitions", () => {
+    const question = scenarioQuestion();
+    question.sections!.push({ id: "third-story", type: "text", content: "Third clinical story" });
+    question.parts.push({ id: "third-part", kind: "concept", marks: 1, prompt: "Third scenario prompt", stimulusSectionIds: ["third-story"] });
+    deliveredQuestions = [question]; mount();
+    expect([...container.querySelectorAll(".exam-part-divider")].map(divider => divider.parentElement?.querySelector("button")?.textContent)).toEqual(["4", "6"]);
+    act(() => container.querySelectorAll<HTMLButtonElement>(".exam-part-pills button")[5].click());
+    expect(container.querySelector(".exam-scenario-updated")?.textContent).toBe("Updated");
+  });
   it.each([0, 1, 3])("numbers and navigates retained Parts after omission at index %i", omitted => {
     const authored: ExamPart[] = Array.from({ length: 4 }, (_, i) => ({ id: `stable-${i + 1}`, kind: "concept", marks: 1, prompt: `Authored prompt ${i + 1}` }));
     const retained = authored.filter((_, i) => i !== omitted);
