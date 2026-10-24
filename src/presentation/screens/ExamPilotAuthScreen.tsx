@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createExamAuthClient, readExamAccess, readExamIdentity, requestExamCode, verifyExamCode, type ExamAccess } from "../../core/examAuth";
-import ExamPilotRuntime from "../exam/ExamPilotRuntime.dev";
+import ExamPilotRuntime from "../exam/ExamPilotRuntime";
 import "../exam/exam.css";
 import "../exam/pilotAuth.css";
 

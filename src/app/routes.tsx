@@ -26,7 +26,7 @@ import { FeaturedCaseScreen } from "../presentation/screens/FeaturedCaseScreen";
 import { AppRouteErrorView } from "../presentation/shared/StatusViews";
 
 const hostedExamPilot = import.meta.env.MODE === "exam-pilot";
-const ExamPilotAuth = (import.meta.env.DEV || hostedExamPilot) ? lazy(() => import("../presentation/screens/ExamPilotAuthScreen.dev")) : null;
+const ExamPilotAuth = (import.meta.env.DEV || hostedExamPilot) ? lazy(() => import("../presentation/screens/ExamPilotAuthScreen")) : null;
 
 export const appRoutes: RouteObject[] = [
   {

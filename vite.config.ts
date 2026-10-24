@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
   return {
     base: "/",
     build: {
-      outDir: "docs"
+      outDir: mode === "exam-pilot" ? "dist/exam-pilot" : "docs"
     },
     define: {
       __APP_VERSION__: JSON.stringify(packageJson.version ?? "0.0.0")

@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ExamSittingProvider } from "./ExamSittingContext";
-import ExamPilotRuntime from "./ExamPilotRuntime.dev";
+import ExamPilotRuntime from "./ExamPilotRuntime";
 import type { RuntimeAttempt } from "../../core/examRuntime";
 const unitPreferences = vi.hoisted(() => ({ patchSessionState: vi.fn(), savePressureUnitPreference: vi.fn() }));
 vi.mock("../../app/AppProvider", () => ({ useAppContext: () => {

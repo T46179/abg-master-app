@@ -135,6 +135,11 @@ function reviewViews(question: ExamQuestion): ReviewView[] | undefined {
     seen.add(id);
     views.push(view);
   }
+  const labelCounts = new Map<string, number>();
+  for (const view of views) labelCounts.set(view.label, (labelCounts.get(view.label) ?? 0) + 1);
+  views.forEach((view, index) => {
+    if (labelCounts.get(view.label)! > 1) view.label = `Scenario ${index + 1}`;
+  });
   return views;
 }
 

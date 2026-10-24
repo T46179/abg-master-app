@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const output = resolve(process.argv[2] ?? "docs");
+const output = resolve(process.argv[2] ?? "dist/exam-pilot");
 const indexPath = resolve(output, "index.html");
 if (!existsSync(indexPath)) throw new Error("Exam pilot build output is missing.");
 const html = readFileSync(indexPath, "utf-8").replace(

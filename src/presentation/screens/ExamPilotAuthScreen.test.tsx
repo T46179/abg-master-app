@@ -7,8 +7,8 @@ const mocks = vi.hoisted(() => ({
   requestExamCode: vi.fn(), verifyExamCode: vi.fn(), signOut: vi.fn(), unsubscribe: vi.fn(),
 }));
 vi.mock("../../core/examAuth", () => mocks);
-vi.mock("../exam/ExamPilotRuntime.dev", () => ({ default: () => <div>Runtime connected</div> }));
-import ExamPilotAuthScreen from "./ExamPilotAuthScreen.dev";
+vi.mock("../exam/ExamPilotRuntime", () => ({ default: () => <div>Runtime connected</div> }));
+import ExamPilotAuthScreen from "./ExamPilotAuthScreen";
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let container: HTMLDivElement;
 let root: Root;

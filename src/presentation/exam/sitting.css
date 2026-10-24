@@ -11,7 +11,7 @@
 .exam-sitting .surface { border: 0; box-shadow: 0 2px 6px rgba(9,11,12,.05), 0 14px 32px rgba(9,11,12,.06); }
 .exam-scenario, .exam-part-card { padding: 1.35rem; }
 .exam-scenario > .section-header__eyebrow { margin-bottom: 0; }
-.exam-scenario > div { margin-top: .25rem; color: var(--color-copy-soft); font-weight: 300; line-height: 1.65; }
+.exam-scenario > div { margin-top: .25rem; color: var(--color-copy-soft); font-weight: 300; line-height: 1.65; white-space: pre-line; }
 .exam-values { display: grid; gap: 1rem; min-width: 0; }
 .exam-values > p { margin: 0; }
 .exam-sitting .section-header__eyebrow { color: var(--color-navy); font-weight: 500; }

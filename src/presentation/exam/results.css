@@ -120,7 +120,7 @@
 .exam-results__scenario-selector button[aria-pressed="true"] { background: var(--result-navy); color: white; }
 .exam-results__scenario-selector button:focus-visible { outline: 2px solid var(--result-blue); outline-offset: 2px; }
 .exam-results__scenario { margin-top: 16px; border: 1px solid var(--result-border); border-radius: 16px; background: white; }
-.exam-results__scenario-text { padding: 0 20px 20px; font-size: 14.5px; line-height: 1.625; color: var(--result-soft); }
+.exam-results__scenario-text { padding: 0 20px 20px; font-size: 14.5px; line-height: 1.625; color: var(--result-soft); white-space: pre-line; }
 .exam-results__case-values { display: grid; gap: 12px; margin-top: 16px; }
 .exam-results__values { border: 1px solid var(--result-border); border-radius: 16px; background: white; }
 .exam-results__table-toggle { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 12px 20px; border: 0; border-radius: 16px; text-align: left; background: none; }
@@ -260,7 +260,6 @@
 .exam-ai-feedback--saved { background: #f8f9ff; padding: 22px 24px; }
 .exam-ai-feedback__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .exam-ai-feedback__heading h4 { display: flex; align-items: center; gap: 9px; margin: 0; color: #6554ff; font-size: 12px; font-weight: 600; line-height: 1.5; letter-spacing: .12em; text-transform: uppercase; }
-.exam-ai-feedback__heading > span { flex-shrink: 0; padding: 4px 10px; border: 1px solid #e0e5ef; border-radius: 30px; background: white; color: var(--result-muted); font-size: 12px; }
 .exam-results .exam-ai-feedback__text { margin: 18px 0 22px; font-size: inherit; font-weight: inherit; line-height: inherit; color: var(--result-soft); white-space: pre-wrap; overflow-wrap: anywhere; }
 .exam-ai-feedback__footer { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; color: var(--result-muted); font-size: 13px; }
 .exam-ai-feedback__footer button, .exam-ai-feedback__report button { border: 0; padding: 4px; background: transparent; font: inherit; color: var(--result-muted); }

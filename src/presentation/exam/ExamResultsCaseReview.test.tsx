@@ -131,3 +131,22 @@ it("does not add a selector for a single resolved view", () => {
   expect(panel().querySelectorAll(".exam-results__values")).toHaveLength(1);
   expect(panel().querySelector('[aria-label="Initial ABG"]')).not.toBeNull();
 });
+
+it("numbers scenario tabs when different stems reuse the same gas", () => {
+  render([{ ...question, parts: question.parts.map(part => ({ ...part,
+    stimulusSectionIds: part.id === "p3" ? ["repeat-story", "initial-gas-section"] : part.stimulusSectionIds,
+  })) }]);
+  expect([...selector().querySelectorAll("button")].map(button => button.textContent)).toEqual(["Scenario 1", "Scenario 2"]);
+  expect(panel().querySelector(".exam-results__scenario")?.textContent).toContain("Initial presentation");
+  click("Scenario 2");
+  expect(selector().querySelector('[aria-pressed="true"]')?.textContent).toBe("Scenario 2");
+  expect(panel().querySelector(".exam-results__scenario")?.textContent).toContain("Following resuscitation");
+  expect(panel().querySelector('[aria-label="Initial ABG"]')?.textContent).toContain("228.0");
+});
+it("numbers duplicate table headings while retaining distinct headings", () => {
+  render([{ ...question, tables: [{ ...initial, heading: "Blood Gas" }, { ...repeat, heading: "Blood Gas" }, third],
+    sections: [...question.sections!, { id: "third-gas-section", type: "data_table", tableId: third.id }],
+    parts: [...question.parts, { id: "p4", kind: "concept", marks: 1, prompt: "Third assessment", stimulusSectionIds: ["third-gas-section"] }],
+  }]);
+  expect([...selector().querySelectorAll("button")].map(button => button.textContent)).toEqual(["Scenario 1", "Scenario 2", "Third gas"]);
+});
