@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import arrowIconUrl from "../../assets/icons/arrow_right.svg";
 import lockIconUrl from "../../assets/icons/lock.svg";
-import type { CalibrationPlacement } from "../../core/types";
 
 type CalibrationDifficultyKey = "beginner" | "intermediate" | "advanced" | "master";
 
@@ -43,26 +42,31 @@ const calibrationTiers: readonly CalibrationTier[] = [
 ];
 
 interface CalibrationSummaryStepProps {
-  placement: CalibrationPlacement;
+  openPracticeAccess?: boolean;
+  placement: CalibrationDifficultyKey;
   onStartDifficulty: (difficulty: CalibrationDifficultyKey) => void;
 }
 
-const placementCopy: Record<CalibrationPlacement, { title: string; body: string }> = {
+const placementCopy: Record<CalibrationDifficultyKey, { title: string; body: string }> = {
   beginner: {
-    title: "Beginner unlocked",
-    body: "We'll start with the foundations and build up quickly. You'll practise the core patterns before adding compensation and anion gap reasoning."
+    title: "Beginner",
+    body: "Beginner is a useful place to strengthen your recognition of primary acid–base disorders and build the foundations. Practise the core patterns before moving on to more complex reasoning."
   },
   intermediate: {
-    title: "Intermediate unlocked",
-    body: "You read pH quickly and your compensation instincts are solid. We'll start you here so cases feel challenging without being a slog."
+    title: "Intermediate",
+    body: "Your primary-disorder recognition looked solid. Intermediate is a useful starting point for practising compensation."
   },
   advanced: {
-    title: "Advanced unlocked",
-    body: "Strong start. You handled compensation and anion gap reasoning well. We'll start you with harder cases that need less prompting."
+    title: "Advanced",
+    body: "Refine your compensation reasoning and develop your anion-gap interpretation."
+  },
+  master: {
+    title: "Master",
+    body: "Refine your skills and bring everything together. Tackle mixed disorders, master delta-gap analysis, and put your clinical reasoning to the test in the Exam Suite."
   }
 };
 
-function isTierLocked(tier: CalibrationDifficultyKey, placement: CalibrationPlacement): boolean {
+function isTierLocked(tier: CalibrationDifficultyKey, placement: CalibrationDifficultyKey): boolean {
   if (tier === "master") return true;
   if (placement === "beginner") return tier === "intermediate" || tier === "advanced";
   if (placement === "intermediate") return tier === "advanced";
@@ -82,7 +86,7 @@ export function CalibrationSummaryStep(props: CalibrationSummaryStepProps) {
     <section className="calibration-summary-page" aria-labelledby="calibration-summary-title">
       <div className="calibration-summary-page__header">
         <span className="calibration-summary-page__eyebrow">
-          <span>Calibration complete</span>
+          <span>Suggested level</span>
         </span>
         <h1 id="calibration-summary-title">{copy.title}</h1>
         <p>{copy.body}</p>
@@ -90,7 +94,7 @@ export function CalibrationSummaryStep(props: CalibrationSummaryStepProps) {
 
       <ol className="calibration-summary-page__tiers" aria-label="Calibration tiers">
         {calibrationTiers.map((tier) => {
-          const locked = tier.locked || isTierLocked(tier.key, props.placement);
+          const locked = !props.openPracticeAccess && (tier.locked || isTierLocked(tier.key, props.placement));
 
           return (
             <li
@@ -115,7 +119,7 @@ export function CalibrationSummaryStep(props: CalibrationSummaryStepProps) {
                 )}
                 <span className="calibration-summary-page__tier-copy">
                   <span>{tier.label}</span>
-                  <span>{locked ? tier.lockedDescription ?? tier.description : tier.description}</span>
+                  <span>{props.openPracticeAccess && tier.key === "master" ? "Detect mixed disorders" : locked ? tier.lockedDescription ?? tier.description : tier.description}</span>
                 </span>
                 {!locked && tier.key === selectedDifficulty ? (
                   <span className="calibration-summary-page__tier-marker">Start here</span>

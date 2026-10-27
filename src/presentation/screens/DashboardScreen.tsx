@@ -14,6 +14,7 @@ import {
   canAccessDifficulty,
   getCasesRemainingToday,
   getDifficultyMeta,
+  getReleaseFlags,
   getLevelProgress,
   getReadinessGateProgressMessage
 } from "../../core/progression";
@@ -124,7 +125,12 @@ export function DashboardScreen() {
     state.storage?.loadLastPracticeDifficulty() ?? null
   );
   const unlockedDifficulties = difficultyMeta.filter(item => canAccessDifficulty(progressionInput, item.level));
-  const currentTier = unlockedDifficulties.at(-1)?.label ?? "Beginner";
+  const openPracticeAccess = getReleaseFlags(payload?.progressionConfig ?? null).enable_open_practice_access;
+  const selectedDifficulty = state.storage?.loadLastPracticeDifficulty()
+    ?? state.userState.calibrationRecommendation ?? state.userState.calibrationPlacement ?? defaultDifficulty;
+  const currentTier = openPracticeAccess
+    ? selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)
+    : unlockedDifficulties.at(-1)?.label ?? "Beginner";
   const learningPath = getVisibleLearnLevels(state.userState.level).filter(level => level.slug !== "hidden");
   const dailyClinicalPearl = getDailyClinicalPearl();
 
@@ -261,8 +267,8 @@ export function DashboardScreen() {
               tone="green"
             />
           </Link>
-          <Link className="dashboard-stat-link" to="/insights" aria-label="View current tier insights">
-            <StatCard label="Current Tier" value={currentTier} meta={`Level ${state.userState.level}`} icon={Trophy} tone="violet" />
+          <Link className="dashboard-stat-link" to="/insights" aria-label={openPracticeAccess ? "View practice insights" : "View current tier insights"}>
+            <StatCard label={openPracticeAccess ? "Practice difficulty" : "Current Tier"} value={currentTier} meta={`Level ${state.userState.level}`} icon={Trophy} tone="violet" />
           </Link>
           <Link className="dashboard-stat-link" to="/insights" aria-label="View streak insights">
             <StatCard label="Daily Streak" value={state.userState.streak} meta={`Personal best: ${longestStreak}`} icon={Flame} tone="orange" />

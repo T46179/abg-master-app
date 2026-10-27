@@ -15,6 +15,8 @@ const trackEvent = vi.fn();
 const trackPageView = vi.fn();
 const mockStorage = {
   loadSeenCaseState: () => ({}),
+  loadPracticeIntroSeen: () => false,
+  loadAppAreaVisited: () => false,
   savePressureUnitPreference
 };
 

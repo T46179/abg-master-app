@@ -1,6 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CalibrationCompletionRecord, CalibrationPlacement, ProgressRow, ProgressionConfig } from "./types";
+import type { CalibrationCompletionRecord, CalibrationPlacement, CalibrationRecommendation, ProgressRow, ProgressionConfig } from "./types";
 import { getBetaReleaseNumber, getProgressionVersion } from "./progression";
+
+function withRecommendation(progress: Partial<ProgressRow> | null, recommendation: unknown, version: number) {
+  if (!progress?.calibration_completed || version < 3
+    || !["beginner", "intermediate", "advanced", "master"].includes(String(recommendation))
+    || progress.calibration_placement !== (recommendation === "master" ? "advanced" : recommendation)) return progress;
+  return { ...progress, calibration_recommendation: recommendation as CalibrationRecommendation, calibration_version: version };
+}
 
 export async function completeCalibrationProgress(input: {
   supabase: SupabaseClient;
@@ -16,12 +23,18 @@ export async function completeCalibrationProgress(input: {
     p_beta_release_number: input.betaReleaseNumber ?? getBetaReleaseNumber(input.progressionConfig),
     p_placement: input.placement,
     p_calibration_version: input.completion.version,
-    p_attempt_payload: input.attemptPayload ?? {},
+    p_attempt_payload: {
+      ...input.attemptPayload,
+      ...(input.completion.version >= 3 ? {
+        recommendation: input.completion.recommendation ?? input.placement,
+        scoring_version: input.completion.version
+      } : {})
+    },
     p_progression_config: input.progressionConfig ?? {}
   });
 
   if (error) throw error;
-  return data as Partial<ProgressRow> | null;
+  return withRecommendation(data as Partial<ProgressRow> | null, input.completion.recommendation, input.completion.version);
 }
 
 export async function loadRemoteProgressRow(input: {
@@ -40,5 +53,20 @@ export async function loadRemoteProgressRow(input: {
     .maybeSingle();
 
   if (error) throw error;
-  return data as Partial<ProgressRow> | null;
+  const progress = data as Partial<ProgressRow> | null;
+  if (!progress?.calibration_completed) return progress;
+  // Recommendation metadata lives in the existing attempt JSON, separately from
+  // the legacy progression placement. Never expand earned Master access here.
+  let attempts = input.supabase.from("calibration_attempts")
+    .select("placement, calibration_version, attempt_payload")
+    .eq("user_id", input.userId)
+    .eq("progression_version", input.progressionVersion ?? getProgressionVersion(input.progressionConfig))
+    .eq("beta_release_number", input.betaReleaseNumber ?? getBetaReleaseNumber(input.progressionConfig))
+    .gte("calibration_version", 3);
+  if (progress.reset_at) attempts = attempts.gt("completed_at", progress.reset_at);
+  const { data: attempt, error: attemptError } = await attempts.order("completed_at", { ascending: false }).limit(1).maybeSingle();
+  if (attemptError) throw attemptError;
+  return attempt && attempt.placement === progress.calibration_placement
+    ? withRecommendation(progress, attempt.attempt_payload?.recommendation, Number(attempt.calibration_version))
+    : progress;
 }

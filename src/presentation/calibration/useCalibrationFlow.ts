@@ -1,5 +1,5 @@
 import { useCallback, useReducer } from "react";
-import type { CalibrationPlacement } from "../../core/types";
+import type { CalibrationRecommendation } from "../../core/types";
 import type { BloodGasBlitzAttemptResult } from "../minigames/BloodGasBlitz";
 import {
   getCalibrationStep,
@@ -13,7 +13,7 @@ import {
 import type { BuildAGasCalibrationSelection, CalibrationPhase } from "./calibrationTypes";
 
 export interface CalibrationCompletionOutcome {
-  placement: CalibrationPlacement;
+  placement: CalibrationRecommendation;
   results: CalibrationScoringInput;
 }
 
@@ -25,7 +25,7 @@ export interface CalibrationFlowState {
   compensationFitSelection: string | null;
   finalDiagnosisSelection: string | null;
   calibrationResults: CalibrationScoringInput;
-  placement: CalibrationPlacement;
+  placement: CalibrationRecommendation;
   phaseStartedAt: number;
 }
 

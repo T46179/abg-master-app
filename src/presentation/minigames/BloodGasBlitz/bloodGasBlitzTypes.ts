@@ -3,8 +3,8 @@ export const BLOOD_GAS_BLITZ_GAME_ID = "blood-gas-blitz" as const;
 export type BloodGasBlitzGameId = typeof BLOOD_GAS_BLITZ_GAME_ID;
 export type BloodGasBlitzPhase = "ready" | "countdown" | "playing" | "results";
 export type BloodGasBlitzAnswerLabel = "Normal" | "Acidaemia" | "Alkalaemia";
-export type BloodGasBlitzVersionId = "ph-classification-v1" | "co2-classification-v1";
-export type BloodGasBlitzPlayableVersionId = "ph-classification-v1";
+export type BloodGasBlitzVersionId = "ph-classification-v1" | "ph-classification-calibration-v3" | "co2-classification-v1";
+export type BloodGasBlitzPlayableVersionId = "ph-classification-v1" | "ph-classification-calibration-v3";
 export type BloodGasBlitzPlacement = "learn-foundations" | "onboarding-calibration" | "learn-intermediate-card";
 
 export interface BloodGasBlitzQuestion {

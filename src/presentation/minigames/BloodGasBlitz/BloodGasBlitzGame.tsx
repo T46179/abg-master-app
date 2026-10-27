@@ -451,7 +451,7 @@ export function BloodGasBlitzGame({
             <h2>Test your reflexes</h2>
             <p>
               {preset === "onboarding-calibration"
-                ? "Classify the 10 pH values as fast as you can. Speed and accuracy matter."
+                ? `Classify the ${config.questionCount} pH values shown.`
                 : "Classify the pH values as fast as you can"}
             </p>
             {preset === "learn-foundations" ? (

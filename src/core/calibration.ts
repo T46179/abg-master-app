@@ -1,11 +1,21 @@
-import type { CalibrationCompletionRecord, CalibrationPlacement } from "./types";
+import type { CalibrationCompletionRecord, CalibrationRecommendation } from "./types";
 
-export const CALIBRATION_COMPLETION_VERSION = 1;
+export const CALIBRATION_COMPLETION_VERSION = 3;
 
-export function createCalibrationCompletionRecord(placement: CalibrationPlacement): CalibrationCompletionRecord {
+export function createCalibrationCompletionRecord(recommendation: CalibrationRecommendation): CalibrationCompletionRecord {
   return {
     completed: true,
-    placement,
+    placement: recommendation === "master" ? "advanced" : recommendation,
+    recommendation,
     version: CALIBRATION_COMPLETION_VERSION
+  };
+}
+
+export function getCalibrationCompletionUserFields(completion: CalibrationCompletionRecord) {
+  return {
+    calibrationCompleted: true,
+    calibrationPlacement: completion.placement,
+    calibrationRecommendation: completion.recommendation ?? completion.placement,
+    calibrationVersion: completion.version
   };
 }
