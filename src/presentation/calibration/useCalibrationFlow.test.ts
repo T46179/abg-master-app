@@ -9,14 +9,14 @@ import {
 
 const blitzResult: BloodGasBlitzAttemptResult = {
   gameId: "blood-gas-blitz",
-  versionId: "ph-classification-v1",
+  versionId: "ph-classification-calibration-v3",
   placement: "onboarding-calibration",
   startedAt: "2026-05-06T00:00:00.000Z",
   completedAt: "2026-05-06T00:00:10.000Z",
-  correctCount: 9,
-  totalQuestions: 10,
+  correctCount: 5,
+  totalQuestions: 6,
   elapsedMs: 10000,
-  accuracy: 90,
+  accuracy: 83,
   averageMsPerQuestion: 1000,
   maxStreak: 5,
   answers: []
@@ -50,7 +50,7 @@ describe("calibration flow", () => {
     state = calibrationFlowReducer(state, { type: "continue", now: 4000 });
     expect(state.phase).toBe("mixed-process-challenge");
 
-    state = calibrationFlowReducer(state, { type: "setFinalDiagnosisSelection", answer: "Raised anion gap metabolic acidosis" });
+    state = calibrationFlowReducer(state, { type: "setFinalDiagnosisSelection", answer: "raised anion gap metabolic acidosis" });
     state = calibrationFlowReducer(state, { type: "continue", now: 5000 });
     expect(state.phase).toBe("analysing-sample");
 
@@ -99,8 +99,9 @@ describe("calibration flow", () => {
     });
   });
 
-  it("computes the same final placement as the current calibration path", () => {
+  it("recommends Master with one pH slip and strong clinical answers", () => {
     let state = createInitialCalibrationFlowState(1000);
+    state = calibrationFlowReducer(state, { type: "recordBloodGasBlitzResult", result: blitzResult });
 
     state = calibrationFlowReducer(state, { type: "continue", now: 2000 });
     state = calibrationFlowReducer(state, {
@@ -110,20 +111,20 @@ describe("calibration flow", () => {
     state = calibrationFlowReducer(state, { type: "continue", now: 3000 });
     state = calibrationFlowReducer(state, { type: "setCompensationFitSelection", answer: "Appropriate compensation" });
     state = calibrationFlowReducer(state, { type: "continue", now: 4000 });
-    state = calibrationFlowReducer(state, { type: "setFinalDiagnosisSelection", answer: "Raised anion gap metabolic acidosis" });
+    state = calibrationFlowReducer(state, { type: "setFinalDiagnosisSelection", answer: "raised anion gap metabolic acidosis" });
 
     const outcome = getCalibrationContinueOutcome(state, 5000);
 
     expect(outcome.completion).toMatchObject({
-      placement: "advanced",
+      placement: "master",
       results: {
         finalDiagnosis: {
-          selectedAnswer: "Raised anion gap metabolic acidosis",
+          selectedAnswer: "raised anion gap metabolic acidosis",
           elapsedMs: 1000
         }
       }
     });
-    expect(outcome.nextState.placement).toBe("advanced");
+    expect(outcome.nextState.placement).toBe("master");
     expect(outcome.nextState.phase).toBe("analysing-sample");
   });
 });

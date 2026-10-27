@@ -4,6 +4,7 @@ export interface RuntimeConfig {
 }
 
 export interface ReleaseFlags {
+  enable_open_practice_access: boolean;
   enable_all_difficulties: boolean;
   enable_unlimited_cases: boolean;
   enable_learn_preview: boolean;
@@ -13,10 +14,12 @@ export interface ReleaseFlags {
 }
 
 export type CalibrationPlacement = "beginner" | "intermediate" | "advanced";
+export type CalibrationRecommendation = CalibrationPlacement | "master";
 
 export interface CalibrationCompletionRecord {
   completed: true;
   placement: CalibrationPlacement;
+  recommendation?: CalibrationRecommendation;
   version: number;
 }
 
@@ -367,6 +370,8 @@ export interface UserState {
   betaReleaseNumber?: number | null;
   calibrationCompleted?: boolean;
   calibrationPlacement?: CalibrationPlacement | null;
+  calibrationRecommendation?: CalibrationRecommendation | null;
+  calibrationVersion?: number;
   calibrationCompletedAt?: string | null;
   intermediateUnlockedAt?: string | null;
   advancedUnlockedAt?: string | null;
@@ -510,6 +515,9 @@ export interface ProgressRow {
   last_case_date: string | null;
   calibration_completed?: boolean | null;
   calibration_placement?: CalibrationPlacement | null;
+  // Hydrated from calibration_attempts JSON; these are not user_progress columns.
+  calibration_recommendation?: CalibrationRecommendation | null;
+  calibration_version?: number;
   calibration_completed_at?: string | null;
   placement_boost_completed_at?: string | null;
   intermediate_unlocked_at?: string | null;

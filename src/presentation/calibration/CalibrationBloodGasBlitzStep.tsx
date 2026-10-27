@@ -14,7 +14,7 @@ export function CalibrationBloodGasBlitzStep(props: CalibrationBloodGasBlitzStep
   return (
     <BloodGasBlitzGame
       preset="onboarding-calibration"
-      versionId="ph-classification-v1"
+      versionId="ph-classification-calibration-v3"
       onResult={props.onResult}
       onComplete={props.onComplete}
       onPhaseChange={props.onPhaseChange}

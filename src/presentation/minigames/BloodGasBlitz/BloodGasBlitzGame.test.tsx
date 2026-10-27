@@ -61,6 +61,7 @@ describe("BloodGasBlitzGame", () => {
           onResult={onResult}
           onXpAwarded={onXpAwarded}
           preset="onboarding-calibration"
+          versionId="ph-classification-calibration-v3"
         />
       );
     });
@@ -146,14 +147,14 @@ describe("BloodGasBlitzGame", () => {
   it("uses the calibration preset without XP chrome or XP awards", () => {
     const { onXpAwarded, onResult } = renderCalibrationGame();
 
-    expect(container.textContent).toContain("Classify the 10 pH values as fast as you can. Speed and accuracy matter.");
+    expect(container.textContent).toContain("Classify the 6 pH values shown.");
     expect(container.textContent).not.toContain("Earn bonus XP with streaks");
     expect(container.querySelector(".speed-check__rules")).toBeNull();
 
     startGame();
 
     expect(container.textContent).toContain("Classify the pH");
-    expect(container.querySelectorAll(".speed-check__progress-dot")).toHaveLength(10);
+    expect(container.querySelectorAll(".speed-check__progress-dot")).toHaveLength(6);
     expect(container.querySelector(".speed-check__timer")).toBeTruthy();
     expect(container.textContent).not.toContain("Level 1");
     expect(container.querySelector(".speed-check__xp-card")).toBeNull();
@@ -164,10 +165,10 @@ describe("BloodGasBlitzGame", () => {
     expect(container.querySelector(".speed-check__bubble")).toBeNull();
     expect(onXpAwarded).not.toHaveBeenCalled();
 
-    for (let index = 0; index < 10; index += 1) {
+    for (let index = 0; index < 6; index += 1) {
       if (index > 0) clickButton(getVisibleQuestionAnswer());
       act(() => {
-        const delay = index === 9 ? 960 : 560;
+        const delay = index === 5 ? 960 : 560;
         now += delay;
         vi.advanceTimersByTime(delay);
       });
@@ -176,8 +177,8 @@ describe("BloodGasBlitzGame", () => {
     expect(onResult).toHaveBeenCalledTimes(1);
     expect(onResult.mock.calls[0][0]).toMatchObject({
       placement: "onboarding-calibration",
-      correctCount: 10,
-      totalQuestions: 10
+      correctCount: 6,
+      totalQuestions: 6
     });
     expect(container.textContent).not.toContain("Retry");
     expect(container.textContent).toContain("Continue");

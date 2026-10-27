@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 import { MetricLabel, MetricReference, MetricValue } from "../practice/MetricText";
 import { mixedProcessAbgMetrics, mixedProcessOptions, mixedProcessSecondaryMetrics } from "./calibrationConfig";
+import type { PressureUnit } from "../../core/types";
+import { getCalibrationDisplayMetric } from "./calibrationMetrics";
 
 interface MixedProcessCalibrationStepProps {
+  pressureUnit?: PressureUnit;
   disabled?: boolean;
   onCanContinueChange?: (canContinue: boolean) => void;
   onSelectionChange?: (answer: string | null) => void;
 }
 
 export function MixedProcessCalibrationStep({
+  pressureUnit = "mmHg",
   disabled = false,
   onCanContinueChange,
   onSelectionChange
@@ -29,7 +33,7 @@ export function MixedProcessCalibrationStep({
       <section className="calibration-compensation__card calibration-compensation__values">
         <span className="section-header__eyebrow">ABG Values</span>
         <div className="metric-grid metric-grid--primary calibration-compensation__metric-grid">
-          {mixedProcessAbgMetrics.map(metric => (
+          {mixedProcessAbgMetrics.map(metric => getCalibrationDisplayMetric(metric, pressureUnit)).map(metric => (
             <article className="metric-card" key={metric.label}>
               <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
               <MetricValue renderedValue={metric.value} unit={metric.unit} abnormal={metric.abnormal} />

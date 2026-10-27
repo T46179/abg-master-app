@@ -6,6 +6,7 @@
     "version": "v2",
     "beta_release_number": 2,
     "release_flags": {
+      "enable_open_practice_access": true,
       "enable_all_difficulties": false,
       "enable_unlimited_cases": true,
       "enable_learn_preview": false,

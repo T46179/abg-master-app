@@ -43,11 +43,15 @@ export function AppShell() {
     hasPendingSubmission: Boolean(state.practiceState.pendingSubmission)
   });
   const shouldHoldLearnerRoute = shouldHoldLearnerRouteForCalibration({
+    hasSeenIntroduction: state.storage?.loadPracticeIntroSeen() ?? false,
+    hasVisitedAppArea: state.storage?.loadAppAreaVisited() ?? false,
     pathname: location.pathname,
     calibration: state.calibrationState,
     hasMeaningfulProgress
   });
   const shouldRedirectToCalibration = shouldRedirectToCalibrationOnboarding({
+    hasSeenIntroduction: state.storage?.loadPracticeIntroSeen() ?? false,
+    hasVisitedAppArea: state.storage?.loadAppAreaVisited() ?? false,
     pathname: location.pathname,
     calibration: state.calibrationState,
     hasMeaningfulProgress

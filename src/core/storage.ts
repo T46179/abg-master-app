@@ -171,7 +171,10 @@ export function sanitizeCalibrationCompletion(source: unknown): CalibrationCompl
   return {
     completed: true,
     placement: placement as CalibrationPlacement,
-    version
+    version,
+    ...(version >= 3 && sanitizePracticeDifficulty(record.recommendation)
+      && (record.recommendation === "master" ? "advanced" : record.recommendation) === placement
+      ? { recommendation: record.recommendation as CalibrationCompletionRecord["recommendation"] } : {})
   };
 }
 

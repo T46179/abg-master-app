@@ -43,6 +43,8 @@ vi.mock("../../app/AppProvider", () => ({
         completionSource: "none"
       },
       storage: {
+        loadPracticeIntroSeen: () => false,
+        loadAppAreaVisited: () => false,
         saveAppAreaVisited,
         loadSeenCaseState: () => ({})
       }

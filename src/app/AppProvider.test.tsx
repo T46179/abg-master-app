@@ -614,7 +614,7 @@ describe("AppProvider protected practice recovery", () => {
     expect(container.querySelector("[data-testid='calibration-placement']")?.textContent).toBe("advanced");
   });
 
-  it("deduplicates rapid Skip actions and retains one pending operation after sync failure", async () => {
+  it("records rapid Skip actions without fabricating a completion or pending operation", async () => {
     completeCalibrationProgress.mockRejectedValue(new Error("offline"));
 
     act(() => {
@@ -632,10 +632,11 @@ describe("AppProvider protected practice recovery", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
 
-    expect(storageAdapter.saveCalibrationCompletion).toHaveBeenCalledTimes(1);
-    expect(completeCalibrationProgress).toHaveBeenCalledTimes(1);
-    expect(loadPendingCalibrationCompletion(localStorage)?.placement).toBe("beginner");
-    expect(loadPendingCalibrationCompletion(localStorage)?.operationId).toBeTruthy();
+    expect(storageAdapter.saveCalibrationCompletion).not.toHaveBeenCalled();
+    expect(completeCalibrationProgress).not.toHaveBeenCalled();
+    expect(loadPendingCalibrationCompletion(localStorage)).toBeNull();
+    expect(storageAdapter.savePracticeIntroSeen).toHaveBeenCalledWith(true);
+    expect(storageAdapter.saveLastPracticeDifficulty).toHaveBeenCalledWith("beginner");
   });
 
   it("does not duplicate pending calibration completion calls in Strict Mode", async () => {

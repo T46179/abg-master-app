@@ -121,18 +121,17 @@ export const mixedProcessSecondaryMetrics: readonly CalibrationMetricDefinition[
 ] as const;
 
 export const mixedProcessOptions = [
-  "Metabolic acidosis",
-  "Respiratory acidosis",
-  "Raised anion gap metabolic acidosis",
-  "Normal anion gap metabolic acidosis"
+  "normal anion gap metabolic acidosis",
+  "raised anion gap metabolic acidosis",
+  "respiratory acidosis",
+  "mixed metabolic acidosis and respiratory alkalosis"
 ] as const;
 
 export const calibrationScoringRules = {
   bloodGasBlitz: {
-    excellentCorrectCount: 9,
-    partialCorrectCount: 7,
-    fastMs: 15000,
-    partialMs: 25000
+    questionCount: 6,
+    excellentCorrectCount: 6,
+    partialCorrectCount: 5
   },
   buildAGas: {
     maxAccuracy: 2,
@@ -140,31 +139,24 @@ export const calibrationScoringRules = {
       pH: { "7.28": 0.75 },
       HCO3: { "14": 0.75 },
       PaCO2: { "28": 0.5, "40": 0.25 }
-    },
-    fastMs: 20000,
-    partialMs: 45000
+    }
   },
   compensationFit: {
     correctAnswer: "Appropriate compensation",
-    accuracy: 2,
-    fastMs: 20000,
-    partialMs: 45000
+    accuracy: 2
   },
   finalDiagnosis: {
     answerAccuracy: {
-      "Raised anion gap metabolic acidosis": 3,
-      "Metabolic acidosis": 1.5,
-      "Normal anion gap metabolic acidosis": 1,
-      "Respiratory acidosis": 0
-    },
-    fastMs: 30000,
-    partialMs: 60000
+      "normal anion gap metabolic acidosis": 0,
+      "raised anion gap metabolic acidosis": 3,
+      "respiratory acidosis": 0,
+      "mixed metabolic acidosis and respiratory alkalosis": 0
+    }
   },
   placement: {
-    beginnerAccuracyMax: 3,
-    beginnerTotalMax: 4,
-    advancedTotalMin: 10,
-    advancedAccuracyMin: 7
+    minimumPhCorrect: 5,
+    foundationBuildAccuracy: 1.5,
+    masterBuildAccuracy: 1.75
   }
 } as const;
 

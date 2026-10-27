@@ -105,7 +105,7 @@ describe("view helpers", () => {
     expect(getDefaultPracticeDifficulty(input, "advanced")).toBe("advanced");
   });
 
-  it("falls back safely when the stored practice difficulty is not accessible", () => {
+  it("preserves a locked stored preference for explicit reselection", () => {
     expect(getDefaultPracticeDifficulty({
       progressionConfig: {
         difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" }
@@ -127,7 +127,7 @@ describe("view helpers", () => {
         appliedProtectedCaseTokens: [],
         learnProgress: {}
       }
-    }, "master")).toBe("beginner");
+    }, "master")).toBe("master");
   });
 
   it("honors local calibration access before remote progress sync catches up", () => {

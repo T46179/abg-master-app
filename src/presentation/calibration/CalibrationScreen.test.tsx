@@ -29,7 +29,8 @@ const storageAdapter = vi.hoisted(() => ({
   loadPracticeIntroSeen: vi.fn(() => true),
   savePracticeIntroSeen: vi.fn(),
   loadAppAreaVisited: vi.fn(() => true),
-  saveAppAreaVisited: vi.fn()
+  saveAppAreaVisited: vi.fn(),
+  savePressureUnitPreference: vi.fn()
 }));
 
 const analytics = vi.hoisted(() => ({
@@ -38,6 +39,10 @@ const analytics = vi.hoisted(() => ({
 const saveLocalCalibrationCompletion = vi.hoisted(() => vi.fn(async () => undefined));
 const skipCalibrationOnboarding = vi.hoisted(() => vi.fn(async () => undefined));
 const setUserState = vi.hoisted(() => vi.fn(async () => undefined));
+const calibrationSession = vi.hoisted(() => ({ pressureUnit: "mmHg" as "mmHg" | "kPa" }));
+const patchSessionState = vi.hoisted(() => vi.fn((patch: { pressureUnit?: "mmHg" | "kPa" }) => {
+  if (patch.pressureUnit) calibrationSession.pressureUnit = patch.pressureUnit;
+}));
 const calibrationState = vi.hoisted(() => ({
   localCompletion: null as null | { completed: true; placement: "beginner" | "intermediate" | "advanced"; version: number },
   remoteCompletion: null,
@@ -50,9 +55,10 @@ vi.mock("../../app/AppProvider", () => ({
   useAppContext: () => ({
     state: {
       status: "ready",
+      sessionState: calibrationSession,
       storage: storageAdapter,
       supabase: null,
-      payload: { progressionConfig: null },
+      payload: { progressionConfig: { release_flags: { enable_open_practice_access: true } } },
       userState: {
         xp: 0,
         level: 1,
@@ -71,6 +77,7 @@ vi.mock("../../app/AppProvider", () => ({
       calibrationState
     },
     setUserState,
+    patchSessionState,
     saveLocalCalibrationCompletion,
     skipCalibrationOnboarding
   })
@@ -90,14 +97,14 @@ vi.mock("../minigames/BloodGasBlitz", () => ({
           type="button"
           onClick={() => props?.onResult?.({
             gameId: "blood-gas-blitz",
-            versionId: "ph-classification-v1",
+            versionId: "ph-classification-calibration-v3",
             placement: "onboarding-calibration",
             startedAt: "2026-05-06T00:00:00.000Z",
             completedAt: "2026-05-06T00:00:10.000Z",
-            correctCount: 9,
-            totalQuestions: 10,
+            correctCount: 5,
+            totalQuestions: 6,
             elapsedMs: 10000,
-            accuracy: 0.9,
+            accuracy: 83,
             averageMsPerQuestion: 1000,
             maxStreak: 5,
             answers: []
@@ -115,6 +122,9 @@ describe("CalibrationScreen", () => {
   let root: ReturnType<typeof createRoot>;
 
   beforeEach(() => {
+    calibrationSession.pressureUnit = "mmHg";
+    patchSessionState.mockClear();
+    storageAdapter.savePressureUnitPreference.mockClear();
     latestBloodGasBlitzProps.value = null;
     analytics.trackEvent.mockClear();
     storageAdapter.loadCalibrationCompletion.mockReturnValue(null);
@@ -151,7 +161,7 @@ describe("CalibrationScreen", () => {
 
     act(() => {
       root.render(
-        <MemoryRouter initialEntries={["/calibration"]}>
+        <MemoryRouter initialEntries={["/calibration?difficulty=master"]}>
           <Routes>
             <Route path="/calibration" element={<CalibrationScreen />} />
             <Route path="/practice" element={<PracticeRouteProbe />} />
@@ -162,6 +172,10 @@ describe("CalibrationScreen", () => {
   }
 
   function clickButton(label: string) {
+    if (label === "Mock finish blitz") {
+      const emit = Array.from(container.querySelectorAll("button")).find(item => item.textContent?.includes("Mock emit result"));
+      act(() => emit?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    }
     const button = Array.from(container.querySelectorAll("button")).find(item => item.textContent?.includes(label));
     expect(button).toBeTruthy();
 
@@ -201,7 +215,7 @@ describe("CalibrationScreen", () => {
     expect(container.textContent).not.toContain("Continue");
     expect(latestBloodGasBlitzProps.value).toMatchObject({
       preset: "onboarding-calibration",
-      versionId: "ph-classification-v1"
+      versionId: "ph-classification-calibration-v3"
     });
     expect(latestBloodGasBlitzProps.value?.onXpAwarded).toBeUndefined();
     expect(latestBloodGasBlitzProps.value?.xpProgressLabel).toBeUndefined();
@@ -229,7 +243,7 @@ describe("CalibrationScreen", () => {
     expect(container.textContent).toContain("Use the values below to choose the best answer");
     expect(getButton("Submit").disabled).toBe(true);
 
-    clickButton("Raised anion gap metabolic acidosis");
+    clickButton("raised anion gap metabolic acidosis");
     expect(getButton("Submit").disabled).toBe(false);
     clickButton("Submit");
     expect(getButton("Submitting").disabled).toBe(true);
@@ -252,14 +266,14 @@ describe("CalibrationScreen", () => {
     act(() => {
       vi.advanceTimersByTime(20000);
     });
-    expect(container.textContent).toContain("Calibration complete");
-    expect(container.textContent).toContain("Advanced unlocked");
+    expect(container.textContent).toContain("Suggested level");
+    expect(container.querySelector("h1")?.textContent).toBe("Master");
     expect(container.textContent).toContain("Beginner");
     expect(container.textContent).toContain("Intermediate");
     expect(container.textContent).toContain("Advanced");
     expect(container.textContent).toContain("Master");
-    expect(container.textContent).toContain("Start advanced");
-    expect(container.textContent).toContain("Requires level 15 and consistent performance in Advanced cases");
+    expect(container.textContent).toContain("Start master");
+    expect(container.textContent).not.toContain("Requires level 15 and consistent performance in Advanced cases");
   });
 
   it("shows the analyser transition without calibration chrome and advances automatically", () => {
@@ -271,7 +285,7 @@ describe("CalibrationScreen", () => {
     clickButton("Continue");
     clickButton("Appropriate compensation");
     clickButton("Continue");
-    clickButton("Raised anion gap metabolic acidosis");
+    clickButton("raised anion gap metabolic acidosis");
     clickButton("Submit");
 
     expect(container.textContent).toContain("Almost There");
@@ -296,9 +310,9 @@ describe("CalibrationScreen", () => {
       vi.advanceTimersByTime(20000);
     });
 
-    expect(container.textContent).toContain("Calibration complete");
-    expect(container.textContent).toContain("Advanced unlocked");
-    expect(container.textContent).toContain("Start advanced");
+    expect(container.textContent).toContain("Suggested level");
+    expect(container.querySelector("h1")?.textContent).toBe("Master");
+    expect(container.textContent).toContain("Start master");
   });
 
   it("does not redirect when the current session persists its calibration completion", () => {
@@ -310,7 +324,7 @@ describe("CalibrationScreen", () => {
     clickButton("Continue");
     clickButton("Appropriate compensation");
     clickButton("Continue");
-    clickButton("Raised anion gap metabolic acidosis");
+    clickButton("raised anion gap metabolic acidosis");
     clickButton("Submit");
 
     act(() => {
@@ -330,8 +344,8 @@ describe("CalibrationScreen", () => {
     act(() => {
       vi.advanceTimersByTime(20000);
     });
-    expect(container.textContent).toContain("Calibration complete");
-    expect(container.textContent).toContain("Start advanced");
+    expect(container.textContent).toContain("Suggested level");
+    expect(container.textContent).toContain("Start master");
     expect(container.textContent).not.toContain("Practice route");
   });
 
@@ -412,7 +426,13 @@ describe("CalibrationScreen", () => {
     clickButton("Continue");
     clickButton("Appropriate compensation");
     clickButton("Continue");
-    clickButton("Raised anion gap metabolic acidosis");
+    expect(Array.from(container.querySelectorAll('.calibration-mixed-process .answer-option')).map(option => option.textContent)).toEqual([
+      "normal anion gap metabolic acidosis",
+      "raised anion gap metabolic acidosis",
+      "respiratory acidosis",
+      "mixed metabolic acidosis and respiratory alkalosis"
+    ]);
+    clickButton("raised anion gap metabolic acidosis");
     clickButton("Submit");
     act(() => {
       vi.advanceTimersByTime(800);
@@ -420,10 +440,10 @@ describe("CalibrationScreen", () => {
     act(() => {
       vi.advanceTimersByTime(20000);
     });
-    clickButton("Start advanced");
+    clickButton("Start master");
 
     expect(container.textContent).toContain("Practice route");
-    expect(container.textContent).toContain("?difficulty=advanced");
+    expect(container.textContent).toContain("?difficulty=master");
   });
 
   it("starts the selected easier practice case from the result", () => {
@@ -435,7 +455,7 @@ describe("CalibrationScreen", () => {
     clickButton("Continue");
     clickButton("Appropriate compensation");
     clickButton("Continue");
-    clickButton("Raised anion gap metabolic acidosis");
+    clickButton("raised anion gap metabolic acidosis");
     clickButton("Submit");
     act(() => {
       vi.advanceTimersByTime(800);
@@ -498,7 +518,7 @@ describe("CalibrationScreen", () => {
     act(() => {
       vi.advanceTimersByTime(34000);
     });
-    clickButton("Raised anion gap metabolic acidosis");
+    clickButton("raised anion gap metabolic acidosis");
     clickButton("Submit");
     clickButton("Submitting");
 
@@ -523,8 +543,8 @@ describe("CalibrationScreen", () => {
 
     events.forEach(([, payload]) => {
       expect(payload).toMatchObject({
-        version: "1",
-        placement_version: "1"
+        version: "3",
+        placement_version: "3"
       });
     });
 
@@ -537,7 +557,7 @@ describe("CalibrationScreen", () => {
       {
         step_id: "blood_gas_blitz",
         step_number: 1,
-        score_percent: 90,
+        score_percent: 83,
         time_taken_seconds: 10
       },
       {
@@ -549,21 +569,21 @@ describe("CalibrationScreen", () => {
       {
         step_id: "compensation_check",
         step_number: 3,
-        score_percent: 83,
+        score_percent: 100,
         time_taken_seconds: 23
       },
       {
         step_id: "mixed_process",
         step_number: 4,
-        score_percent: 88,
+        score_percent: 100,
         time_taken_seconds: 34
       }
     ]);
 
     expect(completedEvents[0][1]).toMatchObject({
-      placement: "advanced",
-      score_total: 11,
-      score_percent: 92
+      placement: "master",
+      score_total: 7.5,
+      score_percent: 94
     });
   });
 
@@ -581,6 +601,51 @@ describe("CalibrationScreen", () => {
     expect(storageAdapter.savePracticeIntroSeen).toHaveBeenCalledWith(true);
     expect(storageAdapter.saveAppAreaVisited).toHaveBeenCalledWith(true);
     expect(container.textContent).toContain("Mock Blood Gas Blitz Game");
+  });
+
+  it("sets the global unit before starting and keeps kPa display independent of scoring", () => {
+    vi.useFakeTimers();
+    storageAdapter.loadPracticeIntroSeen.mockReturnValue(false);
+    storageAdapter.loadAppAreaVisited.mockReturnValue(false);
+    renderScreen();
+    expect(container.querySelector('.main-nav__unit-option[aria-pressed="true"]')?.textContent).toBe("mmHg");
+    expect(container.querySelector('.calibration-onboarding__header .main-nav__unit-control')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Skip calibration and start at Beginner"]')).toBeNull();
+    expect(container.textContent).not.toMatch(/\bUnit\b/);
+    clickButton("kPa");
+    expect(patchSessionState).toHaveBeenCalledWith({ pressureUnit: "kPa" });
+    expect(storageAdapter.savePressureUnitPreference).toHaveBeenCalledWith("kPa");
+    renderScreen();
+    expect(container.querySelector('.main-nav__unit-option[aria-pressed="true"]')?.textContent).toBe("kPa");
+    clickButton("Begin Calibration");
+    clickButton("Mock begin blitz");
+    clickButton("Mock finish blitz");
+    expect(container.querySelector('.calibration-build-gas__row-unit')?.textContent).toBe("kPa");
+    clickBuildAGasChoice("pH 7.28 low");
+    clickBuildAGasChoice("PaCO2 3.7 low");
+    clickBuildAGasChoice("HCO3 14 low");
+    clickButton("Continue");
+    expect(container.textContent).toContain("3.5kPa");
+    expect(container.textContent).toContain("4.7 - 6.0 kPa");
+    clickButton("Appropriate compensation");
+    clickButton("Continue");
+    expect(container.textContent).toContain("3.6kPa");
+    clickButton("raised anion gap metabolic acidosis");
+    clickButton("Submit");
+    act(() => vi.advanceTimersByTime(800));
+    act(() => vi.advanceTimersByTime(20000));
+    expect(container.querySelector("h1")?.textContent).toBe("Master");
+    expect(saveLocalCalibrationCompletion).toHaveBeenCalledWith({ completed: true, placement: "advanced", recommendation: "master", version: 3 });
+    expect(analytics.trackEvent).toHaveBeenCalledWith("calibration_completed", expect.objectContaining({ pressure_unit: "kPa", placement: "master" }));
+  });
+
+  it("honours a saved global kPa preference on the invitation", () => {
+    calibrationSession.pressureUnit = "kPa";
+    storageAdapter.loadPracticeIntroSeen.mockReturnValue(false);
+    storageAdapter.loadAppAreaVisited.mockReturnValue(false);
+    renderScreen();
+    expect(container.querySelector('.main-nav__unit-option[aria-pressed="true"]')?.textContent).toBe("kPa");
+    expect(storageAdapter.savePressureUnitPreference).not.toHaveBeenCalled();
   });
 
   it("resumes at Blood Gas Blitz after Begin followed by abandonment", () => {
@@ -626,8 +691,8 @@ describe("CalibrationScreen", () => {
       [
         "calibration_skipped",
         {
-          version: "1",
-          placement_version: "1",
+          version: "3",
+          placement_version: "3",
           destination_difficulty: "beginner"
         }
       ]
@@ -635,4 +700,5 @@ describe("CalibrationScreen", () => {
     expect(analytics.trackEvent).not.toHaveBeenCalledWith("calibration_started", expect.anything());
     expect(container.textContent).toContain("Practice route ?difficulty=beginner");
   });
+
 });

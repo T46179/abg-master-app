@@ -90,9 +90,12 @@ export function shouldHoldLearnerRouteForCalibration(input: {
   pathname: string;
   calibration: CalibrationResolutionState;
   hasMeaningfulProgress: boolean;
+  hasSeenIntroduction?: boolean;
+  hasVisitedAppArea?: boolean;
 }): boolean {
   return Boolean(
     isLearnerEntryRoute(input.pathname) &&
+    !input.hasSeenIntroduction && !input.hasVisitedAppArea &&
     !input.hasMeaningfulProgress &&
     !input.calibration.localCompletion &&
     !input.calibration.remoteCompletion &&
@@ -104,9 +107,12 @@ export function shouldRedirectToCalibrationOnboarding(input: {
   pathname: string;
   calibration: CalibrationResolutionState;
   hasMeaningfulProgress: boolean;
+  hasSeenIntroduction?: boolean;
+  hasVisitedAppArea?: boolean;
 }): boolean {
   return Boolean(
     isLearnerEntryRoute(input.pathname) &&
+    !input.hasSeenIntroduction && !input.hasVisitedAppArea &&
     !input.hasMeaningfulProgress &&
     !input.calibration.effectiveCompletion &&
     input.calibration.remoteStatus !== "loading"

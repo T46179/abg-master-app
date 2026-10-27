@@ -29,6 +29,8 @@ const mockState = vi.hoisted(() => ({
   },
   appStatus: { blocking: null, warnings: {} },
   storage: {
+    loadPracticeIntroSeen: vi.fn(() => false),
+    loadAppAreaVisited: vi.fn(() => false),
     loadSeenCaseState: () => ({}),
     saveAppAreaVisited: vi.fn()
   },
@@ -65,6 +67,8 @@ describe("AppShell calibration guard", () => {
     document.body.appendChild(container);
     root = createRoot(container);
     mockState.calibrationState.localCompletion = null;
+    mockState.storage.loadPracticeIntroSeen.mockReturnValue(false);
+    mockState.storage.loadAppAreaVisited.mockReturnValue(false);
     mockState.calibrationState.remoteCompletion = null;
     mockState.calibrationState.remoteStatus = "absent";
     mockState.calibrationState.effectiveCompletion = null;
@@ -109,6 +113,13 @@ describe("AppShell calibration guard", () => {
   it("leaves newly introduced routes unguarded by default", () => {
     renderPath("/new-route");
     expect(container.textContent).toContain("Learner content mounted");
+  });
+
+  it.each(["loadPracticeIntroSeen", "loadAppAreaVisited"] as const)("does not re-invite a visitor with %s", key => {
+    mockState.storage[key].mockReturnValue(true);
+    renderPath("/practice");
+    expect(container.textContent).toContain("Learner content mounted");
+    expect(container.textContent).not.toContain("Calibration destination");
   });
 
   it("permits local completion while remote state is still loading", () => {

@@ -1,7 +1,7 @@
 import { Award, Flame, Target, TrendingUp, Trophy } from "lucide-react";
 import { useAppContext } from "../../app/AppProvider";
 import { formatLevelProgressText } from "../../app/viewHelpers";
-import { calculateAccuracy, getLevelProgress, getMaxReachableLevel } from "../../core/progression";
+import { calculateAccuracy, getAccessibleDifficultyKeys, getLevelProgress, getMaxReachableLevel, getReleaseFlags } from "../../core/progression";
 import { ProgressBar } from "../primitives/ProgressBar";
 import { SectionHeader } from "../primitives/SectionHeader";
 import { Surface } from "../primitives/Surface";
@@ -13,6 +13,8 @@ export function ProfileScreen() {
   if (state.status === "error") return <ErrorView message={state.errorMessage} />;
 
   const payload = state.payload;
+  const openPracticeAccess = getReleaseFlags(payload?.progressionConfig ?? null).enable_open_practice_access;
+  const accessibleDifficulties = getAccessibleDifficultyKeys({ progressionConfig: payload?.progressionConfig ?? null, userState: state.userState });
   const levelProgress = getLevelProgress(payload?.progressionConfig ?? null, state.userState);
   const maxReachableLevel = getMaxReachableLevel(payload?.progressionConfig ?? null);
   const hasReachedMaxLevel = maxReachableLevel != null && state.userState.level >= maxReachableLevel;
@@ -46,8 +48,8 @@ export function ProfileScreen() {
       badge: state.userState.badges.length ? "Achievement" : "Pending"
     },
     {
-      title: `${state.userState.unlockedDifficulties.length} unlocked difficulties`,
-      description: `Highest unlocked difficulty: ${state.userState.unlockedDifficulties.at(-1) ?? "beginner"}`,
+      title: openPracticeAccess ? `${accessibleDifficulties.length} available difficulties` : `${state.userState.unlockedDifficulties.length} unlocked difficulties`,
+      description: openPracticeAccess ? `Available difficulties: ${accessibleDifficulties.join(", ")}` : `Highest unlocked difficulty: ${state.userState.unlockedDifficulties.at(-1) ?? "beginner"}`,
       badge: state.userState.isPremium ? "Premium" : "Free"
     }
   ];

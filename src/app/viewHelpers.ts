@@ -2,6 +2,7 @@ import { getDisplayMetricDefinition, getVisibleCaseMetrics, renderMetricValue, t
 import {
   canAccessDifficulty,
   DIFFICULTY_ORDER,
+  getReleaseFlags,
   normalizeDifficultyKey,
   type ProgressionStateInput
 } from "../core/progression";
@@ -76,10 +77,13 @@ export function getDefaultPracticeDifficulty(
   progressionInput: ProgressionStateInput,
   lastPracticeDifficulty: string | null | undefined
 ) {
-  if (lastPracticeDifficulty && canAccessDifficulty(progressionInput, lastPracticeDifficulty)) {
-    return normalizeDifficultyKey(progressionInput, lastPracticeDifficulty);
+  if (lastPracticeDifficulty && isKnownDifficulty(lastPracticeDifficulty)) {
+    return lastPracticeDifficulty;
   }
 
+  if (getReleaseFlags(progressionInput.progressionConfig).enable_open_practice_access) {
+    return progressionInput.userState?.calibrationRecommendation ?? progressionInput.userState?.calibrationPlacement ?? "beginner";
+  }
   return normalizeDifficultyKey(progressionInput, "intermediate");
 }
 
@@ -118,12 +122,24 @@ export interface PracticeDifficultyResolutionInput {
 export interface PracticeDifficultyResolution {
   resolvedDifficulty: string;
   shouldRedirect: boolean;
+  requiresSelection?: boolean;
 }
 
 export function resolvePracticeDifficulty(input: PracticeDifficultyResolutionInput): PracticeDifficultyResolution {
   const existingDefault = getDefaultPracticeDifficulty(input.progressionInput, input.lastPracticeDifficulty);
-  const requested = input.requestedDifficulty ?? existingDefault;
+  const requested = input.requestedDifficulty ?? input.lastPracticeDifficulty
+    ?? input.calibrationRecord?.recommendation ?? input.calibrationRecord?.placement ?? existingDefault;
   const requestedKey = String(requested ?? "").toLowerCase();
+
+  // Access is independent of earned unlocks. Keep a now-locked preference intact
+  // until the learner explicitly chooses an eligible difficulty after reinstatement.
+  const calibrationUserState = input.calibrationRecord && input.progressionInput.userState
+    ? { ...input.progressionInput.userState, calibrationPlacement: input.calibrationRecord.placement }
+    : input.progressionInput.userState;
+  const accessInput = { ...input.progressionInput, userState: calibrationUserState };
+  if (isKnownDifficulty(requestedKey) && !canAccessDifficulty(accessInput, requestedKey)) {
+    return { resolvedDifficulty: requestedKey, shouldRedirect: false, requiresSelection: true };
+  }
 
   if (hasCompletedCalibration(input.calibrationRecord) && isKnownDifficulty(requestedKey)) {
     const calibrationAllowedDifficulties = getCalibrationAllowedDifficulties(input.calibrationRecord.placement);
