@@ -1,3 +1,5 @@
+import { invalidatePracticeSlotRequests, practiceSlotGeneration } from "../core/practiceSlotEpoch";
+import { preloadProtectedPracticeSlots } from "./protectedPracticeSlots";
 import { createContext, startTransition, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import { captureAppException } from "../core/monitoring";
 import { getRuntimeBootstrapUserMessage, isRuntimeBootstrapError, loadCasesPayload, loadRuntimeConfig } from "../core/runtime";
@@ -20,9 +22,7 @@ import {
   clearPracticeSlotCache,
   clearPendingPracticeSubmission,
   loadPendingPracticeSubmission,
-  loadPracticeSlotsCache,
-  slotMatchesDifficultyKey,
-  savePracticeSlotsCache
+  loadPracticeSlotsCache
 } from "../core/protectedPracticeCache";
 import type { CalibrationCompletionRecord, PracticeFlowState, SessionState, UserState } from "../core/types";
 import {
@@ -71,6 +71,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const runtimeSupabaseRef = useRef<ReturnType<typeof createRuntimeSupabaseClient> | null>(null);
   const latestStateRef = useRef(state);
   latestStateRef.current = state;
+  useEffect(() => {
+    invalidatePracticeSlotRequests();
+    return () => invalidatePracticeSlotRequests();
+  }, [state.userId, state.payload?.contentVersion]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -623,7 +628,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const completePendingSubmissionSuccess = useCallback(async (pendingSubmission: NonNullable<PracticeFlowState["pendingSubmission"]>) => {
     if (!state.runtimeConfig || !state.payload || !state.supabase || typeof window === "undefined") return;
 
+    const submissionGeneration = practiceSlotGeneration();
     const result = await submitProtectedPracticeCase(state.runtimeConfig, state.supabase, pendingSubmission);
+    if (submissionGeneration !== practiceSlotGeneration() || latestStateRef.current.userId !== state.userId
+      || latestStateRef.current.payload?.contentVersion !== state.payload.contentVersion) return;
     const progressPatch = mapProgressRowToUserState(result.progress);
     const currentAttempt = {
       difficulty: pendingSubmission.difficultyKey,
@@ -661,18 +669,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await setUserState(nextUserState);
     }
 
-    const nextSlots = {
-      ...loadPracticeSlotsCache(window.localStorage, state.payload.contentVersion, state.userId),
-      [pendingSubmission.difficultyKey]: {
-        ...result.replacementSlot,
-        contentVersion: state.payload.contentVersion ?? pendingSubmission.contentVersion,
-        difficultyKey: pendingSubmission.difficultyKey
-      }
-    };
-    if (!slotMatchesDifficultyKey(nextSlots[pendingSubmission.difficultyKey], pendingSubmission.difficultyKey)) {
-      nextSlots[pendingSubmission.difficultyKey] = null;
-    }
-    savePracticeSlotsCache(window.localStorage, nextSlots, state.userId);
+    invalidatePracticeSlotRequests();
+    const nextSlots = clearPracticeSlotCache(
+      window.localStorage,
+      loadPracticeSlotsCache(window.localStorage, state.payload.contentVersion, state.userId),
+      pendingSubmission.difficultyKey, pendingSubmission.caseToken, state.userId
+    );
     clearPendingPracticeSubmission(window.localStorage);
     retryAttemptCountRef.current = 0;
     clearRetryTimer();
@@ -911,6 +913,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [retryRemoteHydrationNow, state.calibrationState.remoteStatus, state.status]);
+
+  useEffect(() => {
+    const completed = state.practiceState.lastCaseSummary;
+    if (!completed || !state.runtimeConfig || !state.supabase || !state.payload?.contentVersion || typeof window === "undefined") return;
+    const userId = state.userId;
+    const contentVersion = state.payload.contentVersion;
+    const generation = practiceSlotGeneration();
+    let cancelled = false;
+    const isCurrent = () => !cancelled && generation === practiceSlotGeneration()
+      && latestStateRef.current.userId === userId
+      && latestStateRef.current.payload?.contentVersion === contentVersion;
+    patchPracticeState({ preparationState: "loading" });
+    void preloadProtectedPracticeSlots({
+      config: state.runtimeConfig, supabase: state.supabase, storage: window.localStorage,
+      contentVersion, userId, currentSlots: state.practiceState.practiceSlotsByDifficulty,
+      difficulties: [completed.difficulty], isCurrent
+    }).then(slots => {
+      if (isCurrent()) patchPracticeState({ practiceSlotsByDifficulty: slots, preparationState: "idle" });
+    }).catch(() => {
+      if (isCurrent()) patchPracticeState({ preparationState: "failed" });
+    });
+    return () => { cancelled = true; };
+  }, [state.practiceState.lastCaseSummary?.caseToken, state.userId, state.payload?.contentVersion, state.runtimeConfig, state.supabase, patchPracticeState]);
 
   return (
     <AppContext.Provider

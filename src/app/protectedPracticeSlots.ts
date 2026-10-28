@@ -1,3 +1,4 @@
+import { practiceSlotGeneration } from "../core/practiceSlotEpoch";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { prepareProtectedPracticeCases } from "../core/protectedPractice";
 import {
@@ -29,8 +30,9 @@ function slotRequestKey(input: {
   userId?: string | null;
   contentVersion: string;
   difficultyKey: string;
+  generation: number;
 }) {
-  return `${String(input.userId ?? "anonymous")}:${input.contentVersion}:${input.difficultyKey}`;
+  return JSON.stringify([input.userId ?? "anonymous", input.contentVersion, input.difficultyKey, input.generation]);
 }
 
 export function isExpiredPracticeSlot(slot: IssuedPracticeSlot | null | undefined) {
@@ -82,7 +84,13 @@ export async function preloadProtectedPracticeSlots(input: {
   currentSlots: Record<string, IssuedPracticeSlot | null>;
   difficulties: string[];
   selectionHints?: ProtectedPracticePrepareRequest["selectionHints"];
+  isCurrent?: () => boolean;
 }) {
+  const generation = practiceSlotGeneration();
+  const assertCurrent = () => {
+    if (generation !== practiceSlotGeneration() || input.isCurrent?.() === false) throw new Error("Practice preparation superseded");
+  };
+  assertCurrent();
   const { slots, missingDifficulties } = getMissingPracticeSlotDifficulties({
     storage: input.storage,
     contentVersion: input.contentVersion,
@@ -97,6 +105,7 @@ export async function preloadProtectedPracticeSlots(input: {
 
   const fetchDifficulties = missingDifficulties.filter(difficultyKey => (
     !inFlightSlotRequests.has(slotRequestKey({
+      generation,
       userId: input.userId,
       contentVersion: input.contentVersion,
       difficultyKey
@@ -112,6 +121,7 @@ export async function preloadProtectedPracticeSlots(input: {
 
     for (const difficultyKey of fetchDifficulties) {
       const key = slotRequestKey({
+        generation,
         userId: input.userId,
         contentVersion: input.contentVersion,
         difficultyKey
@@ -124,7 +134,7 @@ export async function preloadProtectedPracticeSlots(input: {
             : {}
         }))
         .finally(() => {
-          inFlightSlotRequests.delete(key);
+          if (inFlightSlotRequests.get(key) === slotRequest) inFlightSlotRequests.delete(key);
         });
       inFlightSlotRequests.set(key, slotRequest);
     }
@@ -133,6 +143,7 @@ export async function preloadProtectedPracticeSlots(input: {
   const resolvedRequests = await Promise.all(
     missingDifficulties
       .map(difficultyKey => inFlightSlotRequests.get(slotRequestKey({
+        generation,
         userId: input.userId,
         contentVersion: input.contentVersion,
         difficultyKey
@@ -140,10 +151,10 @@ export async function preloadProtectedPracticeSlots(input: {
       .filter((request): request is Promise<SlotRequestResult> => Boolean(request))
   );
 
+  assertCurrent();
   const resolvedContentVersion = resolvedRequests.find(result => result.contentVersion)?.contentVersion ?? input.contentVersion;
   const nextSlots = {
-    ...loadPracticeSlotsCache(input.storage, resolvedContentVersion, input.userId),
-    ...slots
+    ...loadPracticeSlotsCache(input.storage, resolvedContentVersion, input.userId)
   };
 
   for (const result of resolvedRequests) {

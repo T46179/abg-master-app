@@ -401,6 +401,7 @@ export function LandingScreen() {
     async function preloadPracticeSlots() {
       try {
         const primarySlots = await preloadProtectedPracticeSlots({
+          isCurrent: () => !cancelled,
           config: activeRuntimeConfig,
           supabase: activeSupabase,
           storage: window.localStorage,
@@ -420,6 +421,7 @@ export function LandingScreen() {
         if (!remainingDifficulties.length) return;
 
         const nextSlots = await preloadProtectedPracticeSlots({
+          isCurrent: () => !cancelled,
           config: activeRuntimeConfig,
           supabase: activeSupabase,
           storage: window.localStorage,
@@ -443,6 +445,7 @@ export function LandingScreen() {
 
     return () => {
       cancelled = true;
+      if (practicePreloadKeyRef.current === preloadKey) practicePreloadKeyRef.current = null;
     };
   }, [
     patchPracticeState,

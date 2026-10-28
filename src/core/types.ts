@@ -488,6 +488,7 @@ export interface PracticeFlowState {
   pendingSubmission: PendingPracticeSubmission | null;
   syncState: PracticeSyncState;
   syncMessage: string | null;
+  preparationState?: "idle" | "loading" | "failed";
 }
 
 export interface StorageInitOptions {
@@ -604,6 +605,8 @@ export interface ProtectedPracticeSubmitResponse {
   replacementSlot: Omit<IssuedPracticeSlot, "difficultyKey" | "contentVersion"> & { difficultyKey?: string; contentVersion?: string };
   progress?: Partial<ProgressRow> | null;
 }
+
+export type ProtectedPracticeResultResponse = Omit<ProtectedPracticeSubmitResponse, "replacementSlot">;
 
 export interface ProtectedPracticeErrorResponse {
   code?: string;

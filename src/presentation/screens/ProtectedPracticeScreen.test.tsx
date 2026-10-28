@@ -322,14 +322,6 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
           difficulty_level: 1
         }
       }),
-      replacementSlot: makePracticeSlot({
-        caseToken: "token-next",
-        caseData: {
-          case_id: "CASE_NEXT",
-          archetype: "simple_nagma",
-          difficulty_level: 1
-        }
-      })
     });
     Object.defineProperty(window.navigator, "onLine", {
       configurable: true,
@@ -577,7 +569,6 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
         correctSteps: 0,
         totalSteps: 1
       }),
-      replacementSlot: makePracticeSlot(),
       progress: { xp: 1717, level: 14 }
     });
     vi.mocked(mapProgressRowToUserState).mockReturnValueOnce({ xp: 1717, level: 14 });
