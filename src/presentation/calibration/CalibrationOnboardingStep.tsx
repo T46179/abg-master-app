@@ -1,7 +1,11 @@
+import type { PressureUnit } from "../../core/types";
+
 interface CalibrationOnboardingStepProps {
   onBegin: () => void;
   onSkip: () => void;
   skipPending: boolean;
+  pressureUnit: PressureUnit;
+  onPressureUnitChange: (unit: PressureUnit) => void;
 }
 
 const CALIBRATION_INTRO_COPY = {
@@ -17,7 +21,16 @@ export function CalibrationOnboardingStep(props: CalibrationOnboardingStepProps)
   return (
     <main className="app-shell__page calibration-onboarding">
       <section className="calibration-onboarding__panel" aria-labelledby="calibration-onboarding-title">
-        <p className="calibration-onboarding__eyebrow">{CALIBRATION_INTRO_COPY.eyebrow}</p>
+        <div className="calibration-onboarding__header">
+          <p className="calibration-onboarding__eyebrow">{CALIBRATION_INTRO_COPY.eyebrow}</p>
+          <div className="main-nav__unit-control" role="group" aria-label="Partial pressure display units">
+            {(["mmHg", "kPa"] as const).map(unit => (
+              <button className="main-nav__unit-option" type="button" key={unit}
+                aria-pressed={props.pressureUnit === unit} disabled={props.skipPending}
+                onClick={() => props.onPressureUnitChange(unit)}>{unit}</button>
+            ))}
+          </div>
+        </div>
         <h1 id="calibration-onboarding-title">{CALIBRATION_INTRO_COPY.title}</h1>
         <p className="calibration-onboarding__body">
           <span>{CALIBRATION_INTRO_COPY.bodyLead}</span>

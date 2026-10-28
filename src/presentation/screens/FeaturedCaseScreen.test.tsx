@@ -458,12 +458,12 @@ describe("FeaturedCaseScreen grading parity", () => {
     );
   });
 
-  it("keeps showing Loading cases while cloud authentication initializes", async () => {
+  it("keeps showing Loading… while cloud authentication initializes", async () => {
     const caseItem = makeCase();
     state.supabase = null;
     await renderFeatured(caseItem);
 
-    expect(container.textContent).toContain("Loading cases");
+    expect(container.textContent).toContain("Loading…");
     expect(container.textContent).not.toContain("Unable to start ABG Master");
     expect(container.querySelector("[role='dialog']")).toBeNull();
     expect(prepareFeaturedCase).not.toHaveBeenCalled();

@@ -120,7 +120,8 @@ function getStepBlocks(pressureUnit: PressureUnit): StepBlock[] {
     body: [
       "Start by assessing oxygenation using the PaO₂, SpO₂, and the FiO₂. Oxygenation is primarily an ABG question — venous PO₂ is not useful for this.",
       "For unexplained hypoxaemia or respiratory failure classification, the A–a gradient can be calculated."
-    ]
+    ],
+    link: { to: "/a-a-gradient/", label: "Review the A–a Gradient" }
   },
   {
     number: "Step 02",
@@ -140,7 +141,7 @@ function getStepBlocks(pressureUnit: PressureUnit): StepBlock[] {
       <>Each primary acid–base disorder has its own expected compensation formula. The goal is not to ask whether a value is “normal,” but whether the compensation is appropriate for that disorder.</>,
       <>For example, a <PaCO2Text /> of {formatPagePressure(40, pressureUnit)} may be normal on paper but inappropriate in severe metabolic acidosis — where you'd expect significant hyperventilation.</>
     ],
-    link: { to: "/blood-gas-compensation-rules/", label: "Review compensation rules" }
+    link: { to: "/blood-gas-compensation-rules/", label: "Review Compensation Rules" }
   },
   {
     number: "Step 05",
@@ -151,7 +152,7 @@ function getStepBlocks(pressureUnit: PressureUnit): StepBlock[] {
       "Because albumin is an anion, the anion gap should be corrected for in hypoalbuminaemia."
     ],
     formula: <>AG = Na<sup>+</sup> - (Cl<sup>-</sup> + HCO₃<sup>-</sup>)</>,
-    link: { to: "/anion-gap/", label: "Review anion gap" }
+    link: { to: "/anion-gap/", label: "Review Anion Gap" }
   },
   {
     number: "Step 06",
@@ -631,7 +632,7 @@ export function AbgInterpretationScreen() {
           </div>
           <div className="abg-interpretation-page__quick-links">
             <Link to="/practice">
-              Skip straight to practice
+              Skip Straight to Practice
               <ArrowRight aria-hidden="true" />
             </Link>
           </div>
@@ -769,7 +770,7 @@ export function AbgInterpretationScreen() {
             <p>Work through pH, oxygenation, compensation, anion gap, and mixed disorders with instant feedback.</p>
           </div>
           <Link to="/practice">
-            Start practising
+            Start Practising
             <ArrowRight aria-hidden="true" />
           </Link>
         </section>

@@ -14,6 +14,7 @@ const patchSessionState = vi.fn();
 const setUserState = vi.fn();
 const trackEvent = vi.fn();
 const mockCanStartNewCase = vi.hoisted(() => vi.fn(() => false));
+const mockRequiresSelection = vi.hoisted(() => ({ value: false }));
 let latestQuestionFlowCardProps: Record<string, unknown> | null = null;
 let latestResultsSummaryCardProps: Record<string, unknown> | null = null;
 let latestResultsSummaryHeaderProps: Record<string, unknown> | null = null;
@@ -105,7 +106,8 @@ vi.mock("../../app/viewHelpers", () => ({
   hasCompletedCalibration: () => false,
   resolvePracticeDifficulty: ({ requestedDifficulty }: { requestedDifficulty?: string | null }) => ({
     resolvedDifficulty: requestedDifficulty || "beginner",
-    shouldRedirect: false
+    shouldRedirect: false,
+    requiresSelection: mockRequiresSelection.value
   }),
   shouldConfirmDifficultySwitch: () => false
 }));
@@ -282,6 +284,7 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
   let root: ReturnType<typeof createRoot>;
 
   beforeEach(() => {
+    mockRequiresSelection.value = false;
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -319,14 +322,6 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
           difficulty_level: 1
         }
       }),
-      replacementSlot: makePracticeSlot({
-        caseToken: "token-next",
-        caseData: {
-          case_id: "CASE_NEXT",
-          archetype: "simple_nagma",
-          difficulty_level: 1
-        }
-      })
     });
     Object.defineProperty(window.navigator, "onLine", {
       configurable: true,
@@ -422,6 +417,32 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
       difficulty: "beginner",
       source: "landing"
     });
+  });
+
+  it("requires explicit eligible selection without activating a cached locked case or overwriting its preference", async () => {
+    mockRequiresSelection.value = true;
+    mockCanStartNewCase.mockReturnValue(true);
+    currentState.storage.loadLastPracticeDifficulty = () => "master";
+    currentState.practiceState.practiceSlotsByDifficulty = { master: makePracticeSlot({ difficultyKey: "master" }) };
+    renderScreen("/practice?difficulty=master");
+    await flushEffects();
+    expect(container.textContent).toContain("Choose a practice difficulty");
+    expect(currentState.storage.saveLastPracticeDifficulty).not.toHaveBeenCalled();
+    expect(patchPracticeState.mock.calls.some(([patch]) => patch.currentCase)).toBe(false);
+    expect(trackEvent).not.toHaveBeenCalledWith("practice_case_started", expect.anything());
+    const chooser = container.querySelector(".practice-difficulty-chooser button") as HTMLButtonElement;
+    await act(async () => { chooser.click(); await Promise.resolve(); });
+    expect(currentState.storage.saveLastPracticeDifficulty).toHaveBeenCalledWith("beginner");
+  });
+
+  it("keeps a started case and pending work intact when its requested difficulty becomes locked", () => {
+    mockRequiresSelection.value = true;
+    currentState.practiceState.currentCase = { case_id: "STARTED_MASTER", difficulty_level: 4, questions_flow: [{ key: "ph_status", options: ["Acidaemia"] }] };
+    renderScreen("/practice?difficulty=master");
+    expect(container.textContent).not.toContain("Choose a practice difficulty");
+    expect(currentState.storage.saveLastPracticeDifficulty).not.toHaveBeenCalled();
+    expect(patchPracticeState.mock.calls.some(([patch]) => "currentCase" in patch)).toBe(false);
+    expect(latestQuestionFlowCardProps).not.toBeNull();
   });
 
   it("tracks practice case starts when a cached case is activated", async () => {
@@ -548,7 +569,6 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
         correctSteps: 0,
         totalSteps: 1
       }),
-      replacementSlot: makePracticeSlot(),
       progress: { xp: 1717, level: 14 }
     });
     vi.mocked(mapProgressRowToUserState).mockReturnValueOnce({ xp: 1717, level: 14 });
@@ -950,6 +970,15 @@ describe("ProtectedPracticeScreen unavailable messaging", () => {
 
     expect(container.textContent).toContain("New cases aren't ready to load right now. Please try again in a moment.");
     expect(container.textContent).not.toContain("We can't load a new case right now. Please try again.");
+  });
+
+  it("shows generic loading copy while waiting for a case", () => {
+    currentState.practiceState.syncState = "idle";
+    currentState.practiceState.syncMessage = null;
+
+    renderScreen();
+
+    expect(container.querySelector("[role='status']")?.textContent).toBe("Loading…");
   });
 
   it("falls back to the offline unavailable message when no specific message is present", () => {

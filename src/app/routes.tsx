@@ -15,6 +15,7 @@ import { BloodGasCompensationRulesScreen } from "../presentation/screens/BloodGa
 import { DeltaRatioScreen } from "../presentation/screens/DeltaRatioScreen";
 import { AbgInterpretationScreen } from "../presentation/screens/AbgInterpretationScreen";
 import { AnionGapScreen } from "../presentation/screens/AnionGapScreen";
+import { AAGradientScreen } from "../presentation/screens/AAGradientScreen";
 import { CalibrationScreen } from "../presentation/calibration";
 import { CasePreviewScreen } from "../presentation/screens/CasePreviewScreen";
 import { AuthoredCaseGalleryScreen } from "../presentation/screens/AuthoredCaseGalleryScreen";
@@ -29,6 +30,10 @@ const hostedExamPilot = import.meta.env.MODE === "exam-pilot";
 const ExamPilotAuth = (import.meta.env.DEV || hostedExamPilot) ? lazy(() => import("../presentation/screens/ExamPilotAuthScreen")) : null;
 
 export const appRoutes: RouteObject[] = [
+  {
+    path: "/a-a-gradient",
+    element: <AAGradientScreen />
+  },
   {
     path: "/about",
     element: <AboutScreen />

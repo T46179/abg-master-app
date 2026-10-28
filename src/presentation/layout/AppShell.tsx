@@ -51,11 +51,15 @@ function AppShellContent() {
   });
   const isHostedExamPilotRoute = import.meta.env.MODE === "exam-pilot" && /^\/exam\/?$/.test(location.pathname);
   const shouldHoldLearnerRoute = !isHostedExamPilotRoute && shouldHoldLearnerRouteForCalibration({
+    hasSeenIntroduction: state.storage?.loadPracticeIntroSeen() ?? false,
+    hasVisitedAppArea: state.storage?.loadAppAreaVisited() ?? false,
     pathname: location.pathname,
     calibration: state.calibrationState,
     hasMeaningfulProgress
   });
   const shouldRedirectToCalibration = !isHostedExamPilotRoute && shouldRedirectToCalibrationOnboarding({
+    hasSeenIntroduction: state.storage?.loadPracticeIntroSeen() ?? false,
+    hasVisitedAppArea: state.storage?.loadAppAreaVisited() ?? false,
     pathname: location.pathname,
     calibration: state.calibrationState,
     hasMeaningfulProgress

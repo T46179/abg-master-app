@@ -23,7 +23,7 @@ describe("ContactScreen", () => {
     container.remove();
   });
 
-  it("renders the contact details without a dashboard link or educational disclaimer", () => {
+  it("renders the contact details with the public back link and without an educational disclaimer", () => {
     act(() => {
       root.render(
         <MemoryRouter initialEntries={["/contact/"]}>
@@ -40,7 +40,7 @@ describe("ContactScreen", () => {
       "Corrections",
       "Everything else"
     ]);
-    expect(container.querySelector("a[href=\"/dashboard\"]")).toBeNull();
+    expect(container.querySelector("a[href=\"/dashboard\"]")?.textContent).toBe("Back to ABG Master");
     expect(container.querySelector(".comp-rules-page__footer")).toBeNull();
     expect(container.querySelector(".contact-page__footer")?.textContent).toContain("© 2026 ABG Master · Dr Thanh Truong");
   });

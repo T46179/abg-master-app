@@ -1,3 +1,4 @@
+import { invalidatePracticeSlotRequests, practiceSlotGeneration } from "../../core/practiceSlotEpoch";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
@@ -112,6 +113,14 @@ export function ProtectedPracticeScreen() {
   const activeStepRef = useRef<HTMLButtonElement | null>(null);
   const difficultyReconciledRef = useRef(false);
   const latestCaseLoadRequestRef = useRef(0);
+  const slotLoadRequestRef = useRef(0);
+  const slotContextRef = useRef("");
+  slotContextRef.current = JSON.stringify([state.userId, state.payload?.contentVersion]);
+  const screenMountedRef = useRef(true);
+  useEffect(() => {
+    screenMountedRef.current = true;
+    return () => { screenMountedRef.current = false; slotLoadRequestRef.current += 1; };
+  }, []);
   const practiceOpenedTrackedRef = useRef(false);
   const caseStartTrackedRef = useRef(new Set<string>());
   const summaryViewTrackedRef = useRef(new Set<string>());
@@ -137,16 +146,19 @@ export function ProtectedPracticeScreen() {
     enableCalibrationAccessGuard: releaseFlags.enableCalibrationAccessGuard
   });
   const normalizedDifficulty = difficultyResolution.resolvedDifficulty;
+  const requiresDifficultySelection = Boolean(difficultyResolution.requiresSelection);
   const analyticsSource = searchParams.get("source") ?? undefined;
   const difficultyMeta = getDifficultyMeta(progressionInput);
   const accessibleDifficulties = getAccessibleDifficultyKeys(progressionInput);
+  const accessibleDifficultiesRef = useRef(accessibleDifficulties);
+  accessibleDifficultiesRef.current = accessibleDifficulties;
   const canLoadCase = canStartNewCase(progressionInput);
   const currentCase = state.practiceState.currentCase;
   const summary = state.practiceState.lastCaseSummary;
   const activeCaseDifficulty = currentCase
     ? getDifficultyLabel(payload?.progressionConfig ?? null, Number(currentCase.difficulty_level ?? 1))
     : normalizedDifficulty;
-  const difficultyMismatchAction = getPracticeDifficultyMismatchAction({
+  const difficultyMismatchAction = requiresDifficultySelection ? null : getPracticeDifficultyMismatchAction({
     hasExplicitDifficultyParam,
     hasActiveCase: Boolean(currentCase),
     hasSummary: Boolean(summary),
@@ -169,7 +181,7 @@ export function ProtectedPracticeScreen() {
   const showSummaryReferences = Boolean(summary && shouldShowMetricReferences(summary.caseData, state.sessionState.showAdvancedRanges));
   const currentDifficultyLevel = Number(currentCase?.difficulty_level ?? summary?.caseData.difficulty_level ?? 1);
   const showAbnormalHighlighting = currentDifficultyLevel <= 3;
-  const shouldAutoLoadPracticeCase = !currentCase && !summary && canLoadCase;
+  const shouldAutoLoadPracticeCase = !requiresDifficultySelection && !currentCase && !summary && canLoadCase;
   const hasVisitedAppArea = state.storage?.loadAppAreaVisited() ?? false;
   const finalLevelProgress = getLevelProgress(payload?.progressionConfig ?? null, state.userState);
   const maxReachableLevel = getMaxReachableLevel(payload?.progressionConfig ?? null);
@@ -213,7 +225,8 @@ export function ProtectedPracticeScreen() {
   const hasNewlyAccessibleDifficulty = (difficultyKey: string, unlockLevel: number) => (
     preAwardUserState.level < unlockLevel &&
     !calibrationAccessibleDifficulties.includes(difficultyKey) &&
-    nextAccessibleDifficulties.includes(difficultyKey)
+    nextAccessibleDifficulties.includes(difficultyKey) &&
+    !releaseFlags.enable_open_practice_access
   );
   const levelUnlockMilestone = summary
     ? getLearnUnlockMilestoneForLevelTransition(preAwardUserState.level, state.userState.level)
@@ -278,9 +291,10 @@ export function ProtectedPracticeScreen() {
 
   useEffect(() => {
     if (state.status !== "ready") return;
+    if (requiresDifficultySelection) return;
     if (!hasExplicitDifficultyParam && difficultyMismatchAction) return;
     state.storage?.saveLastPracticeDifficulty(normalizedDifficulty);
-  }, [difficultyMismatchAction, hasExplicitDifficultyParam, normalizedDifficulty, state.status, state.storage]);
+  }, [difficultyMismatchAction, hasExplicitDifficultyParam, normalizedDifficulty, requiresDifficultySelection, state.status, state.storage]);
 
   useEffect(() => {
     if (difficultyReconciledRef.current) return;
@@ -299,10 +313,11 @@ export function ProtectedPracticeScreen() {
   }, [activeCaseDifficulty, currentCase, difficultyMismatchAction, normalizedDifficulty, setSearchParams]);
 
   useEffect(() => {
+    if (requiresDifficultySelection) return;
     if (state.sessionState.currentDifficulty !== normalizedDifficulty) {
       patchSessionState({ currentDifficulty: normalizedDifficulty });
     }
-  }, [normalizedDifficulty, patchSessionState, state.sessionState.currentDifficulty]);
+  }, [normalizedDifficulty, patchSessionState, requiresDifficultySelection, state.sessionState.currentDifficulty]);
 
   useEffect(() => {
     if (state.status !== "ready" || practiceOpenedTrackedRef.current) return;
@@ -500,6 +515,11 @@ export function ProtectedPracticeScreen() {
   }
 
   async function fetchSlotsForDifficulties(difficulties: string[]) {
+    const context = slotContextRef.current;
+    const generation = practiceSlotGeneration();
+    const requestId = ++slotLoadRequestRef.current;
+    const isCurrent = () => screenMountedRef.current && context === slotContextRef.current
+      && generation === practiceSlotGeneration() && requestId === slotLoadRequestRef.current;
     if (!payload?.contentVersion || !state.supabase || !state.runtimeConfig) {
       patchPracticeState({
         syncState: "unavailable",
@@ -527,6 +547,7 @@ export function ProtectedPracticeScreen() {
 
     try {
       const nextSlots = await preloadProtectedPracticeSlots({
+        isCurrent,
         config: state.runtimeConfig,
         supabase: state.supabase,
         storage: window.localStorage,
@@ -539,6 +560,7 @@ export function ProtectedPracticeScreen() {
           recentArchetypes
         }
       });
+      if (!isCurrent() || requestId !== slotLoadRequestRef.current) return {};
       patchPracticeState({
         practiceSlotsByDifficulty: nextSlots,
         syncState: "idle",
@@ -546,6 +568,7 @@ export function ProtectedPracticeScreen() {
       });
       return nextSlots;
     } catch (error) {
+      if (!isCurrent() || requestId !== slotLoadRequestRef.current) return {};
       const hasAnyCachedSlot = difficulties.some(difficultyKey => Boolean(slots[difficultyKey]));
       patchPracticeState({
         syncState: hasAnyCachedSlot ? "idle" : "unavailable",
@@ -586,6 +609,7 @@ export function ProtectedPracticeScreen() {
   }, [hasVisitedAppArea, normalizedDifficulty, shouldAutoLoadPracticeCase, state.storage, state.supabase, state.userId]);
 
   async function activateSlot(difficultyKey: string, slot: IssuedPracticeSlot, options?: { preview?: boolean }) {
+    if (!accessibleDifficultiesRef.current.includes(difficultyKey)) return;
     if (!slotMatchesDifficultyKey(slot, difficultyKey)) {
       patchPracticeState({
         currentCase: null,
@@ -629,6 +653,7 @@ export function ProtectedPracticeScreen() {
   }
 
   async function beginCase(difficultyKey: string, options?: { confirmAbandon?: boolean; preview?: boolean }) {
+    if (!accessibleDifficulties.includes(difficultyKey)) return;
     const nextDifficulty = normalizeDifficultyKey(progressionInput, difficultyKey);
     const shouldConfirmAbandon = options?.confirmAbandon ?? true;
     const requestId = latestCaseLoadRequestRef.current + 1;
@@ -842,7 +867,10 @@ export function ProtectedPracticeScreen() {
     });
 
     try {
+      const submissionContext = slotContextRef.current;
+      const submissionGeneration = practiceSlotGeneration();
       const result = await submitProtectedPracticeCase(state.runtimeConfig, state.supabase, pendingSubmission);
+      if (!screenMountedRef.current || submissionContext !== slotContextRef.current || submissionGeneration !== practiceSlotGeneration()) return;
       const progressPatch = mapProgressRowToUserState(result.progress);
       const reconciledSummary = reconcileProtectedSummaryWithLockedStepResults({
         summary: {
@@ -889,15 +917,11 @@ export function ProtectedPracticeScreen() {
       const seenCasesByDifficulty = state.storage?.loadSeenCaseState() ?? createEmptySeenCasesState();
       state.storage?.saveSeenCaseState(markCaseSeen(seenCasesByDifficulty, currentCase, payload.progressionConfig ?? null));
 
-      const nextSlots = {
-        ...state.practiceState.practiceSlotsByDifficulty,
-        [normalizedDifficulty]: {
-          ...result.replacementSlot,
-          contentVersion: payload.contentVersion,
-          difficultyKey: normalizedDifficulty
-        }
-      };
-      savePracticeSlotsCache(window.localStorage, nextSlots, state.userId);
+      invalidatePracticeSlotRequests();
+      const nextSlots = clearPracticeSlotCache(
+        window.localStorage, state.practiceState.practiceSlotsByDifficulty,
+        normalizedDifficulty, pendingSubmission.caseToken, state.userId
+      );
       clearPendingPracticeSubmission(window.localStorage);
 
       patchPracticeState({
@@ -1084,6 +1108,20 @@ export function ProtectedPracticeScreen() {
 
       <main className="app-shell__page practice-screen">
         <div className="practice-screen__container">
+          {requiresDifficultySelection && (!currentCase || summary) ? (
+            <Surface className="practice-alert-card">
+              <h2>Choose a practice difficulty</h2>
+              <p>{normalizedDifficulty.charAt(0).toUpperCase() + normalizedDifficulty.slice(1)} is not currently available. Choose an available difficulty to start another case.</p>
+              <div className="practice-difficulty-chooser" aria-label="Available practice difficulties">
+                {accessibleDifficulties.map(key => (
+                  <button className="figma-button" type="button" key={key} onClick={() => { void handleDifficultyChange(key); }}>
+                    {key.charAt(0).toUpperCase() + key.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </Surface>
+          ) : null}
+
           {summary ? (
             <ResultsSummaryHeader
               summary={summary}
@@ -1163,7 +1201,7 @@ export function ProtectedPracticeScreen() {
               isSubmittingCase={isSubmittingCase}
               boostedXp={currentCaseBoostedXp}
             />
-          ) : state.practiceState.syncState === "unavailable" ? (
+          ) : requiresDifficultySelection ? null : state.practiceState.syncState === "unavailable" ? (
             <Surface className="practice-alert-card">
               {state.practiceState.syncMessage ?? getProtectedPracticeUnavailableMessage()}
             </Surface>
@@ -1171,7 +1209,7 @@ export function ProtectedPracticeScreen() {
             <div className="status-screen status-screen--loading">
               <div className="loading-chip" role="status" aria-live="polite">
                 <span className="loading-chip__spinner" aria-hidden="true" />
-                <span>Loading cases</span>
+                <span>Loading…</span>
               </div>
             </div>
           )}

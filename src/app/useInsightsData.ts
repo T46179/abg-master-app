@@ -23,15 +23,29 @@ export function useInsightsData(): InsightsViewModel {
       };
     }
 
-    if (!state.userId) {
-      setViewModel(createInsightsUnauthenticatedViewModel());
+    if (!state.supabaseEnabled) {
+      setViewModel(createInsightsUnavailableViewModel("insights.supabase_unavailable"));
       return () => {
         cancelled = true;
       };
     }
 
-    if (!state.supabase || !state.supabaseEnabled) {
+    if (state.syncUnavailable) {
       setViewModel(createInsightsUnavailableViewModel("insights.supabase_unavailable"));
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (!state.supabase) {
+      setViewModel(createInsightsLoadingViewModel());
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (!state.userId) {
+      setViewModel(createInsightsUnauthenticatedViewModel());
       return () => {
         cancelled = true;
       };
@@ -67,6 +81,7 @@ export function useInsightsData(): InsightsViewModel {
     state.status,
     state.supabase,
     state.supabaseEnabled,
+    state.syncUnavailable,
     state.userId,
     state.userState
   ]);

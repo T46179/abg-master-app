@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { MetricLabel, MetricReference, MetricValue } from "../practice/MetricText";
 import { compensationCheckMetrics, compensationCheckOptions } from "./calibrationConfig";
+import type { PressureUnit } from "../../core/types";
+import { getCalibrationDisplayMetric } from "./calibrationMetrics";
 
 interface CompensationCheckCalibrationStepProps {
+  pressureUnit?: PressureUnit;
   onCanContinueChange?: (canContinue: boolean) => void;
   onSelectionChange?: (answer: string | null) => void;
 }
 
 export function CompensationCheckCalibrationStep({
+  pressureUnit = "mmHg",
   onCanContinueChange,
   onSelectionChange
 }: CompensationCheckCalibrationStepProps) {
@@ -27,7 +31,7 @@ export function CompensationCheckCalibrationStep({
       <section className="calibration-compensation__card calibration-compensation__values">
         <span className="section-header__eyebrow">ABG Values</span>
         <div className="metric-grid metric-grid--primary calibration-compensation__metric-grid">
-          {compensationCheckMetrics.map(metric => (
+          {compensationCheckMetrics.map(metric => getCalibrationDisplayMetric(metric, pressureUnit)).map(metric => (
             <article className="metric-card" key={metric.label}>
               <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
               <MetricValue renderedValue={metric.value} unit={metric.unit} />

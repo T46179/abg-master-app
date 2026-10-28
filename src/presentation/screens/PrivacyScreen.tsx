@@ -1,5 +1,5 @@
-import { ArrowLeft, ShieldCheck } from "lucide-react";
-import { Link } from "react-router-dom";
+import { ShieldCheck } from "lucide-react";
+import { PublicBackLink } from "../shared/PublicBackLink";
 import { SeoMetadata } from "../../app/seo";
 import externalLinkIcon from "../../assets/icons/external_link.svg";
 
@@ -11,11 +11,8 @@ export function PrivacyScreen() {
       <SeoMetadata />
 
       <article className="comp-rules-page__article privacy-page__article">
+        <PublicBackLink />
         <header className="comp-rules-page__header privacy-page__hero">
-          <Link className="privacy-page__back" to="/dashboard">
-            <ArrowLeft aria-hidden="true" />
-            Back to ABG Master
-          </Link>
           <div className="comp-rules-page__methodology-pill">
             <span />
             <p>ABG Master · Privacy notice</p>

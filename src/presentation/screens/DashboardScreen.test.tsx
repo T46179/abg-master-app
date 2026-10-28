@@ -9,6 +9,7 @@ import { DashboardScreen } from "./DashboardScreen";
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const trackEvent = vi.hoisted(() => vi.fn());
+const accessFlags = vi.hoisted(() => ({ enable_open_practice_access: false, enable_all_difficulties: true }));
 
 vi.mock("../../core/analytics", () => ({
   trackEvent
@@ -60,7 +61,7 @@ vi.mock("../../app/AppProvider", () => ({
       errorMessage: null,
       payload: {
         progressionConfig: {
-          release_flags: { enable_all_difficulties: true },
+          release_flags: accessFlags,
           difficulty_labels: { 1: "beginner", 2: "intermediate", 3: "advanced", 4: "master" }
         },
         dashboardState: null,
@@ -98,6 +99,7 @@ describe("DashboardScreen", () => {
   let originalLocation: Location;
 
   beforeEach(() => {
+    accessFlags.enable_open_practice_access = false;
     mockUserState.casesCompleted = 0;
     mockUserState.correctAnswers = 0;
     mockUserState.totalAnswers = 0;
@@ -181,6 +183,17 @@ describe("DashboardScreen", () => {
       .find(link => link.textContent?.includes("Resume Practice"));
 
     expect(nextCaseLink?.getAttribute("href")).toBe("/practice?difficulty=advanced");
+  });
+
+  it("shows selected Practice difficulty without labelling every new user Master", () => {
+    accessFlags.enable_open_practice_access = true;
+    act(() => root.render(<MemoryRouter><DashboardScreen /></MemoryRouter>));
+    expect(container.textContent).toContain("Practice difficulty");
+    expect(container.querySelector(".dashboard-progress-card__tier")?.textContent).toBe("Beginner");
+    mockStorage.loadLastPracticeDifficulty.mockReturnValue("advanced");
+    act(() => root.render(<MemoryRouter><DashboardScreen /></MemoryRouter>));
+    expect(container.querySelector(".dashboard-progress-card__tier")?.textContent).toBe("Advanced");
+    expect(mockUserState.unlockedDifficulties).toEqual(["beginner"]);
   });
 
   it("uses the same arrow asset for Resume Practice and Featured Case", () => {

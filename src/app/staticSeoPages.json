@@ -1,5 +1,15 @@
 [
   {
+    "path": "/a-a-gradient",
+    "title": "The A–a Gradient | ABG Master",
+    "description": "The alveolar–arterial oxygen gradient: the alveolar gas equation, normal values, interpretation, worked examples, and limitations.",
+    "canonicalPath": "/a-a-gradient/",
+    "outputDirectory": "a-a-gradient",
+    "pageType": "article",
+    "headline": "The A–a gradient",
+    "dateModified": "2026-09-18"
+  },
+  {
     "path": "/blood-gas-compensation-rules",
     "title": "Blood Gas Compensation Rules Explained | ABG Master",
     "description": "Learn the blood gas compensation rules used by ABG Master, including Winter's formula, metabolic alkalosis compensation, and acute and chronic respiratory compensation.",

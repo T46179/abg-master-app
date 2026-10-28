@@ -50,6 +50,20 @@ export const bloodGasBlitzVersions: Record<BloodGasBlitzVersionId, BloodGasBlitz
       "Acidaemia"
     ]
   },
+  "ph-classification-calibration-v3": {
+    status: "playable",
+    versionId: "ph-classification-calibration-v3",
+    questionCount: 6,
+    prompt: "Classify the pH",
+    rangeLabel: "Normal range: 7.35 to 7.45",
+    answers: ["Acidaemia", "Normal", "Alkalaemia"],
+    ranges: {
+      Acidaemia: { min: 7.1, max: 7.3 },
+      Normal: { min: 7.37, max: 7.43 },
+      Alkalaemia: { min: 7.5, max: 7.6 }
+    },
+    pattern: ["Acidaemia", "Normal", "Alkalaemia", "Acidaemia", "Normal", "Alkalaemia"]
+  },
   "co2-classification-v1": {
     status: "planned",
     versionId: "co2-classification-v1"

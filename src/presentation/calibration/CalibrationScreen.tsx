@@ -7,9 +7,9 @@ import {
   hasMeaningfulCalibrationProgress,
   shouldShowCalibrationIntroduction
 } from "../../core/calibrationOnboarding";
-import { mapProgressRowToUserState, syncUserStateDerivedFields } from "../../core/progression";
+import { getCalibrationCompletionFromUserState, getReleaseFlags, mapProgressRowToUserState, syncUserStateDerivedFields } from "../../core/progression";
 import { completeCalibrationProgress } from "../../core/progressionSync";
-import type { CalibrationPlacement } from "../../core/types";
+import type { CalibrationRecommendation, PressureUnit } from "../../core/types";
 import { getCalibrationSubtitle } from "./calibrationConfig";
 import { AnalysingSampleCalibrationStep } from "./AnalysingSampleCalibrationStep";
 import { BuildAGasCalibrationStep } from "./BuildAGasCalibrationStep";
@@ -25,20 +25,20 @@ import type { CalibrationPhase } from "./calibrationTypes";
 import { useCalibrationFlow } from "./useCalibrationFlow";
 import { LoadingView } from "../shared/StatusViews";
 
-const CALIBRATION_ANALYTICS_VERSION = "1";
-const CALIBRATION_TOTAL_SCORE_MAX = 12;
+const CALIBRATION_ANALYTICS_VERSION = "3";
+const CALIBRATION_TOTAL_SCORE_MAX = 8;
 const CALIBRATION_SUBMIT_DELAY_MS = 800;
-const CALIBRATION_PLACEMENTS: CalibrationPlacement[] = ["beginner", "intermediate", "advanced"];
+const CALIBRATION_PLACEMENTS: CalibrationRecommendation[] = ["beginner", "intermediate", "advanced", "master"];
 
 const CALIBRATION_ANALYTICS_STEPS: Partial<Record<CalibrationPhase, {
   stepId: string;
   stepNumber: number;
   maxScore: number;
 }>> = {
-  "blood-gas-blitz": { stepId: "blood_gas_blitz", stepNumber: 1, maxScore: 2 },
-  "build-a-gas": { stepId: "build_a_gas", stepNumber: 2, maxScore: 3 },
-  "compensation-check": { stepId: "compensation_check", stepNumber: 3, maxScore: 3 },
-  "mixed-process-challenge": { stepId: "mixed_process", stepNumber: 4, maxScore: 4 }
+  "blood-gas-blitz": { stepId: "blood_gas_blitz", stepNumber: 1, maxScore: 1 },
+  "build-a-gas": { stepId: "build_a_gas", stepNumber: 2, maxScore: 2 },
+  "compensation-check": { stepId: "compensation_check", stepNumber: 3, maxScore: 2 },
+  "mixed-process-challenge": { stepId: "mixed_process", stepNumber: 4, maxScore: 3 }
 };
 
 function createCalibrationAttemptId(): string {
@@ -60,7 +60,8 @@ function roundSeconds(elapsedMs: number | undefined): number | null {
 }
 
 export function CalibrationScreen() {
-  const { state, setUserState, saveLocalCalibrationCompletion, skipCalibrationOnboarding } = useAppContext();
+  const { state, setUserState, saveLocalCalibrationCompletion, skipCalibrationOnboarding, patchSessionState } = useAppContext();
+  const pressureUnit = state.sessionState?.pressureUnit ?? "mmHg";
   const navigate = useNavigate();
   const [introductionAccepted, setIntroductionAccepted] = useState(false);
   const [skipPending, setSkipPending] = useState(false);
@@ -87,6 +88,7 @@ export function CalibrationScreen() {
     return {
       version: CALIBRATION_ANALYTICS_VERSION,
       placement_version: String(CALIBRATION_COMPLETION_VERSION),
+      pressure_unit: pressureUnit,
       calibration_attempt_id: calibrationAttemptId
     };
   }
@@ -143,7 +145,7 @@ export function CalibrationScreen() {
     return (totalScore / stepMeta.maxScore) * 100;
   }
 
-  function trackCalibrationCompleted(nextPlacement: CalibrationPlacement, nextResults: CalibrationScoringInput) {
+  function trackCalibrationCompleted(nextPlacement: CalibrationRecommendation, nextResults: CalibrationScoringInput) {
     if (completedEventFiredRef.current || !CALIBRATION_PLACEMENTS.includes(nextPlacement)) return;
     const payload = buildCalibrationAnalyticsPayload();
     if (!payload) return;
@@ -165,7 +167,7 @@ export function CalibrationScreen() {
   useEffect(() => {
     const completion = state.calibrationState.effectiveCompletion;
     if (!completion || completionCreatedThisSessionRef.current) return;
-    navigate(`/practice?difficulty=${completion.placement}`, { replace: true });
+    navigate(`/practice?difficulty=${completion.recommendation ?? completion.placement}`, { replace: true });
   }, [navigate, state.calibrationState.effectiveCompletion]);
 
   const hasMeaningfulProgress = hasMeaningfulCalibrationProgress({
@@ -188,7 +190,7 @@ export function CalibrationScreen() {
     }
   }, []);
 
-  async function syncCalibrationCompletion(nextPlacement: CalibrationPlacement, nextResults: CalibrationScoringInput) {
+  async function syncCalibrationCompletion(nextPlacement: CalibrationRecommendation, nextResults: CalibrationScoringInput) {
     const completion = createCalibrationCompletionRecord(nextPlacement);
 
     await saveLocalCalibrationCompletion(completion);
@@ -198,7 +200,7 @@ export function CalibrationScreen() {
       const progress = await completeCalibrationProgress({
         supabase: state.supabase,
         progressionConfig: state.payload?.progressionConfig ?? null,
-        placement: nextPlacement,
+        placement: completion.placement,
         completion,
         attemptPayload: {
           bloodGasBlitz: nextResults.bloodGasBlitz,
@@ -214,9 +216,7 @@ export function CalibrationScreen() {
           ...progressPatch
         }, state.payload?.progressionConfig ?? null);
         await setUserState(nextUserState);
-        const remoteCompletion = nextUserState.calibrationCompleted && nextUserState.calibrationPlacement
-          ? createCalibrationCompletionRecord(nextUserState.calibrationPlacement)
-          : null;
+        const remoteCompletion = getCalibrationCompletionFromUserState(nextUserState);
         if (remoteCompletion) state.storage?.saveCalibrationCompletion(remoteCompletion);
       }
     } catch {
@@ -284,6 +284,12 @@ export function CalibrationScreen() {
     setIntroductionAccepted(true);
   }
 
+  function handlePressureUnitChange(unit: PressureUnit) {
+    if (pressureUnit === unit) return;
+    patchSessionState({ pressureUnit: unit });
+    state.storage?.savePressureUnitPreference(unit);
+  }
+
   async function handleSkipCalibration() {
     if (skipPending) return;
     setSkipPending(true);
@@ -308,6 +314,8 @@ export function CalibrationScreen() {
   if (shouldShowIntroduction) {
     return (
       <CalibrationOnboardingStep
+        pressureUnit={pressureUnit}
+        onPressureUnitChange={handlePressureUnitChange}
         onBegin={handleBeginCalibration}
         onSkip={() => { void handleSkipCalibration(); }}
         skipPending={skipPending}
@@ -327,6 +335,7 @@ export function CalibrationScreen() {
     return (
       <main className="app-shell__page calibration-screen calibration-screen--empty">
         <CalibrationSummaryStep
+          openPracticeAccess={getReleaseFlags(state.payload?.progressionConfig ?? null).enable_open_practice_access}
           placement={placement}
           onStartDifficulty={handleStartDifficulty}
         />
@@ -359,6 +368,7 @@ export function CalibrationScreen() {
     if (phase === "build-a-gas") {
       return (
         <BuildAGasCalibrationStep
+          pressureUnit={pressureUnit}
           onCanContinueChange={calibrationFlow.setCanContinueCurrentStep}
           onSelectionChange={calibrationFlow.setBuildAGasSelection}
         />
@@ -367,6 +377,7 @@ export function CalibrationScreen() {
     if (phase === "compensation-check") {
       return (
         <CompensationCheckCalibrationStep
+          pressureUnit={pressureUnit}
           onCanContinueChange={calibrationFlow.setCanContinueCurrentStep}
           onSelectionChange={calibrationFlow.setCompensationFitSelection}
         />
@@ -375,6 +386,7 @@ export function CalibrationScreen() {
     if (phase === "mixed-process-challenge") {
       return (
         <MixedProcessCalibrationStep
+          pressureUnit={pressureUnit}
           disabled={isSubmittingFinalStep}
           onCanContinueChange={calibrationFlow.setCanContinueCurrentStep}
           onSelectionChange={calibrationFlow.setFinalDiagnosisSelection}

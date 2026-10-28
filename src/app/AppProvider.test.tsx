@@ -10,7 +10,7 @@ import {
   loadPendingCalibrationCompletion,
   savePendingCalibrationCompletion
 } from "../core/calibrationRecovery";
-import type { CalibrationCompletionRecord, PressureUnit } from "../core/types";
+import type { CalibrationCompletionRecord, PressureUnit, CaseSummary } from "../core/types";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -20,6 +20,7 @@ const createRuntimeSupabaseClient = vi.fn();
 const ensureAnonymousSession = vi.fn();
 const createAppStorage = vi.fn();
 const submitProtectedPracticeCase = vi.fn();
+const prepareProtectedPracticeCases = vi.fn();
 const applyProtectedCaseCompletion = vi.fn();
 const isProtectedPracticeError = vi.fn();
 const captureAppException = vi.fn();
@@ -53,6 +54,7 @@ vi.mock("../core/progressionSync", () => ({
 }));
 
 vi.mock("../core/protectedPractice", () => ({
+  prepareProtectedPracticeCases: (...args: unknown[]) => prepareProtectedPracticeCases(...args),
   submitProtectedPracticeCase: (...args: unknown[]) => submitProtectedPracticeCase(...args),
   applyProtectedCaseCompletion: (...args: unknown[]) => applyProtectedCaseCompletion(...args),
   isProtectedPracticeError: (...args: unknown[]) => isProtectedPracticeError(...args)
@@ -69,9 +71,12 @@ function createDeferred<T>() {
 }
 
 function Probe() {
-  const { state, retryPendingSubmissionNow, skipCalibrationOnboarding } = useAppContext();
+  const { state, retryPendingSubmissionNow, skipCalibrationOnboarding, patchPracticeState } = useAppContext();
   return (
     <div>
+      <div data-testid="completed-summary">{state.practiceState.lastCaseSummary?.caseId}</div>
+      <div data-testid="preparation-state">{state.practiceState.preparationState}</div>
+      <div data-testid="prepared-token">{state.practiceState.practiceSlotsByDifficulty.beginner?.caseToken}</div>
       <div data-testid="sync-state">{state.practiceState.syncState}</div>
       <div data-testid="sync-message">{state.practiceState.syncMessage ?? ""}</div>
       <div data-testid="error-message">{state.errorMessage ?? ""}</div>
@@ -80,6 +85,9 @@ function Probe() {
       <div data-testid="calibration-placement">{state.calibrationState.effectiveCompletion?.placement ?? ""}</div>
       <div data-testid="pressure-unit">{state.sessionState.pressureUnit}</div>
       <button type="button" onClick={retryPendingSubmissionNow}>retry</button>
+      <button type="button" onClick={() => patchPracticeState({ lastCaseSummary: {
+        caseToken: "just-completed", caseId: "completed-case", difficulty: "beginner"
+      } as CaseSummary })}>show completed result</button>
       <button type="button" onClick={() => { void skipCalibrationOnboarding(); }}>skip calibration</button>
     </div>
   );
@@ -172,6 +180,8 @@ describe("AppProvider protected practice recovery", () => {
     completeCalibrationProgress.mockReset();
     completeCalibrationProgress.mockResolvedValue(null);
     submitProtectedPracticeCase.mockReset();
+    prepareProtectedPracticeCases.mockReset();
+    prepareProtectedPracticeCases.mockResolvedValue({ contentVersion: "beta-1", slots: {} });
     captureAppException.mockReset();
     applyProtectedCaseCompletion.mockImplementation(({ userState }: { userState: unknown }) => userState);
     isProtectedPracticeError.mockImplementation((error: { __protectedError?: boolean }) => Boolean(error?.__protectedError));
@@ -614,7 +624,7 @@ describe("AppProvider protected practice recovery", () => {
     expect(container.querySelector("[data-testid='calibration-placement']")?.textContent).toBe("advanced");
   });
 
-  it("deduplicates rapid Skip actions and retains one pending operation after sync failure", async () => {
+  it("records rapid Skip actions without fabricating a completion or pending operation", async () => {
     completeCalibrationProgress.mockRejectedValue(new Error("offline"));
 
     act(() => {
@@ -632,10 +642,11 @@ describe("AppProvider protected practice recovery", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
 
-    expect(storageAdapter.saveCalibrationCompletion).toHaveBeenCalledTimes(1);
-    expect(completeCalibrationProgress).toHaveBeenCalledTimes(1);
-    expect(loadPendingCalibrationCompletion(localStorage)?.placement).toBe("beginner");
-    expect(loadPendingCalibrationCompletion(localStorage)?.operationId).toBeTruthy();
+    expect(storageAdapter.saveCalibrationCompletion).not.toHaveBeenCalled();
+    expect(completeCalibrationProgress).not.toHaveBeenCalled();
+    expect(loadPendingCalibrationCompletion(localStorage)).toBeNull();
+    expect(storageAdapter.savePracticeIntroSeen).toHaveBeenCalledWith(true);
+    expect(storageAdapter.saveLastPracticeDifficulty).toHaveBeenCalledWith("beginner");
   });
 
   it("does not duplicate pending calibration completion calls in Strict Mode", async () => {
@@ -662,4 +673,23 @@ describe("AppProvider protected practice recovery", () => {
 
     expect(completeCalibrationProgress).toHaveBeenCalledTimes(1);
   });
+  it("shows the completed result while preparation is pending and preserves it on failure", async () => {
+    const deferred = createDeferred<unknown>();
+    prepareProtectedPracticeCases.mockReturnValue(deferred.promise);
+    act(() => { root.render(<AppProvider><Probe /></AppProvider>); });
+    await flush(); await flush();
+    await act(async () => {
+      Array.from(container.querySelectorAll("button")).find(b => b.textContent === "show completed result")?.click();
+    });
+    expect(container.querySelector("[data-testid='completed-summary']")?.textContent).toBe("completed-case");
+    expect(container.querySelector("[data-testid='preparation-state']")?.textContent).toBe("loading");
+    expect(syncStateText()).toBe("idle");
+    await act(async () => { deferred.reject(new Error("offline")); });
+    expect(container.querySelector("[data-testid='completed-summary']")?.textContent).toBe("completed-case");
+    expect(container.querySelector("[data-testid='preparation-state']")?.textContent).toBe("failed");
+    expect(syncStateText()).toBe("idle");
+    await flush();
+    expect(prepareProtectedPracticeCases).toHaveBeenCalledTimes(1);
+  });
+
 });

@@ -42,6 +42,7 @@ export function calculateAccuracy(correctAnswers = 0, totalAnswers = 0): number 
 export function getReleaseFlags(progressionConfig: ProgressionConfig | null): ReleaseFlags {
   const flags = progressionConfig?.release_flags ?? {};
   return {
+    enable_open_practice_access: Boolean(flags.enable_open_practice_access),
     enable_all_difficulties: Boolean(flags.enable_all_difficulties),
     enable_unlimited_cases: Boolean(flags.enable_unlimited_cases),
     enable_learn_preview: Boolean(flags.enable_learn_preview),
@@ -145,7 +146,8 @@ export function getCalibrationCompletionFromUserState(userState: UserState | nul
   return {
     completed: true,
     placement: userState.calibrationPlacement,
-    version: 2
+    version: userState.calibrationVersion ?? 2,
+    ...(userState.calibrationRecommendation ? { recommendation: userState.calibrationRecommendation } : {})
   };
 }
 
@@ -337,6 +339,7 @@ export function getBlockedXpGate(
   progressionConfig: ProgressionConfig | null,
   userState: UserState
 ): { difficulty: "advanced" | "master"; capXp: number; unlockLevel: number } | null {
+  if (getReleaseFlags(progressionConfig).enable_open_practice_access) return null;
   const normalizedAttempts = normalizePracticeAttemptSummaries(userState.recentPracticeAttempts);
 
   for (const difficulty of ["advanced", "master"] as const) {
@@ -374,6 +377,7 @@ export function getAwardableXpWithReadinessGates(input: {
   attemptsIncludingCurrent: PracticeAttemptSummary[];
 }): number {
   const normalizedAward = getAwardableXp(input.progressionConfig, input.userState.xp, input.requestedXp);
+  if (getReleaseFlags(input.progressionConfig).enable_open_practice_access) return normalizedAward;
   if (normalizedAward <= 0) return 0;
 
   const maxAllowedXp = (["advanced", "master"] as const).reduce<number | null>((currentCap, difficulty) => {
@@ -544,7 +548,7 @@ export function getEffectiveUnlockedDifficulty(input: ProgressionStateInput): nu
   const subscriptionTier = getEffectiveSubscriptionTier(input);
   const userState = input.userState;
 
-  if (releaseFlags.enable_all_difficulties || subscriptionTier === "exam_prep") {
+  if (releaseFlags.enable_open_practice_access || releaseFlags.enable_all_difficulties || subscriptionTier === "exam_prep") {
     return DIFFICULTY_ORDER.length;
   }
 
@@ -628,6 +632,9 @@ export function mapProgressRowToUserState(source: Partial<ProgressRow> | null | 
     betaReleaseNumber: source.beta_release_number == null ? null : Number(source.beta_release_number),
     calibrationCompleted: Boolean(source.calibration_completed),
     calibrationPlacement: source.calibration_placement ?? null,
+    ...(source.calibration_recommendation ? { calibrationRecommendation: source.calibration_recommendation } : {}),
+    ...(source.calibration_version ? { calibrationVersion: source.calibration_version } : {}),
+    ...(source.calibration_completed === false ? { calibrationRecommendation: null, calibrationVersion: undefined } : {}),
     calibrationCompletedAt: source.calibration_completed_at ?? null,
     placementBoostCompletedAt: source.placement_boost_completed_at ?? null,
     intermediateUnlockedAt: source.intermediate_unlocked_at ?? null,

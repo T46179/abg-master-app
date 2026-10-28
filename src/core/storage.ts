@@ -1,3 +1,4 @@
+import { invalidatePracticeSlotRequests } from "./practiceSlotEpoch";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   CalibrationCompletionRecord,
@@ -171,7 +172,10 @@ export function sanitizeCalibrationCompletion(source: unknown): CalibrationCompl
   return {
     completed: true,
     placement: placement as CalibrationPlacement,
-    version
+    version,
+    ...(version >= 3 && sanitizePracticeDifficulty(record.recommendation)
+      && (record.recommendation === "master" ? "advanced" : record.recommendation) === placement
+      ? { recommendation: record.recommendation as CalibrationCompletionRecord["recommendation"] } : {})
   };
 }
 
@@ -270,6 +274,7 @@ export function createLocalStorageAdapter(browserStorage: BrowserStorageLike): S
     },
 
     async resetUserState() {
+      invalidatePracticeSlotRequests();
       safeRemoveItem(browserStorage, USER_STATE_STORAGE_KEY);
       safeRemoveItem(browserStorage, FEATURED_CASE_DRAFT_STORAGE_KEY);
       safeRemoveItem(browserStorage, FEATURED_CASE_INTRO_SEEN_STORAGE_KEY);

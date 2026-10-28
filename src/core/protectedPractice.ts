@@ -17,6 +17,7 @@ import type {
   ProtectedPracticePrepareResponse,
   ProtectedPracticeSubmitRequest,
   ProtectedPracticeSubmitResponse,
+  ProtectedPracticeResultResponse,
   RuntimeConfig,
   StructuredExplanation,
   UserState
@@ -156,11 +157,11 @@ export async function submitProtectedPracticeCase(
   config: RuntimeConfig,
   supabase: SupabaseClient,
   request: ProtectedPracticeSubmitRequest
-): Promise<{ summary: CaseSummary; replacementSlot: IssuedPracticeSlot; progress?: ProtectedPracticeSubmitResponse["progress"] }> {
-  const response = await invokeProtectedFunction<ProtectedPracticeSubmitResponse>(
+): Promise<{ summary: CaseSummary; progress?: ProtectedPracticeSubmitResponse["progress"] }> {
+  const response = await invokeProtectedFunction<ProtectedPracticeResultResponse>(
     config,
     supabase,
-    "submit-practice-case",
+    "submit-practice-result",
     request as unknown as Record<string, unknown>
   );
 
@@ -186,16 +187,8 @@ export async function submitProtectedPracticeCase(
     caseData: response.summary.caseData
   };
 
-  const difficultyKey = String(response.replacementSlot.difficultyKey ?? response.summary.caseData.difficulty_label ?? "").toLowerCase();
-  const replacementSlot = normalizeIssuedPracticeSlot(
-    difficultyKey,
-    String(response.replacementSlot.contentVersion ?? ""),
-    response.replacementSlot
-  );
-
   return {
     summary,
-    replacementSlot,
     progress: response.progress ?? null
   };
 }

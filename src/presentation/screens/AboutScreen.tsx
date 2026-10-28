@@ -1,13 +1,11 @@
-import { ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
 import aboutPortrait from "../../assets/about-portrait.webp";
+import { publicResources } from "../../app/publicPages";
 import { articleAuthorDisplayName, siteIdentity } from "../../app/publicSeo";
 import { SeoMetadata } from "../../app/seo";
 import { PublicPageShell } from "../layout/PublicPageShell";
 import { usePublicCasesSolvedCount } from "../shared/usePublicCasesSolvedCount";
 
 const aboutContent = {
-  backLink: "Explore ABG Master",
   eyebrow: "ABG Master · About",
   title: "About",
   subtitle: "The project & the person",
@@ -22,8 +20,9 @@ const aboutContent = {
       "It is a small, independent educational project. The emphasis is on clear explanations and deliberate practice rather than shortcuts or clinical decision-making."
     ],
     stats: [
+      // Current published content library: 151 generated cases + 6 authored cases.
       { value: "157", label: "Case Library" },
-      { value: "4", label: "Guides" }
+      { value: String(publicResources.length), label: "Guides" }
     ]
   },
   person: {
@@ -54,11 +53,6 @@ export function AboutScreen() {
     <>
       <SeoMetadata />
       <PublicPageShell pageClassName="about-page" articleClassName="about-page__article">
-        <Link className="about-page__back" to="/dashboard">
-          <ArrowLeft aria-hidden="true" />
-          {aboutContent.backLink}
-        </Link>
-
         <div className="about-page__content">
           <header className="comp-rules-page__header public-page-shell__hero about-page__hero">
             <div className="comp-rules-page__methodology-pill">

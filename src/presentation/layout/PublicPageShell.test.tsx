@@ -2,6 +2,7 @@
 
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PublicPageShell } from "./PublicPageShell";
 
@@ -24,7 +25,7 @@ describe("PublicPageShell", () => {
 
   it("does not add the educational disclaimer by default", () => {
     act(() => {
-      root.render(<PublicPageShell><h1>About</h1></PublicPageShell>);
+      root.render(<MemoryRouter><PublicPageShell><h1>About</h1></PublicPageShell></MemoryRouter>);
     });
 
     expect(container.querySelector(".comp-rules-page__footer")).toBeNull();
@@ -32,7 +33,7 @@ describe("PublicPageShell", () => {
 
   it("renders the educational disclaimer only when requested", () => {
     act(() => {
-      root.render(<PublicPageShell showEducationalDisclaimer><h1>Resources</h1></PublicPageShell>);
+      root.render(<MemoryRouter><PublicPageShell showEducationalDisclaimer><h1>Resources</h1></PublicPageShell></MemoryRouter>);
     });
 
     expect(container.querySelector(".comp-rules-page__footer")?.textContent).toContain("Educational tool");

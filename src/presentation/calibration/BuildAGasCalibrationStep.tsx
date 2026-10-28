@@ -2,16 +2,20 @@ import { useEffect, useState } from "react";
 import { MetricLabel, MetricValue } from "../practice/MetricText";
 import { buildAGasRows } from "./calibrationConfig";
 import type { BuildAGasCalibrationSelection } from "./calibrationTypes";
+import type { PressureUnit } from "../../core/types";
+import { getCalibrationDisplayMetric } from "./calibrationMetrics";
 
 interface BuildAGasCalibrationStepProps {
+  pressureUnit?: PressureUnit;
   onCanContinueChange?: (canContinue: boolean) => void;
   onSelectionChange?: (selection: BuildAGasCalibrationSelection) => void;
 }
 
-export function BuildAGasCalibrationStep({ onCanContinueChange, onSelectionChange }: BuildAGasCalibrationStepProps) {
+export function BuildAGasCalibrationStep({ pressureUnit = "mmHg", onCanContinueChange, onSelectionChange }: BuildAGasCalibrationStepProps) {
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({});
   const phValue = selectedValues.pH;
   const paco2Value = selectedValues.PaCO2;
+  const paco2Display = paco2Value ? getCalibrationDisplayMetric({ label: "PaCO2", value: paco2Value, unit: "mmHg", reference: "" }, pressureUnit) : null;
   const hco3Value = selectedValues.HCO3;
   const canContinue = buildAGasRows.every(row => Boolean(selectedValues[row.label]));
 
@@ -36,11 +40,12 @@ export function BuildAGasCalibrationStep({ onCanContinueChange, onSelectionChang
               <span className="calibration-build-gas__row-label">
                 <MetricLabel label={row.label} />
               </span>
-              {row.unit ? <span className="calibration-build-gas__row-unit">{row.unit}</span> : null}
+              {row.unit ? <span className="calibration-build-gas__row-unit">{row.unit === "mmHg" ? pressureUnit : row.unit}</span> : null}
             </div>
             <div className="calibration-build-gas__choice-grid">
               {row.choices.map(choice => {
                 const selected = selectedValues[row.label] === choice.value;
+                const display = getCalibrationDisplayMetric({ label: row.label, value: choice.value, unit: row.unit, reference: "" }, pressureUnit);
 
                 return (
                   <article
@@ -48,7 +53,7 @@ export function BuildAGasCalibrationStep({ onCanContinueChange, onSelectionChang
                     tabIndex={0}
                     className={`metric-card calibration-build-gas__choice${selected ? " is-selected" : ""}`}
                     key={`${row.label}-${choice.value}`}
-                    aria-label={`${row.label} ${choice.value} ${choice.status}${selected ? " selected" : ""}`}
+                    aria-label={`${row.label} ${display.value} ${choice.status}${selected ? " selected" : ""}`}
                     aria-pressed={selected}
                     onClick={() => setSelectedValues(values => ({ ...values, [row.label]: choice.value }))}
                     onKeyDown={event => {
@@ -58,7 +63,7 @@ export function BuildAGasCalibrationStep({ onCanContinueChange, onSelectionChang
                     }}
                   >
                     {selected ? <span className="calibration-build-gas__check" aria-hidden="true">✓</span> : null}
-                    <MetricValue renderedValue={choice.value} />
+                    <MetricValue renderedValue={display.value} />
                     <span className="calibration-build-gas__status">{choice.status}</span>
                   </article>
                 );
@@ -71,7 +76,7 @@ export function BuildAGasCalibrationStep({ onCanContinueChange, onSelectionChang
         <span className="calibration-build-gas__summary">
           {phValue ? <>pH {phValue}</> : null}
           {phValue && paco2Value ? <span aria-hidden="true"> · </span> : null}
-          {paco2Value ? <>CO<sub>2</sub> {paco2Value}</> : null}
+          {paco2Display ? <>CO<sub>2</sub> {paco2Display.value} {paco2Display.unit}</> : null}
           {(phValue || paco2Value) && hco3Value ? <span aria-hidden="true"> · </span> : null}
           {hco3Value ? <>HCO<sub>3</sub> {hco3Value}</> : null}
         </span>

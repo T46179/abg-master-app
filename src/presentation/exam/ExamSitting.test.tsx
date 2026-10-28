@@ -20,7 +20,11 @@ vi.mock("../../app/AppProvider", () => ({
       payload: { progressionConfig: null, dashboardState: null, defaultUserState: null, cases: [] },
       userState: {}, sessionState: { pressureUnit: "kPa" },
       calibrationState: { localCompletion: {}, effectiveCompletion: {}, remoteStatus: "resolved" },
-      storage: { loadSeenCaseState: () => ({}), savePressureUnitPreference: vi.fn() },
+      storage: {
+        loadSeenCaseState: () => ({}), savePressureUnitPreference: vi.fn(),
+        loadPracticeIntroSeen: () => false, loadAppAreaVisited: () => false,
+        saveAppAreaVisited: vi.fn(),
+      },
       appStatus: { warnings: {}, blocking: null }
     },
     patchSessionState: patchSession,
