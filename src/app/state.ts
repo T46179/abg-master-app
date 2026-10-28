@@ -90,6 +90,7 @@ export const initialAppStatus: AppStatus = {
 };
 
 export const initialPracticeState: PracticeFlowState = {
+  preparationState: "idle",
   currentCase: null,
   currentCaseToken: null,
   currentCaseExpiresAt: null,

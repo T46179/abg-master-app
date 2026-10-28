@@ -1,3 +1,4 @@
+import { invalidatePracticeSlotRequests, practiceSlotGeneration } from "../../core/practiceSlotEpoch";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
@@ -112,6 +113,14 @@ export function ProtectedPracticeScreen() {
   const activeStepRef = useRef<HTMLButtonElement | null>(null);
   const difficultyReconciledRef = useRef(false);
   const latestCaseLoadRequestRef = useRef(0);
+  const slotLoadRequestRef = useRef(0);
+  const slotContextRef = useRef("");
+  slotContextRef.current = JSON.stringify([state.userId, state.payload?.contentVersion]);
+  const screenMountedRef = useRef(true);
+  useEffect(() => {
+    screenMountedRef.current = true;
+    return () => { screenMountedRef.current = false; slotLoadRequestRef.current += 1; };
+  }, []);
   const practiceOpenedTrackedRef = useRef(false);
   const caseStartTrackedRef = useRef(new Set<string>());
   const summaryViewTrackedRef = useRef(new Set<string>());
@@ -506,6 +515,11 @@ export function ProtectedPracticeScreen() {
   }
 
   async function fetchSlotsForDifficulties(difficulties: string[]) {
+    const context = slotContextRef.current;
+    const generation = practiceSlotGeneration();
+    const requestId = ++slotLoadRequestRef.current;
+    const isCurrent = () => screenMountedRef.current && context === slotContextRef.current
+      && generation === practiceSlotGeneration() && requestId === slotLoadRequestRef.current;
     if (!payload?.contentVersion || !state.supabase || !state.runtimeConfig) {
       patchPracticeState({
         syncState: "unavailable",
@@ -533,6 +547,7 @@ export function ProtectedPracticeScreen() {
 
     try {
       const nextSlots = await preloadProtectedPracticeSlots({
+        isCurrent,
         config: state.runtimeConfig,
         supabase: state.supabase,
         storage: window.localStorage,
@@ -545,6 +560,7 @@ export function ProtectedPracticeScreen() {
           recentArchetypes
         }
       });
+      if (!isCurrent() || requestId !== slotLoadRequestRef.current) return {};
       patchPracticeState({
         practiceSlotsByDifficulty: nextSlots,
         syncState: "idle",
@@ -552,6 +568,7 @@ export function ProtectedPracticeScreen() {
       });
       return nextSlots;
     } catch (error) {
+      if (!isCurrent() || requestId !== slotLoadRequestRef.current) return {};
       const hasAnyCachedSlot = difficulties.some(difficultyKey => Boolean(slots[difficultyKey]));
       patchPracticeState({
         syncState: hasAnyCachedSlot ? "idle" : "unavailable",
@@ -850,7 +867,10 @@ export function ProtectedPracticeScreen() {
     });
 
     try {
+      const submissionContext = slotContextRef.current;
+      const submissionGeneration = practiceSlotGeneration();
       const result = await submitProtectedPracticeCase(state.runtimeConfig, state.supabase, pendingSubmission);
+      if (!screenMountedRef.current || submissionContext !== slotContextRef.current || submissionGeneration !== practiceSlotGeneration()) return;
       const progressPatch = mapProgressRowToUserState(result.progress);
       const reconciledSummary = reconcileProtectedSummaryWithLockedStepResults({
         summary: {
@@ -897,15 +917,11 @@ export function ProtectedPracticeScreen() {
       const seenCasesByDifficulty = state.storage?.loadSeenCaseState() ?? createEmptySeenCasesState();
       state.storage?.saveSeenCaseState(markCaseSeen(seenCasesByDifficulty, currentCase, payload.progressionConfig ?? null));
 
-      const nextSlots = {
-        ...state.practiceState.practiceSlotsByDifficulty,
-        [normalizedDifficulty]: {
-          ...result.replacementSlot,
-          contentVersion: payload.contentVersion,
-          difficultyKey: normalizedDifficulty
-        }
-      };
-      savePracticeSlotsCache(window.localStorage, nextSlots, state.userId);
+      invalidatePracticeSlotRequests();
+      const nextSlots = clearPracticeSlotCache(
+        window.localStorage, state.practiceState.practiceSlotsByDifficulty,
+        normalizedDifficulty, pendingSubmission.caseToken, state.userId
+      );
       clearPendingPracticeSubmission(window.localStorage);
 
       patchPracticeState({

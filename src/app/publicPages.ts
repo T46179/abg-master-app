@@ -57,7 +57,22 @@ export const publicResources: PublicResource[] = [
 // Keep this list limited to confirmed public additions. Add new entries when the
 // corresponding change has been released, with the release date as the source of truth.
 export const publicUpdates: PublicUpdate[] = [
-{
+  {
+  date: "2026-10-28",
+  version: "v1.5",
+  category: "improved",
+  title: "Unlocked Master Cases",
+  summary: "Access master cases and improved onboarding flow for new users",
+  highlights: [
+    "Master level cases now available to all users from the start based on feedback",
+    "Calibration now provides a recommended starting difficulty based on performance",
+    "Freely switch between difficulties",
+    "Fixed a bug where cases were being repeated faster than intended",
+    "Multiple UI fixes",
+    "Backend work for major updates and new content coming soon."
+  ]
+  },
+  {
   date: "2026-09-01",
   version: "v1.4",
   category: "new",
