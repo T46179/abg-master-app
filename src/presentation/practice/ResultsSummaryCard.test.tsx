@@ -499,9 +499,12 @@ describe("ResultsSummaryCard", () => {
     expect(container.textContent).toContain(
       "PaCO2 is 5.3 kPa and has moved up while the pH has moved down, so the primary process is respiratory acidosis."
     );
-    expect(container.textContent).toContain(
-      "With a measured PaO₂ of 90 mmHg, the A–a gradient is about 338 mmHg."
+    const aaExplanation = Array.from(container.querySelectorAll(".results-card__detail-card"))
+      .find(card => card.querySelector("h4")?.textContent === "A-a Gradient");
+    expect(aaExplanation?.textContent).toContain(
+      "With a measured PaO2 of 90 mmHg, the A–a gradient is about 338 mmHg."
     );
+    expect(aaExplanation?.querySelector("sub")?.textContent).toBe("2");
   });
 
   it("renders unknown fallback and omits empty explanation cards when sections are missing", () => {
@@ -1194,9 +1197,11 @@ describe("ResultsSummaryCard", () => {
     });
     act(() => container.querySelector<HTMLButtonElement>(".cmp-calc__toggle")?.click());
 
-    expect(container.querySelector(".cmp-calc__lines > li")?.textContent).toBe(
-      "Chronic Respiratory Acidosis: PaCO₂ 8.0 kPa (60 mmHg) → 24 + 4 × ((60 − 40) ÷ 10) = 32 mmol/L"
+    const calculation = container.querySelector(".cmp-calc__lines > li");
+    expect(calculation?.textContent).toBe(
+      "Chronic Respiratory Acidosis: PaCO2 8.0 kPa (60 mmHg) → 24 + 4 × ((60 − 40) ÷ 10) = 32 mmol/L"
     );
+    expect(calculation?.querySelector("sub")?.textContent).toBe("2");
   });
 
   it("replaces anion gap prose with the production structured visual and case-input calculation", () => {

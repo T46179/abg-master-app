@@ -277,9 +277,13 @@ describe("CompensationVisualContent", () => {
     expect(calculationItems[0].textContent).toContain("Acute:");
     expect(calculationItems[1].textContent).toContain("Chronic:");
     expect(calculationItems[2].textContent).toBe(
-      "Expected HCO₃⁻: Acute 26.7 – 29 · Chronic 37 – 41 mmol/L"
+      "Expected HCO3-: Acute 26.7 – 29 · Chronic 37 – 41 mmol/L"
     );
-    expect(calculationItems[3].textContent).toBe("Measured HCO₃⁻: 32 mmol/L");
+    expect(calculationItems[3].textContent).toBe("Measured HCO3-: 32 mmol/L");
+    for (const item of [calculationItems[2], calculationItems[3]]) {
+      expect(item.querySelector("sub")?.textContent).toBe("3");
+      expect(item.querySelector("sup")?.textContent).toBe("-");
+    }
 
     const acuteRange = calculationItems[2].querySelector(".cmp-calc__range--acute_expected");
     const chronicRange = calculationItems[2].querySelector(".cmp-calc__range--chronic_expected");
@@ -345,14 +349,19 @@ describe("CompensationVisualContent", () => {
 
     const items = container.querySelectorAll(".cmp-calc__lines > li");
     expect(items[0]?.textContent).toBe(
-      "Acute: PaCO₂ 10.7 kPa (80 mmHg) → 24 + 1 × ((80 − 40) ÷ 10) = 28 mmol/L"
+      "Acute: PaCO2 10.7 kPa (80 mmHg) → 24 + 1 × ((80 − 40) ÷ 10) = 28 mmol/L"
     );
     expect(items[1]?.textContent).toBe(
-      "Chronic: PaCO₂ 10.7 kPa (80 mmHg) → 24 + 4 × ((80 − 40) ÷ 10) = 40 mmol/L"
+      "Chronic: PaCO2 10.7 kPa (80 mmHg) → 24 + 4 × ((80 − 40) ÷ 10) = 40 mmol/L"
     );
     expect(items[2]?.textContent).toBe(
-      "Expected HCO₃⁻: Acute 26.7 – 29 · Chronic 37 – 41 mmol/L"
+      "Expected HCO3-: Acute 26.7 – 29 · Chronic 37 – 41 mmol/L"
     );
+
+    expect(items[0].querySelector("sub")?.textContent).toBe("2");
+    expect(items[1].querySelector("sub")?.textContent).toBe("2");
+    expect(items[2].querySelector("sub")?.textContent).toBe("3");
+    expect(items[2].querySelector("sup")?.textContent).toBe("-");
 
     act(() => container.querySelector<HTMLButtonElement>(".cmp-formula-help__button")?.click());
     expect(container.querySelector(".cmp-formula-help__popover")?.textContent).toContain(
@@ -372,7 +381,8 @@ describe("CompensationVisualContent", () => {
     expect(items).toHaveLength(3);
     const expectedRange = items[1].querySelector(".cmp-calc__range--primary_expected");
     expect(expectedRange?.textContent).toBe("24 – 28");
-    expect(items[1].textContent).toBe("Expected PaCO₂: 24 – 28 mmHg");
+    expect(items[1].textContent).toBe("Expected PaCO2: 24 – 28 mmHg");
+    expect(items[1].querySelector("sub")?.textContent).toBe("2");
 
     const formulaButton = container.querySelector<HTMLButtonElement>(".cmp-formula-help__button");
     expect(formulaButton?.getAttribute("aria-label")).toBe(
@@ -408,11 +418,14 @@ describe("CompensationVisualContent", () => {
       "Winter's Formula: (1.5 × 12) + 8 = 26 mmHg → 26 × 0.133 = 3.5 kPa"
     );
     expect(container.querySelectorAll(".cmp-calc__lines > li")[1]?.textContent).toBe(
-      "Expected PaCO₂: 3.2 – 3.7 kPa"
+      "Expected PaCO2: 3.2 – 3.7 kPa"
     );
     expect(container.querySelectorAll(".cmp-calc__lines > li")[2]?.textContent).toBe(
-      "Measured PaCO₂: 2.9 kPa"
+      "Measured PaCO2: 2.9 kPa"
     );
+    for (const item of Array.from(container.querySelectorAll(".cmp-calc__lines > li")).slice(1)) {
+      expect(item.querySelector("sub")?.textContent).toBe("2");
+    }
 
     act(() => container.querySelector<HTMLButtonElement>(".cmp-formula-help__button")?.click());
     expect(container.querySelector(".cmp-formula-help__popover")?.textContent).toContain(
