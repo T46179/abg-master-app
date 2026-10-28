@@ -16,3 +16,4 @@ nppBackup/
 *.bak
 README.md
 RELEASE_CHECKLIST.md
+.temp/
