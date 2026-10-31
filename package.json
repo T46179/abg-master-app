@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:account-staging": "vite --mode account-staging --host 127.0.0.1 --port 5185 --strictPort",
     "build": "vite build && node scripts/create-spa-fallback.mjs",
     "build:exam-pilot": "vite build --mode exam-pilot && node scripts/create-exam-pilot-output.mjs",
     "preview:exam-pilot": "vite preview --mode exam-pilot",

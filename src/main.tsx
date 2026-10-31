@@ -1,26 +1,11 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { AppProvider } from "./app/AppProvider";
-import { App } from "./app/App";
-import { handleCaughtReactError, initMonitoring } from "./core/monitoring";
-import { initAnalytics } from "./core/analytics";
 import "./styles/theme.css";
 import "./styles/index.css";
-
-initMonitoring();
-
 const container = document.getElementById("root");
-
-if (!container) {
-  throw new Error("Root container not found.");
+if (!container) throw new Error("Root container not found.");
+if (import.meta.env.DEV && import.meta.env.MODE === "account-staging") {
+  void import("./dev/accountStagingApp").then(({ mountAccountStagingApp }) => mountAccountStagingApp(container));
+} else if (import.meta.env.DEV && import.meta.env.MODE === "development" && import.meta.env.VITE_SUPABASE_URL === "https://clpfecuohwzwrgmqzeos.supabase.co" && ["127.0.0.1", "localhost"].includes(location.hostname)) {
+  void import("./dev/localAccountEntry").then(({ mountLocalAccountApp }) => mountLocalAccountApp(container));
+} else {
+  void import("./app/mountDefaultApp").then(({ mountDefaultApp }) => mountDefaultApp(container));
 }
-
-initAnalytics();
-
-createRoot(container, { onCaughtError: handleCaughtReactError }).render(
-  <StrictMode>
-    <AppProvider>
-      <App />
-    </AppProvider>
-  </StrictMode>
-);

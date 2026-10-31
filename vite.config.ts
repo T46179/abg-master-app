@@ -5,7 +5,8 @@ import { defineConfig, loadEnv } from "vite";
 
 const packageJson = JSON.parse(readFileSync(resolve(__dirname, "package.json"), "utf-8")) as { version?: string };
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
+  if (mode === "account-staging" && command !== "serve") throw new Error("Account staging is a local preview only.");
   if (mode === "exam-pilot") {
     const env = loadEnv(mode, process.cwd(), "VITE_");
     const stagingUrl = "https://clpfecuohwzwrgmqzeos.supabase.co";
@@ -33,7 +34,13 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
     server: {
-      host: "127.0.0.1"
+      host: "127.0.0.1",
+      ...((mode === "account-staging" || mode === "development") ? { proxy: {
+        "/__account-staging/runtime_bootstrap.json": {
+          target: "https://staging.abgmaster.com", changeOrigin: true,
+          rewrite: () => "/runtime_bootstrap.json"
+        }
+      } } : {})
     },
     preview: {
       host: "127.0.0.1"

@@ -1,3 +1,5 @@
+import { useOptionalAccountWorkspace } from "../../app/AccountWorkspace";
+import { SiteAccountExamScreen } from "./SiteAccountExamScreen";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createExamAuthClient, readExamAccess, readExamIdentity, requestExamCode, verifyExamCode, type ExamAccess } from "../../core/examAuth";
 import ExamPilotRuntime from "../exam/ExamPilotRuntime";
@@ -7,6 +9,11 @@ import "../exam/pilotAuth.css";
 // Used by local development and the explicit hosted Exam pilot build.
 // Separate credentials prevent falling back to the production/Practice project.
 export default function ExamPilotAuthScreen() {
+  const workspace = useOptionalAccountWorkspace();
+  return workspace ? <SiteAccountExamScreen workspace={workspace} /> : <LegacyExamPilotAuthScreen />;
+}
+
+function LegacyExamPilotAuthScreen() {
   const client = useMemo(() => {
     const url = import.meta.env.VITE_EXAM_PILOT_SUPABASE_URL;
     const key = import.meta.env.VITE_EXAM_PILOT_SUPABASE_ANON_KEY;

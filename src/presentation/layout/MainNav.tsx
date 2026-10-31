@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useLayoutEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { insightsRouteContract } from "../../core/insights";
 import listIconUrl from "../../assets/icons/list.svg";
@@ -7,6 +7,8 @@ import { MobileNavDrawer, type MobileNavDrawerItem } from "./MobileNavDrawer";
 import type { MobileNavProgress } from "./mobileNavProgress";
 import type { PressureUnit } from "../../core/types";
 import { SettingsPopover } from "./SettingsPopover";
+
+const LocalAccountNav = import.meta.env.DEV ? lazy(() => import("../account/AccountNav.dev")) : null;
 
 interface MainNavProps {
   mobileOpen: boolean;
@@ -51,7 +53,7 @@ export function MainNav(props: MainNavProps) {
       : []),
     { to: "/learn?all=1", label: "Learn", description: "Modules & references", icon: "learn", disabled: !props.learnEnabled },
     { to: "/practice", label: "Practice", description: "Clinical case sets", icon: "practice" },
-    { to: "/exam", label: "Exam", description: "Exam Room", icon: "exam" }
+    { to: import.meta.env.DEV && import.meta.env.MODE === "development" ? "/dev/exam-pilot" : "/exam", label: "Exam", description: "Exam Room", icon: "exam" }
   ];
   const activeItem = hideNavigationItems ? undefined : navItems.find(item => {
     if (item.disabled) return false;
@@ -171,6 +173,8 @@ export function MainNav(props: MainNavProps) {
               <span className="main-nav__link-icon main-nav__bell-icon" aria-hidden="true" />
               <span>Stay Updated</span>
             </button>
+
+            {import.meta.env.DEV && import.meta.env.MODE === "development" && <span id="exam-account-nav-slot">{LocalAccountNav && <Suspense fallback={null}><LocalAccountNav /></Suspense>}</span>}
 
             {!hideNavigationItems ? (
               <button

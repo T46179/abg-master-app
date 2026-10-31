@@ -1,3 +1,4 @@
+import { useAccountBrowserStorage } from "../../app/AccountWorkspace";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
@@ -48,6 +49,7 @@ import { ErrorView, LoadingView } from "../shared/StatusViews";
 
 export function FeaturedCaseScreen() {
   const { state } = useAppContext();
+  const browserStorage = useAccountBrowserStorage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedEntry = useMemo(
@@ -68,7 +70,7 @@ export function FeaturedCaseScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSeenFeaturedIntro, setHasSeenFeaturedIntro] = useState(
-    () => loadFeaturedCaseIntroSeen(window.localStorage)
+    () => loadFeaturedCaseIntroSeen(browserStorage)
   );
   const [focusCaseAfterIntro, setFocusCaseAfterIntro] = useState(false);
   const [showAdvancedRanges, setShowAdvancedRanges] = useState(
@@ -110,9 +112,9 @@ export function FeaturedCaseScreen() {
           releaseId: result.releaseId,
           caseToken: result.slot.caseToken
         };
-        const savedDraft = loadFeaturedCaseDraft(window.localStorage, expectedDraft);
+        const savedDraft = loadFeaturedCaseDraft(browserStorage, expectedDraft);
         const draft = await ensureFeaturedCaseAnalyticsContext(
-          window.localStorage,
+          browserStorage,
           expectedDraft,
           {
             entrySource: requestedEntry.entrySource,
@@ -169,7 +171,7 @@ export function FeaturedCaseScreen() {
               },
               draft.analytics.eventUuids.opened
             );
-            saveFeaturedCaseDraft(window.localStorage, {
+            saveFeaturedCaseDraft(browserStorage, {
               ...draft,
               analytics: openedContext,
               savedAt: new Date().toISOString()
@@ -205,7 +207,7 @@ export function FeaturedCaseScreen() {
 
   useEffect(() => {
     if (!releaseId || !caseToken || summary || loading) return;
-    saveFeaturedCaseDraft(window.localStorage, {
+    saveFeaturedCaseDraft(browserStorage, {
       version: FEATURED_CASE_DRAFT_VERSION,
       userId: state.userId,
       releaseId,
@@ -369,7 +371,7 @@ export function FeaturedCaseScreen() {
         isCanonical: result.isCanonical,
         elapsedSeconds
       });
-      clearFeaturedCaseDraft(window.localStorage);
+      clearFeaturedCaseDraft(browserStorage);
       setSummary(result.summary);
       setComparison(result.comparison);
       setSummaryIsReplay(!result.isCanonical);
@@ -378,7 +380,7 @@ export function FeaturedCaseScreen() {
         isProtectedPracticeError(caught) &&
         (caught.code === "FEATURED_RELEASE_RETIRED" || caught.code === "FEATURED_RESET_STALE")
       ) {
-        clearFeaturedCaseDraft(window.localStorage);
+        clearFeaturedCaseDraft(browserStorage);
       }
       setError(caught instanceof Error ? caught.message : "The Featured Case could not be submitted.");
     } finally {
@@ -501,7 +503,7 @@ export function FeaturedCaseScreen() {
 
   function handleBeginFeaturedCase() {
     trackAttemptMilestone("intro_begin", "featured_case_intro_begin_clicked");
-    saveFeaturedCaseIntroSeen(window.localStorage);
+    saveFeaturedCaseIntroSeen(browserStorage);
     setHasSeenFeaturedIntro(true);
     setFocusCaseAfterIntro(true);
   }

@@ -1,3 +1,6 @@
+import { useAccountBrowserStorage, useOptionalAccountWorkspace } from "../../app/AccountWorkspace";
+import type { BrowserStorageLike } from "../../core/storage";
+import { learnLevels } from "../learn/content";
 import { RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
@@ -5,16 +8,15 @@ import { clearPendingCalibrationCompletion } from "../../core/calibrationRecover
 import { OPEN_ANALYTICS_CHOICES_EVENT } from "./AnalyticsConsentBanner";
 import { APP_BUILD_LABEL } from "./appBuild";
 
-function clearLearnModuleResumeState() {
-  if (typeof window === "undefined") return;
-
-  Object.keys(window.localStorage)
-    .filter(key => key === "abg-master:learn:last-module" || /^abg-master:learn:[^:]+:lesson-index$/.test(key))
-    .forEach(key => window.localStorage.removeItem(key));
+function clearLearnModuleResumeState(storage: BrowserStorageLike) {
+  storage.removeItem("abg-master:learn:last-module");
+  for (const level of learnLevels) storage.removeItem(`abg-master:learn:${level.slug}:lesson-index`);
 }
 
 export function AppFooter() {
   const { state } = useAppContext();
+  const browserStorage = useAccountBrowserStorage();
+  const workspace = useOptionalAccountWorkspace();
 
   async function handleResetProgress() {
     if (!state.storage) return;
@@ -23,13 +25,14 @@ export function AppFooter() {
     if (!confirmed) return;
 
     await state.storage.resetUserState();
+    if (workspace && !workspace.isCurrent()) return;
     state.storage.saveSeenCaseState({});
     state.storage.savePracticeIntroSeen(false);
     state.storage.saveAppAreaVisited(false);
     state.storage.saveAdvancedRangesPreference(false);
     state.storage.clearCalibrationCompletion();
-    clearPendingCalibrationCompletion(window.localStorage);
-    clearLearnModuleResumeState();
+    clearPendingCalibrationCompletion(browserStorage);
+    clearLearnModuleResumeState(browserStorage);
     window.location.assign("/practice");
   }
 

@@ -1,3 +1,4 @@
+import { useAccountBrowserStorage, useOptionalAccountWorkspace } from "./AccountWorkspace";
 import { invalidatePracticeSlotRequests, practiceSlotGeneration } from "../core/practiceSlotEpoch";
 import { preloadProtectedPracticeSlots } from "./protectedPracticeSlots";
 import { createContext, startTransition, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
@@ -56,9 +57,20 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(appReducer, initialAppState);
+  const workspace = useOptionalAccountWorkspace();
+  const browserStorage = useAccountBrowserStorage();
+  const resolveSession = (runtime: ReturnType<typeof createRuntimeSupabaseClient>) => workspace
+    ? Promise.resolve({ userId: workspace.isCurrent() ? workspace.userId : null, syncUnavailable: !workspace.isCurrent() })
+    : ensureAnonymousSession(runtime);
+  const [state, rawDispatch] = useReducer(appReducer, initialAppState);
+  const mountedRef = useRef(true);
+  const isActive = useCallback(() => mountedRef.current && (!workspace || workspace.isCurrent()), [workspace]);
+  const dispatch = useCallback((action: Parameters<typeof rawDispatch>[0]) => {
+    if (isActive()) rawDispatch(action);
+  }, [isActive]);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
   const [pendingCalibrationCompletion, setPendingCalibrationCompletion] = useState(() => (
-    typeof window === "undefined" ? null : loadPendingCalibrationCompletion(window.localStorage)
+    typeof window === "undefined" ? null : loadPendingCalibrationCompletion(browserStorage)
   ));
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryInFlightRef = useRef(false);
@@ -84,9 +96,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "loading" });
 
       try {
-        const runtimeConfig = await loadRuntimeConfig();
-        const payload = await loadCasesPayload();
-        const supabaseRuntime = createRuntimeSupabaseClient(runtimeConfig);
+        const runtimeConfig = workspace?.runtimeConfig ?? await loadRuntimeConfig();
+        const payload = workspace?.loadPayload ? await workspace.loadPayload(browserStorage) : await loadCasesPayload();
+        if (cancelled || (workspace && !workspace.isCurrent())) return;
+        const supabaseRuntime = workspace
+          ? { supabase: workspace.client, supabaseEnabled: Boolean(workspace.userId && workspace.client), userId: workspace.userId }
+          : createRuntimeSupabaseClient(runtimeConfig);
         runtimeSupabaseRef.current = supabaseRuntime;
 
         const fallbackUserState = payload.defaultUserState
@@ -97,7 +112,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : createEmptyUserState();
 
         const storage = createAppStorage({
-          browserStorage: window.localStorage,
+          browserStorage,
           supabaseEnabled: false
         });
         const storageInitOptions = {
@@ -134,20 +149,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         await storage.saveUserState(hydratedUserState);
 
-        if (cancelled) return;
+        if (cancelled || !isActive()) return;
 
         startTransition(() => {
-          let practiceSlotsByDifficulty = loadPracticeSlotsCache(window.localStorage, payload.contentVersion, null);
-          let pendingSubmission = loadPendingPracticeSubmission(window.localStorage);
+          let practiceSlotsByDifficulty = loadPracticeSlotsCache(browserStorage, payload.contentVersion, workspace?.userId ?? null);
+          let pendingSubmission = loadPendingPracticeSubmission(browserStorage);
           let syncState: PracticeFlowState["syncState"] = pendingSubmission ? "pending_retry" : "idle";
           let syncMessage: string | null = null;
 
           if (pendingSubmission) {
             const invalidReason = getPendingSubmissionInvalidReason(pendingSubmission, payload.contentVersion);
             if (invalidReason === "expired") {
-              clearPendingPracticeSubmission(window.localStorage);
+              clearPendingPracticeSubmission(browserStorage);
               practiceSlotsByDifficulty = clearPracticeSlotCache(
-                window.localStorage,
+                browserStorage,
                 practiceSlotsByDifficulty,
                 pendingSubmission.difficultyKey,
                 pendingSubmission.caseToken,
@@ -157,9 +172,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
               syncState = "idle";
               syncMessage = PROTECTED_PRACTICE_MESSAGES.savedCaseExpired;
             } else if (invalidReason === "content_mismatch") {
-              clearPendingPracticeSubmission(window.localStorage);
+              clearPendingPracticeSubmission(browserStorage);
               practiceSlotsByDifficulty = clearPracticeSlotCache(
-                window.localStorage,
+                browserStorage,
                 practiceSlotsByDifficulty,
                 pendingSubmission.difficultyKey,
                 pendingSubmission.caseToken,
@@ -192,7 +207,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               storage,
               supabase: null,
               supabaseEnabled: supabaseRuntime.supabaseEnabled,
-              userId: null,
+              userId: workspace?.userId ?? null,
               syncUnavailable: false,
               calibrationState: resolveCalibrationState({
                 localCompletion,
@@ -207,7 +222,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         try {
           const remoteResult = await settleWithTimeout((async () => {
-            const session = await ensureAnonymousSession(supabaseRuntime);
+            const session = await resolveSession(supabaseRuntime);
             if (session.syncUnavailable || !session.userId || !supabaseRuntime.supabase) {
               throw new Error("Remote progress is unavailable.");
             }
@@ -219,7 +234,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             return { progress, userId: session.userId };
           })(), REMOTE_PROGRESS_TIMEOUT_MS);
 
-          if (cancelled) return;
+          if (cancelled || !isActive()) return;
           if (remoteResult.status === "timeout") {
             dispatch({
               type: "remote_state_unavailable",
@@ -233,7 +248,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
 
           const remoteStorage = createAppStorage({
-            browserStorage: window.localStorage,
+            browserStorage,
             supabase: supabaseRuntime.supabase,
             supabaseEnabled: true
           });
@@ -261,7 +276,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (remoteCompletion) remoteStorage.saveCalibrationCompletion(remoteCompletion);
           await remoteStorage.saveUserState(reconciledUserState);
           if (remoteCompletion) {
-            clearPendingCalibrationCompletion(window.localStorage);
+            clearPendingCalibrationCompletion(browserStorage);
             setPendingCalibrationCompletion(null);
           }
 
@@ -281,7 +296,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
           });
         } catch {
-          if (cancelled) return;
+          if (cancelled || !isActive()) return;
           dispatch({
             type: "remote_state_unavailable",
             calibrationState: resolveCalibrationState({
@@ -292,7 +307,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           });
         }
       } catch (error) {
-        if (cancelled) return;
+        if (cancelled || !isActive()) return;
         captureAppException(error, {
           name: "app_initialization",
           extra: {
@@ -367,7 +382,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     supabase: NonNullable<AppState["supabase"]>;
     userId: string;
   }) => {
-    if (!state.payload || typeof window === "undefined") return null;
+    if (!isActive() || !state.payload || typeof window === "undefined") return null;
 
     const progressPatch = mapProgressRowToUserState(input.progress);
     const remoteCompletion = progressPatch
@@ -377,7 +392,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ? syncUserStateDerivedFields({ ...state.userState, ...progressPatch }, state.payload.progressionConfig)
       : state.userState;
     const remoteStorage = createAppStorage({
-      browserStorage: window.localStorage,
+      browserStorage,
       supabase: input.supabase,
       supabaseEnabled: true
     });
@@ -426,6 +441,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const retryRemoteHydrationNow = useCallback(() => {
     if (
+      !isActive() ||
       remoteHydrationRetryInFlightRef.current ||
       state.status !== "ready" ||
       state.calibrationState.remoteStatus !== "unavailable" ||
@@ -443,7 +459,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remoteHydrationRetryInFlightRef.current = true;
 
     void settleWithTimeout((async () => {
-      const session = await ensureAnonymousSession(runtime);
+      const session = await resolveSession(runtime);
       if (session.syncUnavailable || !session.userId || !runtime.supabase) {
         throw new Error("Remote progress is unavailable.");
       }
@@ -462,7 +478,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .finally(() => {
         remoteHydrationRetryInFlightRef.current = false;
         if (
-          latestStateRef.current.calibrationState.remoteStatus === "unavailable" &&
+          isActive() && latestStateRef.current.calibrationState.remoteStatus === "unavailable" &&
           remoteHydrationRetryTimerRef.current == null
         ) {
           remoteHydrationRetryTimerRef.current = setTimeout(retryRemoteHydrationNow, 30_000);
@@ -472,6 +488,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const retryPendingCalibrationNow = useCallback(() => {
     if (
+      !isActive() ||
       calibrationRetryInFlightRef.current ||
       !pendingCalibrationCompletion ||
       state.status !== "ready" ||
@@ -491,11 +508,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...pendingCalibrationCompletion,
       lastAttemptAt: new Date().toISOString()
     };
-    savePendingCalibrationCompletion(window.localStorage, pending);
+    savePendingCalibrationCompletion(browserStorage, pending);
     setPendingCalibrationCompletion(pending);
 
     void settleWithTimeout((async () => {
-      const session = await ensureAnonymousSession(runtime);
+      const session = await resolveSession(runtime);
       if (session.syncUnavailable || !session.userId || !runtime.supabase) {
         throw new Error("Remote progress is unavailable.");
       }
@@ -507,6 +524,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         progressionVersion: pending.progressionVersion,
         betaReleaseNumber: pending.betaReleaseNumber
       });
+      if (!isActive()) return;
       const existingPatch = mapProgressRowToUserState(existingProgress);
       const existingCompletion = existingPatch
         ? getCalibrationCompletionFromUserState({ ...createEmptyUserState(), ...existingPatch })
@@ -546,7 +564,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })(), REMOTE_PROGRESS_TIMEOUT_MS)
       .then(result => {
         if (result.status === "timeout") throw new Error("Calibration reconciliation timed out.");
-        clearPendingCalibrationCompletion(window.localStorage);
+        clearPendingCalibrationCompletion(browserStorage);
         setPendingCalibrationCompletion(null);
         calibrationRetryAttemptCountRef.current = 0;
       })
@@ -556,7 +574,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...pending,
           lastAttemptAt: new Date().toISOString()
         };
-        savePendingCalibrationCompletion(window.localStorage, retainedPending);
+        savePendingCalibrationCompletion(browserStorage, retainedPending);
         setPendingCalibrationCompletion(retainedPending);
       })
       .finally(() => {
@@ -586,9 +604,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const clearPendingSubmissionState = useCallback((pendingSubmission: PracticeFlowState["pendingSubmission"], message: string | null) => {
     if (typeof window === "undefined" || !pendingSubmission) return;
 
-    clearPendingPracticeSubmission(window.localStorage);
+    clearPendingPracticeSubmission(browserStorage);
     const nextSlots = clearPracticeSlotCache(
-      window.localStorage,
+      browserStorage,
       state.practiceState.practiceSlotsByDifficulty,
       pendingSubmission.difficultyKey,
       pendingSubmission.caseToken,
@@ -669,13 +687,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await setUserState(nextUserState);
     }
 
+    if (!isActive() || submissionGeneration !== practiceSlotGeneration()) return;
     invalidatePracticeSlotRequests();
     const nextSlots = clearPracticeSlotCache(
-      window.localStorage,
-      loadPracticeSlotsCache(window.localStorage, state.payload.contentVersion, state.userId),
+      browserStorage,
+      loadPracticeSlotsCache(browserStorage, state.payload.contentVersion, state.userId),
       pendingSubmission.difficultyKey, pendingSubmission.caseToken, state.userId
     );
-    clearPendingPracticeSubmission(window.localStorage);
+    clearPendingPracticeSubmission(browserStorage);
     retryAttemptCountRef.current = 0;
     clearRetryTimer();
 
@@ -701,6 +720,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const retryPendingSubmissionNow = useCallback(() => {
     if (
+      !isActive() ||
       retryInFlightRef.current ||
       state.status !== "ready" ||
       !state.supabase ||
@@ -710,7 +730,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const pendingSubmission = loadPendingPracticeSubmission(window.localStorage) ?? state.practiceState.pendingSubmission;
+    const pendingSubmission = loadPendingPracticeSubmission(browserStorage) ?? state.practiceState.pendingSubmission;
     if (!pendingSubmission) return;
 
     const invalidReason = getPendingSubmissionInvalidReason(pendingSubmission, state.payload?.contentVersion);
@@ -776,7 +796,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const pendingSubmission = loadPendingPracticeSubmission(window.localStorage) ?? state.practiceState.pendingSubmission;
+    const pendingSubmission = loadPendingPracticeSubmission(browserStorage) ?? state.practiceState.pendingSubmission;
     if (!pendingSubmission) return;
 
     const invalidReason = getPendingSubmissionInvalidReason(pendingSubmission, state.payload?.contentVersion);
@@ -926,7 +946,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       && latestStateRef.current.payload?.contentVersion === contentVersion;
     patchPracticeState({ preparationState: "loading" });
     void preloadProtectedPracticeSlots({
-      config: state.runtimeConfig, supabase: state.supabase, storage: window.localStorage,
+      config: state.runtimeConfig, supabase: state.supabase, storage: browserStorage,
       contentVersion, userId, currentSlots: state.practiceState.practiceSlotsByDifficulty,
       difficulties: [completed.difficulty], isCurrent
     }).then(slots => {

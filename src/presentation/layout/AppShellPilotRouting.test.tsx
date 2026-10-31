@@ -59,7 +59,7 @@ function renderAt(pathname: string, mode: string) {
   act(() => root.render(<MemoryRouter initialEntries={[pathname]}>
     <Routes><Route element={<AppShell />}>
       <Route path="/exam" element={<p>{mode === "exam-pilot" ? "Pilot sign-in" : "Exam teaser"}</p>} />
-      <Route path="/dev/exam-pilot" element={<Navigate to="/exam" replace />} />
+      <Route path="/dev/exam-pilot" element={mode === "exam-pilot" ? <Navigate to="/exam" replace /> : <p>Connected local pilot</p>} />
       <Route path="/practice" element={<p>Practice screen</p>} />
       <Route path="/dashboard" element={<p>Dashboard screen</p>} />
       <Route path="/calibration" element={<p>Calibration screen</p>} />
@@ -103,5 +103,11 @@ it("opens normal Exam for a returning app visitor without a calibration completi
   mocks.hasVisitedAppArea = true;
   renderAt("/exam", "production");
   expect(container.textContent).toContain("Exam teaser");
+  expect(container.textContent).not.toContain("Calibration screen");
+});
+
+it("opens the unified local pilot directly for a fresh browser without Practice calibration", () => {
+  renderAt("/dev/exam-pilot", "development");
+  expect(container.textContent).toContain("Connected local pilot");
   expect(container.textContent).not.toContain("Calibration screen");
 });

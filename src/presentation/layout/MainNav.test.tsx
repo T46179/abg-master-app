@@ -37,6 +37,7 @@ describe("MainNav", () => {
       root.unmount();
     });
     container.remove();
+    vi.unstubAllEnvs();
   });
 
   function renderNav(initialEntries = ["/dashboard"]) {
@@ -56,6 +57,19 @@ describe("MainNav", () => {
       );
     });
   }
+
+  it.each(["exam-pilot", "account-staging", "production"])("keeps account preview controls out of %s navigation", mode => {
+    vi.stubEnv("MODE", mode);
+    renderNav(["/dev/exam-pilot"]);
+    expect(container.querySelector("#exam-account-nav-slot")).toBeNull();
+    expect(container.querySelector('a[href="/exam"]')).toBeTruthy();
+  });
+  it("keeps local Exam navigation at the unified pilot and provides its profile slot", () => {
+    vi.stubEnv("MODE", "development");
+    renderNav(["/dev/exam-pilot"]);
+    expect(container.querySelector("#exam-account-nav-slot")).toBeTruthy();
+    expect(container.querySelector('a[href="/dev/exam-pilot"]')).toBeTruthy();
+  });
 
   function renderNavWithLearnDisabled() {
     act(() => {

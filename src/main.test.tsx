@@ -43,6 +43,7 @@ describe("main entrypoint", () => {
   it("initializes monitoring and analytics before rendering the app", async () => {
     await import("./main");
 
+    await vi.waitFor(() => expect(createRootMock).toHaveBeenCalledTimes(1));
     expect(initMonitoringMock).toHaveBeenCalledTimes(1);
     expect(initAnalyticsMock).toHaveBeenCalledTimes(1);
     expect(createRootMock).toHaveBeenCalledTimes(1);

@@ -7,16 +7,16 @@ export interface SupabaseRuntime extends SupabaseSyncAdapter {
 
 const supabaseClientCache = new Map<string, SupabaseClient>();
 
-export function createRuntimeSupabaseClient(config: RuntimeConfig): SupabaseRuntime {
+export function createRuntimeSupabaseClient(config: RuntimeConfig, options?: { manualCallback?: boolean }): SupabaseRuntime {
   const supabaseEnabled = Boolean(config.SUPABASE_URL) && Boolean(config.SUPABASE_ANON_KEY);
-  const cacheKey = `${String(config.SUPABASE_URL ?? "")}::${String(config.SUPABASE_ANON_KEY ?? "")}`;
+  const cacheKey = `${String(config.SUPABASE_URL ?? "")}::${String(config.SUPABASE_ANON_KEY ?? "")}::${Boolean(options?.manualCallback)}`;
   let supabase: SupabaseClient | null = null;
 
   if (supabaseEnabled) {
     supabase = supabaseClientCache.get(cacheKey) ?? null;
 
     if (!supabase) {
-      supabase = createClient(String(config.SUPABASE_URL), String(config.SUPABASE_ANON_KEY));
+      supabase = createClient(String(config.SUPABASE_URL), String(config.SUPABASE_ANON_KEY), options?.manualCallback ? { auth: { detectSessionInUrl: false, flowType: "implicit" } } : undefined);
       supabaseClientCache.set(cacheKey, supabase);
     }
   }
@@ -35,11 +35,7 @@ async function signInAnonymous(supabase: SupabaseClient): Promise<boolean> {
 
 async function getVerifiedUser(supabase: SupabaseClient) {
   const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) {
-    return null;
-  }
-
-  return data.user;
+  return { user: data.user, error };
 }
 
 export async function ensureAnonymousSession(runtime: SupabaseRuntime): Promise<{ userId: string | null; syncUnavailable: boolean }> {
@@ -49,29 +45,37 @@ export async function ensureAnonymousSession(runtime: SupabaseRuntime): Promise<
 
   try {
     const {
-      data: { session }
+      data: { session }, error: sessionError
     } = await runtime.supabase.auth.getSession();
+
+    // A failed session read is not evidence that the learner needs a new identity.
+    if (sessionError) return { userId: null, syncUnavailable: true };
 
     if (!session && !await signInAnonymous(runtime.supabase)) {
       return { userId: null, syncUnavailable: true };
     }
 
-    let user = await getVerifiedUser(runtime.supabase);
+    let verified = await getVerifiedUser(runtime.supabase);
 
-    if (!user) {
-      await runtime.supabase.auth.signOut();
+    if (verified.error || !verified.user) {
+      // Only a confirmed invalid, explicitly anonymous session may be replaced.
+      // Never discard a permanent/unknown identity or sign out after a network error.
+      const canRecoverGuest = session?.user?.is_anonymous === true
+        && (verified.error?.status === 401 || verified.error?.status === 403);
+      if (!canRecoverGuest) return { userId: null, syncUnavailable: true };
 
-      if (!await signInAnonymous(runtime.supabase)) {
+      const { error: signOutError } = await runtime.supabase.auth.signOut({ scope: "local" });
+      if (signOutError || !await signInAnonymous(runtime.supabase)) {
         return { userId: null, syncUnavailable: true };
       }
 
-      user = await getVerifiedUser(runtime.supabase);
-      if (!user) {
+      verified = await getVerifiedUser(runtime.supabase);
+      if (verified.error || !verified.user) {
         return { userId: null, syncUnavailable: true };
       }
     }
 
-    runtime.userId = user.id;
+    runtime.userId = verified.user.id;
     return {
       userId: runtime.userId,
       syncUnavailable: false

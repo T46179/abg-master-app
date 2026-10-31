@@ -36,6 +36,8 @@ interface DashboardProps {
   startContent?: ReactNode;
   drillsUnavailable?: boolean;
   customDisabled?: boolean;
+  setupContent?: ReactNode;
+  hideModeSwitch?: boolean;
 }
 
 export function ExamDashboard(props: DashboardProps) {
@@ -54,15 +56,12 @@ export function ExamDashboard(props: DashboardProps) {
         </button>}
       </div>
     </div>
-    <header className="exam-page-heading">
-      <h1>Preparing for exams?</h1>
-      <p>Consistent, spaced practice works best. Try one exam per day, review your mistakes, then use Focused Drills to target your weak areas.</p>
-    </header>
-    <div className="exam-mode-switch">
+    <ExamPageHeading />
+    {!props.hideModeSwitch && <div className="exam-mode-switch">
       <SegmentedControl label="Exam mode" value={state.mode}
         options={[{ value: "mock", label: "Exam" }, { value: "drills", label: "Focused Drills" }]}
         onChange={mode => onChange({ mode })} />
-    </div>
+    </div>}
     {state.mode === "drills" ? <FocusedDrills {...props} /> : <MockExam {...props} />}
   </>;
 }
@@ -132,7 +131,7 @@ function InfoTip({ text, align = "right", children }: { text: string; align?: "l
   </span>;
 }
 
-function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisabled, caseCounts = [3, 5], startContent, customDisabled, pressureUnit, onPressureUnitChange, feedbackPreference }: DashboardProps) {
+function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisabled, caseCounts = [3, 5], startContent, customDisabled, pressureUnit, onPressureUnitChange, feedbackPreference, setupContent }: DashboardProps) {
   const disclaimerId = useId();
   const custom = state.examKind === "custom";
   const kinds: { key: SittingKind; label: string; description: string }[] = [
@@ -140,40 +139,8 @@ function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisab
     { key: "custom", label: "Custom Exam", description: "Choose what's included" }
   ];
   return <div className="exam-workspace exam-mock-workspace" data-kind={state.examKind}>
-    <Surface className="exam-mock-overview">
-      <div className="exam-mock-hero">
-        <div className="exam-hero-top"><span className="exam-hero-badge">Exam mode</span></div>
-        <div className="exam-hero-copy" key={state.examKind}>
-          <h2>{custom ? "Build your own exam" : "Your Session"}</h2>
-          <p>{custom
-            ? "Tailor your exam to your study needs. Adjust your settings, exclude selected topics and practise with the same structured questions and detailed feedback."
-            : "Practise exam-style questions across a range of clinical scenarios, testing your blood-gas interpretation, applied knowledge and clinical reasoning in a realistic exam setting."}</p>
-        </div>
-        <div className="exam-hero-stats">
-          <div><strong>{state.caseCount}</strong><span>Cases</span></div>
-          <div><strong>{pressureUnit}</strong><span>Pressure Unit</span></div>
-          <div><strong>{state.showRanges ? "On" : "Off"}</strong><span>Reference Ranges</span></div>
-          <div><strong>{state.timed ? "On" : "Off"}</strong><span>Timer</span></div>
-        </div>
-      </div>
-      <div className="exam-features">
-        <Feature icon={<ReportIcon />} title="Graded Short Answers" body="Develop your written responses with structured, criterion-based marking designed to reflect exam-style assessment."
-          info={<InfoTip text="About SAQ marking" align="left">
-            <strong>About SAQ marking</strong><br />
-            Short-answer responses are marked by AI against predefined criteria. AI marking may contain inaccuracies.
-            <br /><br />
-            <strong>Patient confidentiality</strong><br />
-            Do not include real patient information or identifiable clinical details in your answers.
-          </InfoTip>} />
-        <Feature icon={<LayersIcon />} title="Detailed Question Review" body="Review your marks, model answers and worked explanations for every question." />
-        <Feature icon={<HistoryIcon />} title="Personalised feedback" body="Get feedback on your written answers. Choose from three styles: supportive, professional, or ruthlessly honest."
-          info={<InfoTip text="About personalised feedback" align="left">
-            <strong>About personalised feedback</strong><br />
-            Feedback is AI-generated and may occasionally contain inaccuracies. It is provided for educational purposes and does not affect your marks or the model answers.
-          </InfoTip>} />
-      </div>
-    </Surface>
-    <Surface as="aside" className="exam-setup exam-sitting-setup" aria-labelledby="exam-build-title">
+    <ExamOverview state={state} pressureUnit={pressureUnit} />
+    {setupContent ?? (<Surface as="aside" className="exam-setup exam-sitting-setup" aria-labelledby="exam-build-title">
       <fieldset className="exam-setup-fields" disabled={setupLocked}>
       <div className="exam-build-heading"><div><h3 id="exam-build-title">Build your session</h3></div></div>
       <div className="exam-kind-picker" role="group" aria-label="Sitting type" data-kind={state.examKind}>
@@ -245,7 +212,7 @@ function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisab
       {startContent ?? <button type="button" className="figma-button exam-primary exam-start" onClick={onBegin} disabled={launching || beginDisabled || (feedbackPreference && !feedbackPreference.canBegin)} aria-busy={launching || undefined}>
         {launching ? <><span role="status">Preparing your session</span><span className="figma-button__spinner" aria-hidden="true" /></> : <>Begin <ArrowIcon /></>}
       </button>}
-    </Surface>
+    </Surface>)}
   </div>;
 }
 
@@ -255,4 +222,46 @@ function Feature({ icon, title, body, info }: { icon: ReactElement; title: strin
     <h4>{title}</h4>
     <p>{body}{info && <> {info}</>}</p>
   </div>;
+}
+
+export function ExamPageHeading() { return (<header className="exam-page-heading">
+      <h1>Preparing for exams?</h1>
+      <p>Consistent, spaced practice works best. Try one exam per day, review your mistakes, then use Focused Drills to target your weak areas.</p>
+    </header>); }
+
+export function ExamOverview({ state, pressureUnit }: Pick<DashboardProps, "state" | "pressureUnit">) {
+  const custom = state.examKind === "custom";
+  return (<Surface className="exam-mock-overview">
+      <div className="exam-mock-hero">
+        <div className="exam-hero-top"><span className="exam-hero-badge">Exam mode</span></div>
+        <div className="exam-hero-copy" key={state.examKind}>
+          <h2>{custom ? "Build your own exam" : "Your Session"}</h2>
+          <p>{custom
+            ? "Tailor your exam to your study needs. Adjust your settings, exclude selected topics and practise with the same structured questions and detailed feedback."
+            : "Practise exam-style questions across a range of clinical scenarios, testing your blood-gas interpretation, applied knowledge and clinical reasoning in a realistic exam setting."}</p>
+        </div>
+        <div className="exam-hero-stats">
+          <div><strong>{state.caseCount}</strong><span>Cases</span></div>
+          <div><strong>{pressureUnit}</strong><span>Pressure Unit</span></div>
+          <div><strong>{state.showRanges ? "On" : "Off"}</strong><span>Reference Ranges</span></div>
+          <div><strong>{state.timed ? "On" : "Off"}</strong><span>Timer</span></div>
+        </div>
+      </div>
+      <div className="exam-features">
+        <Feature icon={<ReportIcon />} title="Graded Short Answers" body="Develop your written responses with structured, criterion-based marking designed to reflect exam-style assessment."
+          info={<InfoTip text="About SAQ marking" align="left">
+            <strong>About SAQ marking</strong><br />
+            Short-answer responses are marked by AI against predefined criteria. AI marking may contain inaccuracies.
+            <br /><br />
+            <strong>Patient confidentiality</strong><br />
+            Do not include real patient information or identifiable clinical details in your answers.
+          </InfoTip>} />
+        <Feature icon={<LayersIcon />} title="Detailed Question Review" body="Review your marks, model answers and worked explanations for every question." />
+        <Feature icon={<HistoryIcon />} title="Personalised feedback" body="Get feedback on your written answers. Choose from three styles: supportive, professional, or ruthlessly honest."
+          info={<InfoTip text="About personalised feedback" align="left">
+            <strong>About personalised feedback</strong><br />
+            Feedback is AI-generated and may occasionally contain inaccuracies. It is provided for educational purposes and does not affect your marks or the model answers.
+          </InfoTip>} />
+      </div>
+    </Surface>);
 }

@@ -50,14 +50,15 @@ function AppShellContent() {
     hasPendingSubmission: Boolean(state.practiceState.pendingSubmission)
   });
   const isHostedExamPilotRoute = import.meta.env.MODE === "exam-pilot" && /^\/exam\/?$/.test(location.pathname);
-  const shouldHoldLearnerRoute = !isHostedExamPilotRoute && shouldHoldLearnerRouteForCalibration({
+  const isLocalAccountPilotRoute = import.meta.env.DEV && !["production", "exam-pilot", "account-staging"].includes(import.meta.env.MODE) && /^\/dev\/exam-pilot\/?$/.test(location.pathname);
+  const shouldHoldLearnerRoute = !isLocalAccountPilotRoute && !isHostedExamPilotRoute && shouldHoldLearnerRouteForCalibration({
     hasSeenIntroduction: state.storage?.loadPracticeIntroSeen() ?? false,
     hasVisitedAppArea: state.storage?.loadAppAreaVisited() ?? false,
     pathname: location.pathname,
     calibration: state.calibrationState,
     hasMeaningfulProgress
   });
-  const shouldRedirectToCalibration = !isHostedExamPilotRoute && shouldRedirectToCalibrationOnboarding({
+  const shouldRedirectToCalibration = !isLocalAccountPilotRoute && !isHostedExamPilotRoute && shouldRedirectToCalibrationOnboarding({
     hasSeenIntroduction: state.storage?.loadPracticeIntroSeen() ?? false,
     hasVisitedAppArea: state.storage?.loadAppAreaVisited() ?? false,
     pathname: location.pathname,

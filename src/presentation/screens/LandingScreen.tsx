@@ -1,3 +1,4 @@
+import { useAccountBrowserStorage } from "../../app/AccountWorkspace";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { useAppContext } from "../../app/AppProvider";
@@ -272,6 +273,7 @@ function LandingResultsPreview() {
 
 export function LandingScreen() {
   const { state, patchPracticeState } = useAppContext();
+  const browserStorage = useAccountBrowserStorage();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [launchNotifyOpen, setLaunchNotifyOpen] = useState(false);
   const [launchNotifySubmitting, setLaunchNotifySubmitting] = useState(false);
@@ -404,7 +406,7 @@ export function LandingScreen() {
           isCurrent: () => !cancelled,
           config: activeRuntimeConfig,
           supabase: activeSupabase,
-          storage: window.localStorage,
+          storage: browserStorage,
           contentVersion,
           userId: state.userId,
           currentSlots: state.practiceState.practiceSlotsByDifficulty,
@@ -424,7 +426,7 @@ export function LandingScreen() {
           isCurrent: () => !cancelled,
           config: activeRuntimeConfig,
           supabase: activeSupabase,
-          storage: window.localStorage,
+          storage: browserStorage,
           contentVersion,
           userId: state.userId,
           currentSlots: primarySlots,

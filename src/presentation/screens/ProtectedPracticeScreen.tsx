@@ -1,3 +1,4 @@
+import { useAccountBrowserStorage } from "../../app/AccountWorkspace";
 import { invalidatePracticeSlotRequests, practiceSlotGeneration } from "../../core/practiceSlotEpoch";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -104,6 +105,7 @@ function getResultsSummaryAnimationKey(summary: { caseToken?: string | null; cas
 
 export function ProtectedPracticeScreen() {
   const { state, setUserState, patchPracticeState, patchSessionState } = useAppContext();
+  const browserStorage = useAccountBrowserStorage();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [recentArchetypes, setRecentArchetypes] = useState<string[]>([]);
@@ -529,7 +531,7 @@ export function ProtectedPracticeScreen() {
     }
 
     const { slots, missingDifficulties } = getMissingPracticeSlotDifficulties({
-      storage: window.localStorage,
+      storage: browserStorage,
       contentVersion: payload.contentVersion,
       userId: state.userId,
       currentSlots: state.practiceState.practiceSlotsByDifficulty,
@@ -550,7 +552,7 @@ export function ProtectedPracticeScreen() {
         isCurrent,
         config: state.runtimeConfig,
         supabase: state.supabase,
-        storage: window.localStorage,
+        storage: browserStorage,
         contentVersion: payload.contentVersion,
         userId: state.userId,
         currentSlots: state.practiceState.practiceSlotsByDifficulty,
@@ -859,7 +861,7 @@ export function ProtectedPracticeScreen() {
       clientCompletedAt: new Date().toISOString()
     });
 
-    savePendingPracticeSubmission(window.localStorage, pendingSubmission);
+    savePendingPracticeSubmission(browserStorage, pendingSubmission);
     patchPracticeState({
       pendingSubmission,
       syncState: "submitting",
@@ -919,10 +921,10 @@ export function ProtectedPracticeScreen() {
 
       invalidatePracticeSlotRequests();
       const nextSlots = clearPracticeSlotCache(
-        window.localStorage, state.practiceState.practiceSlotsByDifficulty,
+        browserStorage, state.practiceState.practiceSlotsByDifficulty,
         normalizedDifficulty, pendingSubmission.caseToken, state.userId
       );
-      clearPendingPracticeSubmission(window.localStorage);
+      clearPendingPracticeSubmission(browserStorage);
 
       patchPracticeState({
         currentCase: null,
@@ -956,14 +958,14 @@ export function ProtectedPracticeScreen() {
         (error.code === "CASE_TOKEN_EXPIRED" || (error.code === "CASE_SLOT_UNAVAILABLE" && error.status === 404))
       ) {
         const nextSlots = clearPracticeSlotCache(
-          window.localStorage,
+          browserStorage,
           state.practiceState.practiceSlotsByDifficulty,
           normalizedDifficulty,
           pendingSubmission.caseToken,
           state.userId
         );
-        savePracticeSlotsCache(window.localStorage, nextSlots, state.userId);
-        clearPendingPracticeSubmission(window.localStorage);
+        savePracticeSlotsCache(browserStorage, nextSlots, state.userId);
+        clearPendingPracticeSubmission(browserStorage);
         patchPracticeState({
           currentCase: null,
           currentCaseToken: null,

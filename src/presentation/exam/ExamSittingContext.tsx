@@ -7,6 +7,7 @@ export function ExamSittingProvider({ children }: { children: ReactNode }) {
   const [sitting, dispatch] = useReducer(sittingReducer, null);
   return <Context.Provider value={{ sitting, dispatch }}>{children}</Context.Provider>;
 }
+export function useOptionalExamSitting() { return useContext(Context); }
 export function useExamSitting() {
   const value = useContext(Context);
   if (!value) throw new Error("Exam sitting requires its provider");

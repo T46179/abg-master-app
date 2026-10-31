@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useAccountBrowserStorage } from "../../app/AccountWorkspace";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAppContext } from "../../app/AppProvider";
@@ -25,9 +26,18 @@ import type { ExamPrototypeState, ExamPrototypeConfig } from "./presentationType
 const setupConfig: ExamPrototypeConfig = { questionCounts: [5, 10, 15, 20], caseMinimum: 3, caseMaximum: 5, minutesPerDrillQuestion: 1, minutesPerCase: 5, passingTarget: 60 };
 type RoomView = "exam" | "history" | "error-log";
 type ExamNavigation = { account: string; view: RoomView | "results"; attemptId?: string; partId?: string; origin?: RoomView; returnKey?: string };
-type PilotProps = { client: SupabaseClient; userId: string; canStart: boolean; unitCount?: number; allowedUnitCounts?: number[]; customisationCategories?: CustomisationCategory[]; environment?: string };
+export type ExamDashboardControls = {
+  fullSetup: ReactNode;
+  withSetup: (content: ReactNode) => ReactNode;
+  canRecover: boolean; ready: boolean; busy: boolean; canBegin: boolean;
+  timed: boolean; showRanges: boolean;
+  setTimed: (value: boolean) => void; setShowRanges: (value: boolean) => void;
+  begin: () => void;
+};
+type PilotProps = { client: SupabaseClient; userId: string; canStart: boolean; unitCount?: number; allowedUnitCounts?: number[]; customisationCategories?: CustomisationCategory[]; environment?: string; renderDashboard?: (controls: ExamDashboardControls) => ReactNode };
 
-export default function ExamPilotRuntime({ client, userId, canStart, unitCount, allowedUnitCounts, customisationCategories = [], environment = "clpfecuohwzwrgmqzeos" }: PilotProps) {
+export default function ExamPilotRuntime({ client, userId, canStart, unitCount, allowedUnitCounts, customisationCategories = [], environment = "clpfecuohwzwrgmqzeos", renderDashboard }: PilotProps) {
+  const browserStorage = useAccountBrowserStorage();
   const location = useLocation();
   const navigate = useNavigate();
   const account = `${environment}:${userId}`;
@@ -49,7 +59,7 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
   const preferenceKey = `abgm-exam-custom-${environment}-${userId}`;
   const [examKind, setExamKind] = useState<ExamKind>("mock");
   const [customExclusions, setCustomExclusions] = useState<string[]>(() => {
-    try { const saved: unknown = JSON.parse(localStorage.getItem(preferenceKey) ?? "[]");
+    try { const saved: unknown = JSON.parse(browserStorage.getItem(preferenceKey) ?? "[]");
       return Array.isArray(saved) ? [...new Set(saved.filter((id): id is string => typeof id === "string"))].sort() : [];
     } catch { return []; }
   });
@@ -57,18 +67,18 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
   const counts = allowedUnitCounts ?? (unitCount !== undefined ? [unitCount] : []);
   const [setupState, setSetupState] = useState<ExamPrototypeState>(() => {
     let prefs: { showTimer?: boolean; showRanges?: boolean } = {};
-    try { prefs = JSON.parse(localStorage.getItem(displayKey) ?? "{}"); } catch { /* Use defaults. */ }
+    try { prefs = JSON.parse(browserStorage.getItem(displayKey) ?? "{}"); } catch { /* Use defaults. */ }
     return { view: "exam", mode: "mock", selectedDrill: "anion-gap", selectedRule: "met-acidosis", questionCount: 5,
       caseCount: counts.includes(3) ? 3 : counts[0] ?? 3, timed: prefs?.showTimer !== false, showRanges: prefs?.showRanges !== false,
       examKind: "mock", excludedCategories: [], adaptive: false, revealWorking: false, historyFilter: "all" };
   });
   useEffect(() => { if (counts.length && !counts.includes(setupState.caseCount)) setSetupState(old => ({ ...old, caseCount: counts.includes(3) ? 3 : counts[0] })); }, [counts.join(","), setupState.caseCount]);
   function persistDisplay(showTimer: boolean, showRanges: boolean) {
-    try { localStorage.setItem(displayKey, JSON.stringify({ showTimer, showRanges })); } catch { /* Display controls remain usable. */ }
+    try { browserStorage.setItem(displayKey, JSON.stringify({ showTimer, showRanges })); } catch { /* Display controls remain usable. */ }
     setSetupState(old => ({ ...old, timed: showTimer, showRanges }));
   }
   useEffect(() => {
-    try { localStorage.setItem(displayKey, JSON.stringify({ showTimer: setupState.timed, showRanges: setupState.showRanges })); } catch { /* Display choices remain usable. */ }
+    try { browserStorage.setItem(displayKey, JSON.stringify({ showTimer: setupState.timed, showRanges: setupState.showRanges })); } catch { /* Display choices remain usable. */ }
   }, [displayKey, setupState.timed, setupState.showRanges]);
   function configurationLabel(item: { examKind?: ExamKind; excludedCategories?: string[] }) {
     const label = item.examKind === "custom" ? "Custom Exam" : "Mock Exam";
@@ -91,7 +101,7 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
   const [exitOpen, setExitOpen] = useState(false);
   const inFlight = useRef(false);
   const session = useMemo(() => {
-    try { return new ExamRuntimeSession(runtimeCall(client), localStorage, `abgm-exam-pilot-${environment}-${userId}`); }
+    try { return new ExamRuntimeSession(runtimeCall(client), browserStorage, `abgm-exam-pilot-${environment}-${userId}`); }
     catch { return null; }
   }, [client, userId, environment]);
   useEffect(() => { ++sourceOpenVersion.current; setAttempt(null); setCurrent(null); setReady(false); setRoomView("exam"); setReviewPartId(undefined); setError(""); }, [session]);
@@ -281,6 +291,35 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
     timer = setTimeout(refresh, 3000);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [session, attempt?.id, hasPendingGrades]);
+  function dashboard(setupContent?: ReactNode) { if (!session) return null; return (<ExamDashboard setupContent={setupContent} hideModeSwitch={setupContent !== undefined}
+          feedbackPreference={feedbackPreference}
+          pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"}
+          onPressureUnitChange={pressureUnit => {
+            patchSessionState({ pressureUnit });
+            state.storage?.savePressureUnitPreference(pressureUnit);
+          }}
+          connected state={{ ...setupState, examKind, excludedCategories: customExclusions.filter(id => id === "mechanical_ventilation" || id === "toxicology_management") }}
+          drills={unavailableDrills} drillsUnavailable customDisabled={!customisationCategories.length} config={setupConfig}
+          setup={buildSetupPresentation(setupState.questionCount, setupState.caseCount, setupState.timed, setupConfig)}
+          caseCounts={counts} launching={preparing} beginDisabled={!canStart || !ready || !counts.includes(setupState.caseCount)} setupLocked={busy || !ready || !!current || !!session.journal}
+          latestDisabled={busy || !history.latestAttemptId} errorLogCount={errorLog.error ? undefined : errorLog.data?.toReviewCount}
+          onSelectDrill={key => setSetupState(old => ({ ...old, selectedDrill: key, selectedRule: unavailableDrills.find(d => d.key === key)?.rules?.[0]?.key ?? "" }))}
+          onChange={patch => {
+            if (patch.view === "results" && history.latestAttemptId) { void run(() => openResult(history.latestAttemptId!, "exam")); return; }
+            if (patch.view === "history" || patch.view === "error-log") { enterRoom(patch.view); return; }
+            if (patch.examKind) setExamKind(patch.examKind);
+            if (patch.excludedCategories) { setCustomExclusions(patch.excludedCategories); try { browserStorage.setItem(preferenceKey, JSON.stringify(patch.excludedCategories)); } catch { /* Keep setup usable. */ } }
+            setSetupState(old => ({ ...old, ...patch }));
+          }} onBegin={() => void run(async () => {
+            setPreparing(true);
+            try { await openAttempt(false); }
+            finally { if (mounted.current) setPreparing(false); }
+          })}
+          startContent={!preparing && (current || session.journal) ? <div className="exam-recovery-actions">
+            <p>Would you like to recover your previous session?</p>
+            <button className="figma-button exam-primary" disabled={busy || !ready} onClick={() => void run(() => openAttempt(true))}>Recover attempt</button>
+            {current && <button className="figma-button figma-button--secondary" disabled={busy} onClick={() => setExitOpen(true)}>Abandon attempt</button>}
+          </div> : undefined} />); }
   if (!session) return <p role="alert">Browser storage is unavailable or unreadable. Enable storage before starting an exam.</p>;
   return <section aria-label="Exam pilot">
     {error && <div role="alert"><p>{error}</p>
@@ -329,35 +368,14 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
           onOpen={id => void run(() => openResult(id, "history"))}
           onRetry={id => void run(async () => { await session.call<RuntimeAttempt>("retry_grading", { attemptId: id }); await history.refresh(); })}
           onLoadMore={history.data?.page.nextCursor ? () => void history.loadMore() : undefined}
-          total={history.data?.page.total} loading={history.loading} busy={busy} /> : <ExamDashboard
-          feedbackPreference={feedbackPreference}
-          pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"}
-          onPressureUnitChange={pressureUnit => {
-            patchSessionState({ pressureUnit });
-            state.storage?.savePressureUnitPreference(pressureUnit);
-          }}
-          connected state={{ ...setupState, examKind, excludedCategories: customExclusions.filter(id => id === "mechanical_ventilation" || id === "toxicology_management") }}
-          drills={unavailableDrills} drillsUnavailable customDisabled={!customisationCategories.length} config={setupConfig}
-          setup={buildSetupPresentation(setupState.questionCount, setupState.caseCount, setupState.timed, setupConfig)}
-          caseCounts={counts} launching={preparing} beginDisabled={!canStart || !ready || !counts.includes(setupState.caseCount)} setupLocked={busy || !ready || !!current || !!session.journal}
-          latestDisabled={busy || !history.latestAttemptId} errorLogCount={errorLog.error ? undefined : errorLog.data?.toReviewCount}
-          onSelectDrill={key => setSetupState(old => ({ ...old, selectedDrill: key, selectedRule: unavailableDrills.find(d => d.key === key)?.rules?.[0]?.key ?? "" }))}
-          onChange={patch => {
-            if (patch.view === "results" && history.latestAttemptId) { void run(() => openResult(history.latestAttemptId!, "exam")); return; }
-            if (patch.view === "history" || patch.view === "error-log") { enterRoom(patch.view); return; }
-            if (patch.examKind) setExamKind(patch.examKind);
-            if (patch.excludedCategories) { setCustomExclusions(patch.excludedCategories); try { localStorage.setItem(preferenceKey, JSON.stringify(patch.excludedCategories)); } catch { /* Keep setup usable. */ } }
-            setSetupState(old => ({ ...old, ...patch }));
-          }} onBegin={() => void run(async () => {
-            setPreparing(true);
-            try { await openAttempt(false); }
-            finally { if (mounted.current) setPreparing(false); }
-          })}
-          startContent={!preparing && (current || session.journal) ? <div className="exam-recovery-actions">
-            <p>Would you like to recover your previous session?</p>
-            <button className="figma-button exam-primary" disabled={busy || !ready} onClick={() => void run(() => openAttempt(true))}>Recover attempt</button>
-            {current && <button className="figma-button figma-button--secondary" disabled={busy} onClick={() => setExitOpen(true)}>Abandon attempt</button>}
-          </div> : undefined} />}
+          total={history.data?.page.total} loading={history.loading} busy={busy} /> : renderDashboard ? renderDashboard({ fullSetup: dashboard(), withSetup: dashboard,
+          canRecover: Boolean(current || session.journal), ready, busy: busy || preparing,
+          canBegin: canStart && ready && !busy && !preparing && counts.includes(setupState.caseCount) && feedbackPreference.canBegin,
+          timed: setupState.timed, showRanges: setupState.showRanges,
+          setTimed: timed => persistDisplay(timed, setupState.showRanges),
+          setShowRanges: showRanges => persistDisplay(setupState.timed, showRanges),
+          begin: () => void run(async () => { setPreparing(true); try { await openAttempt(false); } finally { if (mounted.current) setPreparing(false); } })
+        }) : dashboard()}
         {exitOpen && current && <ExitSittingDialog onStay={() => setExitOpen(false)} onExit={() => void run(async () => { await session.abandon(current); setExitOpen(false); await loadRoom(); })} />}
       </>}
 

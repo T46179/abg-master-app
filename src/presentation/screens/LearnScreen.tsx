@@ -1,3 +1,5 @@
+import { useAccountBrowserStorage } from "../../app/AccountWorkspace";
+import type { BrowserStorageLike } from "../../core/storage";
 import type { CSSProperties } from "react";
 import { ArrowRight, BookOpen, TrendingUp } from "lucide-react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
@@ -33,19 +35,20 @@ function formatSpeedCheckTime(elapsedMs: number): string {
   return `${Math.max(0, Math.round(elapsedMs / 1000))}s`;
 }
 
-function readLastLearnModuleSlug() {
+function readLastLearnModuleSlug(browserStorage: BrowserStorageLike) {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem("abg-master:learn:last-module");
+  return browserStorage.getItem("abg-master:learn:last-module");
 }
 
 export function LearnScreen() {
   const { state } = useAppContext();
+  const browserStorage = useAccountBrowserStorage();
   const [searchParams] = useSearchParams();
   if (state.status === "loading" || state.status === "idle") return <LoadingView />;
   if (state.status === "error") return <ErrorView message={state.errorMessage} />;
 
   const visibleLearnLevels = getVisibleLearnLevels(state.userState.level);
-  const lastLearnModuleSlug = searchParams.get("all") === "1" ? null : readLastLearnModuleSlug();
+  const lastLearnModuleSlug = searchParams.get("all") === "1" ? null : readLastLearnModuleSlug(browserStorage);
   const lastLearnModule = visibleLearnLevels.find(level =>
     level.slug === lastLearnModuleSlug &&
     isLearnLevelUnlocked(level, state.userState.level) &&

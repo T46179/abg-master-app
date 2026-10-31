@@ -1,3 +1,4 @@
+import { useAccountBrowserStorage } from "../../app/AccountWorkspace";
 import {
   ArrowRight,
   BookOpen,
@@ -361,10 +362,11 @@ function WorkedCase({
 /** Public educational reference ported from the supplied Figma Make design. */
 export function AAGradientScreen() {
   const { state, patchSessionState } = useAppContext();
+  const browserStorage = useAccountBrowserStorage();
   // Public content and its unit preference must also work before runtime hydration.
   const [preferenceStorage] = useState(() => {
     try {
-      return createLocalStorageAdapter(window.localStorage);
+      return createLocalStorageAdapter(browserStorage);
     } catch {
       return createLocalStorageAdapter(createMemoryStorage());
     }

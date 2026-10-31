@@ -1,3 +1,4 @@
+import { useAccountBrowserStorage } from "../../app/AccountWorkspace";
 import { Sparkles, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
@@ -16,6 +17,7 @@ import { useElementViewed } from "../primitives/useElementViewed";
 
 export function ResultsFeaturedCaseCta() {
   const { state } = useAppContext();
+  const browserStorage = useAccountBrowserStorage();
   const featured = useFeaturedCaseStatus();
   const [sessionDismissal, setSessionDismissal] = useState<{
     userId: string | null;
@@ -26,7 +28,7 @@ export function ResultsFeaturedCaseCta() {
   const persistedDismissal = Boolean(
     releaseId
     && typeof window !== "undefined"
-    && isFeaturedCaseInvitationDismissed(window.localStorage, { userId, releaseId })
+    && isFeaturedCaseInvitationDismissed(browserStorage, { userId, releaseId })
   );
   const dismissedInSession = Boolean(
     releaseId
@@ -93,7 +95,7 @@ export function ResultsFeaturedCaseCta() {
         aria-label="Dismiss Featured Case invitation"
         onClick={() => {
           const dismissal = { userId, releaseId };
-          saveFeaturedCaseInvitationDismissal(window.localStorage, dismissal);
+          saveFeaturedCaseInvitationDismissal(browserStorage, dismissal);
           setSessionDismissal(dismissal);
         }}
       >

@@ -1,3 +1,5 @@
+import { useAccountBrowserStorage } from "../../app/AccountWorkspace";
+import type { BrowserStorageLike } from "../../core/storage";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent } from "react";
 import { ArrowLeft } from "lucide-react";
@@ -20,34 +22,35 @@ function getLastLearnModuleStorageKey() {
   return "abg-master:learn:last-module";
 }
 
-function readStoredLessonIndex(slug: string, lessonCount: number) {
+function readStoredLessonIndex(browserStorage: BrowserStorageLike, slug: string, lessonCount: number) {
   if (typeof window === "undefined") return 0;
 
-  const rawIndex = window.localStorage.getItem(getLearnLessonStorageKey(slug));
+  const rawIndex = browserStorage.getItem(getLearnLessonStorageKey(slug));
   const parsedIndex = Number(rawIndex);
   if (!Number.isInteger(parsedIndex)) return 0;
 
   return Math.max(0, Math.min(lessonCount - 1, parsedIndex));
 }
 
-function getEntryLessonIndex(slug: string, lessonCount: number, mode: string | null) {
+function getEntryLessonIndex(browserStorage: BrowserStorageLike, slug: string, lessonCount: number, mode: string | null) {
   if (mode === "start" || mode === "review") return 0;
-  return readStoredLessonIndex(slug, lessonCount);
+  return readStoredLessonIndex(browserStorage, slug, lessonCount);
 }
 
-function saveStoredLessonIndex(slug: string, lessonIndex: number) {
+function saveStoredLessonIndex(browserStorage: BrowserStorageLike, slug: string, lessonIndex: number) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(getLearnLessonStorageKey(slug), String(lessonIndex));
+  browserStorage.setItem(getLearnLessonStorageKey(slug), String(lessonIndex));
 }
 
 export function LearnLessonScreen() {
   const { state, setUserState } = useAppContext();
+  const browserStorage = useAccountBrowserStorage();
   const navigate = useNavigate();
   const { difficulty } = useParams<{ difficulty: string }>();
   const [searchParams] = useSearchParams();
   const level = getLearnLevel(difficulty);
   const entryMode = searchParams.get("mode");
-  const [lessonIndex, setLessonIndex] = useState(() => level ? getEntryLessonIndex(level.slug, level.lessons.length, entryMode) : 0);
+  const [lessonIndex, setLessonIndex] = useState(() => level ? getEntryLessonIndex(browserStorage, level.slug, level.lessons.length, entryMode) : 0);
   const [speedCheckPhase, setSpeedCheckPhase] = useState<BloodGasBlitzPhase>("ready");
   const [speedCheckResetKey, setSpeedCheckResetKey] = useState(0);
   const [completionGateSatisfied, setCompletionGateSatisfied] = useState(false);
@@ -60,10 +63,10 @@ export function LearnLessonScreen() {
       return;
     }
 
-    const nextLessonIndex = getEntryLessonIndex(level.slug, level.lessons.length, entryMode);
+    const nextLessonIndex = getEntryLessonIndex(browserStorage, level.slug, level.lessons.length, entryMode);
     setLessonIndex(nextLessonIndex);
     if (entryMode === "start" || entryMode === "review") {
-      saveStoredLessonIndex(level.slug, nextLessonIndex);
+      saveStoredLessonIndex(browserStorage, level.slug, nextLessonIndex);
     }
     setSpeedCheckPhase("ready");
     setSpeedCheckResetKey(0);
@@ -73,8 +76,8 @@ export function LearnLessonScreen() {
     if (!level || typeof window === "undefined") return;
     if (!shouldShowLearnLevel(level, state.userState.level) || !isLearnLevelUnlocked(level, state.userState.level) || !isLearnLevelAvailable(level)) return;
 
-    window.localStorage.setItem(getLastLearnModuleStorageKey(), level.slug);
-    saveStoredLessonIndex(level.slug, lessonIndex);
+    browserStorage.setItem(getLastLearnModuleStorageKey(), level.slug);
+    saveStoredLessonIndex(browserStorage, level.slug, lessonIndex);
   }, [lessonIndex, level, state.userState.level]);
 
   useEffect(() => {

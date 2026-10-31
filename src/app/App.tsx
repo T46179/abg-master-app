@@ -4,7 +4,7 @@ import { router } from "./routes";
 import { normalizeDevHashRoute } from "../core/authoredCasePreview";
 import { AnalyticsConsentBanner } from "../presentation/layout/AnalyticsConsentBanner";
 
-export function App() {
+export function App({ analyticsConsent = true }: { analyticsConsent?: boolean }) {
   if (typeof window !== "undefined") {
     normalizeDevHashRoute();
   }
@@ -25,7 +25,7 @@ export function App() {
   return (
     <>
       <RouterProvider router={router} />
-      <AnalyticsConsentBanner />
+      {analyticsConsent && <AnalyticsConsentBanner />}
     </>
   );
 }
