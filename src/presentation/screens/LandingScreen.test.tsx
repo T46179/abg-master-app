@@ -260,37 +260,4 @@ describe("LandingScreen", () => {
     });
   });
 
-  it("tracks stay updated submits from the landing page", async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true
-    } as Response);
-
-    renderScreen();
-
-    const openButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Stay Updated"));
-    expect(openButton).toBeTruthy();
-
-    act(() => {
-      openButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    const emailInput = container.querySelector<HTMLInputElement>("#launch-notify-email");
-    expect(emailInput).toBeTruthy();
-    if (!emailInput) return;
-
-    const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
-    descriptor?.set?.call(emailInput, "test@example.com");
-    emailInput.dispatchEvent(new Event("input", { bubbles: true }));
-
-    const form = container.querySelector("form");
-    expect(form).toBeTruthy();
-
-    await act(async () => {
-      form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-      await Promise.resolve();
-      await new Promise((resolve) => window.setTimeout(resolve, 0));
-    });
-
-    expect(trackEvent).toHaveBeenCalledWith("launch_notify_submitted");
-  });
 });

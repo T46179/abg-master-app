@@ -10,6 +10,7 @@ export function PasswordRecoveryPages({ page, destination, onPage }: { page: Acc
   const { identity } = useSiteAccount();
   const [email, setEmail] = useState(() => flow.email || identity.email || "");
   const [submitted, setSubmitted] = useState(false);
+  const [invalidAttempts, setInvalidAttempts] = useState(0);
   const invalidEmail = submitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   function back() { r.resetView(); onPage("signin"); }
   if (flow.phase === "checking") return <AccountCard title="Checking password reset"><p role="status">Please wait…</p></AccountCard>;
@@ -29,18 +30,18 @@ export function PasswordRecoveryPages({ page, destination, onPage }: { page: Acc
   </AccountCard>;
   function submit(event: FormEvent) {
     event.preventDefault(); setSubmitted(true);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { document.getElementById("reset-request-email")?.focus(); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setInvalidAttempts(count => count + 1); document.getElementById("reset-request-email")?.focus(); return; }
     void r.requestResetEmail(email, destination);
   }
-  return <AccountCard icon={<KeyIcon />} eyebrow="Password reset" title="Forgot your password?">
-    <p>Use your account email to request a password reset.</p>
+  return <AccountCard className="account-entry-card account-recovery-card" title="Forgot your password?">
+    <p className="account-entry-intro">Enter your email address and we'll send you a link to reset your password.</p>
     {page === "reset" && !flow.error && <p className="account-notice">Open the link in your latest reset email to choose a new password. You can request a new link below.</p>}
     <form noValidate onSubmit={submit} className="account-form ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">
       {flow.error && <p role="alert" className="account-field-error">{flow.error}</p>}
       <AccountField id="reset-request-email" label="Email" value={email} onChange={setEmail} error={invalidEmail ? "Enter a valid email address" : undefined} />
-      <AccountButton type="submit">Send reset link</AccountButton>
+      <AccountButton key={invalidAttempts} type="submit" className={"account-entry-submit" + (invalidAttempts > 0 ? " account-submit-rejected" : "")} showArrow={false}>Send reset link</AccountButton>
     </form>
-    <p className="account-footnote"><button className="account-link" onClick={back}>Back to sign in</button></p>
+    <p className="account-footnote account-entry-footer"><button className="account-link" onClick={back}>Back to sign in</button></p>
   </AccountCard>;
 }
 

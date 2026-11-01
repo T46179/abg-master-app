@@ -13,7 +13,6 @@ describe("MainNav", () => {
   let root: ReturnType<typeof createRoot>;
   const onToggleMobile = vi.fn();
   const onCloseMobile = vi.fn();
-  const onOpenStayUpdated = vi.fn();
   const mobileProgress = {
     level: 14,
     tier: "Advanced",
@@ -29,7 +28,6 @@ describe("MainNav", () => {
     root = createRoot(container);
     onToggleMobile.mockReset();
     onCloseMobile.mockReset();
-    onOpenStayUpdated.mockReset();
   });
 
   afterEach(() => {
@@ -48,7 +46,6 @@ describe("MainNav", () => {
             mobileOpen={false}
             onToggleMobile={onToggleMobile}
             onCloseMobile={onCloseMobile}
-            onOpenStayUpdated={onOpenStayUpdated}
             learnEnabled
             showBetaBadge={false}
             mobileProgress={mobileProgress}
@@ -79,7 +76,6 @@ describe("MainNav", () => {
             mobileOpen={false}
             onToggleMobile={onToggleMobile}
             onCloseMobile={onCloseMobile}
-            onOpenStayUpdated={onOpenStayUpdated}
             learnEnabled={false}
             showBetaBadge={false}
             mobileProgress={mobileProgress}
@@ -89,33 +85,7 @@ describe("MainNav", () => {
     });
   }
 
-  it("keeps Stay Updated in the desktop header and out of the mobile header", () => {
-    renderNav();
-
-    const buttons = Array.from(container.querySelectorAll("button"));
-    const desktopButton = buttons.find((button) => button.textContent?.includes("Stay Updated"));
-    const menuButton = buttons.find((button) => button.getAttribute("aria-label") === "Open navigation menu");
-
-    expect(desktopButton).toBeTruthy();
-    expect(desktopButton?.className).toContain("main-nav__stay-updated");
-    expect(container.querySelector(".main-nav__mobile-stay-updated")).toBeNull();
-    expect(menuButton).toBeTruthy();
-  });
-
-  it("keeps the desktop Stay Updated handler", () => {
-    renderNav();
-
-    const buttons = Array.from(container.querySelectorAll("button"));
-    const desktopButton = buttons.find((button) => button.textContent?.includes("Stay Updated"));
-
-    act(() => {
-      desktopButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(onOpenStayUpdated).toHaveBeenCalledTimes(1);
-  });
-
-  it("places Settings before Stay Updated and the mobile menu trigger", () => {
+  it("places Settings before the mobile menu trigger", () => {
     act(() => {
       root.render(
         <MemoryRouter>
@@ -123,7 +93,6 @@ describe("MainNav", () => {
             mobileOpen={false}
             onToggleMobile={onToggleMobile}
             onCloseMobile={onCloseMobile}
-            onOpenStayUpdated={onOpenStayUpdated}
             learnEnabled
             showBetaBadge={false}
             mobileProgress={mobileProgress}
@@ -140,7 +109,6 @@ describe("MainNav", () => {
     const controls = container.querySelector(".main-nav__controls");
     expect(Array.from(controls?.children ?? [], child => child.className)).toEqual([
       "main-nav__settings",
-      "main-nav__stay-updated",
       "main-nav__toggle"
     ]);
   });
@@ -186,7 +154,6 @@ describe("MainNav", () => {
             mobileOpen
             onToggleMobile={onToggleMobile}
             onCloseMobile={onCloseMobile}
-            onOpenStayUpdated={onOpenStayUpdated}
             learnEnabled={false}
             showBetaBadge={false}
             mobileProgress={mobileProgress}
@@ -206,7 +173,6 @@ describe("MainNav", () => {
             mobileOpen
             onToggleMobile={onToggleMobile}
             onCloseMobile={onCloseMobile}
-            onOpenStayUpdated={onOpenStayUpdated}
             learnEnabled
             showBetaBadge
             mobileProgress={mobileProgress}
@@ -232,7 +198,6 @@ describe("MainNav", () => {
           mobileOpen={mobileOpen}
           onToggleMobile={() => setMobileOpen(value => !value)}
           onCloseMobile={() => setMobileOpen(false)}
-          onOpenStayUpdated={onOpenStayUpdated}
           learnEnabled
           showBetaBadge={false}
           mobileProgress={mobileProgress}
@@ -251,7 +216,7 @@ describe("MainNav", () => {
 
     const drawer = document.getElementById("mobile-navigation-drawer");
     const closeButton = drawer?.querySelector<HTMLButtonElement>(".mobile-nav-drawer__close");
-    const stayUpdatedButton = drawer?.querySelector<HTMLButtonElement>(".mobile-nav-drawer__stay-updated");
+    const lastLink = drawer?.querySelector<HTMLAnchorElement>("nav a:last-child");
     expect(document.body.style.overflow).toBe("hidden");
     await act(async () => {
       await new Promise(resolve => window.setTimeout(resolve, 20));
@@ -259,7 +224,7 @@ describe("MainNav", () => {
     expect(document.activeElement).toBe(closeButton);
 
     act(() => {
-      stayUpdatedButton?.focus();
+      lastLink?.focus();
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
     });
     expect(document.activeElement).toBe(closeButton);
@@ -271,7 +236,7 @@ describe("MainNav", () => {
     expect(document.activeElement).toBe(trigger);
   });
 
-  it("closes the drawer from its backdrop and opens Stay Updated from its footer", () => {
+  it("closes the drawer from its backdrop", () => {
     function InteractiveNav() {
       const [mobileOpen, setMobileOpen] = useState(true);
       return (
@@ -279,10 +244,6 @@ describe("MainNav", () => {
           mobileOpen={mobileOpen}
           onToggleMobile={() => setMobileOpen(value => !value)}
           onCloseMobile={() => setMobileOpen(false)}
-          onOpenStayUpdated={() => {
-            onOpenStayUpdated();
-            setMobileOpen(false);
-          }}
           learnEnabled
           showBetaBadge={false}
           mobileProgress={mobileProgress}
@@ -294,17 +255,6 @@ describe("MainNav", () => {
       root.render(<MemoryRouter><InteractiveNav /></MemoryRouter>);
     });
 
-    const drawer = document.getElementById("mobile-navigation-drawer");
-    const footerButton = drawer?.querySelector<HTMLButtonElement>(".mobile-nav-drawer__stay-updated");
-    act(() => {
-      footerButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    expect(onOpenStayUpdated).toHaveBeenCalledTimes(1);
-    expect(document.body.style.overflow).toBe("");
-
-    act(() => {
-      root.render(<MemoryRouter><InteractiveNav key="backdrop" /></MemoryRouter>);
-    });
     const backdrop = document.body.querySelector<HTMLDivElement>(".mobile-nav-drawer__backdrop");
     expect(document.body.querySelector(".mobile-nav-drawer")?.className).toContain("is-open");
     expect(document.body.style.overflow).toBe("hidden");
@@ -314,7 +264,7 @@ describe("MainNav", () => {
     expect(document.body.style.overflow).toBe("");
   });
 
-  it("keeps Settings to the left of Stay Updated in the calibration nav", () => {
+  it("keeps Settings available in the minimal calibration nav", () => {
     act(() => {
       root.render(
         <MemoryRouter initialEntries={["/calibration"]}>
@@ -322,7 +272,6 @@ describe("MainNav", () => {
             mobileOpen={false}
             onToggleMobile={onToggleMobile}
             onCloseMobile={onCloseMobile}
-            onOpenStayUpdated={onOpenStayUpdated}
             learnEnabled
             showBetaBadge={false}
             mobileProgress={mobileProgress}
@@ -340,7 +289,6 @@ describe("MainNav", () => {
     expect(container.textContent).not.toContain("Insights");
     expect(container.textContent).not.toContain("Learn");
     expect(container.textContent).not.toContain("Practice");
-    expect(container.textContent).toContain("Stay Updated");
     expect(container.querySelector(".main-nav__controls")?.firstElementChild?.className).toBe("main-nav__settings");
     expect(container.querySelector(".main-nav__toggle")).toBeNull();
   });

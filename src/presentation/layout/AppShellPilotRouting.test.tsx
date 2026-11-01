@@ -32,7 +32,6 @@ vi.mock("../../app/AppProvider", () => ({
   }),
 }));
 vi.mock("./MainNav", () => ({ MainNav: () => null }));
-vi.mock("./LaunchNotifyModal", () => ({ LaunchNotifyModal: () => null }));
 vi.mock("../../app/seo", () => ({ SeoMetadata: () => null }));
 vi.mock("../../core/analytics", () => ({ trackEvent: vi.fn(), trackPageView: vi.fn() }));
 import { AppShell } from "./AppShell";

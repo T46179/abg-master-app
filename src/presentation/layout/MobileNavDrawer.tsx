@@ -1,7 +1,7 @@
 // Drawer-local spacing and typography mirror Figma because the shared theme has no reusable tokens for this scale.
 import { useEffect, useRef, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Award, Bell, BookOpen, ChevronRight, FileCheck, LayoutDashboard, Stethoscope, TrendingUp, X, type LucideIcon } from "lucide-react";
+import { Award, BookOpen, ChevronRight, FileCheck, LayoutDashboard, Stethoscope, TrendingUp, X, type LucideIcon } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { ProgressBar } from "../primitives/ProgressBar";
 import { cn } from "../utils";
@@ -19,7 +19,6 @@ interface MobileNavDrawerProps {
   open: boolean;
   triggerRef: RefObject<HTMLButtonElement | null>;
   onClose: () => void;
-  onOpenStayUpdated: () => void;
   onCoreFlowLinkClick?: (label: string, destination: string) => void;
   items: MobileNavDrawerItem[];
   progress: MobileNavProgress;
@@ -184,13 +183,6 @@ export function MobileNavDrawer(props: MobileNavDrawerProps) {
         </nav>
 
         <footer className="mobile-nav-drawer__footer">
-          <button className="mobile-nav-drawer__stay-updated" type="button" onClick={props.onOpenStayUpdated}>
-            <span className="mobile-nav-drawer__stay-updated-icon" aria-hidden="true"><Bell /></span>
-            <span>
-              <strong>Stay Updated</strong>
-              <small>Weekly tips &amp; new modules</small>
-            </span>
-          </button>
           <p>{props.progress.versionLabel}</p>
         </footer>
       </div>

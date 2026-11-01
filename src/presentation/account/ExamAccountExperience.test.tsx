@@ -70,8 +70,8 @@ describe("unified local pilot account flow", () => {
   it("starts as guest, preserves current copy and does not create an account", async () => {
     await render(); expect(container.textContent).toContain("Preparing for exams?"); expect(container.textContent).toContain("Your Session"); expect(container.textContent).toContain("Graded Short Answers"); expect(container.textContent).not.toContain("Train for the real thing");
     expect(auth.signInAnonymously).not.toHaveBeenCalled(); expect(m.access).not.toHaveBeenCalled();
-    await click("Start trial exam"); expect(container.textContent).toContain("Verify your email first");
-    expect([...container.querySelectorAll("button")].find(b => b.textContent?.includes("Verify email to continue"))?.disabled).toBe(false);
+    await click("Start trial exam"); expect(container.textContent).toContain("Creating an account saves your progress across devices so you can pick up where you left off.");
+    expect([...container.querySelectorAll("button")].find(b => b.textContent?.includes("Create Account"))?.disabled).toBe(false);
     expect(container.querySelector('input[type="password"]')).toBeNull();
     expect(auth.signInWithPassword).not.toHaveBeenCalled();
   });
@@ -80,6 +80,21 @@ describe("unified local pilot account flow", () => {
     expect(auth.signInWithPassword).toHaveBeenCalledWith({ email: "a@example.test", password: " password " });
     expect(container.textContent).toContain("Tell us a little about yourself"); expect(container.querySelector('input[type="password"]')).toBeNull();
     expect(JSON.stringify(localStorage)).not.toContain(" password ");
+  });
+  it("shows rejected credentials below the password field and supports retrying", async () => {
+    auth.signInWithPassword.mockResolvedValue({ error: { code: "invalid_credentials", message: "Invalid login credentials" } });
+    await render(); await click("Sign in"); await login();
+    const feedback = container.querySelector("#exam-signin-password-error");
+    expect(feedback?.textContent).toBe("Incorrect email or password");
+    expect(feedback?.getAttribute("role")).toBe("alert");
+    expect(container.querySelector("#exam-signin-password")?.getAttribute("aria-describedby")).toBe("exam-signin-password-error");
+    expect(container.textContent).not.toContain("Sign-in could not be completed");
+    expect(container.textContent).not.toContain("Enter your password");
+    expect(container.querySelector(".account-notice")).toBeNull();
+    expect(container.querySelector(".account-submit-rejected")?.textContent).toBe("Sign In");
+    await login();
+    expect(auth.signInWithPassword).toHaveBeenCalledTimes(2);
+    expect(container.querySelector("#exam-signin-password-error")?.textContent).toBe("Incorrect email or password");
   });
   it("retains the trial destination when verification renders before sign-in completes", async () => {
     let finish!: (value: unknown) => void;
@@ -90,7 +105,12 @@ describe("unified local pilot account flow", () => {
     expect(container.querySelector(".account-onboarding")).not.toBeNull();
   });
   it("ordinary profile sign-in returns to the dashboard; Paid only changes allowed UI options", async () => {
-    await render(); await menu(); await click("Sign in"); await login();
+    await render(); await menu();
+    expect(host.querySelector(".exam-account-menu")).toBeNull();
+    expect(container.querySelector("#exam-signin-email")).not.toBeNull();
+    await click("Create account");
+    expect(container.querySelector("#registration-email")).not.toBeNull();
+    await click("Sign in"); await login();
     expect(container.textContent).toContain("Start trial exam"); expect(container.textContent).not.toContain("Tell us a little about yourselfShare");
     await menu(); const toggle = host.querySelector<HTMLInputElement>('input[role="switch"]')!;
     await act(async () => toggle.click()); expect(container.textContent).toContain("Full Exam setup for a; counts:3,5");

@@ -12,7 +12,7 @@ import { initialPrototypeState } from "../exam/mockData";
 import { ExamOverview, ExamPageHeading } from "../exam/ExamDashboard";
 import ExamPilotRuntime, { type ExamDashboardControls } from "../exam/ExamPilotRuntime";
 import { AboutYou } from "./AboutYou.dev";
-import { AccountAside, AccountBack, AccountButton, AccountCard, AccountField, TrialStepper, type AccountPage } from "./AccountUi.dev";
+import { AccountBack, AccountButton, AccountCard, AccountField, TrialStepper, type AccountPage } from "./AccountUi.dev";
 import { CheckIcon, ClipboardIcon, SignOutIcon, UserIcon } from "./AccountIcons.dev";
 import "../exam/exam.css";
 import "./account.dev.css";
@@ -69,13 +69,11 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
   }
   async function signIn(email: string, password: string) {
     if (inFlight.current) return;
-    if (identity.status === "guest" && (state.userState.xp > 0 || state.userState.casesCompleted > 0 || state.userState.calibrationCompleted || state.practiceState.currentCase || state.practiceState.pendingSubmission)
-      && !window.confirm("Signing into an existing account loads its own progress. Your guest progress will not be merged and may no longer be accessible. Continue?")) return;
     if (identity.status === "verified" && identity.email?.toLowerCase() !== email.trim().toLowerCase()
       && !window.confirm("Signing in will switch from " + identity.email + ". Saved work stays with its original account. Continue?")) return;
     inFlight.current = true; setBusy(true); setError("");
     try { registration.resetView(); await account.signIn(email, password); registration.confirmPasswordSignIn(email, destination); }
-    catch { setError("Sign-in could not be completed. Check your details or finish setting up your account."); }
+    catch { setError("Incorrect email or password"); }
     finally { inFlight.current = false; setBusy(false); }
   }
   let body: ReactNode;
@@ -85,18 +83,17 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
   if (identity.status === "checking" || (identity.status === "unavailable" && !registrationActive && !["signin", "completion", "forgot", "reset"].includes(page))) {
     body = <div className="account-narrow"><AccountCard title="We couldn't check your account"><p>Your saved account has not been replaced.</p><AccountButton onClick={() => void account.refresh()}>Try again</AccountButton></AccountCard></div>;
   } else if (recoveryPage) {
-    body = <div className="account-narrow ph-no-capture" data-clarity-mask="true" data-sentry-mask="true"><AccountBack onBack={() => { registration.resetView(); setPage("exam"); }} /><PasswordRecoveryPages page={page as AccountPage} destination={destination} onPage={next => {
+    body = <div className="account-narrow ph-no-capture" data-clarity-mask="true" data-sentry-mask="true"><PasswordRecoveryPages page={page as AccountPage} destination={destination} onPage={next => {
       if (next !== "signin") { setPage(next); return; }
       const params = new URLSearchParams(location.search); params.set("account", "signin"); params.set("reauthenticate", "1");
       void navigate(location.pathname + "?" + params.toString());
     }} /></div>;
   } else if (registrationActive || registrationPage || identity.status === "unverified") {
-    body = <div className="account-narrow"><AccountBack onBack={() => { registration.resetView(); setPage("exam"); }} />{intent === "trial" && <TrialStepper step={0} />}
+    body = <div className="account-registration">{intent === "trial" && <TrialStepper step={0} />}
       <RegistrationPages page={registrationPage ? page as AccountPage : "link"} destination={destination} onPage={setPage} />
-      <p className="account-footnote"><button className="account-link" onClick={() => void navigate("/practice")}>Continue to Practice</button></p>
     </div>;
   } else if (page === "signin") {
-    body = <div className="account-auth-layout"><div><AccountBack onBack={() => setPage("exam")} />{intent === "trial" && <TrialStepper step={0} />}<SignInForm busy={busy} error={error} onSubmit={signIn} onPage={p => { registration.resetView(); open(p); }} /></div><AccountAside trial={intent === "trial"} /></div>;
+    body = <div className="account-signin-layout">{intent === "trial" && <TrialStepper step={0} />}<SignInForm busy={busy} error={error} onSubmit={signIn} onPage={p => { registration.resetView(); open(p); }} /></div>;
   } else if (verified && identity.userId) {
     body = hasPassword !== true ? <div className="account-narrow"><AccountCard title={setupError ? "We couldn't check account setup" : "Checking account setup"}><p role="status">{setupError ? "Your account has not been replaced. Please retry." : "Please wait while we check your account."}</p>{setupError && <AccountButton onClick={retrySetup}>Retry account check</AccountButton>}</AccountCard></div>
       : <RuntimeOwner key={identity.generation} client={client} userId={identity.userId} generation={identity.generation} paid={paid} page={page} onPage={setPage} />;
@@ -115,14 +112,12 @@ function SignInForm({ busy, error, onSubmit, onPage }: { busy: boolean; error: s
     if (!password) { document.getElementById("exam-signin-password")?.focus(); return; }
     const value = password; setPassword(""); void onSubmit(email, value);
   }
-  return <AccountCard eyebrow="Welcome back" title="Sign in"><p>Sign in to pick up where you left off, on any device.</p>
+  return <AccountCard className="account-entry-card" eyebrow="Welcome back" title="Sign in">
     <form noValidate onSubmit={submit} className="account-form ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">
-      {error && <div role="alert" className="account-notice account-field-error">{error}</div>}
-      <AccountField id="exam-signin-email" label="Email" value={email} onChange={setEmail} error={emailError} disabled={busy} />
-      <AccountField id="exam-signin-password" label="Password" password value={password} onChange={setPassword} error={submitted && !password && !busy ? "Enter your password" : undefined} disabled={busy} aside={<button type="button" className="account-link" onClick={() => onPage("forgot")}>Forgot password?</button>} />
-      <AccountButton type="submit" busy={busy}>Sign in</AccountButton>
-    </form><p className="account-footnote">New to ABG Master? <button className="account-link" onClick={() => onPage("signup")}>Create account</button></p>
-    <p className="account-footnote"><button className="account-link" onClick={() => onPage("completion")}>Verified your email but need a password? Finish account setup</button></p>
+      <AccountField id="exam-signin-email" label="Email" placeholder="you@example.com" value={email} onChange={setEmail} error={emailError} disabled={busy} />
+      <AccountField id="exam-signin-password" label="Password" password value={password} onChange={setPassword} error={error || (submitted && !password && !busy ? "Enter your password" : undefined)} disabled={busy} aside={<button type="button" className="account-link account-forgot-link" onClick={() => onPage("forgot")}>Forgot password?</button>} />
+      <AccountButton className={"account-entry-submit" + (error ? " account-submit-rejected" : "")} showArrow={false} type="submit" busy={busy}>Sign In</AccountButton>
+    </form><p className="account-footnote account-entry-footer">New to ABG Master? <button className="account-link" onClick={() => onPage("signup")}>Create account</button></p>
   </AccountCard>;
 }
 
@@ -137,14 +132,12 @@ export function ProfileControl({ email, busy, paid, active, onPage, onSignOut, o
     ref.current?.querySelector<HTMLButtonElement>(".exam-account-menu button")?.focus();
     return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", key); };
   }, [open]);
-  function go(page: AccountPage) { setOpen(false); onPage(page); }
   return <div className="exam-account-control ph-no-capture" data-clarity-mask="true" data-sentry-mask="true" ref={ref}>
-    <button ref={trigger} type="button" className="exam-account-trigger" aria-label={email ? `Account: ${email}` : "Sign in or create an account"} aria-expanded={open} aria-controls="exam-account-menu" onClick={() => setOpen(v => !v)}>{email ? <span className="exam-account-avatar">{email.slice(0, 1).toUpperCase()}</span> : <><UserIcon /><span>Sign in</span></>}</button>
-    {open && <section className="exam-account-menu" id="exam-account-menu" aria-label="Account">
-      {email ? <><strong className="account-private ph-no-capture" data-clarity-mask="true">{email}</strong><p>{paid ? "Paid account" : "Free account"}</p>
+    <button ref={trigger} type="button" className="exam-account-trigger" aria-label={email ? `Account: ${email}` : "Sign in"} aria-expanded={email ? open : undefined} aria-controls={email ? "exam-account-menu" : undefined} disabled={!email && busy} onClick={() => { if (email) setOpen(v => !v); else onPage("signin"); }}>{email ? <span className="exam-account-avatar">{email.slice(0, 1).toUpperCase()}</span> : <><UserIcon /><span>Sign in</span></>}</button>
+    {email && open && <section className="exam-account-menu" id="exam-account-menu" aria-label="Account">
+      <strong className="account-private ph-no-capture" data-clarity-mask="true">{email}</strong><p>{paid ? "Paid account" : "Free account"}</p>
         <button type="button" className="account-menu-action" disabled={busy} onClick={() => { setOpen(false); onSignOut(); }}><SignOutIcon />Sign out</button>
-        <div className="account-paid-control"><span>Local development</span><label><input type="checkbox" role="switch" checked={paid} disabled={active || busy} onChange={onPaid} />Paid account</label><small>Interface only. Existing pilot permissions still apply.</small></div></>
-        : <><strong>Your ABG Master account</strong><button className="account-menu-action" disabled={busy} onClick={() => go("signin")}>Sign in</button><button className="account-menu-action" disabled={busy} onClick={() => go("signup")}>Create account</button></>}
+        <div className="account-paid-control"><span>Local development</span><label><input type="checkbox" role="switch" checked={paid} disabled={active || busy} onChange={onPaid} />Paid account</label><small>Interface only. Existing pilot permissions still apply.</small></div>
     </section>}
   </div>;
 }

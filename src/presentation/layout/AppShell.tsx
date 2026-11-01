@@ -13,7 +13,6 @@ import { getReleaseFlags } from "../../core/progression";
 import type { PressureUnit } from "../../core/types";
 import { Surface } from "../primitives/Surface";
 import { LoadingView } from "../shared/StatusViews";
-import { LaunchNotifyModal } from "./LaunchNotifyModal";
 import { MainNav } from "./MainNav";
 import { ExamSittingProvider, useExamSitting } from "../exam/ExamSittingContext";
 import { getMobileNavProgress } from "./mobileNavProgress";
@@ -29,10 +28,6 @@ function AppShellContent() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [launchNotifyOpen, setLaunchNotifyOpen] = useState(false);
-  const [launchNotifySubmitting, setLaunchNotifySubmitting] = useState(false);
-  const [launchNotifySubmitted, setLaunchNotifySubmitted] = useState(false);
-  const [launchNotifyError, setLaunchNotifyError] = useState("");
   const learnOpenedTrackedRef = useRef(false);
   const releaseFlags = getReleaseFlags(state.payload?.progressionConfig ?? null);
   const mobileProgress = getMobileNavProgress({
@@ -108,14 +103,6 @@ function AppShellContent() {
     discardPendingSubmission();
   }
 
-  function handleOpenStayUpdated() {
-    setMobileOpen(false);
-    setSettingsOpen(false);
-    setLaunchNotifyError("");
-    setLaunchNotifySubmitted(false);
-    setLaunchNotifyOpen(true);
-  }
-
   function handleToggleMobile() {
     setSettingsOpen(false);
     setMobileOpen(value => !value);
@@ -126,7 +113,6 @@ function AppShellContent() {
     setSettingsOpen(nextOpen);
     if (nextOpen) {
       setMobileOpen(false);
-      handleCloseStayUpdated();
     }
   }
 
@@ -137,41 +123,6 @@ function AppShellContent() {
     state.storage?.savePressureUnitPreference(pressureUnit);
   }
 
-  function handleCloseStayUpdated() {
-    setLaunchNotifyOpen(false);
-    setLaunchNotifySubmitting(false);
-    setLaunchNotifyError("");
-    setLaunchNotifySubmitted(false);
-  }
-
-  async function handleLaunchNotifySubmit(email: string) {
-    setLaunchNotifySubmitting(true);
-    setLaunchNotifyError("");
-
-    try {
-      const response = await fetch("https://submit-form.com/8T8RZZaL6", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json"
-        },
-        body: JSON.stringify({ email })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Launch notify submit failed: ${response.status}`);
-      }
-
-      setLaunchNotifySubmitted(true);
-      trackEvent("launch_notify_submitted");
-    } catch (error) {
-      console.warn("Launch notify signup failed.", error);
-      setLaunchNotifyError("That didn't work. Please try again.");
-    } finally {
-      setLaunchNotifySubmitting(false);
-    }
-  }
-
   return (
     <div className="app-shell">
       <SeoMetadata />
@@ -180,7 +131,6 @@ function AppShellContent() {
         mobileOpen={mobileOpen}
         onToggleMobile={handleToggleMobile}
         onCloseMobile={() => setMobileOpen(false)}
-        onOpenStayUpdated={handleOpenStayUpdated}
         settingsOpen={settingsOpen}
         pressureUnit={examActive ? sitting!.pressureUnit : state.sessionState?.pressureUnit ?? "mmHg"}
         pressureUnitLocked={examActive}
@@ -192,15 +142,6 @@ function AppShellContent() {
         learnEnabled
         showBetaBadge={releaseFlags.enable_beta_badge}
         mobileProgress={mobileProgress}
-      />
-
-      <LaunchNotifyModal
-        open={launchNotifyOpen}
-        onClose={handleCloseStayUpdated}
-        onSubmit={handleLaunchNotifySubmit}
-        isSubmitting={launchNotifySubmitting}
-        isSubmitted={launchNotifySubmitted}
-        error={launchNotifyError}
       />
 
       <div className="app-shell__status-stack">

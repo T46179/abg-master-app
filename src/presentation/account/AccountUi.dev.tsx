@@ -3,25 +3,22 @@ import { Surface } from "../primitives/Surface";
 import { ArrowIcon, CheckIcon, ChevronLeftIcon, EyeIcon, EyeOffIcon, MailIcon, KeyIcon, CloudOffIcon, ClockIcon } from "./AccountIcons.dev";
 
 export type AccountPage = "exam" | "signin" | "signup" | "checkEmail" | "forgot" | "reset" | "link" | "about" | "setup" | "password" | "completion";
-export function AccountCard({ title, eyebrow, children, icon }: { title: string; eyebrow?: string; children: ReactNode; icon?: ReactNode }) {
-  return <Surface className="account-card">{icon && <span className="account-card-icon">{icon}</span>}{eyebrow && <p className="account-eyebrow">{eyebrow}</p>}<h1 tabIndex={-1}>{title}</h1>{children}</Surface>;
+export function AccountCard({ title, eyebrow, children, icon, className = "" }: { title: string; eyebrow?: string; children: ReactNode; icon?: ReactNode; className?: string }) {
+  return <Surface className={"account-card " + className}>{icon && <span className="account-card-icon">{icon}</span>}{eyebrow && <p className="account-eyebrow">{eyebrow}</p>}<h1 tabIndex={-1}>{title}</h1>{children}</Surface>;
 }
-export function AccountButton({ children, onClick, disabled, busy, type = "button" }: { children: ReactNode; onClick?: () => void; disabled?: boolean; busy?: boolean; type?: "button" | "submit" }) {
-  return <button className="figma-button account-primary" type={type} onClick={onClick} disabled={disabled || busy} aria-busy={busy || undefined}>{busy ? <><span className="figma-button__spinner" aria-hidden="true" />Signing in…</> : <>{children}<ArrowIcon /></>}</button>;
+export function AccountButton({ children, onClick, disabled, busy, type = "button", className = "", showArrow = true }: { className?: string; showArrow?: boolean; children: ReactNode; onClick?: () => void; disabled?: boolean; busy?: boolean; type?: "button" | "submit" }) {
+  return <button className={"figma-button account-primary " + className} type={type} onClick={onClick} disabled={disabled || busy} aria-busy={busy || undefined}>{busy ? <><span className="figma-button__spinner" aria-hidden="true" />Signing in…</> : <>{children}{showArrow && <ArrowIcon />}</>}</button>;
 }
 export function AccountBack({ onBack }: { onBack: () => void }) { return <button className="account-back" onClick={onBack}><ChevronLeftIcon />Back to Exam Room</button>; }
 export function TrialStepper({ step }: { step: number }) {
   return <nav className="account-stepper" aria-label="Trial exam progress"><div><strong>Trial exam</strong><span>Step {step + 1} of 3</span></div><ol>{["Account", "About you", "Exam setup"].map((label, i) => <li key={label} aria-current={i === step ? "step" : undefined} data-reached={i <= step}><span />{i < step ? <CheckIcon size={13} /> : i + 1} {label}</li>)}</ol></nav>;
 }
-export function AccountField({ id, label, password = false, error, disabled = false, value, onChange, aside, autoComplete }: { autoComplete?: string; id: string; label: string; password?: boolean; error?: string; disabled?: boolean; value: string; onChange: (v: string) => void; aside?: ReactNode }) {
+export function AccountField({ id, label, password = false, error, disabled = false, value, onChange, aside, autoComplete, placeholder }: { placeholder?: string; autoComplete?: string; id: string; label: string; password?: boolean; error?: string; disabled?: boolean; value: string; onChange: (v: string) => void; aside?: ReactNode }) {
   const [shown, setShown] = useState(false);
-  return <div className="account-field ph-no-capture" data-clarity-mask="true" data-sentry-mask="true"><div><label htmlFor={id}>{label}</label>{aside}</div><div className="account-input" data-invalid={Boolean(error)}>
-    <input id={id} name={id} type={password && !shown ? "password" : password ? "text" : "email"} value={value} onChange={event => onChange(event.target.value)} disabled={disabled} autoComplete={autoComplete ?? (password ? "current-password" : "username")} aria-invalid={Boolean(error)} aria-describedby={error ? id + "-error" : undefined} />
+  return <div className={"account-field ph-no-capture" + (aside ? " account-field--with-aside" : "")} data-clarity-mask="true" data-sentry-mask="true"><div><label htmlFor={id}>{label}</label></div><div className="account-input" data-invalid={Boolean(error)}>
+    <input id={id} name={id} placeholder={placeholder} type={password && !shown ? "password" : password ? "text" : "email"} value={value} onChange={event => onChange(event.target.value)} disabled={disabled} autoComplete={autoComplete ?? (password ? "current-password" : "username")} aria-invalid={Boolean(error)} aria-describedby={error ? id + "-error" : undefined} />
     {password && <button type="button" onClick={() => setShown(v => !v)} aria-label={shown ? "Hide password" : "Show password"} aria-pressed={shown} aria-controls={id} disabled={disabled}>{shown ? <EyeOffIcon /> : <EyeIcon />}</button>}
-  </div>{error && <p id={id + "-error"} className="account-field-error">{error}</p>}</div>;
-}
-export function AccountAside({ trial }: { trial: boolean }) {
-  return <aside className="account-aside"><span className="account-eyebrow">{trial ? "Your trial exam" : "Your ABG Master account"}</span><h2>{trial ? "A full sitting, marked part by part." : "Pick up where you left off."}</h2><p>{trial ? "Create an account, tell us a little about yourself, then choose your sitting settings." : "Your saved progress stays with your account, across devices."}</p></aside>;
+  </div>{aside && <div className="account-field-aside">{aside}</div>}{error && <p id={id + "-error"} className="account-field-error" role="alert">{error}</p>}</div>;
 }
 export function EmailLinkResult({ variant, onSignIn, onRetry }: { variant: "verified" | "verifyExpired" | "resetExpired" | "failed"; onSignIn: () => void; onRetry: () => void }) {
   const verified = variant === "verified";

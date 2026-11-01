@@ -14,7 +14,6 @@ interface MainNavProps {
   mobileOpen: boolean;
   onToggleMobile: () => void;
   onCloseMobile: () => void;
-  onOpenStayUpdated: () => void;
   learnEnabled: boolean;
   showBetaBadge: boolean;
   mobileProgress: MobileNavProgress;
@@ -169,11 +168,6 @@ export function MainNav(props: MainNavProps) {
               />
             ) : null}
 
-            <button className="main-nav__stay-updated" type="button" onClick={props.onOpenStayUpdated}>
-              <span className="main-nav__link-icon main-nav__bell-icon" aria-hidden="true" />
-              <span>Stay Updated</span>
-            </button>
-
             {import.meta.env.DEV && import.meta.env.MODE === "development" && <span id="exam-account-nav-slot">{LocalAccountNav && <Suspense fallback={null}><LocalAccountNav /></Suspense>}</span>}
 
             {!hideNavigationItems ? (
@@ -198,7 +192,6 @@ export function MainNav(props: MainNavProps) {
           open={props.mobileOpen}
           triggerRef={mobileTriggerRef}
           onClose={props.onCloseMobile}
-          onOpenStayUpdated={props.onOpenStayUpdated}
           onCoreFlowLinkClick={props.onCoreFlowLinkClick}
           items={navItems.map(({ disabled: _disabled, ...item }) => item)}
           progress={props.mobileProgress}

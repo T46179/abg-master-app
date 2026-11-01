@@ -13,7 +13,6 @@ import {
   getReleaseFlags
 } from "../../core/progression";
 import { createEmptySeenCasesState } from "../../core/selection";
-import { LaunchNotifyModal } from "../layout/LaunchNotifyModal";
 import { MainNav } from "../layout/MainNav";
 import { getMobileNavProgress } from "../layout/mobileNavProgress";
 import { usePublicCasesSolvedCount } from "../shared/usePublicCasesSolvedCount";
@@ -275,10 +274,6 @@ export function LandingScreen() {
   const { state, patchPracticeState } = useAppContext();
   const browserStorage = useAccountBrowserStorage();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [launchNotifyOpen, setLaunchNotifyOpen] = useState(false);
-  const [launchNotifySubmitting, setLaunchNotifySubmitting] = useState(false);
-  const [launchNotifySubmitted, setLaunchNotifySubmitted] = useState(false);
-  const [launchNotifyError, setLaunchNotifyError] = useState("");
   const [animatedCasesSolvedCount, setAnimatedCasesSolvedCount] = useState(0);
   const { casesSolvedCount, casesSolvedLoaded } = usePublicCasesSolvedCount();
   const [featuresRevealProgress, setFeaturesRevealProgress] = useState(0);
@@ -300,54 +295,12 @@ export function LandingScreen() {
     cases: state.payload?.cases ?? []
   });
 
-  function handleOpenStayUpdated() {
-    setMobileOpen(false);
-    setLaunchNotifyError("");
-    setLaunchNotifySubmitted(false);
-    setLaunchNotifyOpen(true);
-  }
-
-  function handleCloseStayUpdated() {
-    setLaunchNotifyOpen(false);
-    setLaunchNotifySubmitting(false);
-    setLaunchNotifyError("");
-    setLaunchNotifySubmitted(false);
-  }
-
   function handleLandingCtaClick(ctaLabel: string, destination: string) {
     trackEvent("landing_cta_clicked", {
       cta_label: ctaLabel,
       destination,
       source: "landing"
     });
-  }
-
-  async function handleLaunchNotifySubmit(email: string) {
-    setLaunchNotifySubmitting(true);
-    setLaunchNotifyError("");
-
-    try {
-      const response = await fetch("https://submit-form.com/8T8RZZaL6", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json"
-        },
-        body: JSON.stringify({ email })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Launch notify submit failed: ${response.status}`);
-      }
-
-      setLaunchNotifySubmitted(true);
-      trackEvent("launch_notify_submitted");
-    } catch (error) {
-      console.warn("Launch notify signup failed.", error);
-      setLaunchNotifyError("That didn't work. Please try again.");
-    } finally {
-      setLaunchNotifySubmitting(false);
-    }
   }
 
   useEffect(() => {
@@ -635,21 +588,11 @@ export function LandingScreen() {
         mobileOpen={mobileOpen}
         onToggleMobile={() => setMobileOpen(value => !value)}
         onCloseMobile={() => setMobileOpen(false)}
-        onOpenStayUpdated={handleOpenStayUpdated}
         learnEnabled
         showBetaBadge={releaseFlags.enable_beta_badge}
         mobileProgress={mobileProgress}
         wideShell
         onCoreFlowLinkClick={handleLandingCtaClick}
-      />
-
-      <LaunchNotifyModal
-        open={launchNotifyOpen}
-        onClose={handleCloseStayUpdated}
-        onSubmit={handleLaunchNotifySubmit}
-        isSubmitting={launchNotifySubmitting}
-        isSubmitted={launchNotifySubmitted}
-        error={launchNotifyError}
       />
 
       <section className="landing-section landing-section--hero">
