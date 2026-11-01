@@ -66,10 +66,10 @@ export function useExamFeedbackTone(call: RuntimeCall | undefined, accountKey: s
     setStored({ ...data, acknowledged: checked });
   }
 
-  async function confirmForStart() {
-    if (!canBegin) return false;
+  async function confirmForStart(override?: "professional") {
+    if (override ? !data?.ready || data.busy : !canBegin) return false;
     // Confirm the displayed account preference before the backend snapshots the new attempt.
-    return save(tone, true);
+    return save(override ?? tone, true);
   }
 
   return { tone, busy: data?.busy ?? true, ready: data?.ready ?? false,

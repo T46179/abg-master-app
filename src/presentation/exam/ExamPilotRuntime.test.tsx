@@ -29,8 +29,8 @@ function historyPage(rows: any[] = []) {
  summary: { submitted: rows.length, average: null, best: null, trend: [], totalCases: rows.reduce((n,r)=>n+r.caseCount,0), awaiting: rows.length, pending: rows.length } };
 }
 function row(id: string, kind = "mock", exclusions: string[] = []) { return { id, createdAt: "2026-10-05T00:00:00Z", presentedAt: null, finishedAt: "2026-10-05T00:10:00Z", marksAvailable: 4, marksAwarded: null, caseCount: 3, examKind: kind, excludedCategories: exclusions, gradingStatus: "pending", canRetryGrading: false }; }
-async function mount(unitCount = 3, customisationCategories: typeof categories = [], allowedUnitCounts?: number[], initialEntries?: Array<{ pathname: string; state?: unknown }>) {
- router = createMemoryRouter([{ path: "/", element: <ExamSittingProvider><ExamPilotRuntime client={client} userId="test-owner" canStart unitCount={unitCount} allowedUnitCounts={allowedUnitCounts} customisationCategories={customisationCategories} /></ExamSittingProvider> }, { path: "/away", element: <p>Away</p> }], { initialEntries });
+async function mount(unitCount = 3, customisationCategories: typeof categories = [], allowedUnitCounts?: number[], initialEntries?: Array<{ pathname: string; state?: unknown }>, trial = false) {
+ router = createMemoryRouter([{ path: "/", element: <ExamSittingProvider><ExamPilotRuntime client={client} userId="test-owner" canStart unitCount={unitCount} allowedUnitCounts={allowedUnitCounts} customisationCategories={customisationCategories} renderDashboard={trial ? controls => controls.trialSetup : undefined} /></ExamSittingProvider> }, { path: "/away", element: <p>Away</p> }], { initialEntries });
  await act(async () => { root.render(<RouterProvider router={router} />); });
 }
 async function click(text: string) {
@@ -542,4 +542,39 @@ it("blocks Begin while a tone save fails and retries the selected preference", a
  expect(container.querySelector(".exam-feedback-tone__error")).toBeNull();
  await click("Begin");
  expect(invoke.mock.calls.filter(c=>c[1].body.operation==="start")).toHaveLength(1);
+});
+
+it("uses the shared trial builder with locked upgrades and starts three standard cases with Professional feedback", async () => {
+ savedFeedbackTone = "ruthless";
+ await mount(5, categories, [3, 5], undefined, true);
+ expect(container.textContent).toContain("Your Trial Session");
+ expect(container.textContent).toContain("Full exam feature");
+ expect(container.textContent).toContain("~15 min");
+ expect(container.textContent).not.toContain("Build your session");
+ expect(container.querySelector(".exam-subnav")).toBeNull();
+ expect(container.querySelector(".exam-mock-overview")).toBeNull();
+ expect(container.querySelector('[aria-label="Feedback tone"]')).toBeNull();
+ const custom = [...container.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.includes("Custom Exam"))!;
+ const five = [...container.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent === "5 cases")!;
+ expect(custom.disabled).toBe(true); expect(five.disabled).toBe(true);
+ expect(custom.querySelector("svg")).not.toBeNull(); expect(five.querySelector("svg")).not.toBeNull();
+ await act(async () => { custom.click(); five.click(); });
+ expect(container.querySelector('.exam-kind-picker')?.getAttribute("data-kind")).toBe("mock");
+ expect(container.querySelector('.exam-case-picker')?.getAttribute("data-count")).toBe("3");
+ await click("mmHg");
+ const timer = container.querySelector<HTMLButtonElement>('.exam-toggle-row button[role="switch"]')!;
+ await act(async () => timer.click());
+ await click("Begin Trial Exam");
+ const start = invoke.mock.calls.find(c => c[1].body.operation === "start")![1].body.input;
+ expect(start).toMatchObject({ examKind: "mock", unitCount: 3, pressureUnit: "mmHg", excludedCategories: [] });
+ expect(JSON.parse(localStorage.getItem("abgm-exam-display-clpfecuohwzwrgmqzeos-test-owner")!)).toEqual({ showTimer: false, showRanges: true });
+ expect(savedFeedbackTone).toBe("professional");
+ expect(invoke.mock.calls.findIndex(c => c[1].body.operation === "preference_update")).toBeLessThan(invoke.mock.calls.findIndex(c => c[1].body.operation === "start"));
+});
+it("keeps trial start disabled when three-case access is unavailable", async () => {
+ await mount(5, categories, [5], undefined, true);
+ const begin = [...container.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === "Begin Trial Exam")!;
+ expect(begin.disabled).toBe(true);
+ await act(async () => begin.click());
+ expect(invoke.mock.calls.some(c => c[1].body.operation === "start")).toBe(false);
 });

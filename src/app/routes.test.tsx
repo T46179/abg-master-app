@@ -182,7 +182,20 @@ describe("hosted Exam pilot routing", () => {
       const { appRoutes: productionRoutes } = await import("./routes");
       const children = productionRoutes.find(route => route.children)?.children;
       expect(children?.some(route => route.path === "dev/exam-pilot")).toBe(false);
+      expect(children?.some(route => ["sign-in", "create-account", "forgot-password"].includes(route.path ?? ""))).toBe(false);
       expect(getElementName(children?.find(route => route.path === "exam")?.element)).toBe("ExamScreen");
+    } finally { vi.unstubAllEnvs(); vi.resetModules(); }
+  });
+});
+
+describe("local account page routes", () => {
+  it("registers dedicated account pages in the development preview", async () => {
+    vi.stubEnv("DEV", true); vi.stubEnv("MODE", "development"); vi.resetModules();
+    try {
+      const { appRoutes } = await import("./routes");
+      for (const path of ["/sign-in", "/create-account", "/forgot-password", "/reset-password"]) {
+        expect(matchRoutes(appRoutes, path)?.at(-1)?.route.path).toBe(path.slice(1));
+      }
     } finally { vi.unstubAllEnvs(); vi.resetModules(); }
   });
 });

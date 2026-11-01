@@ -1,4 +1,5 @@
 import { useId, type ReactNode, type ReactElement } from "react";
+import { LockKeyhole } from "lucide-react";
 import { Surface } from "../primitives/Surface";
 import type { PressureUnit } from "../../core/types";
 import {
@@ -38,10 +39,12 @@ interface DashboardProps {
   customDisabled?: boolean;
   setupContent?: ReactNode;
   hideModeSwitch?: boolean;
+  trial?: boolean;
 }
 
 export function ExamDashboard(props: DashboardProps) {
   const { state, onChange } = props;
+  if (props.trial) return <MockExam {...props} />;
   return <>
     <div className="exam-subnav">
       <div className="exam-actions">
@@ -131,25 +134,25 @@ function InfoTip({ text, align = "right", children }: { text: string; align?: "l
   </span>;
 }
 
-function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisabled, caseCounts = [3, 5], startContent, customDisabled, pressureUnit, onPressureUnitChange, feedbackPreference, setupContent }: DashboardProps) {
+function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisabled, caseCounts = [3, 5], startContent, customDisabled, pressureUnit, onPressureUnitChange, feedbackPreference, setupContent, trial }: DashboardProps) {
   const disclaimerId = useId();
   const custom = state.examKind === "custom";
   const kinds: { key: SittingKind; label: string; description: string }[] = [
     { key: "mock", label: "Standard Exam", description: "default settings" },
-    { key: "custom", label: "Custom Exam", description: "Choose what's included" }
+    { key: "custom", label: "Custom Exam", description: trial ? "Full exam feature" : "Choose what's included" }
   ];
-  return <div className="exam-workspace exam-mock-workspace" data-kind={state.examKind}>
-    <ExamOverview state={state} pressureUnit={pressureUnit} />
+  return <div className={"exam-workspace exam-mock-workspace" + (trial ? " exam-trial-builder" : "")} data-kind={state.examKind}>
+    {!trial && <ExamOverview state={state} pressureUnit={pressureUnit} />}
     {setupContent ?? (<Surface as="aside" className="exam-setup exam-sitting-setup" aria-labelledby="exam-build-title">
       <fieldset className="exam-setup-fields" disabled={setupLocked}>
-      <div className="exam-build-heading"><div><h3 id="exam-build-title">Build your session</h3></div></div>
+      <div className="exam-build-heading"><div>{trial && <p className="exam-eyebrow">Trial Exam</p>}<h3 id="exam-build-title">{trial ? "Your Trial Session" : "Build your session"}</h3>{trial && <p className="exam-trial-intro">Test your acid–base interpretation and clinical reasoning across three cases, then review your performance with detailed marking and feedback.</p>}</div></div>
       <div className="exam-kind-picker" role="group" aria-label="Sitting type" data-kind={state.examKind}>
         <span className="exam-picker-highlight" aria-hidden="true" />
-        {kinds.map(kind => <button type="button" key={kind.key} disabled={kind.key === "custom" && customDisabled} aria-pressed={state.examKind === kind.key} onClick={() => onChange({ examKind: kind.key })}>
-          <strong>{kind.label}</strong><span>{kind.description}</span>
+        {kinds.map(kind => <button type="button" key={kind.key} disabled={kind.key === "custom" && (trial || customDisabled)} aria-pressed={state.examKind === kind.key} onClick={() => onChange({ examKind: kind.key })}>
+          <strong>{kind.label}</strong><span>{kind.description}{trial && kind.key === "custom" && <LockKeyhole className="exam-feature-lock" aria-hidden="true" />}</span>
         </button>)}
       </div>
-      <div className="exam-specialist-reveal" data-open={custom} aria-hidden={!custom} inert={!custom}>
+      {!trial && <div className="exam-specialist-reveal" data-open={custom} aria-hidden={!custom} inert={!custom}>
         <div className="exam-specialist-clip">
           <section className="exam-specialist-card" aria-label="Specialist topics">
             <p className="exam-eyebrow">Specialist topics</p>
@@ -164,12 +167,12 @@ function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisab
             <p className="exam-specialist-note">Interpretation, calculations, physiology and reasoning are always included.</p>
           </section>
         </div>
-      </div>
+      </div>}
       <div className="exam-case-picker-field">
         <div className="exam-field-label">Number of cases</div>
-        <div className="exam-case-picker" role="group" aria-label="Number of cases" data-count={state.caseCount} data-options={caseCounts.length} data-index={caseCounts.indexOf(state.caseCount)}>
+        <div className="exam-case-picker" role="group" aria-label="Number of cases" data-count={state.caseCount} data-options={trial ? 2 : caseCounts.length} data-index={trial ? 0 : caseCounts.indexOf(state.caseCount)}>
           <span className="exam-picker-highlight" aria-hidden="true" />
-          {caseCounts.map(count => <button type="button" key={count} aria-pressed={state.caseCount === count} onClick={() => onChange({ caseCount: count })}>{count} cases</button>)}
+          {(trial ? [3, 5] : caseCounts).map(count => <button type="button" key={count} disabled={trial && count !== 3} aria-pressed={state.caseCount === count} onClick={() => onChange({ caseCount: count })}>{count} cases{trial && count !== 3 && <LockKeyhole className="exam-feature-lock" aria-hidden="true" />}</button>)}
         </div>
       </div>
       <ToggleRow label="Show timer" checked={state.timed} onChange={timed => onChange({ timed })} />
@@ -182,7 +185,7 @@ function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisab
             onClick={() => onPressureUnitChange(unit)}>{unit}</button>)}
         </div>
       </div>
-      {feedbackPreference && <section className="exam-feedback-tone" aria-label="Feedback preference">
+      {!trial && feedbackPreference && <section className="exam-feedback-tone" aria-label="Feedback preference">
         <div className="exam-toggle-row">
           <span className="exam-field-label">Feedback</span>
           <div className="main-nav__unit-control" role="group" aria-label="Feedback tone">
@@ -207,10 +210,11 @@ function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisab
             disabled={feedbackPreference.busy} onClick={() => void feedbackPreference.retry()}>Retry feedback preference</button>
         </div>}
       </section>}
+      {trial && feedbackPreference?.error && <div className="exam-feedback-tone__error" role="alert"><p>{feedbackPreference.error}</p><button type="button" disabled={feedbackPreference.busy} onClick={() => void feedbackPreference.retry()}>Retry</button></div>}
       <div className="exam-suggested-time"><span>Suggested time</span><strong>~{state.caseCount === 3 ? 15 : 30} min</strong></div>
       </fieldset>
-      {startContent ?? <button type="button" className="figma-button exam-primary exam-start" onClick={onBegin} disabled={launching || beginDisabled || (feedbackPreference && !feedbackPreference.canBegin)} aria-busy={launching || undefined}>
-        {launching ? <><span role="status">Preparing your session</span><span className="figma-button__spinner" aria-hidden="true" /></> : <>Begin <ArrowIcon /></>}
+      {startContent ?? <button type="button" className="figma-button exam-primary exam-start" onClick={onBegin} disabled={launching || beginDisabled || (!trial && feedbackPreference && !feedbackPreference.canBegin)} aria-busy={launching || undefined}>
+        {launching ? <><span role="status">Preparing your session</span><span className="figma-button__spinner" aria-hidden="true" /></> : <>{trial ? "Begin Trial Exam" : "Begin"} <ArrowIcon /></>}
       </button>}
     </Surface>)}
   </div>;

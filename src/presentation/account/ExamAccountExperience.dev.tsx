@@ -21,6 +21,8 @@ import { PasswordRecoveryPages } from "./PasswordRecoveryPages.dev";
 import { useRegistration } from "../../app/RegistrationProvider";
 import { registrationDestination, registrationDestinationPath, type RegistrationDestination } from "../../core/registrationCallback";
 
+import { accountPageFromPath, accountPageUrl } from "../../core/accountRoutes";
+
 const STAGING = "https://clpfecuohwzwrgmqzeos.supabase.co";
 type Page = AccountPage | "start";
 
@@ -35,19 +37,39 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
   const navigate = useNavigate(); const location = useLocation();
   const query = new URLSearchParams(location.search);
   const destination = registrationDestination(query.get("return_to"));
-  const requested = query.get("account");
+  const requested = accountPageFromPath(location.pathname) ?? query.get("account");
   const pages = ["exam", "signin", "signup", "checkEmail", "forgot", "reset", "link", "about", "setup", "start", "password", "completion"];
   const page = pages.includes(requested ?? "") ? requested as Page : "exam";
   const intent = destination === "trial" ? "trial" : "account";
   const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const inFlight = useRef(false);
+  const resumedCodeEntry = useRef(false);
   const verified = identity.status === "verified" && Boolean(identity.userId);
   function open(next: Page, entry: "trial" | "account" = intent) {
     setError(""); const params = new URLSearchParams(location.search);
-    if (next === "exam") params.delete("account"); else params.set("account", next);
     if (entry === "trial") params.set("return_to", "trial");
     if (next !== "signin") params.delete("reauthenticate");
-    void navigate(location.pathname + (params.size ? "?" + params.toString() : ""));
+    void navigate(accountPageUrl(next, params.toString()));
   }
+  // Keep saved links working while giving account pages their own canonical route.
+  useEffect(() => {
+    if (query.has("account") && accountPageFromPath(accountPageUrl(page).split("?")[0])) {
+      void navigate(accountPageUrl(page, location.search), { replace: true });
+    }
+  }, [location.pathname, location.search, page, navigate]);
+  useEffect(() => {
+    if (page !== "checkEmail") { resumedCodeEntry.current = false; return; }
+    if (resumedCodeEntry.current) return;
+    resumedCodeEntry.current = true;
+    if (flow.phase === "idle" && (registration.codeRequest() || registration.pending())) void registration.resume();
+  }, [page, flow.phase, registration]);
+  useEffect(() => {
+    if (registration.emailPurpose() === "reset") return;
+    const next = flow.phase === "awaiting_email" ? "checkEmail" : flow.phase === "password" ? "password" : null;
+    if (next && (page !== next || query.get("return_to") !== flow.destination)) {
+      const params = new URLSearchParams(location.search); params.set("return_to", flow.destination);
+      void navigate(accountPageUrl(next, params.toString()), { replace: true });
+    }
+  }, [flow.phase, flow.destination, page, location.search, registration, navigate]);
   function setPage(next: Page) { open(next); }
   function finish(target: RegistrationDestination) {
     registration.resetView();
@@ -86,7 +108,7 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
     body = <div className="account-narrow ph-no-capture" data-clarity-mask="true" data-sentry-mask="true"><PasswordRecoveryPages page={page as AccountPage} destination={destination} onPage={next => {
       if (next !== "signin") { setPage(next); return; }
       const params = new URLSearchParams(location.search); params.set("account", "signin"); params.set("reauthenticate", "1");
-      void navigate(location.pathname + "?" + params.toString());
+      void navigate(accountPageUrl("signin", params.toString()));
     }} /></div>;
   } else if (registrationActive || registrationPage || identity.status === "unverified") {
     body = <div className="account-registration">{intent === "trial" && <TrialStepper step={0} />}
@@ -95,7 +117,9 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
   } else if (page === "signin") {
     body = <div className="account-signin-layout">{intent === "trial" && <TrialStepper step={0} />}<SignInForm busy={busy} error={error} onSubmit={signIn} onPage={p => { registration.resetView(); open(p); }} /></div>;
   } else if (verified && identity.userId) {
-    body = hasPassword !== true ? <div className="account-narrow"><AccountCard title={setupError ? "We couldn't check account setup" : "Checking account setup"}><p role="status">{setupError ? "Your account has not been replaced. Please retry." : "Please wait while we check your account."}</p>{setupError && <AccountButton onClick={retrySetup}>Retry account check</AccountButton>}</AccountCard></div>
+    body = hasPassword !== true ? setupError
+      ? <div className="account-narrow"><AccountCard title="We couldn't check account setup"><p role="status">Your account has not been replaced. Please retry.</p><AccountButton onClick={retrySetup}>Retry account check</AccountButton></AccountCard></div>
+      : <div className="account-narrow account-setup-loading" role="status" aria-label="Checking account setup"><span className="loading-chip__spinner" aria-hidden="true" /></div>
       : <RuntimeOwner key={identity.generation} client={client} userId={identity.userId} generation={identity.generation} paid={paid} page={page} onPage={setPage} />;
   } else {
     body = <><ExamPageHeading /><div className="exam-workspace exam-mock-workspace"><ExamOverview state={{ ...initialPrototypeState, mode: "mock", examKind: "mock", caseCount: 3 }} pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"} /><TrialIntroduction signedIn={false} complete={false} onStart={startTrial} onSignIn={() => open("signin", "trial")} /></div></>;
@@ -180,14 +204,14 @@ function RuntimeOwner({ client, userId, generation, paid, page, onPage }: { clie
   function renderDashboard(controls: ExamDashboardControls) {
     if (paid || controls.canRecover) return controls.fullSetup;
     const next = page === "start" ? draft.complete ? "setup" : "about" : page;
-    if (next === "about") return <div className="account-onboarding"><AccountBack onBack={() => onPage("exam")} /><TrialStepper step={1} /><AboutYou value={draft} onChange={value => { save(value); }} storageError={storageError} onDone={value => { if (save(value)) onPage("setup"); }} /></div>;
-    if (next === "setup") return <><AccountBack onBack={() => onPage("exam")} /><div className="account-narrow-step"><TrialStepper step={2} /></div>{controls.withSetup(<aside className="account-trial-panel surface"><span className="account-eyebrow">Trial exam · free account</span><h3>Your trial sitting</h3><p>Choose your timer and reference ranges, then begin when you're ready.</p><p className="account-trial-count"><strong>3</strong> cases · server-assigned pilot paper</p><label className="account-setting">Show timer<input type="checkbox" role="switch" checked={controls.timed} onChange={event => controls.setTimed(event.target.checked)} disabled={controls.busy} /></label><label className="account-setting">Reference ranges<input type="checkbox" role="switch" checked={controls.showRanges} onChange={event => controls.setShowRanges(event.target.checked)} disabled={controls.busy} /></label><AccountButton disabled={!controls.canBegin} onClick={controls.begin}>Begin trial exam</AccountButton><p className="account-footnote">This uses the current pilot runtime. No trial allowance is consumed.</p></aside>)}</>;
+    if (next === "about") return <div className="account-onboarding"><AccountBack onBack={() => onPage("exam")} /><TrialStepper step={1} onStep={() => { document.querySelector<HTMLFormElement>(".account-onboarding form")?.requestSubmit(); }} /><AboutYou value={draft} onChange={value => { save(value); }} storageError={storageError} onDone={value => { if (save(value)) onPage("setup"); }} /></div>;
+    if (next === "setup") return <div className="account-onboarding account-trial-onboarding"><AccountBack onBack={() => onPage("exam")} /><TrialStepper step={2} onStep={() => onPage("about")} />{controls.trialSetup}<p className="account-footnote account-trial-later"><button type="button" className="account-link" onClick={() => onPage("exam")}>Do this later</button></p></div>;
     return controls.withSetup(<TrialIntroduction signedIn complete={draft.complete} onStart={() => onPage("start")} />);
   }
   if (accessError) return <div className="account-narrow"><AccountCard title="We couldn't check Exam access"><p role="alert">Your account has not been changed. Reconnect and retry.</p><AccountButton onClick={() => setRevision(n => n + 1)}>Retry access check</AccountButton></AccountCard></div>;
   if (!access) return <p role="status">Checking Exam access…</p>;
   return <AccountBrowserStorageProvider value={storage}>
-    {access.status !== "allowed" && <p role="status" className="account-notice">{access.status === "closed" ? "You're signed in. The Exam pilot is not open yet." : "You're signed in, but this account does not have pilot access."}</p>}
+    {access.status === "closed" && <p role="status" className="account-notice">You're signed in. The Exam pilot is not open yet.</p>}
     {access.status === "allowed" && !paid && !access.allowedUnitCounts.includes(3) && <p role="status" className="account-notice">The three-case trial is unavailable for this pilot account. Existing saved attempts remain accessible.</p>}
     <ExamPilotRuntime client={ownedClient} userId={userId} canStart={access.status === "allowed"} allowedUnitCounts={paid ? access.allowedUnitCounts : access.allowedUnitCounts.filter(n => n === 3)} customisationCategories={paid ? access.customisationCategories : []} renderDashboard={renderDashboard} />
   </AccountBrowserStorageProvider>;

@@ -390,3 +390,10 @@
 .exam-screen .exam-feedback-tone__status { margin-top: .5rem; color: var(--color-text-muted); font-size: .75rem; }
 .exam-feedback-tone__error { margin-top: .625rem; color: #b45309; font-size: .8125rem; line-height: 1.5; }
 .exam-feedback-tone__error button { margin-top: .5rem; }
+
+/* Trial onboarding reuses the full exam builder at its desktop panel width. */
+.exam-screen .exam-trial-builder { width:100%; max-width:400px; margin-inline:auto; grid-template-columns:minmax(0,1fr); }
+.exam-trial-builder .exam-build-heading .exam-eyebrow { margin:0 0 .75rem; }
+.exam-trial-builder .exam-trial-intro { margin:.75rem 0 0; font-size:.875rem; line-height:1.6; color:var(--color-text-muted); }
+.exam-trial-builder .exam-kind-picker button:disabled, .exam-trial-builder .exam-case-picker button:disabled { color:var(--color-text-muted); opacity:.65; cursor:not-allowed; }
+.exam-feature-lock { display:inline-block; width:13px; height:13px; margin-left:5px; vertical-align:-2px; }

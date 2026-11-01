@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSiteAccount } from "./siteAccount";
-import { createAccountRegistration, REGISTRATION_PENDING_KEY } from "./accountRegistration";
+import { createAccountRegistration, REGISTRATION_PENDING_KEY, REGISTRATION_CODE_KEY, REGISTRATION_RESEND_DELAY_MS } from "./accountRegistration";
 import { createMemoryStorage } from "./storage";
 const stops: Array<() => void> = [];
 afterEach(() => { stops.splice(0).forEach(stop => stop()); });
@@ -45,8 +45,8 @@ describe("email-first account registration", () => {
     expect(f.canonical.auth.updateUser).not.toHaveBeenCalled();
     expect(f.r.getSnapshot().phase).toBe("awaiting_email");
     await f.callback(); expect(f.r.getSnapshot().phase).toBe("password");
-    await f.r.completePassword("test-only-password");
-    expect(f.proof.auth.updateUser).toHaveBeenCalledWith({ password: "test-only-password" });
+    await f.r.completePassword("Test-only-password1!");
+    expect(f.proof.auth.updateUser).toHaveBeenCalledWith({ password: "Test-only-password1!" });
     expect(f.account.getSnapshot()).toMatchObject({ userId: "guest", status: "verified" });
     expect(f.r.getSnapshot().phase).toBe("complete");
     expect(f.storage.getItem("owned-progress")).toBe("xp:120;calibration;history;draft");
@@ -90,13 +90,13 @@ describe("email-first account registration", () => {
     expect(f.account.getSnapshot().userId).toBe("guest");
     f.proof.change("fresh");
     await f.callback(); expect(f.r.getSnapshot().phase).toBe("switch");
-    f.r.confirmSwitch(); await f.r.completePassword("fresh-test-password");
+    f.r.confirmSwitch(); await f.r.completePassword("Fresh-test-password1!");
     expect(f.account.getSnapshot().userId).toBe("fresh");
   });
   it("uses an existing-account-only completion email without depending on a pending record", async () => {
     const f = await fixture();
     await f.r.completionEmail("guest@example.test", "trial");
-    expect(f.proof.auth.signInWithOtp).toHaveBeenCalledWith({ email: "guest@example.test", options: { shouldCreateUser: false, emailRedirectTo: expect.stringContaining("account_action=complete") } });
+    expect(f.pending.auth.signInWithOtp).toHaveBeenCalledWith({ email: "guest@example.test", options: { shouldCreateUser: false, emailRedirectTo: expect.stringContaining("account_action=complete") } });
     await f.callback("complete"); expect(f.r.getSnapshot().phase).toBe("password");
   });
   it("never adopts a completion-link session or updates a password that already exists", async () => {
@@ -184,15 +184,15 @@ describe("password recovery", () => {
     await f.callback(); expect(f.r.getSnapshot()).toMatchObject({ phase: "reset_password", email: "recovered@example.test" });
     expect(f.proof.auth.verifyOtp).toHaveBeenCalledWith({ token_hash: "test-reset-hash", type: "recovery" });
     expect(f.r.canSetPassword()).toBe(false);
-    await f.r.completeReset("new-test-password");
-    expect(f.proof.auth.updateUser).toHaveBeenCalledWith({ password: "new-test-password" });
+    await f.r.completeReset("New-test-password1!");
+    expect(f.proof.auth.updateUser).toHaveBeenCalledWith({ password: "New-test-password1!" });
     expect(f.r.getSnapshot().phase).toBe("reset_complete");
     expect(f.proof.auth.signOut).toHaveBeenCalledWith({ scope: "local" });
     expect(f.canonical.auth.signOut).not.toHaveBeenCalled();
     expect(f.canonical.auth.setSession).not.toHaveBeenCalled();
     expect(f.account.getSnapshot().userId).toBe("other");
     expect(f.storage.getItem("other-journal")).toBe("preserved");
-    expect(JSON.stringify(f.r.getSnapshot())).not.toContain("new-test-password");
+    expect(JSON.stringify(f.r.getSnapshot())).not.toContain("New-test-password1!");
   });
   it("signs out the matching local identity after reset while retaining its journal", async () => {
     const f = await resetFixture(); f.canonical.change("recovered"); await f.account.refresh();
@@ -200,7 +200,7 @@ describe("password recovery", () => {
     f.canonical.auth.signOut.mockImplementation(async () => {
       f.canonical.auth.getSession.mockResolvedValue({ data: { session: null as any }, error: null }); return { error: null };
     });
-    await f.callback(); await f.r.completeReset("new-test-password");
+    await f.callback(); await f.r.completeReset("New-test-password1!");
     expect(f.account.getSnapshot().status).toBe("signed_out");
     expect(f.r.getSnapshot()).toMatchObject({ phase: "reset_complete", completedUserId: null });
     expect(f.storage.getItem("recovered-journal")).toBe("preserved");
@@ -241,7 +241,7 @@ describe("password recovery", () => {
     const f = await resetFixture(); await f.callback();
     let finish!: (value: any) => void;
     f.proof.auth.updateUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
-    const operation = f.r.completeReset("target-only-password");
+    const operation = f.r.completeReset("Target-only-password1!");
     await vi.waitFor(() => expect(f.proof.auth.updateUser).toHaveBeenCalled());
     f.canonical.change("different"); await f.account.refresh(); f.r.accountChanged();
     finish({ data: { user: { id: "recovered" } }, error: null }); await operation;
@@ -256,7 +256,7 @@ describe("password recovery", () => {
     expect(f.r.emailPurpose()).toBe("reset");
     await f.callback();
     f.proof.auth.updateUser.mockResolvedValueOnce({ data: { user: null as any }, error: { code: "same_password" } } as any);
-    await f.r.completeReset("same-test-password");
+    await f.r.completeReset("Same-test-password1!");
     expect(f.r.getSnapshot()).toMatchObject({ phase: "error", error: "Choose a password different from your current password." });
     expect(f.r.canResetPassword()).toBe(true);
   });
@@ -279,5 +279,140 @@ describe("server-verified reset grants", () => {
     await f.r.completeReset("must-not-write");
     expect(f.proof.auth.updateUser).not.toHaveBeenCalled();
     expect(f.r.getSnapshot().phase).toBe("error");
+  });
+});
+
+describe("single-tab registration codes", () => {
+  const requestCode = "123456";
+  function confirm(f: Awaited<ReturnType<typeof fixture>>, fresh = false) {
+    const verifier = fresh ? f.freshBound : f.bound;
+    if (fresh) f.pending.auth.setSession.mockImplementation(async () => { f.pending.change("fresh"); return { error: null }; });
+    verifier.auth.verifyOtp.mockImplementation(async () => {
+      verifier.change(fresh ? "fresh" : "guest");
+      return { data: { user: (await verifier.auth.getUser()).data.user, session: (await verifier.auth.getSession()).data.session }, error: null };
+    });
+    return verifier;
+  }
+  it("verifies the pending email on its isolated guest session and keeps progress until password completion", async () => {
+    const f = await fixture(); f.storage.setItem("owned-progress", "xp:120;history;draft");
+    await f.r.begin("guest@example.test", true, "trial"); const verifier = confirm(f);
+    await f.r.verifyCode(requestCode);
+    expect(verifier.auth.verifyOtp).toHaveBeenCalledWith({ email: "guest@example.test", token: requestCode, type: "email_change" });
+    expect(f.r.getSnapshot()).toMatchObject({ phase: "password", destination: "trial" });
+    expect(f.canonical.auth.verifyOtp).not.toHaveBeenCalled();
+    expect(f.canonical.auth.setSession).not.toHaveBeenCalled();
+    expect(f.storage.getItem("owned-progress")).toBe("xp:120;history;draft");
+    expect(f.storage.getItem(REGISTRATION_CODE_KEY)).not.toContain(requestCode);
+    await f.r.completePassword("Test-only-password1!");
+    expect(f.account.getSnapshot()).toMatchObject({ userId: "guest", status: "verified" });
+    expect(f.r.getSnapshot().phase).toBe("complete");
+    expect(f.storage.getItem(REGISTRATION_CODE_KEY)).toBeNull();
+  });
+  it("does not replace the active guest when verifying a fresh account", async () => {
+    const f = await fixture(); await f.r.begin("fresh@example.test", false, "practice");
+    const verifier = confirm(f, true); f.proof.change("fresh");
+    await f.r.verifyCode(requestCode);
+    expect(verifier.auth.verifyOtp).toHaveBeenCalled();
+    expect(f.account.getSnapshot().userId).toBe("guest");
+    expect(f.r.getSnapshot().phase).toBe("switch");
+    expect(f.pending.auth.setSession).toHaveBeenCalled();
+    const restored = createAccountRegistration(f.account, f.canonical.client, f.temporary, f.storage);
+    await restored.resume(); expect(restored.getSnapshot().phase).toBe("switch");
+    expect(f.canonical.auth.setSession).not.toHaveBeenCalled();
+    f.r.confirmSwitch(); await f.r.completePassword("Test-only-password1!");
+    expect(f.account.getSnapshot().userId).toBe("fresh");
+  });
+  it.each(["email", "identity"])("rejects a verified session for the wrong %s", async mismatch => {
+    const f = await fixture(); await f.r.begin(mismatch === "email" ? "new@example.test" : "other@example.test", true, "exam");
+    f.bound.auth.verifyOtp.mockImplementation(async () => {
+      f.bound.change(mismatch === "identity" ? "other" : "guest");
+      return { data: { user: (await f.bound.auth.getUser()).data.user, session: null }, error: null };
+    });
+    await f.r.verifyCode(requestCode);
+    expect(f.r.getSnapshot()).toMatchObject({ phase: "error", error: expect.stringContaining("does not match") });
+    expect(f.r.canSetPassword()).toBe(false); expect(f.canonical.auth.setSession).not.toHaveBeenCalled();
+  });
+  it("rejects malformed codes before contacting Auth", async () => {
+    const f = await fixture(); await f.r.begin("guest@example.test", true, "exam");
+    await f.r.verifyCode("bad-code");
+    expect(f.bound.auth.verifyOtp).not.toHaveBeenCalled(); expect(f.r.getSnapshot().phase).toBe("error");
+  });
+  it("keeps invalid or expired codes retryable without exposing provider details", async () => {
+    const f = await fixture(); await f.r.begin("guest@example.test", true, "exam");
+    f.bound.auth.verifyOtp.mockResolvedValueOnce({ data: { user: null, session: null }, error: { code: "otp_expired", message: "private provider detail" } } as any);
+    await f.r.verifyCode(requestCode);
+    expect(f.r.getSnapshot().error).toBe("This code is incorrect or has expired. Try again or request a new code.");
+    expect(f.r.canSetPassword()).toBe(false);
+    confirm(f); await f.r.verifyCode(requestCode);
+    expect(f.r.getSnapshot().phase).toBe("password");
+  });
+  it("ignores a successful response if the active account changed while verifying", async () => {
+    const f = await fixture(); await f.r.begin("guest@example.test", true, "trial");
+    let finish!: (value: any) => void;
+    f.bound.auth.verifyOtp.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const work = f.r.verifyCode(requestCode);
+    await vi.waitFor(() => expect(f.bound.auth.verifyOtp).toHaveBeenCalled());
+    f.canonical.change("other"); await f.account.refresh(); f.r.accountChanged();
+    finish({ data: { user: { id: "guest" }, session: null }, error: null }); await work;
+    expect(f.r.canSetPassword()).toBe(false); expect(f.r.codeRequest()).toBeNull();
+    expect(f.canonical.auth.setSession).not.toHaveBeenCalled();
+  });
+  it("restores the pending email, purpose and destination on refresh without sending another email", async () => {
+    const f = await fixture(); await f.r.begin("guest@example.test", true, "learn");
+    const restored = createAccountRegistration(f.account, f.canonical.client, f.temporary, f.storage);
+    await restored.resume();
+    expect(restored.getSnapshot()).toMatchObject({ phase: "awaiting_email", email: "guest@example.test", destination: "learn" });
+    expect(restored.codeRequest()?.purpose).toBe("verify");
+    expect(f.bound.auth.updateUser).toHaveBeenCalledTimes(1);
+  });
+  it("enforces resend cooldown and binds a changed address to a new request", async () => {
+    const f = await fixture(); await f.r.begin("guest@example.test", true, "trial");
+    await f.r.resend(); expect(f.bound.auth.updateUser).toHaveBeenCalledTimes(1);
+    expect(f.r.getSnapshot().error).toContain("Please wait");
+    await f.r.resend("changed@example.test");
+    expect(f.r.codeRequest()?.email).toBe("changed@example.test");
+    await f.r.verifyCode(requestCode);
+    expect(f.bound.auth.verifyOtp).toHaveBeenCalledWith({ email: "changed@example.test", token: requestCode, type: "email_change" });
+    const time = vi.spyOn(Date, "now").mockReturnValue(Date.now() + REGISTRATION_RESEND_DELAY_MS + 1);
+    try { await f.r.resend(); expect(f.bound.auth.updateUser).toHaveBeenCalledTimes(3); } finally { time.mockRestore(); }
+  });
+  it("rejects a code request superseded by another tab", async () => {
+    const f = await fixture(); await f.r.begin("guest@example.test", true, "exam");
+    const stored = JSON.parse(f.storage.getItem(REGISTRATION_CODE_KEY)!);
+    f.storage.setItem(REGISTRATION_CODE_KEY, JSON.stringify({ ...stored, email: "changed@example.test" }));
+    await f.r.verifyCode(requestCode);
+    expect(f.bound.auth.verifyOtp).not.toHaveBeenCalled();
+    expect(f.r.canSetPassword()).toBe(false);
+  });
+  it("does not submit duplicate verification requests", async () => {
+    const f = await fixture(); await f.r.begin("guest@example.test", true, "exam");
+    let finish!: (value: any) => void;
+    f.bound.auth.verifyOtp.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const first = f.r.verifyCode(requestCode);
+    await vi.waitFor(() => expect(f.bound.auth.verifyOtp).toHaveBeenCalled());
+    await f.r.verifyCode(requestCode); expect(f.bound.auth.verifyOtp).toHaveBeenCalledTimes(1);
+    finish({ data: { user: null, session: null }, error: { code: "otp_expired" } }); await first;
+  });
+  it("verifies completion codes in a separate persistent setup session and resumes after refresh", async () => {
+    const f = await fixture(); await f.r.completionEmail("fresh@example.test", "trial");
+    f.pending.auth.verifyOtp.mockImplementation(async () => {
+      f.pending.change("fresh");
+      return { data: { user: (await f.pending.auth.getUser()).data.user, session: (await f.pending.auth.getSession()).data.session }, error: null };
+    });
+    await f.r.verifyCode(requestCode);
+    expect(f.pending.auth.verifyOtp).toHaveBeenCalledWith({ email: "fresh@example.test", token: requestCode, type: "email" });
+    expect(f.canonical.auth.setSession).not.toHaveBeenCalled();
+    const restored = createAccountRegistration(f.account, f.canonical.client, f.temporary, f.storage);
+    await restored.resume();
+    expect(restored.emailPurpose()).toBe("complete");
+    expect(restored.getSnapshot()).toMatchObject({ phase: "switch", email: "fresh@example.test", destination: "trial" });
+  });
+  it("never overwrites an existing password after a completion code", async () => {
+    const f = await fixture(); await f.r.completionEmail("fresh@example.test", "exam");
+    f.pending.change("fresh"); f.pending.hasPassword(true);
+    await f.r.verifyCode(requestCode);
+    expect(f.r.getSnapshot().phase).toBe("signin");
+    expect(f.r.canSetPassword()).toBe(false);
+    expect(f.pending.auth.updateUser).not.toHaveBeenCalled(); expect(f.canonical.auth.setSession).not.toHaveBeenCalled();
   });
 });

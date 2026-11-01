@@ -1,45 +1,52 @@
-import { useState, type FormEvent } from "react";
+import { PasswordRequirements } from "./PasswordRequirements.dev";
+import { passwordRequirementError } from "../../core/passwordPolicy";
+import { useRef, useState, type FormEvent } from "react";
 import { useRegistration } from "../../app/RegistrationProvider";
 import { useSiteAccount } from "../../app/SiteAccountProvider";
 import type { RegistrationDestination } from "../../core/registrationCallback";
-import { AccountButton, AccountCard, AccountField, type AccountPage } from "./AccountUi.dev";
-import { KeyIcon, MailIcon, CheckIcon } from "./AccountIcons.dev";
+import { AccountButton, AccountCard, AccountField, AccountPasswordPair, type AccountPage } from "./AccountUi.dev";
 
 export function PasswordRecoveryPages({ page, destination, onPage }: { page: AccountPage; destination: RegistrationDestination; onPage: (page: AccountPage) => void }) {
   const { registration: r, registrationState: flow } = useRegistration();
+  const busy = r.isBusy();
   const { identity } = useSiteAccount();
   const [email, setEmail] = useState(() => flow.email || identity.email || "");
+  const [requestingEmail, setRequestingEmail] = useState(false);
+  const resetFormShown = useRef(false);
   const [submitted, setSubmitted] = useState(false);
   const [invalidAttempts, setInvalidAttempts] = useState(0);
+  const resetLinkError = flow.error.startsWith("This reset link has expired or already been used.") ? flow.error : undefined;
   const invalidEmail = submitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   function back() { r.resetView(); onPage("signin"); }
-  if (flow.phase === "checking") return <AccountCard title="Checking password reset"><p role="status">Please wait…</p></AccountCard>;
-  if (flow.phase === "reset_password" || (flow.phase === "error" && r.canResetPassword())) return <ResetPassword />;
-  if (flow.phase === "reset_complete") return <AccountCard icon={<CheckIcon />} eyebrow="Password reset" title="Your password has been updated">
-    <p>Sign in using your new password. Your progress and history stay with the same account.</p>
-    {flow.email && <p className="account-address">{flow.email}</p>}
-    {identity.status === "verified" && <p className="account-notice">This browser is still signed in as {identity.email}. Signing in below lets you choose which account to use.</p>}
-    <AccountButton onClick={back}>Sign in with new password</AccountButton>
+  function requestEmail() {
+    if (busy) return;
+    setRequestingEmail(true);
+    void r.requestResetEmail(email, destination).finally(() => setRequestingEmail(false));
+  }
+  if (flow.phase === "reset_password" || (flow.phase === "error" && r.canResetPassword()) || (flow.phase === "checking" && (r.canResetPassword() || resetFormShown.current))) {
+    resetFormShown.current = true; return <ResetPassword />;
+  }
+  if (flow.phase === "checking" && !requestingEmail) return <div className="account-setup-loading" role="status" aria-label="Checking password reset"><span className="loading-chip__spinner" aria-hidden="true" /></div>;
+  if (flow.phase === "reset_complete") return <AccountCard className="account-entry-card account-recovery-card" title="Password updated">
+    <p className="account-entry-intro">You can now sign in using your new password.</p>
+    <div className="account-verification-actions"><AccountButton className="account-entry-submit" showArrow={false} onClick={back}>Sign in</AccountButton></div>
   </AccountCard>;
-  if (flow.phase === "awaiting_email") return <AccountCard icon={<MailIcon />} eyebrow="Password reset" title="Check your email">
-    <p role="status">If an account exists for this address, you'll receive an email with a link to reset its password.</p>
-    <p className="account-address">{flow.email}</p>
-    <AccountButton onClick={() => void r.requestResetEmail(flow.email, flow.destination)}>Request another reset email</AccountButton>
-    <p className="account-footnote"><button className="account-link" onClick={() => { r.resetView(); onPage("forgot"); }}>Correct email address</button></p>
-    <p className="account-footnote"><button className="account-link" onClick={back}>Back to sign in</button></p>
+  if (flow.phase === "awaiting_email") return <AccountCard className="account-entry-card account-recovery-card" eyebrow="Reset password" title="Check your email">
+    <p className="account-entry-intro" role="status">If an account exists for this address, you'll receive an email with a link to reset its password.</p>
+    <p className="account-footnote account-entry-footer"><button className="account-link" onClick={back}>Back to sign in</button></p>
   </AccountCard>;
   function submit(event: FormEvent) {
-    event.preventDefault(); setSubmitted(true);
+    event.preventDefault(); if (busy) return; setSubmitted(true);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setInvalidAttempts(count => count + 1); document.getElementById("reset-request-email")?.focus(); return; }
-    void r.requestResetEmail(email, destination);
+    requestEmail();
   }
-  return <AccountCard className="account-entry-card account-recovery-card" title="Forgot your password?">
+  return <AccountCard className="account-entry-card account-recovery-card" eyebrow="Reset password" title="Forgot your password?">
     <p className="account-entry-intro">Enter your email address and we'll send you a link to reset your password.</p>
-    {page === "reset" && !flow.error && <p className="account-notice">Open the link in your latest reset email to choose a new password. You can request a new link below.</p>}
+
     <form noValidate onSubmit={submit} className="account-form ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">
-      {flow.error && <p role="alert" className="account-field-error">{flow.error}</p>}
-      <AccountField id="reset-request-email" label="Email" value={email} onChange={setEmail} error={invalidEmail ? "Enter a valid email address" : undefined} />
-      <AccountButton key={invalidAttempts} type="submit" className={"account-entry-submit" + (invalidAttempts > 0 ? " account-submit-rejected" : "")} showArrow={false}>Send reset link</AccountButton>
+      {flow.error && !resetLinkError && <p role="alert" className="account-field-error">{flow.error}</p>}
+      <AccountField id="reset-request-email" label="Email" disabled={busy} value={email} onChange={setEmail} error={invalidEmail ? "Enter a valid email address" : resetLinkError} />
+      <AccountButton key={invalidAttempts} type="submit" className={"account-entry-submit" + (invalidAttempts > 0 ? " account-submit-rejected" : "")} showArrow={false} busy={busy} spinnerOnly busyLabel="Sending reset email">Send reset link</AccountButton>
     </form>
     <p className="account-footnote account-entry-footer"><button className="account-link" onClick={back}>Back to sign in</button></p>
   </AccountCard>;
@@ -47,25 +54,23 @@ export function PasswordRecoveryPages({ page, destination, onPage }: { page: Acc
 
 function ResetPassword() {
   const { registration: r, registrationState: flow } = useRegistration();
-  const { identity } = useSiteAccount();
+  const busy = r.isBusy();
   const [password, setPassword] = useState(""); const [confirm, setConfirm] = useState(""); const [error, setError] = useState("");
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (password.length < 6) { setError("Use at least 6 characters."); document.getElementById("reset-password")?.focus(); return; }
+    if (busy) return;
+    const requirementError = passwordRequirementError(password);
+    if (requirementError) { setError(requirementError); document.getElementById("reset-password")?.focus(); return; }
     if (password !== confirm) { setError("The passwords don't match."); document.getElementById("reset-confirm-password")?.focus(); return; }
     const value = password; setPassword(""); setConfirm(""); setError(""); void r.completeReset(value);
   }
-  return <AccountCard icon={<KeyIcon />} eyebrow="Password reset" title="Set a new password">
-    <p>Choose a new password for your account.</p><p className="account-address">{flow.email}</p>
-    <p className="account-notice">{identity.email && identity.email.toLowerCase() !== flow.email.toLowerCase()
-      ? "This reset applies only to the email above. It will not switch the account currently using this browser."
-      : "Resetting your password signs this account out. Saved progress and unfinished work stay with the same account."}</p>
+  return <AccountCard className="account-entry-card account-recovery-card" eyebrow="Reset password" title="Set a new password">
+    <p className="account-entry-intro">Choose a new password for your account.</p>
+    <PasswordRequirements password={password} />
     <form noValidate onSubmit={submit} className="account-form ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">
       {(error || flow.error) && <p role="alert" className="account-field-error">{error || flow.error}</p>}
-      <AccountField id="reset-password" label="New password" password autoComplete="new-password" value={password} onChange={setPassword} />
-      <AccountField id="reset-confirm-password" label="Confirm new password" password autoComplete="new-password" value={confirm} onChange={setConfirm} />
-      <p className="account-footnote">Use at least 6 characters. Choose a password different from your previous password.</p>
-      <AccountButton type="submit">Save new password</AccountButton>
+      <AccountPasswordPair passwordId="reset-password" confirmId="reset-confirm-password" label="New password" confirmLabel="Confirm new password" password={password} confirm={confirm} onPassword={setPassword} onConfirm={setConfirm} disabled={busy} />
+      <AccountButton type="submit" className="account-entry-submit" showArrow={false} busy={busy} spinnerOnly busyLabel="Saving new password">Save new password</AccountButton>
     </form>
   </AccountCard>;
 }

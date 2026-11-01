@@ -5,6 +5,7 @@ import { useOptionalRegistration, useRegistration } from "../../app/Registration
 import { useAppContext } from "../../app/AppProvider";
 import { useOptionalExamSitting } from "../exam/ExamSittingContext";
 import { ProfileControl } from "./ExamAccountExperience.dev";
+import { accountPageFromPath, accountPageUrl } from "../../core/accountRoutes";
 import { registrationDestination } from "../../core/registrationCallback";
 export default function AccountNav() {
   const registration = useOptionalRegistration();
@@ -27,6 +28,6 @@ function ConnectedAccountNav() {
     catch { window.alert("Sign-out could not be completed. Please try again."); }
   }
   return <ProfileControl email={identity.status === "verified" ? identity.email : null} busy={registration.isBusy()} paid={paid} active={active || hasPassword !== true}
-    onPage={page => { registration.resetView(); const destination = registrationDestination(location.pathname.split("/")[1]); void navigate("/dev/exam-pilot?account=" + page + "&return_to=" + destination); }}
+    onPage={page => { registration.resetView(); const destination = registrationDestination(accountPageFromPath(location.pathname) ? new URLSearchParams(location.search).get("return_to") : location.pathname.split("/")[1]); void navigate(accountPageUrl(page, "return_to=" + destination)); }}
     onSignOut={() => void signOut()} onPaid={() => { if (!active && hasPassword === true) { togglePaid(); registration.resetView(); void navigate("/dev/exam-pilot"); } }} />;
 }

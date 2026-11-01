@@ -28,6 +28,7 @@ type RoomView = "exam" | "history" | "error-log";
 type ExamNavigation = { account: string; view: RoomView | "results"; attemptId?: string; partId?: string; origin?: RoomView; returnKey?: string };
 export type ExamDashboardControls = {
   fullSetup: ReactNode;
+  trialSetup: ReactNode;
   withSetup: (content: ReactNode) => ReactNode;
   canRecover: boolean; ready: boolean; busy: boolean; canBegin: boolean;
   timed: boolean; showRanges: boolean;
@@ -227,11 +228,16 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
     setPendingResult(null);
     pushView({ account, view: "results", attemptId: pendingResult.id, origin: resultOrigin.current });
   }, [pendingResult, sitting?.phase]);
-  async function openAttempt(recover: boolean) {
+  async function openAttempt(recover: boolean, trial = false) {
     if (!session) return;
-    if (!recover && !await feedbackPreference.confirmForStart()) return;
+    if (!recover) {
+      if (trial) {
+        if (!canStart || !counts.includes(3)) return;
+        if (!await feedbackPreference.confirmForStart("professional")) throw new Error("Could not prepare trial feedback. Please try again.");
+      } else if (!await feedbackPreference.confirmForStart()) return;
+    }
     resultOrigin.current = "exam";
-    let next = recover ? await session.recover() : await session.start(state.sessionState?.pressureUnit ?? "mmHg", { examKind, unitCount: setupState.caseCount, showTimer: setupState.timed, showRanges: setupState.showRanges, excludedCategories: examKind === "custom" ? customExclusions.filter(id => customisationCategories.some(c => c.category_id === id)) : [] });
+    let next = recover ? await session.recover() : await session.start(state.sessionState?.pressureUnit ?? "mmHg", { examKind: trial ? "mock" : examKind, unitCount: trial ? 3 : setupState.caseCount, showTimer: setupState.timed, showRanges: setupState.showRanges, excludedCategories: !trial && examKind === "custom" ? customExclusions.filter(id => customisationCategories.some(c => c.category_id === id)) : [] });
     if (next.status === "active") {
       if (session.journal?.submission) next = await session.submit(session.journal.submission.answers);
       else {
@@ -291,17 +297,17 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
     timer = setTimeout(refresh, 3000);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [session, attempt?.id, hasPendingGrades]);
-  function dashboard(setupContent?: ReactNode) { if (!session) return null; return (<ExamDashboard setupContent={setupContent} hideModeSwitch={setupContent !== undefined}
+  function dashboard(setupContent?: ReactNode, trial = false) { if (!session) return null; return (<ExamDashboard trial={trial} setupContent={setupContent} hideModeSwitch={setupContent !== undefined}
           feedbackPreference={feedbackPreference}
           pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"}
           onPressureUnitChange={pressureUnit => {
             patchSessionState({ pressureUnit });
             state.storage?.savePressureUnitPreference(pressureUnit);
           }}
-          connected state={{ ...setupState, examKind, excludedCategories: customExclusions.filter(id => id === "mechanical_ventilation" || id === "toxicology_management") }}
+          connected state={{ ...setupState, ...(trial ? { caseCount: 3, mode: "mock" as const } : {}), examKind: trial ? "mock" : examKind, excludedCategories: customExclusions.filter(id => id === "mechanical_ventilation" || id === "toxicology_management") }}
           drills={unavailableDrills} drillsUnavailable customDisabled={!customisationCategories.length} config={setupConfig}
           setup={buildSetupPresentation(setupState.questionCount, setupState.caseCount, setupState.timed, setupConfig)}
-          caseCounts={counts} launching={preparing} beginDisabled={!canStart || !ready || !counts.includes(setupState.caseCount)} setupLocked={busy || !ready || !!current || !!session.journal}
+          caseCounts={counts} launching={preparing} beginDisabled={!canStart || !ready || !counts.includes(trial ? 3 : setupState.caseCount) || (trial && (!feedbackPreference.ready || feedbackPreference.busy))} setupLocked={busy || !ready || !!current || !!session.journal}
           latestDisabled={busy || !history.latestAttemptId} errorLogCount={errorLog.error ? undefined : errorLog.data?.toReviewCount}
           onSelectDrill={key => setSetupState(old => ({ ...old, selectedDrill: key, selectedRule: unavailableDrills.find(d => d.key === key)?.rules?.[0]?.key ?? "" }))}
           onChange={patch => {
@@ -312,7 +318,7 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
             setSetupState(old => ({ ...old, ...patch }));
           }} onBegin={() => void run(async () => {
             setPreparing(true);
-            try { await openAttempt(false); }
+            try { await openAttempt(false, trial); }
             finally { if (mounted.current) setPreparing(false); }
           })}
           startContent={!preparing && (current || session.journal) ? <div className="exam-recovery-actions">
@@ -368,7 +374,7 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
           onOpen={id => void run(() => openResult(id, "history"))}
           onRetry={id => void run(async () => { await session.call<RuntimeAttempt>("retry_grading", { attemptId: id }); await history.refresh(); })}
           onLoadMore={history.data?.page.nextCursor ? () => void history.loadMore() : undefined}
-          total={history.data?.page.total} loading={history.loading} busy={busy} /> : renderDashboard ? renderDashboard({ fullSetup: dashboard(), withSetup: dashboard,
+          total={history.data?.page.total} loading={history.loading} busy={busy} /> : renderDashboard ? renderDashboard({ fullSetup: dashboard(), trialSetup: dashboard(undefined, true), withSetup: dashboard,
           canRecover: Boolean(current || session.journal), ready, busy: busy || preparing,
           canBegin: canStart && ready && !busy && !preparing && counts.includes(setupState.caseCount) && feedbackPreference.canBegin,
           timed: setupState.timed, showRanges: setupState.showRanges,

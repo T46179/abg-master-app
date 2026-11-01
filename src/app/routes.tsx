@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { ACCOUNT_PAGE_PATHS } from "../core/accountRoutes";
 import type { RouteObject } from "react-router-dom";
 import { Navigate, createBrowserRouter } from "react-router-dom";
 import { AppShell } from "../presentation/layout/AppShell";
@@ -96,6 +97,7 @@ export const appRoutes: RouteObject[] = [
           { path: "*", element: <Navigate to="/learn" replace /> }
         ]
       },
+      ...(UnifiedExamAccount ? Object.values(ACCOUNT_PAGE_PATHS).map(path => ({ path: path.slice(1), element: <Suspense fallback={<p>Loading…</p>}><UnifiedExamAccount /></Suspense> })) : []),
       ...(ExamPilotAuth ? [{ path: "dev/exam-pilot", element: hostedExamPilot ? <Navigate to="/exam" replace /> : <Suspense fallback={<p>Loading…</p>}>{UnifiedExamAccount ? <UnifiedExamAccount /> : <ExamPilotAuth />}</Suspense> }] : []),
       { path: "exam", element: hostedExamPilot && ExamPilotAuth ? <Suspense fallback={<p>Loading…</p>}><ExamPilotAuth /></Suspense> : <ExamScreen /> },
       { path: "leaderboard", element: <LeaderboardScreen /> },

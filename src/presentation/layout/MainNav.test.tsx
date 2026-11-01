@@ -113,6 +113,11 @@ describe("MainNav", () => {
     ]);
   });
 
+  it.each(["/sign-in", "/create-account", "/forgot-password"])("does not highlight Exam on %s", pathname => {
+    renderNav([pathname]);
+    expect(container.querySelector(".main-nav__desktop a.is-active")).toBeNull();
+    expect(container.querySelector(".main-nav__active-indicator.is-ready")).toBeNull();
+  });
   it("points the brand and dashboard links to /dashboard and includes insights", () => {
     renderNav();
 
