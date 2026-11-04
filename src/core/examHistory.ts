@@ -51,7 +51,7 @@ export function historyPresentation(page: HistoryPage, rows: HistoryRow[], label
   const attempts: AttemptPresentation[] = rows.map(r => {
     const start = r.presentedAt ? Date.parse(r.presentedAt) : NaN;
     const seconds = Number.isFinite(start) ? Math.max(0, Math.floor((Date.parse(r.finishedAt) - start) / 1000)) : null;
-    return { id: r.id, kind: r.examKind, finishedAt: r.finishedAt,
+    return { id: r.id, kind: r.examKind, isTrial: r.purpose === "trial", finishedAt: r.finishedAt,
       date: new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", year: "numeric" }).format(new Date(r.finishedAt)),
       time: new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit" }).format(new Date(r.finishedAt)),
       exclusions: r.excludedCategories.map(id => labels[id] ?? id), cases: r.caseCount,

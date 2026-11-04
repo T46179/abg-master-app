@@ -126,7 +126,7 @@ export function ExamHistory({ history, attempts, filter, onFilterChange, onBack,
       <div className="exam-history-columns" aria-hidden="true"><span>Sitting</span><span>Time</span><span>Marks</span><span>Score</span><span /></div>
       <ul className="exam-history-entries">{visibleAttempts.map(attempt => {
         const percent = attemptPercent(attempt);
-        const label = attempt.kind === "mock" ? "Mock exam" : "Custom exam";
+        const label = attempt.isTrial ? "Trial Exam" : attempt.kind === "mock" ? "Mock exam" : "Custom exam";
         return <li className="exam-history-entry" key={attempt.id}>
           <button type="button" className="exam-attempt-open" disabled={busy} onClick={() => onOpen(attempt.id)} aria-label={`Review ${label}, ${attempt.date} at ${attempt.time}`}>
             <IconBadge>{attempt.kind === "mock" ? <LayersIcon /> : <SplitIcon />}</IconBadge>

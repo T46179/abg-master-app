@@ -6,6 +6,7 @@ import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ExamSittingProvider } from "./ExamSittingContext";
 import ExamPilotRuntime from "./ExamPilotRuntime";
+import { TrialResultHero } from "../account/TrialComplete.dev";
 import type { RuntimeAttempt } from "../../core/examRuntime";
 const unitPreferences = vi.hoisted(() => ({ patchSessionState: vi.fn(), savePressureUnitPreference: vi.fn() }));
 vi.mock("../../app/AppProvider", () => ({ useAppContext: () => {
@@ -659,6 +660,10 @@ it('returns a completed trial from setup to the dashboard with history and an em
   if (args.body.operation === 'trial_status' && attempt.status === 'submitted') {
    return { data: { state: gradingComplete ? 'consumed' : 'reserved', attemptId: id, gradingStatus: gradingComplete ? 'completed' : 'pending', canRetryGrading: false, requiresSupport: false, retryAvailableAt: null } };
   }
+  if (args.body.operation === 'read' && args.body.input.attemptId === id && gradingComplete) {
+   return { data: { ...attempt, gradingStatus: 'completed', marksAwarded: 0,
+    presentedAt: '2026-10-05T00:00:00Z', finishedAt: '2026-10-05T00:12:34Z', parts: [{ partId: 'part', status: 'completed', marksAwarded: 0 }] } };
+  }
   if(args.body.operation==='history_page') return {data:historyPage(attempt.status==='submitted'?[{...row(id),purpose:'trial',trialVersion:'s1'}]:[])};
   if(args.body.operation==='error_log_list') return {data:emptyLog};
   return original(name,args);
@@ -667,7 +672,7 @@ it('returns a completed trial from setup to the dashboard with history and an em
   const location=useLocation(); const navigate=useNavigate();
   return <ExamSittingProvider><ExamPilotRuntime canStartStandard client={client} userId="test-owner" canStart allowedUnitCounts={[3]} limitedDashboard trialAvailability="ready"
    onReturnToDashboard={()=>{const query=new URLSearchParams(location.search);query.delete('account');void navigate({pathname:location.pathname,search:query.toString()});}}
-   renderDashboard={controls=>new URLSearchParams(location.search).get('account')==='setup'?controls.trialSetup:controls.withSetup(<p>Trial dashboard introduction</p>)} /></ExamSittingProvider>;
+   renderDashboard={controls=>new URLSearchParams(location.search).get('account')==='setup'?controls.trialSetup:controls.withSetup(<p>Trial dashboard introduction</p>, controls.trialLifecycle?.state === 'consumed' ? <TrialResultHero result={controls.completedTrial} /> : undefined)} /></ExamSittingProvider>;
  }
  router=createMemoryRouter([{path:'/',element:<AccountTrial/>}],{initialEntries:['/?account=setup&return_to=trial']});
  await act(async()=>root.render(<RouterProvider router={router}/>));
@@ -683,8 +688,14 @@ it('returns a completed trial from setup to the dashboard with history and an em
  gradingComplete = true;
  await act(async () => window.dispatchEvent(new Event('focus')));
  expect(actions()).toEqual(['Latest result', 'Past attempts', 'Error log']);
+ expect(container.querySelector('.exam-mock-hero')?.textContent).toContain('0%');
+ expect(container.querySelector('.exam-mock-hero')?.textContent).toContain('0/2 marks across 1 case');
+ expect(container.querySelector('.exam-mock-hero')?.textContent).toContain('1/1Parts graded');
+ expect(container.querySelector('.exam-mock-hero')?.textContent).toContain('12:34');
+ expect(container.querySelector('.exam-features')?.textContent).toContain('Graded Short Answers');
  expect(localStorage.getItem('abgm-exam-pilot-clpfecuohwzwrgmqzeos-test-owner')).toBeNull();
  await click('Past attempts'); expect(container.querySelectorAll('.exam-history-entry')).toHaveLength(1);
+ expect(container.querySelector('.exam-attempt-title strong')?.textContent).toBe('Trial Exam');
  await act(async()=>container.querySelector<HTMLButtonElement>('.exam-attempt-open')!.click());
  await click('Back to Exam Room'); expect(container.querySelector('.exam-history')).not.toBeNull();
  await click('Back to Exam Room');

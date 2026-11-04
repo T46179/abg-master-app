@@ -72,6 +72,7 @@ export interface LatestResultPresentation {
 export interface AttemptPresentation {
   id: string;
   kind: SittingKind;
+  isTrial?: boolean;
   date: string;
   time: string;
   finishedAt: string;

@@ -24,7 +24,7 @@ vi.mock("../exam/ExamPilotRuntime", () => ({ default: (props: any) => {
   m.runtime(props);
   const fullSetup = <p>Full Exam setup for {props.userId}; counts:{props.allowedUnitCounts.join(",")}</p>;
   const trialSetup = <div className="exam-trial-builder"><h3>Your Trial Session</h3><button onClick={m.begin}>Begin Trial Exam</button></div>;
-  const controls = { trialLifecycle: m.lifecycle, openTrialResult: vi.fn(), refreshTrial: vi.fn(), fullSetup, trialSetup, withSetup: (content: unknown) => <div>Trial overview{content as any}</div>, canRecover: m.recover, ready: true, busy: false, canBegin: props.canStart && props.allowedUnitCounts.includes(3), timed: true, showRanges: true, setTimed: vi.fn(), setShowRanges: vi.fn(), begin: m.begin };
+  const controls = { trialLifecycle: m.lifecycle, openTrialResult: vi.fn(), refreshTrial: vi.fn(), fullSetup, trialSetup, withSetup: (content: unknown, hero: unknown) => <div>Trial overview{hero as any}{content as any}</div>, canRecover: m.recover, ready: true, busy: false, canBegin: props.canStart && props.allowedUnitCounts.includes(3), timed: true, showRanges: true, setTimed: vi.fn(), setShowRanges: vi.fn(), begin: m.begin };
   return <div>{props.renderDashboard(controls)}</div>;
 } }));
 import Experience from "./ExamAccountExperience.dev";
@@ -480,8 +480,7 @@ it('provides a dashboard return that clears the trial setup route', async()=>{
 it.each([
  ["reserved", "pending", false, "Your exam is being marked"],
  ["reserved", "failed", false, "Your marking needs another try"],
- ["reserved", "failed", true, "Your marking needs assistance"],
- ["consumed", "completed", false, "Your trial exam is complete"]
+ ["reserved", "failed", true, "Your marking needs assistance"]
 ])("uses server state %s/%s/support=%s on the non-paid dashboard", async (state, gradingStatus, requiresSupport, heading) => {
  current = { id: "a", email: "a@example.test" };
  profileInvoke.mockRejectedValueOnce(new Error("Profile unavailable"));
@@ -490,6 +489,17 @@ it.each([
  expect(container.textContent).toContain(heading);
  expect(container.textContent).toContain("Latest result");
  expect(container.textContent).not.toContain("Complete your profile");
+ expect(container.textContent).not.toContain("Begin Trial Exam");
+ expect(container.textContent).not.toContain("ABG Master Pro");
+});
+it("shows the completed hero and Pro card even when the profile cannot load", async () => {
+ current = { id: "a", email: "a@example.test" };
+ profileInvoke.mockRejectedValueOnce(new Error("Profile unavailable"));
+ m.lifecycle = { state: "consumed", gradingStatus: "completed", attemptId: "12345678-1234-1234-1234-123456789abc", canRetryGrading: false, requiresSupport: false, retryAvailableAt: null };
+ await render();
+ expect(container.querySelector(".account-trial-recap")?.textContent).toContain("Trial exam · Completed");
+ expect(container.querySelector(".account-trial-pro")?.textContent).toContain("ABG Master Pro");
+ expect(container.querySelector<HTMLButtonElement>(".account-trial-pro button")?.disabled).toBe(true);
  expect(container.textContent).not.toContain("Begin Trial Exam");
 });
 it("does not open onboarding when lifecycle cannot be verified", async () => {

@@ -30,9 +30,10 @@ export type ExamDashboardControls = {
   fullSetup: ReactNode;
   trialSetup: ReactNode;
   trialLifecycle?: TrialLifecycle;
+  completedTrial?: RuntimeAttempt;
   openTrialResult: () => void;
   refreshTrial: () => void;
-  withSetup: (content: ReactNode) => ReactNode;
+  withSetup: (content: ReactNode, overviewHero?: ReactNode) => ReactNode;
   canRecover: boolean; ready: boolean; busy: boolean; canBegin: boolean;
   timed: boolean; showRanges: boolean;
   setTimed: (value: boolean) => void; setShowRanges: (value: boolean) => void;
@@ -98,6 +99,7 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
   const trialStatus = trialFailure ?? trialAvailability;
   const [attempt, setAttempt] = useState<RuntimeAttempt | null>(null);
   const [roomView, setRoomView] = useState<"exam" | "history" | "error-log">("exam");
+  const [trialRecap, setTrialRecap] = useState<{ account: string; result: RuntimeAttempt }>();
   const [reviewPartId, setReviewPartId] = useState<string>();
   const sourceOpenVersion = useRef(0);
   const [current, setCurrent] = useState<string | null>(null);
@@ -176,6 +178,20 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
     const timer = window.setInterval(() => { if (document.visibilityState !== "hidden") void loadRoom().catch(() => undefined); }, 5000);
     return () => window.clearInterval(timer);
   }, [session, !!attempt, trialLifecycle?.state]);
+  const recapId = limitedDashboard && renderDashboard && roomView === "exam" && !attempt && !current &&
+    trialLifecycle?.state === "consumed" ? trialLifecycle.attemptId : null;
+  useEffect(() => {
+    if (!session || !recapId) return;
+    let cancelled = false;
+    const cached = resultCache.get(recapId);
+    const result = cached?.gradingStatus === "completed" ? Promise.resolve(cached) : session.call<RuntimeAttempt>("read", { attemptId: recapId });
+    void result.then(next => {
+      if (cancelled || next.id !== recapId || next.purpose !== "trial" || next.status !== "submitted" || next.gradingStatus !== "completed") return;
+      resultCache.set(recapId, next);
+      setTrialRecap({ account, result: next });
+    }).catch(() => { /* The dashboard and saved-result links remain available. */ });
+    return () => { cancelled = true; };
+  }, [account, recapId, resultCache, session]);
   async function run(action: () => Promise<void>) {
     if (inFlight.current) return;
     inFlight.current = true; setBusy(true); setError("");
@@ -322,7 +338,7 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
     timer = setTimeout(refresh, 3000);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [session, attempt?.id, hasPendingGrades]);
-  function dashboard(setupContent?: ReactNode, trial = false) { if (!session) return null; return (<ExamDashboard trial={trial} setupContent={setupContent}
+  function dashboard(setupContent?: ReactNode, trial = false, overviewHero?: ReactNode) { if (!session) return null; return (<ExamDashboard trial={trial} setupContent={setupContent} overviewHero={overviewHero}
           hideModeSwitch={limitedDashboard}
           navigationVisibility={limitedDashboard ? { latestResult: Boolean(history.latestAttemptId), pastAttempts: Boolean(history.latestAttemptId), errorLog: trialLifecycle?.state === "consumed" || Boolean(errorLog.data?.entries.length) } : undefined}
           feedbackPreference={feedbackPreference}
@@ -405,7 +421,8 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
           onOpen={id => void run(() => openResult(id, "history"))}
           onRetry={id => void run(async () => { await session.call<RuntimeAttempt>("retry_grading", { attemptId: id }); await history.refresh(); })}
           onLoadMore={history.data?.page.nextCursor ? () => void history.loadMore() : undefined}
-          total={history.data?.page.total} loading={history.loading} busy={busy} /> : renderDashboard ? renderDashboard({ refreshTrial: () => void run(loadRoom), trialLifecycle, openTrialResult: () => { if (trialLifecycle?.attemptId) void run(() => openResult(trialLifecycle.attemptId!, "exam")); }, fullSetup: dashboard(), trialSetup: dashboard(undefined, true), withSetup: dashboard,
+          total={history.data?.page.total} loading={history.loading} busy={busy} /> : renderDashboard ? renderDashboard({ refreshTrial: () => void run(loadRoom), trialLifecycle, openTrialResult: () => { if (trialLifecycle?.attemptId) void run(() => openResult(trialLifecycle.attemptId!, "exam")); }, fullSetup: dashboard(), trialSetup: dashboard(undefined, true), withSetup: (content, hero) => dashboard(content, false, hero),
+          completedTrial: trialRecap?.account === account && trialRecap.result.id === recapId ? trialRecap.result : undefined,
           canRecover: !preparing && Boolean(current || session.journal), ready, busy: busy || preparing,
           canBegin: canStart && ready && !busy && !preparing && counts.includes(setupState.caseCount) && feedbackPreference.canBegin,
           timed: setupState.timed, showRanges: setupState.showRanges,

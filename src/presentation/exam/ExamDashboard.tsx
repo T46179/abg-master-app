@@ -38,6 +38,7 @@ interface DashboardProps {
   drillsUnavailable?: boolean;
   customDisabled?: boolean;
   setupContent?: ReactNode;
+  overviewHero?: ReactNode;
   trial?: boolean;
   hideModeSwitch?: boolean;
   navigationVisibility?: { latestResult: boolean; pastAttempts: boolean; errorLog: boolean };
@@ -138,7 +139,7 @@ function InfoTip({ text, align = "right", children }: { text: string; align?: "l
   </span>;
 }
 
-function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisabled, caseCounts = [3, 5], startContent, customDisabled, pressureUnit, onPressureUnitChange, feedbackPreference, setupContent, trial }: DashboardProps) {
+function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisabled, caseCounts = [3, 5], startContent, customDisabled, pressureUnit, onPressureUnitChange, feedbackPreference, setupContent, overviewHero, trial }: DashboardProps) {
   const disclaimerId = useId();
   const custom = state.examKind === "custom";
   const kinds: { key: SittingKind; label: string; description: string }[] = [
@@ -146,7 +147,7 @@ function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisab
     { key: "custom", label: "Custom Exam", description: trial ? "Full exam feature" : "Choose what's included" }
   ];
   return <div className={"exam-workspace exam-mock-workspace" + (trial ? " exam-trial-builder" : "")} data-kind={state.examKind}>
-    {!trial && <ExamOverview state={state} pressureUnit={pressureUnit} />}
+    {!trial && <ExamOverview state={state} pressureUnit={pressureUnit} hero={overviewHero} />}
     {setupContent ?? (<Surface as="aside" className="exam-setup exam-sitting-setup" aria-labelledby="exam-build-title">
       <fieldset className="exam-setup-fields" disabled={setupLocked}>
       <div className="exam-build-heading"><div>{trial && <p className="exam-eyebrow">Trial Exam</p>}<h3 id="exam-build-title">{trial ? "Your Trial Session" : "Build your session"}</h3>{trial && <p className="exam-trial-intro">Test your acid–base interpretation and clinical reasoning across three cases, then review your performance with detailed marking and feedback.</p>}</div></div>
@@ -237,10 +238,10 @@ export function ExamPageHeading({ guest = false }: { guest?: boolean }) { return
       <p>{guest ? "Practise exam-style clinical scenarios, develop your reasoning, and learn from detailed marking and personalised feedback. Start with a free trial exam." : "Consistent, spaced practice works best. Try one exam per day, review your mistakes, then use Focused Drills to target your weak areas."}</p>
     </header>); }
 
-export function ExamOverview({ state, pressureUnit, guest = false }: Pick<DashboardProps, "state" | "pressureUnit"> & { guest?: boolean }) {
+export function ExamOverview({ state, pressureUnit, guest = false, hero }: Pick<DashboardProps, "state" | "pressureUnit"> & { guest?: boolean; hero?: ReactNode }) {
   const custom = state.examKind === "custom";
   return (<Surface className="exam-mock-overview">
-      <div className="exam-mock-hero">
+      <div className="exam-mock-hero">{hero ?? <>
         <div className="exam-hero-top"><span className="exam-hero-badge">{guest ? "Trial Exam Preview" : "Exam mode"}</span></div>
         <div className="exam-hero-copy" key={state.examKind}>
           <h2>{custom ? "Build your own exam" : "Your Session"}</h2>
@@ -254,7 +255,7 @@ export function ExamOverview({ state, pressureUnit, guest = false }: Pick<Dashbo
           <div><strong>{state.showRanges ? "On" : "Off"}</strong><span>Reference Ranges</span></div>
           <div><strong>{state.timed ? "On" : "Off"}</strong><span>Timer</span></div>
         </div>
-      </div>
+      </>}</div>
       <div className="exam-features">
         <Feature icon={<ReportIcon />} title="Graded Short Answers" body="Develop your written responses with structured, criterion-based marking designed to reflect exam-style assessment."
           info={<InfoTip text="About SAQ marking" align="left">

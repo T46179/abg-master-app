@@ -13,6 +13,7 @@ import { initialPrototypeState } from "../exam/mockData";
 import { ExamOverview, ExamPageHeading } from "../exam/ExamDashboard";
 import ExamPilotRuntime, { type ExamDashboardControls } from "../exam/ExamPilotRuntime";
 import { AboutYou } from "./AboutYou.dev";
+import { TrialProCard, TrialResultHero } from "./TrialComplete.dev";
 import { AccountBack, AccountButton, AccountCard, AccountField, TrialStepper, type AccountPage } from "./AccountUi.dev";
 import { CheckIcon, ClipboardIcon, SignOutIcon, UserIcon } from "./AccountIcons.dev";
 import "../exam/exam.css";
@@ -264,11 +265,12 @@ function RuntimeOwner({ client, userId, generation, paid, page, onPage }: { clie
   function renderDashboard(controls: ExamDashboardControls) {
     if ((paid && access?.canStartStandard === true) || controls.canRecover) return controls.fullSetup;
     const lifecycle = controls.trialLifecycle;
-    if (!lifecycle || lifecycle.state === "reserved" || lifecycle.state === "consumed") {
+    if (lifecycle?.state === "consumed") return controls.withSetup(<TrialProCard />, <TrialResultHero result={controls.completedTrial} />);
+    if (!lifecycle || lifecycle.state === "reserved") {
       return controls.withSetup(<aside className="account-trial-panel surface" aria-label="Trial exam status">
         <span className="account-eyebrow">Trial Exam</span>
-        <h3>{!lifecycle ? "Checking your trial" : lifecycle.state === "consumed" ? "Your trial exam is complete" : lifecycle.requiresSupport ? "Your marking needs assistance" : lifecycle.gradingStatus === "failed" ? "Your marking needs another try" : "Your exam is being marked"}</h3>
-        <p role="status">{!lifecycle ? "We couldn’t confirm your trial status. Please try again." : lifecycle.state === "consumed" ? "Your results, explanations and saved Error log remain available." : lifecycle.requiresSupport ? "Your answers are saved. Please contact us so we can review the marking problem." : lifecycle.gradingStatus === "failed" ? "Your answers are saved. Open your result to check marking and retry when available." : "Your answers are saved. You can review your exam while marking finishes."}</p>
+        <h3>{!lifecycle ? "Checking your trial" : lifecycle.requiresSupport ? "Your marking needs assistance" : lifecycle.gradingStatus === "failed" ? "Your marking needs another try" : "Your exam is being marked"}</h3>
+        <p role="status">{!lifecycle ? "We couldn’t confirm your trial status. Please try again." : lifecycle.requiresSupport ? "Your answers are saved. Please contact us so we can review the marking problem." : lifecycle.gradingStatus === "failed" ? "Your answers are saved. Open your result to check marking and retry when available." : "Your answers are saved. You can review your exam while marking finishes."}</p>
         {lifecycle?.attemptId ? <AccountButton onClick={controls.openTrialResult}>Latest result</AccountButton> : <AccountButton onClick={controls.refreshTrial}>Retry</AccountButton>}
       </aside>);
     }
