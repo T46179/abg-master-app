@@ -7,11 +7,13 @@ const questionErrors = {
   specialty: "Select your specialty to continue.",
   reason: "Select your main reason for using ABG Master to continue."
 };
-export function AboutYou({ value, onChange, onDone, storageError }: { value: ExamOnboarding; onChange: (v: ExamOnboarding) => void; onDone: (v: ExamOnboarding) => void; storageError: boolean }) {
+export function AboutYou({ value, onChange, onDone, storageError, saving = false, saveError, onReloadSaved }: { value: ExamOnboarding; onChange: (v: ExamOnboarding) => void; onDone: (v: ExamOnboarding) => void; storageError: boolean; saving?: boolean; saveError?: string; onReloadSaved?: () => void }) {
   const [submitted, setSubmitted] = useState(false);
   const missing = missingExamOnboarding(value);
   function submit(event: FormEvent) {
-    event.preventDefault(); setSubmitted(true);
+    event.preventDefault();
+    if (saving) return;
+    setSubmitted(true);
     if (missing.length) {
       const group = event.currentTarget.querySelector<HTMLFieldSetElement>(`#exam-about-${missing[0]}`);
       group?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
@@ -23,7 +25,7 @@ export function AboutYou({ value, onChange, onDone, storageError }: { value: Exa
   function question(key: "role" | "stage" | "specialty" | "reason", title: string, options: readonly string[]) {
     const error = submitted && missing.includes(key);
     const errorId = error ? `exam-about-${key}-error` : undefined;
-    return <fieldset id={`exam-about-${key}`} className="account-question" aria-invalid={error || undefined} aria-describedby={errorId}>
+    return <fieldset disabled={saving} id={`exam-about-${key}`} className="account-question" aria-invalid={error || undefined} aria-describedby={errorId}>
       <legend><span className="account-question-heading"><span>{title}</span><span className="account-question-required">Required</span></span></legend>
       <div className="account-options">{options.map(option => <label key={option} data-selected={value[key] === option}><input type="radio" required aria-describedby={errorId} name={`exam-about-${key}`} value={option} checked={value[key] === option} onChange={() => onChange(normaliseExamOnboarding({ ...value, [key]: option, complete: false }))} /><span aria-hidden="true" />{option}</label>)}</div>
       {error && <p role="alert" className="account-field-error" id={errorId}>{questionErrors[key]}</p>}
@@ -32,13 +34,15 @@ export function AboutYou({ value, onChange, onDone, storageError }: { value: Exa
   return <AccountCard className="account-entry-card account-about-card" title="Tell us a little about yourself">
     <form className="account-form" noValidate onSubmit={submit}>
       {question("role", "Professional role", EXAM_ROLES)}
-      {value.role === "Other" && <label className="account-other">Your role (optional)<input maxLength={120} value={value.otherRole} onChange={event => onChange({ ...value, otherRole: event.target.value, complete: false })} /></label>}
+      {value.role === "Other" && <label className="account-other">Your role (optional)<input disabled={saving} maxLength={120} value={value.otherRole} onChange={event => onChange({ ...value, otherRole: event.target.value, complete: false })} /></label>}
       {value.role === "Doctor" && question("stage", "Stage of training", EXAM_STAGES)}
       {["Doctor", "Nurse"].includes(value.role) && question("specialty", "Specialty", value.role === "Nurse" ? EXAM_NURSING_SPECIALTIES : EXAM_SPECIALTIES)}
-      {value.role === "Nurse" && value.specialty === "Other" && <label className="account-other">Your specialty (optional)<input maxLength={120} value={value.otherSpecialty} onChange={event => onChange({ ...value, otherSpecialty: event.target.value, complete: false })} /></label>}
+      {value.role === "Nurse" && value.specialty === "Other" && <label className="account-other">Your specialty (optional)<input disabled={saving} maxLength={120} value={value.otherSpecialty} onChange={event => onChange({ ...value, otherSpecialty: event.target.value, complete: false })} /></label>}
       {question("reason", "What is your main reason for using ABG Master?", EXAM_REASONS)}
       {storageError && <p role="alert" className="account-field-error">Your answers could not be saved on this device. Enable browser storage and try again.</p>}
-      <AccountButton type="submit" className="account-entry-submit" showArrow={false}>Continue to exam setup</AccountButton>
+      {saveError && <p role="alert" className="account-field-error">{saveError}</p>}
+      {onReloadSaved && <AccountButton onClick={onReloadSaved}>Reload saved answers</AccountButton>}
+      <AccountButton type="submit" busy={saving} busyLabel="Saving answers…" disabled={Boolean(onReloadSaved)} className="account-entry-submit" showArrow={false}>Continue to exam setup</AccountButton>
       <p className="account-footnote account-entry-footer">Your answers help us improve ABG Master</p>
     </form>
   </AccountCard>;

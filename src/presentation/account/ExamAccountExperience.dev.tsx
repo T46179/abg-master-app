@@ -1,3 +1,4 @@
+import { ExamRuntimeError } from "../../core/examRuntime";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -6,7 +7,7 @@ import { AccountBrowserStorageProvider } from "../../app/AccountWorkspace";
 import { useAppContext } from "../../app/AppProvider";
 import { createAccountDataClient } from "../../core/accountDataClient";
 import { readExamAccess, type ExamAccess } from "../../core/examAuth";
-import { loadExamOnboarding, saveExamOnboarding, type ExamOnboarding } from "../../core/examOnboarding";
+import { examOnboardingKey, loadExamOnboarding, readExamOnboardingProfile, saveExamOnboarding, saveExamOnboardingProfile, type ExamOnboarding, type ExamOnboardingProfile } from "../../core/examOnboarding";
 import type { BrowserStorageLike } from "../../core/storage";
 import { initialPrototypeState } from "../exam/mockData";
 import { ExamOverview, ExamPageHeading } from "../exam/ExamDashboard";
@@ -190,7 +191,35 @@ function RuntimeOwner({ client, userId, generation, paid, page, onPage }: { clie
     removeItem: key => { if (isCurrent()) localStorage.removeItem(key); }
   }), [isCurrent]);
   const [access, setAccess] = useState<ExamAccess | null>(null); const [accessError, setAccessError] = useState(false); const [revision, setRevision] = useState(0);
-  const [draft, setDraft] = useState(() => loadExamOnboarding(storage, STAGING, userId)); const [storageError, setStorageError] = useState(false);
+  const [draft, setDraft] = useState(() => loadExamOnboarding(storage, STAGING, userId));
+  const [storageError, setStorageError] = useState(false);
+  const [profile, setProfile] = useState<ExamOnboardingProfile | null>(null);
+  const [profileError, setProfileError] = useState(false);
+  const [profileRevision, setProfileRevision] = useState(0);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [profileConflict, setProfileConflict] = useState(false);
+  const profileSaveInFlight = useRef(false);
+  const currentPage = useRef(page);
+  currentPage.current = page;
+
+  useEffect(() => {
+    let cancelled = false;
+    setProfile(null);
+    setProfileError(false);
+    void readExamOnboardingProfile(ownedClient).then(saved => {
+      if (cancelled || !isCurrent()) return;
+      setProfile(saved);
+      if (saved.answers) {
+        setDraft(saved.answers);
+        try { storage.removeItem(examOnboardingKey(STAGING, userId)); } catch { /* The saved profile remains authoritative. */ }
+        setStorageError(false);
+      }
+      setProfileConflict(false);
+      setSaveError("");
+    }).catch(() => { if (!cancelled && isCurrent()) setProfileError(true); });
+    return () => { cancelled = true; };
+  }, [ownedClient, isCurrent, storage, userId, profileRevision]);
   useEffect(() => {
     let cancelled = false; setAccessError(false);
     void readExamAccess(ownedClient).then(next => { if (!cancelled && isCurrent()) setAccess(next); }).catch(() => { if (!cancelled && isCurrent()) setAccessError(true); });
@@ -201,9 +230,36 @@ function RuntimeOwner({ client, userId, generation, paid, page, onPage }: { clie
     window.addEventListener("focus", refresh);
     return () => window.removeEventListener("focus", refresh);
   }, [account]);
-  function save(value: ExamOnboarding) {
-    if (!isCurrent()) return false;
-    setDraft(value); const saved = saveExamOnboarding(storage, STAGING, userId, value); setStorageError(!saved); return saved;
+  function updateDraft(value: ExamOnboarding) {
+    if (!isCurrent()) return;
+    const next = { ...value, complete: false };
+    setDraft(next);
+    setStorageError(!saveExamOnboarding(storage, STAGING, userId, next));
+  }
+  function reloadProfile() { setProfileRevision(n => n + 1); }
+  async function completeProfile(value: ExamOnboarding) {
+    if (!profile || profileConflict || profileSaveInFlight.current || !isCurrent()) return;
+    profileSaveInFlight.current = true;
+    setSavingProfile(true);
+    setSaveError("");
+    updateDraft(value);
+    try {
+      const saved = await saveExamOnboardingProfile(ownedClient, profile.revision, value);
+      if (!isCurrent()) return;
+      setProfile(saved);
+      if (saved.answers) setDraft(saved.answers);
+      try { storage.removeItem(examOnboardingKey(STAGING, userId)); } catch { /* The profile was saved. */ }
+      setStorageError(false);
+      if (currentPage.current === page) onPage("setup");
+    } catch (cause) {
+      if (!isCurrent()) return;
+      const conflict = cause instanceof ExamRuntimeError && cause.code === "EXAM_ONBOARDING_CONFLICT";
+      setProfileConflict(conflict);
+      setSaveError(conflict ? "Your profile was updated elsewhere. Reload your saved answers before editing again." : "We couldn’t save your answers. Please try again.");
+    } finally {
+      profileSaveInFlight.current = false;
+      if (isCurrent()) setSavingProfile(false);
+    }
   }
   function renderDashboard(controls: ExamDashboardControls) {
     if ((paid && access?.canStartStandard === true) || controls.canRecover) return controls.fullSetup;
@@ -216,10 +272,17 @@ function RuntimeOwner({ client, userId, generation, paid, page, onPage }: { clie
         {lifecycle?.attemptId ? <AccountButton onClick={controls.openTrialResult}>Latest result</AccountButton> : <AccountButton onClick={controls.refreshTrial}>Retry</AccountButton>}
       </aside>);
     }
-    const next = page === "start" ? draft.complete ? "setup" : "about" : page;
-    if (next === "about") return <div className="account-onboarding"><AccountBack onBack={() => onPage("exam")} /><TrialStepper step={1} onStep={() => { document.querySelector<HTMLFormElement>(".account-onboarding form")?.requestSubmit(); }} /><AboutYou value={draft} onChange={value => { save(value); }} storageError={storageError} onDone={value => { if (save(value)) onPage("setup"); }} /></div>;
+    if (!profile) {
+      const status = <AccountCard title={profileError ? "We couldn’t load your profile" : "Checking your profile"}>
+        {profileError ? <><p role="alert">Try again to continue to trial setup.</p><AccountButton onClick={reloadProfile}>Retry</AccountButton></> : <p role="status">Checking saved answers…</p>}
+      </AccountCard>;
+      return page === "exam" ? controls.withSetup(status) : <div className="account-onboarding"><AccountBack onBack={() => onPage("exam")} />{status}</div>;
+    }
+    const complete = profile.completedAt !== null;
+    const next = page === "start" || (page === "setup" && !complete) ? (complete ? "setup" : "about") : page;
+    if (next === "about") return <div className="account-onboarding"><AccountBack onBack={() => onPage("exam")} /><TrialStepper step={1} onStep={() => { document.querySelector<HTMLFormElement>(".account-onboarding form")?.requestSubmit(); }} /><AboutYou value={draft} onChange={updateDraft} storageError={storageError} saving={savingProfile} saveError={saveError} onReloadSaved={profileConflict ? reloadProfile : undefined} onDone={value => void completeProfile(value)} /></div>;
     if (next === "setup") return <div className="account-onboarding account-trial-onboarding"><AccountBack onBack={() => onPage("exam")} /><TrialStepper step={2} onStep={() => onPage("about")} />{controls.trialSetup}<p className="account-footnote account-trial-later"><button type="button" className="account-link" onClick={() => onPage("exam")}>Do this later</button></p></div>;
-    return controls.withSetup(<TrialIntroduction signedIn complete={draft.complete} onStart={() => onPage("start")} />);
+    return controls.withSetup(<TrialIntroduction signedIn complete={complete} onStart={() => onPage("start")} />);
   }
   if (accessError) return <div className="account-narrow"><AccountCard title="We couldn't check Exam access"><p role="alert">Your account has not been changed. Reconnect and retry.</p><AccountButton onClick={() => setRevision(n => n + 1)}>Retry access check</AccountButton></AccountCard></div>;
   if (!access) return <p role="status">Checking Exam access…</p>;

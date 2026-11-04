@@ -9,7 +9,7 @@ import { RegistrationProvider } from "../../app/RegistrationProvider";
 import AccountNav from "./AccountNav.dev";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { emptyExamOnboarding, saveExamOnboarding } from "../../core/examOnboarding";
+import { emptyExamOnboarding, examOnboardingKey, saveExamOnboarding } from "../../core/examOnboarding";
 
 const m = vi.hoisted(() => ({ client: null as unknown, temporary: null as any, lifecycle: undefined as any, access: vi.fn(), active: false, recover: false, runtime: vi.fn(), begin: vi.fn() }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: () => m.temporary ?? m.client }));
@@ -32,6 +32,8 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let container: HTMLDivElement; let host: HTMLDivElement; let root: ReturnType<typeof createRoot>;
 let current: { id: string; email: string } | null;
 let changed: (event: string, session: unknown) => void;
+const profileProject = "https://clpfecuohwzwrgmqzeos.supabase.co";
+let profileInvoke: ReturnType<typeof vi.fn>;
 let auth: { [key: string]: ReturnType<typeof vi.fn> };
 function emit(event: string, id: string | null) {
   current = id ? { id, email: `${id}@example.test` } : null;
@@ -63,7 +65,21 @@ beforeEach(() => {
     setSession: vi.fn().mockResolvedValue({ error: null }),
     stopAutoRefresh: vi.fn(),
     signInAnonymously: vi.fn()
-  }; m.client = { auth, rpc: vi.fn().mockResolvedValue({ data: { hasPassword: true }, error: null }) };
+  };
+  const profiles = new Map<string, { revision: string; completedAt: string; answers: Record<string, unknown> }>();
+  let savedCount = 0;
+  profileInvoke = vi.fn(async (_name: string, { body }: { body: { operation: string; input: Record<string, unknown> } }) => {
+    const owner = current!.id;
+    const existing = profiles.get(owner);
+    if (body.operation === "onboarding_read") return { data: existing ?? { revision: null, completedAt: null, answers: null } };
+    if (body.operation !== "onboarding_save") throw new Error("Unexpected profile operation");
+    const { revision, ...answers } = body.input;
+    const saved = { revision: `2026-11-04T00:00:00.${String(++savedCount).padStart(6, "0")}+00:00`, completedAt: existing?.completedAt ?? "2026-11-04T00:00:00Z", answers };
+    expect(revision).toBe(existing?.revision ?? null);
+    profiles.set(owner, saved);
+    return { data: saved };
+  });
+  m.client = { auth, rpc: vi.fn().mockResolvedValue({ data: { hasPassword: true }, error: null }), functions: { invoke: profileInvoke } };
   host = document.createElement("div"); host.id = "exam-account-nav-slot"; document.body.append(host);
   container = document.createElement("div"); document.body.append(container); root = createRoot(container);
   vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -296,6 +312,7 @@ describe("unified local pilot account flow", () => {
   });
   it("prioritises an existing recoverable sitting over onboarding", async () => {
     current = { id: "a", email: "a@example.test" }; m.recover = true;
+    profileInvoke.mockRejectedValueOnce(new Error("Profile unavailable"));
     await render(); expect(container.textContent).toContain("Full Exam setup for a"); expect(container.textContent).not.toContain("Tell us a little about yourself");
   });
   it("ignores delayed access for an account that has switched", async () => {
@@ -450,6 +467,8 @@ describe("connected password reset pages", () => {
 
 it('provides a dashboard return that clears the trial setup route', async()=>{
  current={id:'a',email:'a@example.test'};
+ profileInvoke.mockResolvedValueOnce({ data: { revision: "2026-11-04T00:00:00.000001Z", completedAt: "2026-11-04T00:00:00Z",
+   answers: { role: "medical_student", stage: null, specialty: null, reason: "exam_preparation", otherRole: null, otherSpecialty: null } } });
  await render(undefined,'/dev/exam-pilot?account=setup&return_to=trial');
  expect(container.querySelector('.account-trial-onboarding')).not.toBeNull();
  await act(async()=>m.runtime.mock.lastCall![0].onReturnToDashboard()); await flush();
@@ -465,6 +484,7 @@ it.each([
  ["consumed", "completed", false, "Your trial exam is complete"]
 ])("uses server state %s/%s/support=%s on the non-paid dashboard", async (state, gradingStatus, requiresSupport, heading) => {
  current = { id: "a", email: "a@example.test" };
+ profileInvoke.mockRejectedValueOnce(new Error("Profile unavailable"));
  m.lifecycle = { state, gradingStatus, requiresSupport, attemptId: "12345678-1234-1234-1234-123456789abc", canRetryGrading: gradingStatus === "failed" && !requiresSupport, retryAvailableAt: null };
  await render();
  expect(container.textContent).toContain(heading);
@@ -476,4 +496,93 @@ it("does not open onboarding when lifecycle cannot be verified", async () => {
  current = { id: "a", email: "a@example.test" }; m.lifecycle = undefined;
  await render(); expect(container.textContent).toContain("confirm your trial status");
  expect(container.textContent).not.toContain("Complete your profile");
+});
+
+
+async function selectAnswer(label: string) {
+  const input = [...container.querySelectorAll<HTMLInputElement>("input[type=radio]")].find(option => option.value === label);
+  expect(input, label).toBeTruthy();
+  await act(async () => input!.click());
+}
+
+it("loads and edits the saved profile across independent local storage instances", async () => {
+  current = { id: "a", email: "a@example.test" };
+  await render(undefined, "/dev/exam-pilot?account=setup");
+  expect(container.textContent).not.toContain("Begin Trial Exam");
+  await selectAnswer("Medical student"); await selectAnswer("Preparing for an exam");
+  await click("Continue to exam setup");
+  expect(container.textContent).toContain("Begin Trial Exam");
+  expect(profileInvoke.mock.calls.find(([, args]) => args.body.operation === "onboarding_save")?.[1].body.input)
+    .toEqual({ revision: null, role: "medical_student", stage: null, specialty: null, reason: "exam_preparation", otherRole: null, otherSpecialty: null });
+
+  await act(async () => root.unmount()); root = createRoot(container);
+  const emptyStorage = new Map<string, string>();
+  vi.stubGlobal("localStorage", { getItem: (key: string) => emptyStorage.get(key) ?? null,
+    setItem: (key: string, value: string) => emptyStorage.set(key, value), removeItem: (key: string) => emptyStorage.delete(key) });
+  try {
+    await render(undefined, "/dev/exam-pilot?account=start");
+    expect(container.textContent).toContain("Begin Trial Exam");
+    await act(async () => container.querySelector<HTMLButtonElement>('.account-stepper button[aria-label="About you"]')!.click());
+    expect(container.querySelector<HTMLInputElement>('input[value="Medical student"]')?.checked).toBe(true);
+    await selectAnswer("Teaching others"); await click("Continue to exam setup");
+    expect(profileInvoke.mock.calls.filter(([, args]) => args.body.operation === "onboarding_save").at(-1)?.[1].body.input.revision)
+      .toBe("2026-11-04T00:00:00.000001+00:00");
+    await act(async () => root.unmount()); root = createRoot(container);
+  } finally { vi.unstubAllGlobals(); }
+  saveExamOnboarding(localStorage, profileProject, "a", { ...emptyExamOnboarding(), role: "Other", reason: "Preparing for an exam", complete: true });
+  await render(undefined, "/dev/exam-pilot?account=about");
+  expect(container.querySelector<HTMLInputElement>('input[value="Teaching others"]')?.checked).toBe(true);
+  expect(container.querySelector<HTMLInputElement>('input[value="Medical student"]')?.checked).toBe(true);
+});
+
+it("retains a legacy draft through load and save failures and requires a confirmed save", async () => {
+  current = { id: "a", email: "a@example.test" };
+  saveExamOnboarding(localStorage, profileProject, "a", { ...emptyExamOnboarding(), role: "Nurse", specialty: "Critical care", reason: "Teaching others", complete: true });
+  profileInvoke.mockRejectedValueOnce(new Error("Profile unavailable"));
+  await render(undefined, "/dev/exam-pilot?account=setup");
+  expect(container.textContent).toContain("load your profile");
+  expect(container.textContent).not.toContain("Begin Trial Exam");
+  expect(localStorage.getItem(examOnboardingKey(profileProject, "a"))).toContain("Critical care");
+  await click("Retry");
+  expect(container.querySelector<HTMLInputElement>('input[value="Nurse"]')?.checked).toBe(true);
+  profileInvoke.mockRejectedValueOnce(new Error("Save unavailable"));
+  await click("Continue to exam setup");
+  expect(container.textContent).toContain("save your answers");
+  expect(container.textContent).not.toContain("Begin Trial Exam");
+  expect(localStorage.getItem(examOnboardingKey(profileProject, "a"))).toContain("Critical care");
+  await click("Continue to exam setup");
+  expect(container.textContent).toContain("Begin Trial Exam");
+});
+
+it("keeps a late profile save from advancing a different account", async () => {
+  current = { id: "a", email: "a@example.test" };
+  await render(undefined, "/dev/exam-pilot?account=about");
+  await selectAnswer("Medical student"); await selectAnswer("Preparing for an exam");
+  let finish!: (value: unknown) => void;
+  profileInvoke.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  await click("Continue to exam setup");
+  expect(profileInvoke.mock.calls.filter(([, args]) => args.body.operation === "onboarding_save")).toHaveLength(1);
+  await act(async () => emit("SIGNED_IN", "b")); await flush();
+  await act(async () => finish({ data: { revision: "2026-11-04T00:00:00.000001Z", completedAt: "2026-11-04T00:00:00Z",
+    answers: { role: "medical_student", stage: null, specialty: null, reason: "exam_preparation", otherRole: null, otherSpecialty: null } } }));
+  expect(container.textContent).not.toContain("Begin Trial Exam");
+  expect(container.querySelector<HTMLInputElement>('input[value="Medical student"]')?.checked).toBe(false);
+  expect(localStorage.getItem(examOnboardingKey(profileProject, "b"))).toBeNull();
+});
+
+
+it("offers to reload the latest saved answers after a conflicting edit", async () => {
+  current = { id: "a", email: "a@example.test" };
+  await render(undefined, "/dev/exam-pilot?account=about");
+  await selectAnswer("Medical student"); await selectAnswer("Preparing for an exam");
+  profileInvoke.mockResolvedValueOnce({ error: { context: { json: async () => ({ code: "EXAM_ONBOARDING_CONFLICT" }) } } });
+  await click("Continue to exam setup");
+  expect(container.textContent).toContain("profile was updated elsewhere");
+  expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+  expect(localStorage.getItem(examOnboardingKey(profileProject, "a"))).toContain("Medical student");
+  profileInvoke.mockResolvedValueOnce({ data: { revision: "2026-11-04T00:00:00.000002Z", completedAt: "2026-11-04T00:00:00Z",
+    answers: { role: "nurse", stage: null, specialty: "critical_care", reason: "teaching_others", otherRole: null, otherSpecialty: null } } });
+  await click("Reload saved answers");
+  expect(container.querySelector<HTMLInputElement>('input[value="Nurse"]')?.checked).toBe(true);
+  expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
 });

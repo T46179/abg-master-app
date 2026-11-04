@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { ExamRuntimeError, runtimeCall } from "./examRuntime";
 import type { BrowserStorageLike } from "./storage";
 
 export const EXAM_ROLES = ["Doctor", "Medical student", "Nurse", "Other"] as const;
@@ -44,4 +46,77 @@ export function saveExamOnboarding(storage: BrowserStorageLike, projectUrl: stri
     storage.setItem(examOnboardingKey(projectUrl, userId), JSON.stringify({ ...draft, complete: draft.complete && !missingExamOnboarding(draft).length, version: 1 }));
     return true;
   } catch { return false; }
+}
+
+// Persist stable values independently of the wording shown in the questionnaire.
+const profileCodes = {
+  role: { Doctor: "doctor", "Medical student": "medical_student", Nurse: "nurse", Other: "other" },
+  stage: {
+    "Intern / resident / junior doctor": "intern_resident_junior_doctor",
+    "Registrar / specialty trainee": "registrar_specialty_trainee",
+    "Specialist / consultant": "specialist_consultant", Other: "other", "Prefer not to say": "prefer_not_to_say"
+  },
+  specialty: {
+    "Emergency medicine": "emergency_medicine", "Intensive care": "intensive_care", Anaesthetics: "anaesthetics",
+    Respiratory: "respiratory", "Critical care": "critical_care", Other: "other",
+    "Not yet chosen / prefer not to say": "not_yet_chosen_or_prefer_not_to_say"
+  },
+  reason: {
+    "Preparing for an exam": "exam_preparation", "Improving clinical skills": "improving_clinical_skills",
+    "General study and revision": "general_study_and_revision", "Teaching others": "teaching_others"
+  }
+} satisfies Record<string, Record<string, string>>;
+
+export interface ExamOnboardingProfile {
+  revision: string | null;
+  completedAt: string | null;
+  answers: ExamOnboarding | null;
+}
+
+type Category = keyof typeof profileCodes;
+function profileCode(category: Category, label: string) {
+  return (profileCodes[category] as Record<string, string>)[label] ?? null;
+}
+function profileLabel(category: Category, code: unknown): string {
+  if (code === null) return "";
+  const label = Object.entries(profileCodes[category]).find(([, value]) => value === code)?.[0];
+  if (!label) throw new ExamRuntimeError("EXAM_INVALID_RESPONSE");
+  return label;
+}
+
+function decodeOnboardingProfile(profile: Record<string, unknown>): ExamOnboardingProfile {
+  const { revision, completedAt, answers } = profile;
+  const timestamp = (value: unknown): value is string => typeof value === "string" && Number.isFinite(Date.parse(value));
+  if (revision !== null && !timestamp(revision)) throw new ExamRuntimeError("EXAM_INVALID_RESPONSE");
+  if (completedAt === null && answers === null) return { revision, completedAt, answers };
+  if (!timestamp(completedAt) || !revision || !answers || typeof answers !== "object") throw new ExamRuntimeError("EXAM_INVALID_RESPONSE");
+  const fields = answers as Record<string, unknown>;
+  const otherText = (value: unknown) => {
+    if (value === null) return "";
+    if (typeof value !== "string" || Array.from(value).length > 120) throw new ExamRuntimeError("EXAM_INVALID_RESPONSE");
+    return value;
+  };
+  const value = {
+    role: profileLabel("role", fields.role), stage: profileLabel("stage", fields.stage),
+    specialty: profileLabel("specialty", fields.specialty), reason: profileLabel("reason", fields.reason),
+    otherRole: otherText(fields.otherRole), otherSpecialty: otherText(fields.otherSpecialty), complete: true
+  };
+  if (missingExamOnboarding(value).length) throw new ExamRuntimeError("EXAM_INVALID_RESPONSE");
+  return { revision, completedAt, answers: value };
+}
+
+export async function readExamOnboardingProfile(client: SupabaseClient): Promise<ExamOnboardingProfile> {
+  return decodeOnboardingProfile(await runtimeCall(client)("onboarding_read", {}));
+}
+
+export async function saveExamOnboardingProfile(client: SupabaseClient, revision: string | null, value: ExamOnboarding): Promise<ExamOnboardingProfile> {
+  const answers = normaliseExamOnboarding(value);
+  if (missingExamOnboarding(answers).length) throw new ExamRuntimeError("EXAM_INVALID_ONBOARDING");
+  const profile = decodeOnboardingProfile(await runtimeCall(client)("onboarding_save", {
+    revision, role: profileCode("role", answers.role), stage: profileCode("stage", answers.stage),
+    specialty: profileCode("specialty", answers.specialty), reason: profileCode("reason", answers.reason),
+    otherRole: answers.otherRole.trim() || null, otherSpecialty: answers.otherSpecialty.trim() || null
+  }));
+  if (!profile.answers) throw new ExamRuntimeError("EXAM_INVALID_RESPONSE");
+  return profile;
 }
