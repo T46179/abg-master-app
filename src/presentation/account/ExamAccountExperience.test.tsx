@@ -11,7 +11,7 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { emptyExamOnboarding, saveExamOnboarding } from "../../core/examOnboarding";
 
-const m = vi.hoisted(() => ({ client: null as unknown, temporary: null as any, access: vi.fn(), active: false, recover: false, runtime: vi.fn(), begin: vi.fn() }));
+const m = vi.hoisted(() => ({ client: null as unknown, temporary: null as any, lifecycle: undefined as any, access: vi.fn(), active: false, recover: false, runtime: vi.fn(), begin: vi.fn() }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: () => m.temporary ?? m.client }));
 vi.mock("../../core/examAuth", () => ({ createExamAuthClient: () => m.client, readExamAccess: m.access }));
 vi.mock("../../core/accountDataClient", () => ({ createAccountDataClient: (_config: unknown, client: unknown) => client }));
@@ -24,7 +24,7 @@ vi.mock("../exam/ExamPilotRuntime", () => ({ default: (props: any) => {
   m.runtime(props);
   const fullSetup = <p>Full Exam setup for {props.userId}; counts:{props.allowedUnitCounts.join(",")}</p>;
   const trialSetup = <div className="exam-trial-builder"><h3>Your Trial Session</h3><button onClick={m.begin}>Begin Trial Exam</button></div>;
-  const controls = { fullSetup, trialSetup, withSetup: (content: unknown) => <div>Trial overview{content as any}</div>, canRecover: m.recover, ready: true, busy: false, canBegin: props.canStart && props.allowedUnitCounts.includes(3), timed: true, showRanges: true, setTimed: vi.fn(), setShowRanges: vi.fn(), begin: m.begin };
+  const controls = { trialLifecycle: m.lifecycle, openTrialResult: vi.fn(), refreshTrial: vi.fn(), fullSetup, trialSetup, withSetup: (content: unknown) => <div>Trial overview{content as any}</div>, canRecover: m.recover, ready: true, busy: false, canBegin: props.canStart && props.allowedUnitCounts.includes(3), timed: true, showRanges: true, setTimed: vi.fn(), setShowRanges: vi.fn(), begin: m.begin };
   return <div>{props.renderDashboard(controls)}</div>;
 } }));
 import Experience from "./ExamAccountExperience.dev";
@@ -51,7 +51,7 @@ async function login(id = "a") {
 async function menu() { await act(async () => host.querySelector<HTMLButtonElement>("button")!.click()); }
 beforeEach(() => {
   vi.useFakeTimers(); vi.stubEnv("VITE_EXAM_PILOT_SUPABASE_URL", "https://clpfecuohwzwrgmqzeos.supabase.co"); vi.stubEnv("VITE_EXAM_PILOT_SUPABASE_ANON_KEY", "public");
-  localStorage.clear(); m.temporary = null; current = null; m.active = false; m.recover = false; m.runtime.mockClear(); m.begin.mockClear(); m.access.mockReset(); m.access.mockResolvedValue({ status: "allowed", allowedUnitCounts: [3, 5], customisationCategories: [] });
+  localStorage.clear(); m.temporary = null; m.lifecycle = { state: "available", attemptId: null, gradingStatus: null, canRetryGrading: false, requiresSupport: false, retryAvailableAt: null }; current = null; m.active = false; m.recover = false; m.runtime.mockClear(); m.begin.mockClear(); m.access.mockReset(); m.access.mockResolvedValue({ status: "allowed", canStartStandard: true, allowedUnitCounts: [3, 5], customisationCategories: [] });
   auth = {
     resetPasswordForEmail: vi.fn(async () => ({ error: null })),
     updateUser: vi.fn(async () => ({ error: null })),
@@ -105,7 +105,8 @@ describe("unified local pilot account flow", () => {
   it("starts as guest, preserves current copy and does not create an account", async () => {
     await render(); expect(container.textContent).toContain("Preparing for exams?"); expect(container.textContent).toContain("Your Session"); expect(container.textContent).toContain("Graded Short Answers"); expect(container.textContent).not.toContain("Train for the real thing");
     expect(auth.signInAnonymously).not.toHaveBeenCalled(); expect(m.access).not.toHaveBeenCalled();
-    await click("Start trial exam"); expect(container.textContent).toContain("Creating an account saves your progress across devices so you can pick up where you left off.");
+    expect(container.querySelector(".account-trial-panel h3")?.textContent).toBe("Your first exam starts here");
+    await click("Create your free account"); expect(container.textContent).toContain("Creating an account saves your progress across devices so you can pick up where you left off.");
     expect([...container.querySelectorAll("button")].find(b => b.textContent?.includes("Create Account"))?.disabled).toBe(false);
     expect(container.querySelector('input[type="password"]')).toBeNull();
     expect(auth.signInWithPassword).not.toHaveBeenCalled();
@@ -160,19 +161,20 @@ describe("unified local pilot account flow", () => {
     await click("Create account");
     expect(container.querySelector("#registration-email")).not.toBeNull();
     await click("Sign in"); await login();
-    expect(container.textContent).toContain("Start trial exam"); expect(container.textContent).not.toContain("Tell us a little about yourselfShare");
+    expect(container.textContent).toContain("Complete your profile"); expect(container.textContent).not.toContain("Tell us a little about yourselfShare");
+    expect(container.querySelector(".account-trial-panel h3")?.textContent).toBe("Let's make this yours");
     await menu(); const toggle = host.querySelector<HTMLInputElement>('input[role="switch"]')!;
     await act(async () => toggle.click()); expect(container.textContent).toContain("Full Exam setup for a; counts:3,5");
     expect(m.runtime.mock.lastCall?.[0].canStart).toBe(true);
-    await click("Sign out"); expect(container.textContent).toContain("Start trial exam"); expect(host.textContent).not.toContain("a@example.test"); expect(auth.signOut).toHaveBeenCalledWith({ scope: "local" });
+    await click("Sign out"); expect(container.textContent).toContain("Create your free account"); expect(host.textContent).not.toContain("a@example.test"); expect(auth.signOut).toHaveBeenCalledWith({ scope: "local" });
   });
   it("restores the correct owner's draft and validates conditional fields", async () => {
     current = { id: "a", email: "a@example.test" };
     saveExamOnboarding(localStorage, "https://clpfecuohwzwrgmqzeos.supabase.co", "a", { ...emptyExamOnboarding(), role: "Doctor", stage: "Prefer not to say" });
-    await render(); await click("Start trial exam");
+    await render(); await click("Complete your profile");
     expect(container.querySelector<HTMLInputElement>('input[value="Doctor"]')?.checked).toBe(true);
     expect(container.textContent).toContain("Respiratory"); expect(container.textContent).not.toContain("General practice");
-    await click("Continue to exam setup"); expect(container.querySelector('[role="alert"]')?.textContent).toContain("highlighted");
+    await click("Continue to exam setup"); expect(container.querySelector('#exam-about-specialty-error')?.textContent).toBe("Select your specialty to continue.");
     await act(async () => container.querySelector<HTMLInputElement>('input[value="Medical student"]')!.click());
     expect(container.textContent).not.toContain("Stage of training"); expect(container.textContent).not.toContain("Specialty");
     await act(async () => container.querySelector<HTMLInputElement>('input[value="General study and revision"]')!.click());
@@ -192,13 +194,14 @@ describe("unified local pilot account flow", () => {
     await act(async () => container.querySelector<HTMLInputElement>('input[value="Doctor"]')!.click());
     await act(async () => container.querySelector<HTMLButtonElement>('.account-stepper button[aria-label="Exam setup"]')!.click());
     expect(container.textContent).not.toContain("Your Trial Session");
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain("highlighted");
+    expect(container.querySelector('#exam-about-stage-error')?.textContent).toBe("Select your stage of training to continue.");
     await act(async () => container.querySelector<HTMLInputElement>('input[value="Medical student"]')!.click());
     await click("Continue to exam setup");
     await click("Do this later");
     expect(container.textContent).toContain("Trial overview");
     expect(container.textContent).not.toContain("Your Trial Session");
-    await click("Start trial exam");
+    expect(container.querySelector(".account-trial-panel h3")?.textContent).toBe("Your trial exam is almost ready");
+    await click("Setup my trial exam");
     expect(container.textContent).toContain("Your Trial Session");
     await click("Begin Trial Exam"); expect(m.begin).toHaveBeenCalledTimes(1);
   });
@@ -299,7 +302,7 @@ describe("unified local pilot account flow", () => {
     current = { id: "a", email: "a@example.test" }; let finish!: (v: unknown) => void;
     m.access.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })); await render();
     await act(async () => emit("SIGNED_IN", "b")); await flush();
-    await act(async () => finish({ status: "allowed", allowedUnitCounts: [5] }));
+    await act(async () => finish({ status: "allowed", canStartStandard: true, allowedUnitCounts: [5] }));
     expect(m.runtime.mock.lastCall?.[0]).toMatchObject({ userId: "b", allowedUnitCounts: [3] });
   });
 });
@@ -443,4 +446,34 @@ describe("connected password reset pages", () => {
     expect(document.getElementById("reset-password")).toBeNull();
     expect(auth.updateUser).not.toHaveBeenCalled();
   });
+});
+
+it('provides a dashboard return that clears the trial setup route', async()=>{
+ current={id:'a',email:'a@example.test'};
+ await render(undefined,'/dev/exam-pilot?account=setup&return_to=trial');
+ expect(container.querySelector('.account-trial-onboarding')).not.toBeNull();
+ await act(async()=>m.runtime.mock.lastCall![0].onReturnToDashboard()); await flush();
+ expect(route()).toBe('/dev/exam-pilot?return_to=trial');
+ expect(container.querySelector('.account-trial-onboarding')).toBeNull();
+ expect(container.textContent).toContain('Trial overview');
+});
+
+it.each([
+ ["reserved", "pending", false, "Your exam is being marked"],
+ ["reserved", "failed", false, "Your marking needs another try"],
+ ["reserved", "failed", true, "Your marking needs assistance"],
+ ["consumed", "completed", false, "Your trial exam is complete"]
+])("uses server state %s/%s/support=%s on the non-paid dashboard", async (state, gradingStatus, requiresSupport, heading) => {
+ current = { id: "a", email: "a@example.test" };
+ m.lifecycle = { state, gradingStatus, requiresSupport, attemptId: "12345678-1234-1234-1234-123456789abc", canRetryGrading: gradingStatus === "failed" && !requiresSupport, retryAvailableAt: null };
+ await render();
+ expect(container.textContent).toContain(heading);
+ expect(container.textContent).toContain("Latest result");
+ expect(container.textContent).not.toContain("Complete your profile");
+ expect(container.textContent).not.toContain("Begin Trial Exam");
+});
+it("does not open onboarding when lifecycle cannot be verified", async () => {
+ current = { id: "a", email: "a@example.test" }; m.lifecycle = undefined;
+ await render(); expect(container.textContent).toContain("confirm your trial status");
+ expect(container.textContent).not.toContain("Complete your profile");
 });

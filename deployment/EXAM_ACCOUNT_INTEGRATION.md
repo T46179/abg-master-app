@@ -5,20 +5,22 @@ Implemented on `features` at `/dev/exam-pilot`. Run the ordinary Vite developmen
 
 Update, 31 October 2026: the subsequent email-first milestone connects registration/password completion and joins the local Practice/Exam identity. See `EMAIL_FIRST_REGISTRATION.md` for current behavior, staging-only changes and pending manual acceptance. The original visual-port checkpoint below is retained for context.
 
+Trial update (4 November 2026): local trial starts now request a dedicated server-selected paper. See the private content repository `exam/docs/runtime/EXAM_SWAPPABLE_TRIAL.md`. Trial allowance enforcement is now implemented in the invited staging pilot; see `exam/docs/runtime/EXAM_TRIAL_ALLOWANCE.md` in the private content repository. Public access remains closed. Standard exams and owner preview retain existing selection.
+
 ## What is connected
 
 - Real email/password sign-in and local sign-out use the existing staging pilot Auth client and its session key. Existing pilot sessions and owner-scoped recovery journals remain readable. Sessions from the separate account-staging proof app are not imported.
 - Guest trial introduction, account menu, conditional onboarding and trial setup use the Figma Make reference. Current ABG Master hero, headings, cards, controls and clinical content are retained.
 - Onboarding drafts/completion are local, validated and keyed by staging project origin, verified user ID and schema version 1. They do not affect question selection or grading.
-- Free setup requests only the server-permitted three-case pilot path. Paid account exposes existing server-permitted setup options. This toggle is presentation only, disabled during an active sitting, and resets on sign-out/account change (also on a full reload).
-- Existing AI runtime, feedback, history, Error Log and recovery remain in use. Recoverable work takes precedence over onboarding. Pilot attempts do not create trial entitlements or trial-consumption records.
+- Free setup requests the independently configured three-case trial paper within existing pilot permissions. Paid account exposes existing server-permitted setup options. This toggle is presentation only, disabled during an active sitting, and resets on sign-out/account change (also on a full reload).
+- Existing AI runtime, feedback, history, Error Log and recovery remain in use. Recoverable work takes precedence over onboarding. Dedicated trial attempts now reserve the account allowance at accepted submission and consume it after valid saved grading; standard pilot attempts do not consume it.
 - Identity changes hide old private UI immediately, retire request/storage handles, and preserve journals under the original owner. Sign-out warns when unfinished work exists. Reauthentication only offers that account's recovery.
 
 ## Intentionally deferred
 
 Registration, email verification/link outcomes and password recovery have visual layouts with truthful unavailable messages. Their actions do not send email, change credentials or simulate success. Passwords are cleared after sign-in submission and are never saved by these pages. Account fields/menu are masked from capture.
 
-Payments, real paid/trial enforcement, backend demographic storage and all theme controls are outside this change. No grants, snapshots, credentials, hosted settings or deployment were changed.
+The initial account UI work did not include backend deployment. The later invited staging lifecycle release adds trial allowance enforcement and explicit grant scope. Payments, real paid-product enforcement, backend demographic storage and theme controls remain separate.
 
 ## Hosted boundary
 

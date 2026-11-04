@@ -4,6 +4,7 @@ import type { HistoryFilter, AttemptPresentation, HistoryPresentation } from "..
 export type HistoryCursor = { finishedAt: string; id: string };
 export interface HistoryRow {
   id: string; createdAt: string; presentedAt: string | null; finishedAt: string;
+  purpose?: "standard" | "trial"; trialVersion?: string | null;
   examKind: "mock" | "custom"; excludedCategories: string[]; caseCount: number;
   marksAvailable: number; marksAwarded: number | null;
   gradingStatus: "completed" | "pending" | "failed"; canRetryGrading: boolean;

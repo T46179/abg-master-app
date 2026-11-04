@@ -1,7 +1,27 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export type CustomisationCategory = { category_id: string; label: string };
-export type ExamAccess = { status: "allowed" | "closed" | "not_invited"; allowedUnitCounts: number[]; customisationCategories?: CustomisationCategory[] };
+export type TrialAvailability = "ready" | "disabled" | "error";
+export interface TrialLifecycle {
+  state: "available" | "active" | "reserved" | "consumed";
+  attemptId: string | null;
+  gradingStatus: "pending" | "failed" | "completed" | null;
+  canRetryGrading: boolean;
+  requiresSupport: boolean;
+  retryAvailableAt: string | null;
+}
+export function parseTrialLifecycle(value: unknown): TrialLifecycle | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const v = value as Record<string, unknown>;
+  const uuid = (id: unknown) => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  if (!["available", "active", "reserved", "consumed"].includes(v.state as string)
+    || (v.state === "available" ? v.attemptId !== null : !uuid(v.attemptId))
+    || ![null, "pending", "failed", "completed"].includes(v.gradingStatus as string | null)
+    || typeof v.canRetryGrading !== "boolean" || typeof v.requiresSupport !== "boolean"
+    || (v.retryAvailableAt !== null && (typeof v.retryAvailableAt !== "string" || !Number.isFinite(Date.parse(v.retryAvailableAt))))) return undefined;
+  return v as unknown as TrialLifecycle;
+}
+export type ExamAccess = { canStartStandard?: boolean; trialLifecycle?: TrialLifecycle; trialAvailability?: TrialAvailability; status: "allowed" | "closed" | "not_invited"; allowedUnitCounts: number[]; customisationCategories?: CustomisationCategory[] };
 export type ExamIdentity = { status: "signed_out" } | { status: "signed_in"; userId: string };
 const clients = new Map<string, SupabaseClient>();
 
@@ -56,6 +76,6 @@ export async function readExamAccess(client: SupabaseClient): Promise<ExamAccess
   if (categories !== undefined && (!Array.isArray(categories) || !categories.every(c => c && typeof c.category_id === "string" && /^[a-z][a-z0-9_]*$/.test(c.category_id) && typeof c.label === "string" && c.label.trim()) || new Set(categories.map(c => c.category_id)).size !== categories.length)) {
     throw new Error("Pilot access could not be checked. Please try again.");
   }
-  return { status: data.status, allowedUnitCounts: data.allowedUnitCounts,
+  return { canStartStandard: data.canStartStandard === true, trialLifecycle: parseTrialLifecycle(data.trialLifecycle), trialAvailability: ["ready", "disabled", "error"].includes(data.trialAvailability) ? data.trialAvailability : "error", status: data.status, allowedUnitCounts: data.allowedUnitCounts,
     ...(categories !== undefined ? { customisationCategories: categories as CustomisationCategory[] } : {}) };
 }

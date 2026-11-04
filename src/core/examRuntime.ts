@@ -2,13 +2,16 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PressureUnit } from "./types";
 import type { ExamAnswer, ExamQuestion, SittingState } from "../presentation/exam/sittingTypes";
 import type { ExamFeedback } from "../presentation/exam/resultsTypes";
+export type ExamPurpose = "standard" | "trial";
 export type ExamKind = "mock" | "custom";
-export interface ExamConfiguration { examKind: ExamKind; excludedCategories: string[]; unitCount?: number; showTimer?: boolean; showRanges?: boolean }
+export interface ExamConfiguration { purpose?: ExamPurpose; examKind: ExamKind; excludedCategories: string[]; unitCount?: number; showTimer?: boolean; showRanges?: boolean }
 export type WireAnswers = Record<string, ExamAnswer | { text: string; unit: string }>;
 export interface RuntimeAttempt {
   id: string; status: "active" | "submitted" | "abandoned" | "invalidated"; revision: number;
   pressureUnit: PressureUnit; createdAt: string; presentedAt: string | null; finishedAt: string | null;
   feedbackTone?: "professional" | "supportive" | "ruthless";
+  purpose?: ExamPurpose; trialVersion?: string | null;
+  trialAllowanceState?: "available" | "reserved" | "consumed" | "released" | "historical";
   marksAvailable?: number; examKind?: ExamKind; excludedCategories?: string[];
   questions: ExamQuestion[]; answers: WireAnswers; feedback?: ExamFeedback;
   gradingStatus?: "pending" | "completed" | "failed"; marksAwarded?: number | null; canRetryGrading?: boolean;
@@ -46,6 +49,7 @@ export function toSitting(attempt: RuntimeAttempt): SittingState {
     showRanges: true, showTimer: true };
 }
 interface Journal {
+  purpose?: ExamPurpose;
   examKind?: ExamKind; excludedCategories?: string[]; unitCount?: number; showTimer?: boolean; showRanges?: boolean;
   requestId: string; recoveryKey: string; pressureUnit: PressureUnit; attemptId?: string; revision?: number;
   dirty?: WireAnswers; submission?: { requestId: string; answers: WireAnswers };
@@ -75,16 +79,16 @@ export class ExamRuntimeSession {
   }
   async start(pressureUnit: PressureUnit, configuration: ExamConfiguration = { examKind: "mock", excludedCategories: [] }) {
     if (!this.journal) {
-      this.journal = { unitCount: configuration.unitCount, showTimer: configuration.showTimer, showRanges: configuration.showRanges, examKind: configuration.examKind, excludedCategories: configuration.examKind === "mock" ? [] : [...new Set(configuration.excludedCategories)].sort(), requestId: crypto.randomUUID(), recoveryKey: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, "0")).join(""), pressureUnit };
+      this.journal = { purpose: configuration.purpose ?? "standard", unitCount: configuration.unitCount, showTimer: configuration.showTimer, showRanges: configuration.showRanges, examKind: configuration.examKind, excludedCategories: configuration.examKind === "mock" ? [] : [...new Set(configuration.excludedCategories)].sort(), requestId: crypto.randomUUID(), recoveryKey: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, "0")).join(""), pressureUnit };
       this.persist(); // Persist before sending so a lost response never creates another attempt.
     }
     let result: RuntimeAttempt;
     try {
-      result = await this.call<RuntimeAttempt>("start", { requestId: this.journal.requestId, recoveryKey: this.journal.recoveryKey, pressureUnit: this.journal.pressureUnit, examKind: this.journal.examKind ?? "mock", excludedCategories: this.journal.excludedCategories ?? [], ...(this.journal.unitCount !== undefined ? { unitCount: this.journal.unitCount } : {}), writerId: this.writerId });
+      result = await this.call<RuntimeAttempt>("start", { purpose: this.journal.purpose ?? "standard", requestId: this.journal.requestId, recoveryKey: this.journal.recoveryKey, pressureUnit: this.journal.pressureUnit, examKind: this.journal.examKind ?? "mock", excludedCategories: this.journal.excludedCategories ?? [], ...(this.journal.unitCount !== undefined ? { unitCount: this.journal.unitCount } : {}), writerId: this.writerId });
     } catch (error) {
       // This server rejection occurs only before a new attempt is inserted.
       // Network uncertainty and reused-request errors must retain the journal.
-      if (!this.journal.attemptId && error instanceof ExamRuntimeError && error.code === "EXAM_INVALID_CONFIGURATION") {
+      if (!this.journal.attemptId && error instanceof ExamRuntimeError && ["EXAM_INVALID_CONFIGURATION", "EXAM_TRIAL_DISABLED", "EXAM_TRIAL_CONFIGURATION", "EXAM_TRIAL_UNAVAILABLE", "EXAM_ACCESS_DENIED"].includes(error.code)) {
         this.journal = null; this.persist();
       }
       throw error;

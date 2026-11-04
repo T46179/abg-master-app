@@ -122,7 +122,7 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
       : <div className="account-narrow account-setup-loading" role="status" aria-label="Checking account setup"><span className="loading-chip__spinner" aria-hidden="true" /></div>
       : <RuntimeOwner key={identity.generation} client={client} userId={identity.userId} generation={identity.generation} paid={paid} page={page} onPage={setPage} />;
   } else {
-    body = <><ExamPageHeading /><div className="exam-workspace exam-mock-workspace"><ExamOverview state={{ ...initialPrototypeState, mode: "mock", examKind: "mock", caseCount: 3 }} pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"} /><TrialIntroduction signedIn={false} complete={false} onStart={startTrial} onSignIn={() => open("signin", "trial")} /></div></>;
+    body = <><ExamPageHeading guest /><div className="exam-workspace exam-mock-workspace exam-guest-workspace"><ExamOverview guest state={{ ...initialPrototypeState, mode: "mock", examKind: "mock", caseCount: 3 }} pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"} /><TrialIntroduction signedIn={false} complete={false} onStart={startTrial} onSignIn={() => open("signin", "trial")} /></div></>;
   }
   return <main className="app-shell__page exam-screen abg-account">{body}</main>;
 }
@@ -167,11 +167,15 @@ export function ProfileControl({ email, busy, paid, active, onPage, onSignOut, o
 }
 
 function TrialIntroduction({ signedIn, complete, onStart, onSignIn }: { signedIn: boolean; complete: boolean; onStart: () => void; onSignIn?: () => void }) {
-  return <aside className="account-trial-panel surface"><span className="account-eyebrow">Free trial</span><div className="account-panel-heading"><span><ClipboardIcon /></span><div><h3>How your trial works</h3><p>A couple of minutes, then you're in.</p></div></div>
-    <ol className="account-trial-steps">{[[signedIn ? "Signed in" : "Create a free account", signedIn ? "Your account is ready." : "Or sign in. Your progress stays with your account."], ["Tell us a little about yourself", "A few quick questions about your background."], ["Set up your sitting", "Pick your settings, then begin."]].map(([title, body], i) => <li key={title}><span>{(i === 0 && signedIn) || (i === 1 && complete) ? <CheckIcon size={13} /> : i + 1}</span><div><strong>{title}</strong><p>{body}</p></div></li>)}</ol>
-    <AccountButton onClick={onStart}>Start trial exam</AccountButton>
-    {!signedIn && <p className="account-footnote">Already have an account? <button className="account-link" onClick={onSignIn}>Sign in</button></p>}
-    {signedIn && <p className="account-footnote">Local trial presentation uses ordinary pilot attempts. Trial limits are not active yet.</p>}
+  const heading = !signedIn ? "Your first exam starts here" : complete ? "Your trial exam is almost ready" : "Let's make this yours";
+  const cta = !signedIn ? "Create your free account" : complete ? "Setup my trial exam" : "Complete your profile";
+  return <aside className="account-trial-panel surface"><span className="account-eyebrow">Trial Exam</span><div className="account-panel-heading"><span><ClipboardIcon /></span><div><h3>{heading}</h3><p>Just a few details first</p></div></div>
+    <ol className="account-trial-steps">{[[signedIn ? "Signed in" : "Create your free account", signedIn ? "Your account is ready." : "Or sign in to continue where you left off"], ["Tell us a little about yourself", "Personalise your experience"], ["Prepare your trial exam", "Review your settings before you begin"]].map(([title, body], i) => {
+      const completed = (i === 0 && signedIn) || (i === 1 && complete);
+      return <li key={title} data-complete={completed}><span>{completed ? <CheckIcon size={13} /> : i + 1}</span><div><strong>{title}</strong><p>{body}</p></div></li>;
+    })}</ol>
+    <AccountButton onClick={onStart}>{cta}</AccountButton>
+    {!signedIn && <p className="account-footnote account-trial-signin">Already have an account? <button className="account-link" onClick={onSignIn}>Sign in</button></p>}
   </aside>;
 }
 
@@ -202,7 +206,16 @@ function RuntimeOwner({ client, userId, generation, paid, page, onPage }: { clie
     setDraft(value); const saved = saveExamOnboarding(storage, STAGING, userId, value); setStorageError(!saved); return saved;
   }
   function renderDashboard(controls: ExamDashboardControls) {
-    if (paid || controls.canRecover) return controls.fullSetup;
+    if ((paid && access?.canStartStandard === true) || controls.canRecover) return controls.fullSetup;
+    const lifecycle = controls.trialLifecycle;
+    if (!lifecycle || lifecycle.state === "reserved" || lifecycle.state === "consumed") {
+      return controls.withSetup(<aside className="account-trial-panel surface" aria-label="Trial exam status">
+        <span className="account-eyebrow">Trial Exam</span>
+        <h3>{!lifecycle ? "Checking your trial" : lifecycle.state === "consumed" ? "Your trial exam is complete" : lifecycle.requiresSupport ? "Your marking needs assistance" : lifecycle.gradingStatus === "failed" ? "Your marking needs another try" : "Your exam is being marked"}</h3>
+        <p role="status">{!lifecycle ? "We couldn’t confirm your trial status. Please try again." : lifecycle.state === "consumed" ? "Your results, explanations and saved Error log remain available." : lifecycle.requiresSupport ? "Your answers are saved. Please contact us so we can review the marking problem." : lifecycle.gradingStatus === "failed" ? "Your answers are saved. Open your result to check marking and retry when available." : "Your answers are saved. You can review your exam while marking finishes."}</p>
+        {lifecycle?.attemptId ? <AccountButton onClick={controls.openTrialResult}>Latest result</AccountButton> : <AccountButton onClick={controls.refreshTrial}>Retry</AccountButton>}
+      </aside>);
+    }
     const next = page === "start" ? draft.complete ? "setup" : "about" : page;
     if (next === "about") return <div className="account-onboarding"><AccountBack onBack={() => onPage("exam")} /><TrialStepper step={1} onStep={() => { document.querySelector<HTMLFormElement>(".account-onboarding form")?.requestSubmit(); }} /><AboutYou value={draft} onChange={value => { save(value); }} storageError={storageError} onDone={value => { if (save(value)) onPage("setup"); }} /></div>;
     if (next === "setup") return <div className="account-onboarding account-trial-onboarding"><AccountBack onBack={() => onPage("exam")} /><TrialStepper step={2} onStep={() => onPage("about")} />{controls.trialSetup}<p className="account-footnote account-trial-later"><button type="button" className="account-link" onClick={() => onPage("exam")}>Do this later</button></p></div>;
@@ -212,7 +225,6 @@ function RuntimeOwner({ client, userId, generation, paid, page, onPage }: { clie
   if (!access) return <p role="status">Checking Exam access…</p>;
   return <AccountBrowserStorageProvider value={storage}>
     {access.status === "closed" && <p role="status" className="account-notice">You're signed in. The Exam pilot is not open yet.</p>}
-    {access.status === "allowed" && !paid && !access.allowedUnitCounts.includes(3) && <p role="status" className="account-notice">The three-case trial is unavailable for this pilot account. Existing saved attempts remain accessible.</p>}
-    <ExamPilotRuntime client={ownedClient} userId={userId} canStart={access.status === "allowed"} allowedUnitCounts={paid ? access.allowedUnitCounts : access.allowedUnitCounts.filter(n => n === 3)} customisationCategories={paid ? access.customisationCategories : []} renderDashboard={renderDashboard} />
+    <ExamPilotRuntime onReturnToDashboard={() => onPage("exam")} trialAccessMessage={access.status === "closed" ? "The Exam pilot is currently closed." : undefined} trialAvailability={access.trialAvailability ?? "error"} onRetryTrial={() => setRevision(n => n + 1)} client={ownedClient} userId={userId} canStartStandard={access.canStartStandard === true} limitedDashboard={!paid || access.canStartStandard !== true} canStart={access.status === "allowed"} allowedUnitCounts={paid ? access.allowedUnitCounts : access.allowedUnitCounts.filter(n => n === 3)} customisationCategories={paid ? access.customisationCategories : []} renderDashboard={renderDashboard} />
   </AccountBrowserStorageProvider>;
 }

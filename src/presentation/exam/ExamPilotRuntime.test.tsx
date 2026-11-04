@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { createMemoryRouter, RouterProvider, useLocation, useNavigate } from "react-router-dom";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ExamSittingProvider } from "./ExamSittingContext";
@@ -29,8 +29,8 @@ function historyPage(rows: any[] = []) {
  summary: { submitted: rows.length, average: null, best: null, trend: [], totalCases: rows.reduce((n,r)=>n+r.caseCount,0), awaiting: rows.length, pending: rows.length } };
 }
 function row(id: string, kind = "mock", exclusions: string[] = []) { return { id, createdAt: "2026-10-05T00:00:00Z", presentedAt: null, finishedAt: "2026-10-05T00:10:00Z", marksAvailable: 4, marksAwarded: null, caseCount: 3, examKind: kind, excludedCategories: exclusions, gradingStatus: "pending", canRetryGrading: false }; }
-async function mount(unitCount = 3, customisationCategories: typeof categories = [], allowedUnitCounts?: number[], initialEntries?: Array<{ pathname: string; state?: unknown }>, trial = false) {
- router = createMemoryRouter([{ path: "/", element: <ExamSittingProvider><ExamPilotRuntime client={client} userId="test-owner" canStart unitCount={unitCount} allowedUnitCounts={allowedUnitCounts} customisationCategories={customisationCategories} renderDashboard={trial ? controls => controls.trialSetup : undefined} /></ExamSittingProvider> }, { path: "/away", element: <p>Away</p> }], { initialEntries });
+async function mount(unitCount = 3, customisationCategories: typeof categories = [], allowedUnitCounts?: number[], initialEntries?: Array<{ pathname: string; state?: unknown }>, trial = false, limitedDashboard = false, trialAvailability: "ready" | "disabled" | "error" = "ready", canStart = true) {
+ router = createMemoryRouter([{ path: "/", element: <ExamSittingProvider><ExamPilotRuntime canStartStandard trialAvailability={trialAvailability} client={client} userId="test-owner" canStart={canStart} limitedDashboard={limitedDashboard} unitCount={unitCount} allowedUnitCounts={allowedUnitCounts} customisationCategories={customisationCategories} renderDashboard={trial ? controls => controls.trialSetup : undefined} /></ExamSittingProvider> }, { path: "/away", element: <p>Away</p> }], { initialEntries });
  await act(async () => { root.render(<RouterProvider router={router} />); });
 }
 async function click(text: string) {
@@ -44,6 +44,7 @@ beforeEach(() => {
  invoke.mockImplementation(async (_name, { body: { operation, input } }) => {
    if (operation === "preference_read") return { data: { feedbackTone: savedFeedbackTone } };
    if (operation === "preference_update") { savedFeedbackTone = input.feedbackTone; return { data: { feedbackTone: savedFeedbackTone } }; }
+   if (operation === "trial_status") return { data: { state: "available", attemptId: null, gradingStatus: null, canRetryGrading: false, requiresSupport: false, retryAvailableAt: null } };
    if (operation === "current") return { data: { attempt: null } };
    if (operation === "history_page") return { data: historyPage() };
    if (operation === "start") attempt = { ...attempt, examKind: input.examKind, excludedCategories: input.excludedCategories };
@@ -222,6 +223,7 @@ it("opens a saved example's exact historical Question and Part, then returns to 
   invoke.mockImplementation(async (_name, { body: { operation, input } }) => {
     if (operation === "preference_read") return { data: { feedbackTone: savedFeedbackTone } };
    if (operation === "preference_update") { savedFeedbackTone = input.feedbackTone; return { data: { feedbackTone: savedFeedbackTone } }; }
+   if (operation === "trial_status") return { data: { state: "available", attemptId: null, gradingStatus: null, canRetryGrading: false, requiresSupport: false, retryAvailableAt: null } };
    if (operation === "current") return { data: { attempt: null } };
     if (operation === "history_page") return { data: historyPage([row(id)]) };
     if (operation === "error_log_list") return { data: { ...log, attemptId: input.attemptId ?? null } };
@@ -265,6 +267,7 @@ it("derives connected controls from frozen mappings and confirms saves for only 
   invoke.mockImplementation(async (_name, { body: { operation, input } }) => {
     if (operation === "preference_read") return { data: { feedbackTone: savedFeedbackTone } };
    if (operation === "preference_update") { savedFeedbackTone = input.feedbackTone; return { data: { feedbackTone: savedFeedbackTone } }; }
+   if (operation === "trial_status") return { data: { state: "available", attemptId: null, gradingStatus: null, canRetryGrading: false, requiresSupport: false, retryAvailableAt: null } };
    if (operation === "current") return { data: { attempt: null } };
     if (operation === "history_page") return { data: historyPage([row(id)]) };
     if (operation === "error_log_list") return { data: log(input.attemptId ?? null) };
@@ -544,7 +547,7 @@ it("blocks Begin while a tone save fails and retries the selected preference", a
  expect(invoke.mock.calls.filter(c=>c[1].body.operation==="start")).toHaveLength(1);
 });
 
-it("uses the shared trial builder with locked upgrades and starts three standard cases with Professional feedback", async () => {
+it("uses the shared trial builder with locked upgrades and starts the trial paper with Professional feedback", async () => {
  savedFeedbackTone = "ruthless";
  await mount(5, categories, [3, 5], undefined, true);
  expect(container.textContent).toContain("Your Trial Session");
@@ -566,15 +569,174 @@ it("uses the shared trial builder with locked upgrades and starts three standard
  await act(async () => timer.click());
  await click("Begin Trial Exam");
  const start = invoke.mock.calls.find(c => c[1].body.operation === "start")![1].body.input;
- expect(start).toMatchObject({ examKind: "mock", unitCount: 3, pressureUnit: "mmHg", excludedCategories: [] });
+ expect(start).toMatchObject({ purpose: "trial", examKind: "mock", unitCount: 3, pressureUnit: "mmHg", excludedCategories: [] });
  expect(JSON.parse(localStorage.getItem("abgm-exam-display-clpfecuohwzwrgmqzeos-test-owner")!)).toEqual({ showTimer: false, showRanges: true });
  expect(savedFeedbackTone).toBe("professional");
  expect(invoke.mock.calls.findIndex(c => c[1].body.operation === "preference_update")).toBeLessThan(invoke.mock.calls.findIndex(c => c[1].body.operation === "start"));
 });
-it("keeps trial start disabled when three-case access is unavailable", async () => {
+it("trial paper count is independent of ordinary five-case configuration", async () => {
  await mount(5, categories, [5], undefined, true);
- const begin = [...container.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === "Begin Trial Exam")!;
- expect(begin.disabled).toBe(true);
- await act(async () => begin.click());
- expect(invoke.mock.calls.some(c => c[1].body.operation === "start")).toBe(false);
+ await click("Begin Trial Exam");
+ expect(invoke.mock.calls.find(c=>c[1].body.operation==='start')![1].body.input).toMatchObject({purpose:'trial',unitCount:3});
+});
+
+it.each([false, true])("keeps existing dashboard controls when limitedDashboard is %s", async limited => {
+ await mount(3, [], undefined, undefined, false, limited);
+ expect(Boolean(container.querySelector('.exam-mode-switch'))).toBe(!limited);
+ expect(Boolean(container.querySelector('.exam-subnav'))).toBe(!limited);
+ expect(container.textContent).toContain("Your Session");
+});
+
+it("shows ordinary result and history navigation for a non-paid user with a submitted exam", async () => {
+ const id = "12345678-1234-1234-1234-123456789abc";
+ attempt = { ...attempt, id, status: "submitted", finishedAt: "2026-10-07T00:00:00Z", parts: [{ partId: "part", status: "pending" }], feedback: {} };
+ const original = invoke.getMockImplementation()!;
+ invoke.mockImplementation(async (name, args) => args.body.operation === "history_page" ? { data: historyPage([row(id)]) } : original(name, args));
+ await mount(3, [], undefined, undefined, false, true);
+ const actions = () => [...container.querySelectorAll('.exam-actions button')].map(b => b.textContent?.trim());
+ expect(actions()).toEqual(["Latest result", "Past attempts"]);
+ expect(container.querySelector('.exam-mode-switch')).toBeNull();
+ await click("Past attempts");
+ expect(container.querySelector('.exam-history')).not.toBeNull();
+ await act(async () => { await router.navigate(-1); });
+ await click("Latest result");
+ expect(invoke.mock.calls.some(c => c[1].body.operation === "read" && c[1].body.input.attemptId === id)).toBe(true);
+});
+
+it("retains Error log access for non-paid users whose saved entries are archived", async () => {
+ const log = { catalogue: { topics: [{ id: "acid_base", label: "Acid–base" }], concepts: [{ id: "calculation", label: "Calculation", topicId: "acid_base", errorType: "Calculation", active: true }] },
+ entries: [{ conceptId: "calculation", status: "archived", exampleCount: 1, createdAt: "2026-10-07T00:00:00Z", lastSavedAt: "2026-10-07T00:00:00Z", archivedAt: "2026-10-07T00:00:00Z", reopenedAt: null }], attemptId: null, savedSources: {}, toReviewCount: 0 };
+ const original = invoke.getMockImplementation()!;
+ invoke.mockImplementation(async (name, args) => args.body.operation === "error_log_list" ? { data: log } : original(name, args));
+ await mount(3, [], undefined, undefined, false, true);
+ expect([...container.querySelectorAll('.exam-actions button')].map(b => b.textContent?.trim())).toEqual(["Error log"]);
+ await click("Error log");
+ expect(container.querySelector('.exam-error-log')).not.toBeNull();
+});
+
+it.each([['disabled', 'Trial exam is currently unavailable.'], ['error', 'We couldn’t prepare the trial exam. Please try again.']] as const)('trial %s blocks Begin without a fallback', async (status, message) => {
+ await mount(3, [], undefined, undefined, true, false, status);
+ expect(container.textContent).toContain(message);
+ expect([...container.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent?.trim()==='Begin Trial Exam')?.disabled).toBe(true);
+ expect([...container.querySelectorAll('button')].some(b=>b.textContent?.trim()==='Retry')).toBe(status==='error');
+ expect(invoke.mock.calls.some(c=>c[1].body.operation==='start')).toBe(false);
+});
+it.each(['EXAM_TRIAL_DISABLED','EXAM_TRIAL_CONFIGURATION'])('start rechecks availability and handles %s without phantom recovery', async code=>{
+ await mount(3, [], undefined, undefined, true);
+ const original=invoke.getMockImplementation()!;
+ invoke.mockImplementation(async(...args)=>args[1].body.operation==='start'?{data:null,error:{context:{json:async()=>({code})}}}:original(...args));
+ await click('Begin Trial Exam');
+ expect(container.textContent).toContain(code==='EXAM_TRIAL_DISABLED'?'Trial exam is currently unavailable.':'We couldn’t prepare the trial exam. Please try again.');
+ expect(container.textContent).not.toContain('Recover attempt');
+ expect(invoke.mock.calls.filter(c=>c[1].body.operation==='start')).toHaveLength(1);
+});
+
+it.each(['disabled','error'] as const)('existing trial recovery remains available while configuration is %s', async status=>{
+ await mount(3, [], undefined, undefined, true); await click('Begin Trial Exam');
+ await act(async()=>root.unmount()); root=createRoot(container);
+ await mount(3, [], undefined, undefined, true, false, status);
+ await click('Recover attempt');
+ expect(container.querySelector('textarea')).not.toBeNull();
+ expect(invoke.mock.calls.filter(c=>c[1].body.operation==='start')).toHaveLength(1);
+});
+
+it.each(['ready','disabled','error'] as const)('explains missing pilot permission independently of trial configuration %s', async status=>{
+ await mount(3, [], undefined, undefined, true, false, status, false);
+ expect(container.textContent).toContain('Trial access hasn’t been enabled for this account. Sign in with an invited pilot account.');
+ expect(container.textContent).not.toContain('Trial exam is currently unavailable.');
+ expect([...container.querySelectorAll('button')].some(b=>b.textContent?.trim()==='Retry')).toBe(false);
+ const begin=[...container.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent?.trim()==='Begin Trial Exam')!;
+ expect(begin.disabled).toBe(true); await act(async()=>begin.click());
+ expect(invoke.mock.calls.some(c=>c[1].body.operation==='start')).toBe(false);
+});
+
+it('returns a completed trial from setup to the dashboard with history and an empty Error log', async()=>{
+ const id='12345678-1234-1234-1234-123456789abc'; attempt={...attempt,id,purpose:'trial',trialVersion:'s1'};
+ const original=invoke.getMockImplementation()!;
+ const emptyLog={catalogue:{topics:[{id:'acid_base',label:'Acid–base'}],concepts:[]},entries:[],attemptId:null,savedSources:{},toReviewCount:0};
+ let gradingComplete = false;
+ invoke.mockImplementation(async(name,args)=>{
+  if (args.body.operation === 'trial_status' && attempt.status === 'submitted') {
+   return { data: { state: gradingComplete ? 'consumed' : 'reserved', attemptId: id, gradingStatus: gradingComplete ? 'completed' : 'pending', canRetryGrading: false, requiresSupport: false, retryAvailableAt: null } };
+  }
+  if(args.body.operation==='history_page') return {data:historyPage(attempt.status==='submitted'?[{...row(id),purpose:'trial',trialVersion:'s1'}]:[])};
+  if(args.body.operation==='error_log_list') return {data:emptyLog};
+  return original(name,args);
+ });
+ function AccountTrial() {
+  const location=useLocation(); const navigate=useNavigate();
+  return <ExamSittingProvider><ExamPilotRuntime canStartStandard client={client} userId="test-owner" canStart allowedUnitCounts={[3]} limitedDashboard trialAvailability="ready"
+   onReturnToDashboard={()=>{const query=new URLSearchParams(location.search);query.delete('account');void navigate({pathname:location.pathname,search:query.toString()});}}
+   renderDashboard={controls=>new URLSearchParams(location.search).get('account')==='setup'?controls.trialSetup:controls.withSetup(<p>Trial dashboard introduction</p>)} /></ExamSittingProvider>;
+ }
+ router=createMemoryRouter([{path:'/',element:<AccountTrial/>}],{initialEntries:['/?account=setup&return_to=trial']});
+ await act(async()=>root.render(<RouterProvider router={router}/>));
+ await click('Begin Trial Exam'); await click('Review exam'); await click('Submit anyway');
+ expect(container.textContent).toContain('Teaching explanation');
+ await click('Back to Exam Room');
+ expect(new URLSearchParams(router.state.location.search).has('account')).toBe(false);
+ expect(new URLSearchParams(router.state.location.search).get('return_to')).toBe('trial');
+ expect(container.textContent).toContain('Trial dashboard introduction');
+ expect(container.querySelector('.exam-trial-builder')).toBeNull();
+ const actions = () => [...container.querySelectorAll('.exam-actions button')].map(b => b.textContent?.trim());
+ expect(actions()).toEqual(['Latest result', 'Past attempts']);
+ gradingComplete = true;
+ await act(async () => window.dispatchEvent(new Event('focus')));
+ expect(actions()).toEqual(['Latest result', 'Past attempts', 'Error log']);
+ expect(localStorage.getItem('abgm-exam-pilot-clpfecuohwzwrgmqzeos-test-owner')).toBeNull();
+ await click('Past attempts'); expect(container.querySelectorAll('.exam-history-entry')).toHaveLength(1);
+ await act(async()=>container.querySelector<HTMLButtonElement>('.exam-attempt-open')!.click());
+ await click('Back to Exam Room'); expect(container.querySelector('.exam-history')).not.toBeNull();
+ await click('Back to Exam Room');
+ await click('Error log'); expect(container.querySelector('.exam-error-log h1')?.textContent).toBe('Error log');
+ expect(container.textContent).not.toContain('Loading your Error log');
+ expect(container.textContent).not.toContain('Couldn’t refresh your Error log');
+ expect(invoke.mock.calls.filter(c=>c[1].body.operation==='start')).toHaveLength(1);
+});
+
+it('keeps trial onboarding and its loading CTA visible until the first unit is ready', async()=>{
+ const original=invoke.getMockImplementation()!;
+ let releaseStart!:()=>void; let releasePresent!:()=>void;
+ const startGate=new Promise<void>(resolve=>{releaseStart=resolve;});
+ const presentGate=new Promise<void>(resolve=>{releasePresent=resolve;});
+ invoke.mockImplementation(async(...args)=>{
+  if(args[1].body.operation==='start') await startGate;
+  if(args[1].body.operation==='present') await presentGate;
+  return original(...args);
+ });
+ router=createMemoryRouter([{path:'/',element:<ExamSittingProvider><ExamPilotRuntime canStartStandard client={client} userId="test-owner" canStart allowedUnitCounts={[3]} limitedDashboard trialAvailability="ready"
+  renderDashboard={controls=>controls.canRecover?controls.fullSetup:controls.trialSetup}/></ExamSittingProvider>}]);
+ await act(async()=>root.render(<RouterProvider router={router}/>));
+ await click('Begin Trial Exam');
+ expect(localStorage.getItem('abgm-exam-pilot-clpfecuohwzwrgmqzeos-test-owner')).not.toBeNull();
+ // Access/history refreshes can rerender the wrapper after the start journal exists.
+ await act(async()=>window.dispatchEvent(new Event('focus')));
+ const preparing=()=>[...container.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent?.trim()==='Preparing your session');
+ expect(container.querySelector('.exam-trial-builder')).not.toBeNull();
+ expect(container.querySelector('.exam-subnav')).toBeNull();
+ expect(preparing()?.disabled).toBe(true);
+ expect(preparing()?.getAttribute('aria-busy')).toBe('true');
+ expect(preparing()?.querySelector('.figma-button__spinner')).not.toBeNull();
+ await act(async()=>preparing()!.click());
+ expect(invoke.mock.calls.filter(c=>c[1].body.operation==='start')).toHaveLength(1);
+ await act(async()=>releaseStart());
+ await act(async()=>window.dispatchEvent(new Event('focus')));
+ expect(container.querySelector('.exam-trial-builder')).not.toBeNull();
+ expect(container.querySelector('.exam-subnav')).toBeNull();
+ expect(preparing()).toBeTruthy();
+ expect(container.textContent).not.toContain('Recover attempt');
+ await act(async()=>releasePresent());
+ expect(container.querySelector('textarea')).not.toBeNull();
+ expect(preparing()).toBeUndefined();
+});
+it('offers trial recovery after an uncertain start failure instead of leaving a loading CTA', async()=>{
+ const original=invoke.getMockImplementation()!;
+ invoke.mockImplementation(async(...args)=>args[1].body.operation==='start'?{error:new Error('offline')}:original(...args));
+ router=createMemoryRouter([{path:'/',element:<ExamSittingProvider><ExamPilotRuntime canStartStandard client={client} userId="test-owner" canStart allowedUnitCounts={[3]} limitedDashboard trialAvailability="ready"
+  renderDashboard={controls=>controls.canRecover?controls.fullSetup:controls.trialSetup}/></ExamSittingProvider>}]);
+ await act(async()=>root.render(<RouterProvider router={router}/>));
+ await click('Begin Trial Exam');
+ expect(container.textContent).not.toContain('Preparing your session');
+ expect([...container.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent?.trim()==='Recover attempt')?.disabled).toBe(false);
+ expect(localStorage.getItem('abgm-exam-pilot-clpfecuohwzwrgmqzeos-test-owner')).not.toBeNull();
 });

@@ -112,7 +112,7 @@ export function ExamHistory({ history, attempts, filter, onFilterChange, onBack,
             {history.trend.map((score, index) => <span key={index} title={`${score}%`} aria-hidden="true" style={{ height: `${Math.max(12, score)}%` }} />)}
           </div>}
         </div>
-        <p className="exam-small">{unavailable ? "Scores unavailable" : history.trend.length ? `Last ${history.trend.length} sessions` : "No graded sittings yet"}</p>
+        <p className="exam-small">{unavailable ? "Scores unavailable" : history.trend.length ? `Last ${history.trend.length} sessions` : "Complete an exam to see your average score."}</p>
       </div>
       <div className="exam-history-stats">{stats.map(stat => <div key={stat.label}>
         <strong>{unavailable ? "—" : stat.value}{stat.note && <span className="exam-awaiting-dot" aria-hidden="true" />}</strong><span className="exam-eyebrow">{stat.label}</span>
@@ -145,7 +145,7 @@ export function ExamHistory({ history, attempts, filter, onFilterChange, onBack,
           <span className="exam-history-chevron" aria-hidden="true"><ChevronRightIcon /></span>
         </li>;
       })}</ul>
-      {!attempts.length && <p className="exam-empty">{loading ? "Loading your exams…" : unavailable ? "Your exams couldn’t be loaded. Please retry." : "No attempts in this filter yet."}</p>}
+      {!attempts.length && <p className="exam-empty">{loading ? "Loading your exams…" : unavailable ? "Your exams couldn’t be loaded. Please retry." : "Your completed exams will appear here"}</p>}
       <footer className="exam-history-footer"><span>Showing <strong>{visibleAttempts.length}</strong> of <strong>{unavailable ? "—" : total ?? attempts.length}</strong></span>{hasMore && <button type="button" className="figma-button figma-button--secondary" disabled={loading || busy} onClick={loadMore}>{loading ? "Loading…" : "Load more"}</button>}</footer>
     </Surface>
   </div>;

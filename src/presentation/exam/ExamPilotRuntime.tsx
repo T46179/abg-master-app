@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAppContext } from "../../app/AppProvider";
 import { ExamRuntimeError, ExamRuntimeSession, encodeAnswers, runtimeCall, toSitting, type RuntimeAttempt, type ExamKind } from "../../core/examRuntime";
-import type { CustomisationCategory } from "../../core/examAuth";
+import { parseTrialLifecycle, type TrialLifecycle, type CustomisationCategory, type TrialAvailability } from "../../core/examAuth";
 import { ExamSitting, ExitSittingDialog } from "./ExamSitting";
 import { sittingReducer, type SittingAction } from "./sittingModel";
 import { useExamSitting } from "./ExamSittingContext";
@@ -29,15 +29,18 @@ type ExamNavigation = { account: string; view: RoomView | "results"; attemptId?:
 export type ExamDashboardControls = {
   fullSetup: ReactNode;
   trialSetup: ReactNode;
+  trialLifecycle?: TrialLifecycle;
+  openTrialResult: () => void;
+  refreshTrial: () => void;
   withSetup: (content: ReactNode) => ReactNode;
   canRecover: boolean; ready: boolean; busy: boolean; canBegin: boolean;
   timed: boolean; showRanges: boolean;
   setTimed: (value: boolean) => void; setShowRanges: (value: boolean) => void;
   begin: () => void;
 };
-type PilotProps = { client: SupabaseClient; userId: string; canStart: boolean; unitCount?: number; allowedUnitCounts?: number[]; customisationCategories?: CustomisationCategory[]; environment?: string; renderDashboard?: (controls: ExamDashboardControls) => ReactNode };
+type PilotProps = { onReturnToDashboard?: () => void; trialAccessMessage?: string; trialAvailability?: TrialAvailability; onRetryTrial?: () => void; client: SupabaseClient; userId: string; canStart: boolean; canStartStandard?: boolean; limitedDashboard?: boolean; unitCount?: number; allowedUnitCounts?: number[]; customisationCategories?: CustomisationCategory[]; environment?: string; renderDashboard?: (controls: ExamDashboardControls) => ReactNode };
 
-export default function ExamPilotRuntime({ client, userId, canStart, unitCount, allowedUnitCounts, customisationCategories = [], environment = "clpfecuohwzwrgmqzeos", renderDashboard }: PilotProps) {
+export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessage, trialAvailability = "error", onRetryTrial, client, userId, canStart, canStartStandard = false, limitedDashboard = false, unitCount, allowedUnitCounts, customisationCategories = [], environment = "clpfecuohwzwrgmqzeos", renderDashboard }: PilotProps) {
   const browserStorage = useAccountBrowserStorage();
   const location = useLocation();
   const navigate = useNavigate();
@@ -52,6 +55,9 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
     });
   }
   function backToRoom() {
+    if (onReturnToDashboard && attempt?.status === "submitted" && resultOrigin.current === "exam") {
+      onReturnToDashboard(); return;
+    }
     if (navigation?.returnKey) void navigate(-1);
     else enterRoom(resultOrigin.current);
   }
@@ -86,6 +92,10 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
     const exclusions = item.excludedCategories ?? [];
     return `${label} · ${exclusions.length ? "Excluded: " + exclusions.map(id => customisationCategories.find(c => c.category_id === id)?.label ?? id).join(", ") : "All Parts included"}`;
   }
+  const [trialLifecycle, setTrialLifecycle] = useState<TrialLifecycle>();
+  const [trialFailure, setTrialFailure] = useState<TrialAvailability | null>(null);
+  useEffect(() => { setTrialFailure(null); }, [trialAvailability]);
+  const trialStatus = trialFailure ?? trialAvailability;
   const [attempt, setAttempt] = useState<RuntimeAttempt | null>(null);
   const [roomView, setRoomView] = useState<"exam" | "history" | "error-log">("exam");
   const [reviewPartId, setReviewPartId] = useState<string>();
@@ -133,7 +143,12 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; updateSitting({ type: "exit" }); }; }, [updateSitting]);
   function failure(cause: unknown) {
     const code = cause instanceof ExamRuntimeError ? cause.code : "EXAM_UNAVAILABLE";
+    if (code === "EXAM_TRIAL_DISABLED" || code === "EXAM_TRIAL_CONFIGURATION") {
+      setTrialFailure(code === "EXAM_TRIAL_DISABLED" ? "disabled" : "error"); setError(""); return;
+    }
     setError(/CONFLICT/.test(code) ? "This attempt changed in another tab. Your local answers are retained. Close the other tab before recovering."
+      : code === "EXAM_TRIAL_UNAVAILABLE" ? "Your trial has already been submitted. Return to Exam to review it."
+      : code === "EXAM_TRIAL_RELEASED" ? "This trial was released after a marking problem. Return to Exam to start its replacement."
       : code === "EXAM_DEVICE_REQUIRED" ? "This attempt can only be continued in the browser where it started. You can abandon it here."
       : code === "EXAM_INVALID_CONFIGURATION" ? "This Custom Exam configuration is unavailable. Refresh your access and try again."
       : /INVALID|ANSWER|SELECTION|NUMERIC|TEXT/.test(code) ? "The server could not accept an answer. Check numeric values and required selections before trying again."
@@ -144,6 +159,8 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
   async function loadRoom() {
     if (!session) return;
     const generation = ++roomGeneration.current;
+    const lifecycle = await session.call<unknown>("trial_status", {}).catch(() => undefined);
+    if (mounted.current && roomGeneration.current === generation) setTrialLifecycle(parseTrialLifecycle(lifecycle));
     const active = await session.call<{ attempt: { id: string } | null }>("current", {});
     if (mounted.current && roomGeneration.current === generation) { setCurrent(active.attempt?.id ?? null); setReady(true); }
   }
@@ -154,6 +171,11 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
     return () => { ++roomGeneration.current; window.removeEventListener("focus", focus); };
   }, [session, !!attempt]);
 
+  useEffect(() => {
+    if (attempt || trialLifecycle?.state !== "reserved") return;
+    const timer = window.setInterval(() => { if (document.visibilityState !== "hidden") void loadRoom().catch(() => undefined); }, 5000);
+    return () => window.clearInterval(timer);
+  }, [session, !!attempt, trialLifecycle?.state]);
   async function run(action: () => Promise<void>) {
     if (inFlight.current) return;
     inFlight.current = true; setBusy(true); setError("");
@@ -232,12 +254,12 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
     if (!session) return;
     if (!recover) {
       if (trial) {
-        if (!canStart || !counts.includes(3)) return;
+        if (!canStart || trialStatus !== "ready" || trialLifecycle?.state !== "available") return;
         if (!await feedbackPreference.confirmForStart("professional")) throw new Error("Could not prepare trial feedback. Please try again.");
       } else if (!await feedbackPreference.confirmForStart()) return;
     }
     resultOrigin.current = "exam";
-    let next = recover ? await session.recover() : await session.start(state.sessionState?.pressureUnit ?? "mmHg", { examKind: trial ? "mock" : examKind, unitCount: trial ? 3 : setupState.caseCount, showTimer: setupState.timed, showRanges: setupState.showRanges, excludedCategories: !trial && examKind === "custom" ? customExclusions.filter(id => customisationCategories.some(c => c.category_id === id)) : [] });
+    let next = recover ? await session.recover() : await session.start(state.sessionState?.pressureUnit ?? "mmHg", { purpose: trial ? "trial" : "standard", examKind: trial ? "mock" : examKind, unitCount: trial ? 3 : setupState.caseCount, showTimer: setupState.timed, showRanges: setupState.showRanges, excludedCategories: !trial && examKind === "custom" ? customExclusions.filter(id => customisationCategories.some(c => c.category_id === id)) : [] });
     if (next.status === "active") {
       if (session.journal?.submission) next = await session.submit(session.journal.submission.answers);
       else {
@@ -279,6 +301,9 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [sitting?.phase]);
+  useEffect(() => {
+    if (attempt?.status === "submitted" && attempt.gradingStatus === "completed") void loadRoom().catch(() => undefined);
+  }, [attempt?.id, attempt?.gradingStatus]);
   const hasPendingGrades = attempt?.status === "submitted" && attempt.parts?.some(p => p.status === "pending");
   useEffect(() => {
     if (!session || !attempt || !hasPendingGrades) return;
@@ -297,7 +322,9 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
     timer = setTimeout(refresh, 3000);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [session, attempt?.id, hasPendingGrades]);
-  function dashboard(setupContent?: ReactNode, trial = false) { if (!session) return null; return (<ExamDashboard trial={trial} setupContent={setupContent} hideModeSwitch={setupContent !== undefined}
+  function dashboard(setupContent?: ReactNode, trial = false) { if (!session) return null; return (<ExamDashboard trial={trial} setupContent={setupContent}
+          hideModeSwitch={limitedDashboard}
+          navigationVisibility={limitedDashboard ? { latestResult: Boolean(history.latestAttemptId), pastAttempts: Boolean(history.latestAttemptId), errorLog: trialLifecycle?.state === "consumed" || Boolean(errorLog.data?.entries.length) } : undefined}
           feedbackPreference={feedbackPreference}
           pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"}
           onPressureUnitChange={pressureUnit => {
@@ -307,7 +334,7 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
           connected state={{ ...setupState, ...(trial ? { caseCount: 3, mode: "mock" as const } : {}), examKind: trial ? "mock" : examKind, excludedCategories: customExclusions.filter(id => id === "mechanical_ventilation" || id === "toxicology_management") }}
           drills={unavailableDrills} drillsUnavailable customDisabled={!customisationCategories.length} config={setupConfig}
           setup={buildSetupPresentation(setupState.questionCount, setupState.caseCount, setupState.timed, setupConfig)}
-          caseCounts={counts} launching={preparing} beginDisabled={!canStart || !ready || !counts.includes(trial ? 3 : setupState.caseCount) || (trial && (!feedbackPreference.ready || feedbackPreference.busy))} setupLocked={busy || !ready || !!current || !!session.journal}
+          caseCounts={trial ? [3] : counts} launching={preparing} beginDisabled={!canStart || !ready || (trial ? (trialStatus !== "ready" || trialLifecycle?.state !== "available") : (!canStartStandard || !counts.includes(setupState.caseCount))) || (trial && (!feedbackPreference.ready || feedbackPreference.busy))} setupLocked={busy || !ready || !!current || !!session.journal}
           latestDisabled={busy || !history.latestAttemptId} errorLogCount={errorLog.error ? undefined : errorLog.data?.toReviewCount}
           onSelectDrill={key => setSetupState(old => ({ ...old, selectedDrill: key, selectedRule: unavailableDrills.find(d => d.key === key)?.rules?.[0]?.key ?? "" }))}
           onChange={patch => {
@@ -325,6 +352,10 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
             <p>Would you like to recover your previous session?</p>
             <button className="figma-button exam-primary" disabled={busy || !ready} onClick={() => void run(() => openAttempt(true))}>Recover attempt</button>
             {current && <button className="figma-button figma-button--secondary" disabled={busy} onClick={() => setExitOpen(true)}>Abandon attempt</button>}
+          </div> : trial && (!canStart || trialStatus !== "ready" || trialLifecycle?.state !== "available") ? <div role={canStart && trialStatus === "error" ? "alert" : "status"}>
+            <button className="figma-button exam-primary exam-start" disabled>Begin Trial Exam</button>
+            <p>{!canStart ? trialAccessMessage ?? "Trial access hasn’t been enabled for this account. Sign in with an invited pilot account." : trialLifecycle && trialLifecycle.state !== "available" ? "Your trial exam has already been started or submitted. Return to Exam to continue or review it." : trialStatus === "disabled" ? "Trial exam is currently unavailable." : "We couldn’t prepare the trial exam. Please try again."}</p>
+            {canStart && trialStatus === "error" && <button className="exam-pilot-button" disabled={busy} onClick={() => { setTrialFailure(null); onRetryTrial?.(); }}>Retry</button>}
           </div> : undefined} />); }
   if (!session) return <p role="alert">Browser storage is unavailable or unreadable. Enable storage before starting an exam.</p>;
   return <section aria-label="Exam pilot">
@@ -374,8 +405,8 @@ export default function ExamPilotRuntime({ client, userId, canStart, unitCount, 
           onOpen={id => void run(() => openResult(id, "history"))}
           onRetry={id => void run(async () => { await session.call<RuntimeAttempt>("retry_grading", { attemptId: id }); await history.refresh(); })}
           onLoadMore={history.data?.page.nextCursor ? () => void history.loadMore() : undefined}
-          total={history.data?.page.total} loading={history.loading} busy={busy} /> : renderDashboard ? renderDashboard({ fullSetup: dashboard(), trialSetup: dashboard(undefined, true), withSetup: dashboard,
-          canRecover: Boolean(current || session.journal), ready, busy: busy || preparing,
+          total={history.data?.page.total} loading={history.loading} busy={busy} /> : renderDashboard ? renderDashboard({ refreshTrial: () => void run(loadRoom), trialLifecycle, openTrialResult: () => { if (trialLifecycle?.attemptId) void run(() => openResult(trialLifecycle.attemptId!, "exam")); }, fullSetup: dashboard(), trialSetup: dashboard(undefined, true), withSetup: dashboard,
+          canRecover: !preparing && Boolean(current || session.journal), ready, busy: busy || preparing,
           canBegin: canStart && ready && !busy && !preparing && counts.includes(setupState.caseCount) && feedbackPreference.canBegin,
           timed: setupState.timed, showRanges: setupState.showRanges,
           setTimed: timed => persistDisplay(timed, setupState.showRanges),

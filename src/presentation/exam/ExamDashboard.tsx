@@ -38,34 +38,38 @@ interface DashboardProps {
   drillsUnavailable?: boolean;
   customDisabled?: boolean;
   setupContent?: ReactNode;
-  hideModeSwitch?: boolean;
   trial?: boolean;
+  hideModeSwitch?: boolean;
+  navigationVisibility?: { latestResult: boolean; pastAttempts: boolean; errorLog: boolean };
 }
 
 export function ExamDashboard(props: DashboardProps) {
   const { state, onChange } = props;
   if (props.trial) return <MockExam {...props} />;
+  const showLatest = props.navigationVisibility?.latestResult ?? true;
+  const showHistory = props.navigationVisibility?.pastAttempts ?? true;
+  const showErrorLog = props.navigationVisibility?.errorLog ?? (props.connected || props.errorLogCount !== undefined);
   return <>
-    <div className="exam-subnav">
+    {(showLatest || showHistory || showErrorLog) && <div className="exam-subnav">
       <div className="exam-actions">
-        <button type="button" className="figma-button figma-button--secondary exam-pill" disabled={props.latestDisabled || props.launching} onClick={() => onChange({ view: "results" })}>
+        {showLatest && <button type="button" className="figma-button figma-button--secondary exam-pill" disabled={props.latestDisabled || props.launching} onClick={() => onChange({ view: "results" })}>
           <ReportIcon /> Latest result
-        </button>
-        <button type="button" className="figma-button figma-button--secondary exam-pill" onClick={() => onChange({ view: "history" })}>
+        </button>}
+        {showHistory && <button type="button" className="figma-button figma-button--secondary exam-pill" onClick={() => onChange({ view: "history" })}>
           <HistoryIcon /> Past attempts
-        </button>
-        {(props.connected || props.errorLogCount !== undefined) && <button type="button" className="figma-button figma-button--secondary exam-pill" onClick={() => onChange({ view: "error-log" })}>
+        </button>}
+        {showErrorLog && <button type="button" className="figma-button figma-button--secondary exam-pill" onClick={() => onChange({ view: "error-log" })}>
           <FlagIcon /> Error log {props.errorLogCount !== undefined && props.errorLogCount > 0 && <span className="exam-error-log-count">{props.errorLogCount}</span>}
         </button>}
       </div>
-    </div>
+    </div>}
     <ExamPageHeading />
     {!props.hideModeSwitch && <div className="exam-mode-switch">
       <SegmentedControl label="Exam mode" value={state.mode}
         options={[{ value: "mock", label: "Exam" }, { value: "drills", label: "Focused Drills" }]}
         onChange={mode => onChange({ mode })} />
     </div>}
-    {state.mode === "drills" ? <FocusedDrills {...props} /> : <MockExam {...props} />}
+    {!props.hideModeSwitch && state.mode === "drills" ? <FocusedDrills {...props} /> : <MockExam {...props} />}
   </>;
 }
 
@@ -228,16 +232,16 @@ function Feature({ icon, title, body, info }: { icon: ReactElement; title: strin
   </div>;
 }
 
-export function ExamPageHeading() { return (<header className="exam-page-heading">
+export function ExamPageHeading({ guest = false }: { guest?: boolean }) { return (<header className="exam-page-heading">
       <h1>Preparing for exams?</h1>
-      <p>Consistent, spaced practice works best. Try one exam per day, review your mistakes, then use Focused Drills to target your weak areas.</p>
+      <p>{guest ? "Practise exam-style clinical scenarios, develop your reasoning, and learn from detailed marking and personalised feedback. Start with a free trial exam." : "Consistent, spaced practice works best. Try one exam per day, review your mistakes, then use Focused Drills to target your weak areas."}</p>
     </header>); }
 
-export function ExamOverview({ state, pressureUnit }: Pick<DashboardProps, "state" | "pressureUnit">) {
+export function ExamOverview({ state, pressureUnit, guest = false }: Pick<DashboardProps, "state" | "pressureUnit"> & { guest?: boolean }) {
   const custom = state.examKind === "custom";
   return (<Surface className="exam-mock-overview">
       <div className="exam-mock-hero">
-        <div className="exam-hero-top"><span className="exam-hero-badge">Exam mode</span></div>
+        <div className="exam-hero-top"><span className="exam-hero-badge">{guest ? "Trial Exam Preview" : "Exam mode"}</span></div>
         <div className="exam-hero-copy" key={state.examKind}>
           <h2>{custom ? "Build your own exam" : "Your Session"}</h2>
           <p>{custom

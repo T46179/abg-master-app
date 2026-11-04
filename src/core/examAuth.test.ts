@@ -69,7 +69,7 @@ describe("Exam permanent authentication", () => {
   });
   it("gets authorization from the endpoint without supplying an account ID", async () => {
     const { client, functions } = fixture();
-    expect(await readExamAccess(client)).toEqual({ status: "allowed", allowedUnitCounts: [3] });
+    expect(await readExamAccess(client)).toEqual({ canStartStandard: false, trialLifecycle: undefined, status: "allowed", allowedUnitCounts: [3], trialAvailability: "error" });
     expect(functions.invoke).toHaveBeenCalledWith("exam-access", { body: {} });
   });
   it("validates category support and retains catalogue labels", async () => {
@@ -87,4 +87,9 @@ describe("Exam permanent authentication", () => {
     functions.invoke.mockResolvedValue({ data, error: null });
     await expect(readExamAccess(client)).rejects.toThrow("could not be checked");
   });
+});
+
+it('does not infer a disabled paper from a missing pilot invitation', async()=>{
+ const client={functions:{invoke:async()=>({data:{status:'not_invited',allowedUnitCounts:[]},error:null})}} as unknown as SupabaseClient;
+ expect(await readExamAccess(client)).toEqual({canStartStandard:false,trialLifecycle:undefined,status:'not_invited',allowedUnitCounts:[],trialAvailability:'error'});
 });

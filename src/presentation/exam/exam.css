@@ -91,6 +91,12 @@
 .exam-feature .exam-icon-badge { width: 2.25rem; height: 2.25rem; background: var(--color-surface-muted); color: var(--color-text-soft); }
 .exam-feature h4 { margin-top: .75rem; }
 .exam-feature p { margin-top: .25rem; color: var(--color-text-muted); font-size: .8125rem; line-height: 1.45; }
+@media (max-width: 639px) {
+  .exam-feature { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); column-gap: 1rem; align-content: start; }
+  .exam-feature > .exam-icon-badge { grid-column: 1; grid-row: 1 / 3; }
+  .exam-feature h4 { grid-column: 2; margin-top: 0; }
+  .exam-feature p { grid-column: 2; }
+}
 .exam-back { display: inline-flex; align-items: center; gap: .375rem; margin-bottom: 2rem; padding: 0; border: 0; background: transparent; color: var(--color-text-muted) !important; font-size: .84375rem; font-weight: 500; }
 .exam-result-heading { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem; }
 .exam-target { display: inline-flex; align-items: center; gap: .5rem; padding: .375rem .875rem; border-radius: 999px; color: var(--exam-coral); background: color-mix(in srgb, var(--exam-coral) 10%, var(--color-surface)); font-size: .8125rem; font-weight: 600; }
@@ -343,7 +349,13 @@
   .exam-history-chevron { display: flex; }
 }
 @media (min-width: 1024px) {
-  .exam-mock-workspace { grid-template-columns: minmax(0, 1fr) 400px; }
+  .exam-mock-workspace { grid-template-columns: minmax(0, 1fr) 400px; align-items: stretch; }
+  .exam-mock-workspace > .exam-mock-overview { display: flex; flex-direction: column; }
+  .exam-mock-workspace > .exam-mock-overview > .exam-mock-hero { flex: 1; }
+  .exam-mock-workspace > .exam-sitting-setup { display: flex; flex-direction: column; }
+  .exam-mock-workspace > .exam-sitting-setup .exam-suggested-time { margin-bottom: 1.25rem; }
+  .exam-mock-workspace > .exam-sitting-setup > .exam-start,
+  .exam-mock-workspace > .exam-sitting-setup > .exam-recovery-actions { margin-top: auto; }
 }
 @media (max-width: 767px) {
   .exam-history-entry { gap: .75rem; }
@@ -393,6 +405,8 @@
 
 /* Trial onboarding reuses the full exam builder at its desktop panel width. */
 .exam-screen .exam-trial-builder { width:100%; max-width:400px; margin-inline:auto; grid-template-columns:minmax(0,1fr); }
+.exam-trial-builder .exam-start { position:relative; justify-content:center; text-align:center; }
+.exam-trial-builder .exam-start > svg { position:absolute; right:1.25rem; }
 .exam-trial-builder .exam-build-heading .exam-eyebrow { margin:0 0 .75rem; }
 .exam-trial-builder .exam-trial-intro { margin:.75rem 0 0; font-size:.875rem; line-height:1.6; color:var(--color-text-muted); }
 .exam-trial-builder .exam-kind-picker button:disabled, .exam-trial-builder .exam-case-picker button:disabled { color:var(--color-text-muted); opacity:.65; cursor:not-allowed; }

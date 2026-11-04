@@ -111,3 +111,16 @@ it("retains selected count and display settings across an uncertain start and re
  expect(restored.journal).toMatchObject({showTimer:false,showRanges:false});
  restored.setDisplayPreferences(true,false);expect(JSON.parse(h.entries.get("owner")!)).toMatchObject({showTimer:true,showRanges:false});
 });
+
+it('preserves trial purpose after a lost start and reload', async () => {
+ const h=harness(); h.invoke.mockRejectedValueOnce(new Error('offline'));
+ await expect(h.session.start('kPa',{purpose:'trial',examKind:'mock',unitCount:3,excludedCategories:[]})).rejects.toThrow();
+ const restored=new ExamRuntimeSession(h.call,h.storage,'owner'); await restored.recover();
+ expect(h.invoke.mock.calls.filter(c=>c[0]==='start').map(c=>c[1].purpose)).toEqual(['trial','trial']);
+ expect(h.invoke.mock.calls[1][1].requestId).toBe(h.invoke.mock.calls[0][1].requestId);
+});
+it.each(['EXAM_TRIAL_DISABLED','EXAM_TRIAL_CONFIGURATION'])('clears a definitively uncreated trial on %s', async code=>{
+ const h=harness(); h.invoke.mockRejectedValueOnce(new ExamRuntimeError(code));
+ await expect(h.session.start('kPa',{purpose:'trial',examKind:'mock',unitCount:3,excludedCategories:[]})).rejects.toThrow();
+ expect(h.session.journal).toBeNull(); expect(h.entries.has('owner')).toBe(false);
+});

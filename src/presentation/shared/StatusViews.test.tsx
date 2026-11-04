@@ -27,8 +27,8 @@ describe("AppRouteErrorView", () => {
   it("offers a generic full refresh of the current URL", () => {
     act(() => root.render(<AppRouteErrorView />));
 
-    const refreshLink = container.querySelector<HTMLAnchorElement>("a.figma-button");
-    expect(container.textContent).toContain("ABG Master needs a refresh");
+    const refreshLink = container.querySelector<HTMLAnchorElement>("a.status-panel__refresh");
+    expect(container.textContent).toContain("Let’s get you back on track");
     expect(container.textContent).toContain("Refresh ABG Master to continue.");
     expect(refreshLink?.href).toBe(window.location.href);
   });
