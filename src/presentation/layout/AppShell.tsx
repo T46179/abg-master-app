@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
+import { useBackgroundAccount } from "../../app/AccountLoading";
+import { useOptionalSiteAccount } from "../../app/SiteAccountProvider";
+import { accountPageFromPath } from "../../core/accountRoutes";
+import { AccountWaiting } from "../shared/AccountWaiting";
 import { PROTECTED_PRACTICE_MESSAGES } from "../../app/protectedPracticeMessages";
 import { SeoMetadata } from "../../app/seo";
 import { trackEvent, trackPageView } from "../../core/analytics";
@@ -18,7 +22,8 @@ import { ExamSittingProvider, useExamSitting } from "../exam/ExamSittingContext"
 import { getMobileNavProgress } from "./mobileNavProgress";
 
 export function AppShell() {
-  return <ExamSittingProvider><AppShellContent /></ExamSittingProvider>;
+  const site = useOptionalSiteAccount();
+  return <ExamSittingProvider key={site?.identity.generation}><AppShellContent /></ExamSittingProvider>;
 }
 
 function AppShellContent() {
@@ -26,6 +31,21 @@ function AppShellContent() {
   const examActive = Boolean(sitting && sitting.phase !== "complete");
   const { state, patchSessionState, retryPendingSubmissionNow, discardPendingSubmission } = useAppContext();
   const location = useLocation();
+  const background = useBackgroundAccount();
+  const site = useOptionalSiteAccount();
+  const accountRoute = Boolean(accountPageFromPath(location.pathname)) || location.pathname === "/dev/exam-pilot";
+  const needsGuest = /^\/(practice|dashboard|insights|learn|calibration|featured-case)(\/|$)/.test(location.pathname);
+  const [guestError, setGuestError] = useState(false);
+  const [guestAttempt, setGuestAttempt] = useState(0);
+  useEffect(() => {
+    setGuestError(false);
+    if (!background || !needsGuest || site?.identity.status !== "signed_out") return;
+    let cancelled = false;
+    void site.account.continueAsGuest().catch(() => { if (!cancelled) setGuestError(true); });
+    return () => { cancelled = true; };
+  }, [Boolean(background), needsGuest, site?.identity.status, site?.account, guestAttempt]);
+  const accountWaiting = Boolean(background && (!background.ready || site?.identity.status === "checking" ||
+    (!accountRoute && (background.error || (needsGuest && site?.identity.status === "signed_out")))));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const learnOpenedTrackedRef = useRef(false);
@@ -62,7 +82,7 @@ function AppShellContent() {
   });
 
   useEffect(() => {
-    if (shouldHoldLearnerRoute || shouldRedirectToCalibration) return;
+    if (accountWaiting || shouldHoldLearnerRoute || shouldRedirectToCalibration) return;
 
     const pathSegment = location.pathname.split("/")[1] || "landing";
     const baseViewName = pathSegment === "dashboard" ? "dashboard" : pathSegment;
@@ -84,6 +104,7 @@ function AppShellContent() {
     trackPageView(viewName);
   }, [
     location.pathname,
+    accountWaiting,
     patchSessionState,
     shouldHoldLearnerRoute,
     shouldRedirectToCalibration,
@@ -175,7 +196,13 @@ function AppShellContent() {
         ))}
       </div>
 
-      {state.appStatus.blocking ? (
+      {accountWaiting && !state.appStatus.blocking ? (
+        <main className="app-shell__page status-screen"><AccountWaiting attempt={(background?.attempt ?? 0) + guestAttempt}
+          error={background?.error ? "We couldn't check your account." : guestError ? "We couldn't start guest Practice." : undefined}
+          retry={() => { if (site?.identity.status === "signed_out") setGuestAttempt(n => n + 1); else background?.retry(); }} />
+          {background?.error && <p><a href="/sign-in">Sign in</a> or <a href="/forgot-password">recover your account</a></p>}
+        </main>
+      ) : state.appStatus.blocking ? (
         <main className="app-shell__page status-screen">
           <Surface className="status-panel">
             <span className="status-panel__eyebrow">Application blocked</span>

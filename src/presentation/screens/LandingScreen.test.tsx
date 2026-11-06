@@ -190,6 +190,18 @@ describe("LandingScreen", () => {
     expect(trackEvent.mock.calls.filter(call => call[0] === "landing_cta_clicked")).toHaveLength(4);
   });
 
+  it("keeps landing content and analytics stable as account data resolves", () => {
+    currentState = { ...currentState, status: "idle", userId: null };
+    renderScreen();
+    const heading = container.querySelector("h1");
+    currentState = { ...currentState, status: "ready", userId: "returning-user" };
+    renderScreen();
+    expect(container.querySelector("h1")).toBe(heading);
+    expect(trackEvent.mock.calls.filter(call => call[0] === "landing_viewed")).toHaveLength(1);
+    expect(trackPageView.mock.calls.filter(call => call[0] === "landing")).toHaveLength(1);
+    expect(preloadProtectedPracticeSlots).not.toHaveBeenCalled();
+  });
+
   it("shows learn in navigation while keeping launch content visible", () => {
     renderScreen();
 

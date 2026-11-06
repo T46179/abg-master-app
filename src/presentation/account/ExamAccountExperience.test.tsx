@@ -51,6 +51,44 @@ async function login(id = "a") {
   await act(async () => container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))); await flush();
 }
 async function menu() { await act(async () => host.querySelector<HTMLButtonElement>("button")!.click()); }
+it("shows pending identity as loading rather than an account error", async () => {
+  current = { id: "a", email: "a@example.test" };
+  auth.getUser.mockImplementation(() => new Promise(() => {}));
+  await render();
+  expect(container.textContent).not.toContain("couldn't check your account");
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  expect(container.textContent).toContain("Connecting");
+});
+
+it("retries slow profile loading without restarting identity or access checks", async () => {
+  current = { id: "a", email: "a@example.test" };
+  let finish!: (value: unknown) => void;
+  profileInvoke.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  await render();
+  const verificationCalls = auth.getUser.mock.calls.length;
+  const accessCalls = m.access.mock.calls.length;
+  await act(async () => vi.advanceTimersByTimeAsync(15000));
+  await click("Retry");
+  expect(auth.getUser).toHaveBeenCalledTimes(verificationCalls);
+  expect(m.access).toHaveBeenCalledTimes(accessCalls);
+  expect(profileInvoke).toHaveBeenCalledTimes(2);
+  expect(container.textContent).not.toContain("Checking your profile");
+  await act(async () => finish({ error: { message: "old failure" } }));
+  expect(container.textContent).not.toContain("load your profile");
+});
+
+it("retries slow access loading without reloading the onboarding profile", async () => {
+  current = { id: "a", email: "a@example.test" };
+  m.access.mockImplementationOnce(() => new Promise(() => {}));
+  await render();
+  const verificationCalls = auth.getUser.mock.calls.length;
+  expect(profileInvoke).toHaveBeenCalledTimes(1);
+  await act(async () => vi.advanceTimersByTimeAsync(15000));
+  await click("Retry");
+  expect(auth.getUser).toHaveBeenCalledTimes(verificationCalls);
+  expect(profileInvoke).toHaveBeenCalledTimes(1);
+  expect(m.access).toHaveBeenCalledTimes(2);
+});
 beforeEach(() => {
   vi.useFakeTimers(); vi.stubEnv("VITE_EXAM_PILOT_SUPABASE_URL", "https://clpfecuohwzwrgmqzeos.supabase.co"); vi.stubEnv("VITE_EXAM_PILOT_SUPABASE_ANON_KEY", "public");
   localStorage.clear(); m.temporary = null; m.lifecycle = { state: "available", attemptId: null, gradingStatus: null, canRetryGrading: false, requiresSupport: false, retryAvailableAt: null }; current = null; m.active = false; m.recover = false; m.runtime.mockClear(); m.begin.mockClear(); m.access.mockReset(); m.access.mockResolvedValue({ status: "allowed", canStartStandard: true, allowedUnitCounts: [3, 5], customisationCategories: [] });

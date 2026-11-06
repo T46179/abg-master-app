@@ -7,6 +7,8 @@ import { MobileNavDrawer, type MobileNavDrawerItem } from "./MobileNavDrawer";
 import type { MobileNavProgress } from "./mobileNavProgress";
 import type { PressureUnit } from "../../core/types";
 import { SettingsPopover } from "./SettingsPopover";
+import { useBackgroundAccount } from "../../app/AccountLoading";
+import { useOptionalSiteAccount } from "../../app/SiteAccountProvider";
 
 const LocalAccountNav = import.meta.env.DEV ? lazy(() => import("../account/AccountNav.dev")) : null;
 
@@ -39,6 +41,8 @@ interface NavItem {
 }
 
 export function MainNav(props: MainNavProps) {
+  const background = useBackgroundAccount();
+  const site = useOptionalSiteAccount();
   const location = useLocation();
   const hideNavigationItems = location.pathname.startsWith("/calibration");
   const desktopNavRef = useRef<HTMLElement | null>(null);
@@ -195,6 +199,7 @@ export function MainNav(props: MainNavProps) {
           onCoreFlowLinkClick={props.onCoreFlowLinkClick}
           items={navItems.map(({ disabled: _disabled, ...item }) => item)}
           progress={props.mobileProgress}
+          hideProgress={Boolean(background && (!background.ready || background.error || !site?.identity.userId))}
           showBetaBadge={props.showBetaBadge}
         />
       ) : null}

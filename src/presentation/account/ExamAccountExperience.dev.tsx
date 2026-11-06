@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { useLocation, useNavigate } from "react-router-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useSiteAccount } from "../../app/SiteAccountProvider";
+import { AccountWaiting } from "../shared/AccountWaiting";
 import { AccountBrowserStorageProvider } from "../../app/AccountWorkspace";
 import { useAppContext } from "../../app/AppProvider";
 import { createAccountDataClient } from "../../core/accountDataClient";
@@ -44,6 +45,7 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
   const page = pages.includes(requested ?? "") ? requested as Page : "exam";
   const intent = destination === "trial" ? "trial" : "account";
   const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const inFlight = useRef(false);
+  const [waitingAttempt, setWaitingAttempt] = useState(0);
   const resumedCodeEntry = useRef(false);
   const verified = identity.status === "verified" && Boolean(identity.userId);
   function open(next: Page, entry: "trial" | "account" = intent) {
@@ -104,7 +106,9 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
   const registrationActive = !["idle", "complete"].includes(flow.phase);
   const recoveryPage = ["forgot", "reset"].includes(page) || (registration.emailPurpose() === "reset" && registrationActive);
   const registrationPage = ["signup", "checkEmail", "password", "completion", "link"].includes(page);
-  if (identity.status === "checking" || (identity.status === "unavailable" && !registrationActive && !["signin", "completion", "forgot", "reset"].includes(page))) {
+  if (identity.status === "checking") {
+    body = <AccountWaiting attempt={waitingAttempt} retry={() => { setWaitingAttempt(n => n + 1); void account.retryVerification(); }} />;
+  } else if (identity.status === "unavailable" && !registrationActive && !["signin", "completion", "forgot", "reset"].includes(page)) {
     body = <div className="account-narrow"><AccountCard title="We couldn't check your account"><p>Your saved account has not been replaced.</p><AccountButton onClick={() => void account.refresh()}>Try again</AccountButton></AccountCard></div>;
   } else if (recoveryPage) {
     body = <div className="account-narrow ph-no-capture" data-clarity-mask="true" data-sentry-mask="true"><PasswordRecoveryPages page={page as AccountPage} destination={destination} onPage={next => {
@@ -121,7 +125,7 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
   } else if (verified && identity.userId) {
     body = hasPassword !== true ? setupError
       ? <div className="account-narrow"><AccountCard title="We couldn't check account setup"><p role="status">Your account has not been replaced. Please retry.</p><AccountButton onClick={retrySetup}>Retry account check</AccountButton></AccountCard></div>
-      : <div className="account-narrow account-setup-loading" role="status" aria-label="Checking account setup"><span className="loading-chip__spinner" aria-hidden="true" /></div>
+      : <div className="account-narrow account-setup-loading"><AccountWaiting attempt={waitingAttempt} retry={() => { setWaitingAttempt(n => n + 1); retrySetup(); }} /></div>
       : <RuntimeOwner key={identity.generation} client={client} userId={identity.userId} generation={identity.generation} paid={paid} page={page} onPage={setPage} />;
   } else {
     body = <><ExamPageHeading guest /><div className="exam-workspace exam-mock-workspace exam-guest-workspace"><ExamOverview guest state={{ ...initialPrototypeState, mode: "mock", examKind: "mock", caseCount: 3 }} pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"} /><TrialIntroduction signedIn={false} complete={false} onStart={startTrial} onSignIn={() => open("signin", "trial")} /></div></>;
@@ -276,7 +280,7 @@ function RuntimeOwner({ client, userId, generation, paid, page, onPage }: { clie
     }
     if (!profile) {
       const status = <AccountCard title={profileError ? "We couldn’t load your profile" : "Checking your profile"}>
-        {profileError ? <><p role="alert">Try again to continue to trial setup.</p><AccountButton onClick={reloadProfile}>Retry</AccountButton></> : <p role="status">Checking saved answers…</p>}
+        {profileError ? <><p role="alert">Try again to continue to trial setup.</p><AccountButton onClick={reloadProfile}>Retry</AccountButton></> : <AccountWaiting attempt={profileRevision} retry={reloadProfile} />}
       </AccountCard>;
       return page === "exam" ? controls.withSetup(status) : <div className="account-onboarding"><AccountBack onBack={() => onPage("exam")} />{status}</div>;
     }
@@ -287,7 +291,7 @@ function RuntimeOwner({ client, userId, generation, paid, page, onPage }: { clie
     return controls.withSetup(<TrialIntroduction signedIn complete={complete} onStart={() => onPage("start")} />);
   }
   if (accessError) return <div className="account-narrow"><AccountCard title="We couldn't check Exam access"><p role="alert">Your account has not been changed. Reconnect and retry.</p><AccountButton onClick={() => setRevision(n => n + 1)}>Retry access check</AccountButton></AccountCard></div>;
-  if (!access) return <p role="status">Checking Exam access…</p>;
+  if (!access) return <AccountWaiting attempt={revision} retry={() => setRevision(n => n + 1)} />;
   return <AccountBrowserStorageProvider value={storage}>
     {access.status === "closed" && <p role="status" className="account-notice">You're signed in. The Exam pilot is not open yet.</p>}
     <ExamPilotRuntime onReturnToDashboard={() => onPage("exam")} trialAccessMessage={access.status === "closed" ? "The Exam pilot is currently closed." : undefined} trialAvailability={access.trialAvailability ?? "error"} onRetryTrial={() => setRevision(n => n + 1)} client={ownedClient} userId={userId} canStartStandard={access.canStartStandard === true} limitedDashboard={!paid || access.canStartStandard !== true} canStart={access.status === "allowed"} allowedUnitCounts={paid ? access.allowedUnitCounts : access.allowedUnitCounts.filter(n => n === 3)} customisationCategories={paid ? access.customisationCategories : []} renderDashboard={renderDashboard} />

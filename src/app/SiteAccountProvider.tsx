@@ -19,3 +19,4 @@ export function useSiteAccount() {
   if (!value) throw new Error("SiteAccountProvider is required.");
   return value;
 }
+export function useOptionalSiteAccount() { return useContext(SiteAccountContext); }

@@ -91,6 +91,11 @@ export function createSiteAccount(client: SupabaseClient) {
     getSnapshot: () => snapshot,
     subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     start, stop, refresh,
+    async retryVerification() {
+      if (!started) return;
+      publish("checking");
+      await refresh();
+    },
     async signIn(email: string, password: string) {
       if (!started) throw new Error("Account service is not running.");
       const result = await client.auth.signInWithPassword({ email: email.trim(), password });

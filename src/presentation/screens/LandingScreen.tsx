@@ -1,18 +1,13 @@
-import { useAccountBrowserStorage } from "../../app/AccountWorkspace";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { useAppContext } from "../../app/AppProvider";
-import { preloadProtectedPracticeSlots } from "../../app/protectedPracticeSlots";
+import { useLandingPracticePreload } from "../../app/useLandingPracticePreload";
 import { SeoMetadata } from "../../app/seo";
 import { Link } from "react-router-dom";
 import { trackEvent, trackPageView } from "../../core/analytics";
 import {
-  canStartNewCase,
-  getAccessibleDifficultyKeys,
-  getHighestAccessibleDifficultyKey,
   getReleaseFlags
 } from "../../core/progression";
-import { createEmptySeenCasesState } from "../../core/selection";
 import { MainNav } from "../layout/MainNav";
 import { getMobileNavProgress } from "../layout/mobileNavProgress";
 import { usePublicCasesSolvedCount } from "../shared/usePublicCasesSolvedCount";
@@ -271,8 +266,7 @@ function LandingResultsPreview() {
 }
 
 export function LandingScreen() {
-  const { state, patchPracticeState } = useAppContext();
-  const browserStorage = useAccountBrowserStorage();
+  const { state } = useAppContext();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [animatedCasesSolvedCount, setAnimatedCasesSolvedCount] = useState(0);
   const { casesSolvedCount, casesSolvedLoaded } = usePublicCasesSolvedCount();
@@ -283,7 +277,6 @@ export function LandingScreen() {
   const featuresSectionRef = useRef<HTMLElement | null>(null);
   const curriculumSectionRef = useRef<HTMLElement | null>(null);
   const explanationInsightRef = useRef<HTMLDivElement | null>(null);
-  const practicePreloadKeyRef = useRef<string | null>(null);
   const landingViewedTrackedRef = useRef(false);
   const casesSolvedLabel = useMemo(() => animatedCasesSolvedCount.toLocaleString("en-US"), [animatedCasesSolvedCount]);
   const releaseFlags = useMemo(() => getReleaseFlags(state.payload?.progressionConfig ?? null), [state.payload?.progressionConfig]);
@@ -313,105 +306,7 @@ export function LandingScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    if (state.status !== "ready") return;
-    const payload = state.payload;
-    const runtimeConfig = state.runtimeConfig;
-    const supabase = state.supabase;
-    const storage = state.storage;
-    if (!payload?.contentVersion || !runtimeConfig) return;
-    if (!supabase || !storage || typeof window === "undefined") return;
-    const activeRuntimeConfig = runtimeConfig;
-    const activeSupabase = supabase;
-    const contentVersion = payload.contentVersion;
-
-    const progressionInput = {
-      progressionConfig: payload.progressionConfig ?? null,
-      dashboardState: payload.dashboardState ?? null,
-      defaultUserState: payload.defaultUserState ?? null,
-      userState: state.userState,
-      cases: []
-    };
-    if (!canStartNewCase(progressionInput)) return;
-
-    const accessibleDifficulties = getAccessibleDifficultyKeys(progressionInput);
-    const highestDifficulty = getHighestAccessibleDifficultyKey(progressionInput);
-    if (!accessibleDifficulties.includes(highestDifficulty)) return;
-
-    const preloadKey = [
-      state.userId ?? "anonymous",
-      contentVersion,
-      highestDifficulty,
-      accessibleDifficulties.join("|")
-    ].join(":");
-    if (practicePreloadKeyRef.current === preloadKey) return;
-    practicePreloadKeyRef.current = preloadKey;
-
-    let cancelled = false;
-    const selectionHints = {
-      seenCaseIdsByDifficulty: storage.loadSeenCaseState() ?? createEmptySeenCasesState(),
-      recentArchetypes: []
-    };
-
-    async function preloadPracticeSlots() {
-      try {
-        const primarySlots = await preloadProtectedPracticeSlots({
-          isCurrent: () => !cancelled,
-          config: activeRuntimeConfig,
-          supabase: activeSupabase,
-          storage: browserStorage,
-          contentVersion,
-          userId: state.userId,
-          currentSlots: state.practiceState.practiceSlotsByDifficulty,
-          difficulties: [highestDifficulty],
-          selectionHints
-        });
-        if (cancelled) return;
-
-        patchPracticeState({
-          practiceSlotsByDifficulty: primarySlots
-        });
-
-        const remainingDifficulties = accessibleDifficulties.filter(difficultyKey => difficultyKey !== highestDifficulty);
-        if (!remainingDifficulties.length) return;
-
-        const nextSlots = await preloadProtectedPracticeSlots({
-          isCurrent: () => !cancelled,
-          config: activeRuntimeConfig,
-          supabase: activeSupabase,
-          storage: browserStorage,
-          contentVersion,
-          userId: state.userId,
-          currentSlots: primarySlots,
-          difficulties: remainingDifficulties,
-          selectionHints
-        });
-        if (cancelled) return;
-
-        patchPracticeState({
-          practiceSlotsByDifficulty: nextSlots
-        });
-      } catch {
-        // Practice remains responsible for showing any slot-loading error if the user enters the flow.
-      }
-    }
-
-    void preloadPracticeSlots();
-
-    return () => {
-      cancelled = true;
-      if (practicePreloadKeyRef.current === preloadKey) practicePreloadKeyRef.current = null;
-    };
-  }, [
-    patchPracticeState,
-    state.payload?.contentVersion,
-    state.runtimeConfig,
-    state.status,
-    state.storage,
-    state.supabase,
-    state.userId,
-    state.userState
-  ]);
+  useLandingPracticePreload();
 
   useEffect(() => {
     animatedCasesSolvedCountRef.current = animatedCasesSolvedCount;

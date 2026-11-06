@@ -17,6 +17,7 @@ export type AccountWorkspace = {
 const BrowserStorageContext = createContext<BrowserStorageLike | null>(null);
 export const AccountBrowserStorageProvider = BrowserStorageContext.Provider;
 const WorkspaceContext = createContext<AccountWorkspace | null>(null);
+export const AccountWorkspaceContextProvider = WorkspaceContext.Provider;
 
 export function useOptionalAccountWorkspace() { return useContext(WorkspaceContext); }
 export function useAccountBrowserStorage(): BrowserStorageLike {

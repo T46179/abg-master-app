@@ -43,7 +43,7 @@ import { getPendingRetryDelayMs, getPendingSubmissionInvalidReason } from "./pro
 import { PROTECTED_PRACTICE_MESSAGES } from "./protectedPracticeMessages";
 import { appReducer, initialAppState, type AppState } from "./state";
 
-interface AppContextValue {
+export interface AppContextValue {
   state: AppState;
   setUserState: (userState: UserState) => Promise<void>;
   patchSessionState: (patch: Partial<SessionState>) => void;
@@ -55,6 +55,7 @@ interface AppContextValue {
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
+export const AppStateProvider = AppContext.Provider;
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const workspace = useOptionalAccountWorkspace();

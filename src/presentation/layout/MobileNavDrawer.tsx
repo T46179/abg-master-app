@@ -22,6 +22,7 @@ interface MobileNavDrawerProps {
   onCoreFlowLinkClick?: (label: string, destination: string) => void;
   items: MobileNavDrawerItem[];
   progress: MobileNavProgress;
+  hideProgress?: boolean;
   showBetaBadge: boolean;
 }
 
@@ -141,7 +142,7 @@ export function MobileNavDrawer(props: MobileNavDrawerProps) {
           </button>
         </header>
 
-        <section className="mobile-nav-drawer__progress" aria-label="Your progress">
+        {!props.hideProgress && <section className="mobile-nav-drawer__progress" aria-label="Your progress">
           <div className="mobile-nav-drawer__progress-copy">
             <span className="mobile-nav-drawer__eyebrow">Level {props.progress.level} · {props.progress.tier}</span>
             <span className="mobile-nav-drawer__remaining">{props.progress.remainingLabel}</span>
@@ -152,7 +153,7 @@ export function MobileNavDrawer(props: MobileNavDrawerProps) {
             value={props.progress.progressPercent}
             blocked={props.progress.isBlocked}
           />
-        </section>
+        </section>}
 
         <p className="mobile-nav-drawer__section-label">Navigate</p>
         <nav className="mobile-nav-drawer__links" aria-label="Mobile navigation links">

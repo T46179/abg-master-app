@@ -1,23 +1,22 @@
-import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSiteAccount } from "../../app/SiteAccountProvider";
 import { useOptionalRegistration, useRegistration } from "../../app/RegistrationProvider";
 import { useAppContext } from "../../app/AppProvider";
+import { useBackgroundAccount } from "../../app/AccountLoading";
+import { AccountWaiting } from "../shared/AccountWaiting";
 import { useOptionalExamSitting } from "../exam/ExamSittingContext";
 import { ProfileControl } from "./ExamAccountExperience.dev";
 import { accountPageFromPath, accountPageUrl } from "../../core/accountRoutes";
 import { registrationDestination } from "../../core/registrationCallback";
 export default function AccountNav() {
   const registration = useOptionalRegistration();
-  return registration ? <ConnectedAccountNav /> : null;
+  const background = useBackgroundAccount();
+  return background && (!background.ready || background.error) ? <span style={{ display: "inline-block", minWidth: 40 }}><AccountWaiting attempt={background.attempt} retry={background.retry} error={background.error ? "Account unavailable" : undefined} /></span> : registration ? <ConnectedAccountNav /> : null;
 }
 function ConnectedAccountNav() {
   const { account, identity } = useSiteAccount(); const { registration, hasPassword, paid, togglePaid } = useRegistration();
   const { state } = useAppContext(); const sitting = useOptionalExamSitting()?.sitting ?? null; const navigate = useNavigate(); const location = useLocation();
   const active = Boolean(sitting && sitting.phase !== "complete");
-  useEffect(() => {
-    if (identity.status === "signed_out" && /^\/(practice|dashboard|insights|learn|calibration|featured-case)(\/|$)/.test(location.pathname)) void account.continueAsGuest().catch(() => undefined);
-  }, [location.pathname, identity.status, account]);
   async function signOut() {
     if (registration.isBusy()) return;
     let saved = false;
