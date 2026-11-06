@@ -4,7 +4,7 @@ import { CheckIcon } from "./AccountIcons.dev";
 import { AccountButton } from "./AccountUi.dev";
 
 const proFeatures = [
-  { title: "Mock exams on demand", body: "Fresh multi-part cases, marked in detail, whenever you're ready." },
+  { title: "Standard exams on demand", body: "Fresh multi-part cases, marked in detail, whenever you're ready." },
   { title: "Custom exams", body: "Choose your topics, including ventilation and toxicology." },
   { title: "Focused drills", body: "Anion gap, compensation, delta ratio, A-a gradient and corrections." },
   { title: "Past attempts and Error log", body: "Track every sitting and work through what tripped you up." },

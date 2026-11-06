@@ -42,13 +42,13 @@ export function errorLogClient(call: RuntimeCall) {
       const result = verifyErrorLogState(raw);
       if (result.attemptId !== attemptId || !object(raw) || !Array.isArray(raw.savedConceptIds)
         || raw.savedConceptIds.length !== conceptIds.length || !conceptIds.every(c => raw.savedConceptIds.includes(c) && result.savedSources[partId]?.includes(c))) {
-        throw new Error("Couldn’t confirm the save. Please retry.");
+        throw new Error("We couldn't confirm that this was saved to your Error Log. Please try again.");
       }
       return result;
     },
     async review(conceptId: string, archive: boolean) {
       const result = verifyErrorLogState(await call(archive ? "error_log_archive" : "error_log_restore", { conceptId }));
-      if (!result.entries.some(e => e.conceptId === conceptId && e.status === (archive ? "archived" : "to_review"))) throw new Error("Couldn’t confirm the review state. Please retry.");
+      if (!result.entries.some(e => e.conceptId === conceptId && e.status === (archive ? "archived" : "to_review"))) throw new Error("We couldn't confirm that change. Please try again.");
       return result;
     },
     async examples(conceptId: string, cursor?: ErrorLogExamplePage["nextCursor"]) {
@@ -58,7 +58,7 @@ export function errorLogClient(call: RuntimeCall) {
           || typeof e.prompt !== "string" || !Number.isInteger(e.questionNumber) || e.questionNumber < 1
           || !Number.isInteger(e.partNumber) || e.partNumber < 1 || !["mock", "custom"].includes(e.examKind) || !date(e.finishedAt) || !date(e.savedAt))
         || (raw.nextCursor !== null && (!object(raw.nextCursor) || !uuid(raw.nextCursor.id) || !date(raw.nextCursor.savedAt)))) {
-        throw new Error("Couldn’t load the saved examples. Please retry.");
+        throw new Error("We couldn't load your saved examples. Please try again.");
       }
       return raw as ErrorLogExamplePage;
     },

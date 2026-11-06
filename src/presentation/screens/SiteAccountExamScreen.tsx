@@ -52,7 +52,7 @@ export function SiteAccountExamScreen({ workspace }: { workspace: AccountWorkspa
 
     {access.status !== "allowed" && <p role="status">{access.status === "closed" ? "You’re signed in. The Exam pilot is not open yet." : "You’re signed in, but this account does not have pilot access."}</p>}
 
-    <ExamPilotRuntime client={workspace.client} userId={workspace.userId} canStart={access.status === "allowed"}
+    <ExamPilotRuntime client={workspace.client} userId={workspace.userId} canStart={access.status === "allowed"} canStartStandard={access.canStartStandard === true}
 
       allowedUnitCounts={access.allowedUnitCounts} customisationCategories={access.customisationCategories}
 

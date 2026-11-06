@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type Dispatch } from "react";
 import { useBlocker } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Clock3, TriangleAlert } from "lucide-react";
 import { Surface } from "../primitives/Surface";
+import { NoticeMessage } from "./ExamNotice";
 import { MetricRichText } from "../practice/MetricText";
 import { ExamValues } from "./ExamValues";
 import { elapsedSeconds, isAnswered, unansweredCount, type SittingAction } from "./sittingModel";
@@ -56,22 +57,24 @@ export function ExamResponse({ part, value, unit, onChange }: {
   </div>;
 }
 
-export function ExitSittingDialog({ onStay, onExit }: { onStay: () => void; onExit: () => void }) {
+export function ExitSittingDialog({ onStay, onExit, error, busy = false }: { onStay: () => void; onExit: () => void; error?: string; busy?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => { ref.current?.showModal(); }, []);
   return <dialog ref={ref} className="exam-exit-dialog" aria-labelledby="exam-exit-title"
-    onCancel={event => { event.preventDefault(); onStay(); }}>
+    onCancel={event => { event.preventDefault(); if (!busy) onStay(); }}>
     <h2 id="exam-exit-title">Exit this exam?</h2>
     <p>Exiting abandons this attempt and will not be graded. This cannot be undone.</p>
+    {error && <p className="exam-inline-error" role="alert"><NoticeMessage message={error} /></p>}
     <div className="exam-sitting-actions">
-      <button autoFocus className="figma-button exam-primary" onClick={onStay}>Stay</button>
-      <button className="figma-button figma-button--secondary" onClick={onExit}>Exit anyway</button>
+      <button autoFocus className="figma-button exam-primary" disabled={busy} onClick={onStay}>Stay</button>
+      <button className="figma-button figma-button--secondary" disabled={busy} aria-busy={busy || undefined} onClick={onExit}>{busy ? <><span role="status">Exiting…</span><span className="figma-button__spinner" aria-hidden="true" /></> : "Exit anyway"}</button>
     </div>
   </dialog>;
 }
 
-export function ExamSitting({ sitting: s, dispatch, onExitConfirmed, disabled = false }: { sitting: SittingState; dispatch: Dispatch<SittingAction>; onExitConfirmed?: () => Promise<void>; disabled?: boolean }) {
+export function ExamSitting({ sitting: s, dispatch, onExitConfirmed, disabled = false, submitting = false }: { sitting: SittingState; dispatch: Dispatch<SittingAction>; onExitConfirmed?: () => Promise<void>; disabled?: boolean; submitting?: boolean }) {
   const [exitError, setExitError] = useState(false);
+  const [exitBusy, setExitBusy] = useState(false);
   const exiting = useRef(false);
   const [now, setNow] = useState(Date.now);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -114,7 +117,7 @@ export function ExamSitting({ sitting: s, dispatch, onExitConfirmed, disabled = 
   </div>;
 
   return <div className="exam-sitting">
-    <fieldset className="exam-sitting-controls" disabled={disabled}>
+    <fieldset className="exam-sitting-controls" disabled={disabled || submitting}>
     <div className="exam-sitting-bar">
       <div className="exam-question-position">
         <nav className="exam-question-pills" aria-label="Exam Questions">
@@ -145,8 +148,8 @@ export function ExamSitting({ sitting: s, dispatch, onExitConfirmed, disabled = 
       </div>}
       <div className="exam-sitting-actions">
         <button className="figma-button figma-button--secondary" onClick={() => dispatch({ type: "return" })}>Return to questions</button>
-        <button className="figma-button exam-primary" onClick={() => dispatch({ type: "submit", now: Date.now() })}>
-          {missing ? "Submit anyway" : "Submit"}
+        <button className="figma-button exam-primary" disabled={disabled || submitting} aria-busy={submitting || undefined} onClick={() => dispatch({ type: "submit", now: Date.now() })}>
+          {submitting ? <><span role="status">Submitting…</span><span className="figma-button__spinner" aria-hidden="true" /></> : missing ? "Submit anyway" : "Submit"}
         </button>
       </div>
     </Surface> : <div className="exam-sitting-content">
@@ -185,14 +188,14 @@ export function ExamSitting({ sitting: s, dispatch, onExitConfirmed, disabled = 
       </Surface>
     </div>}
     </fieldset>
-    {exitError && <p role="alert">Exit could not be confirmed. Reconnect and try again.</p>}
     {(blocker.state === "blocked") && <ExitSittingDialog
-      onStay={() => { if (blocker.state === "blocked") blocker.reset(); }}
+      busy={exitBusy} error={exitError ? "We couldn't confirm that you've exited the exam. Check your connection, then try again." : undefined}
+      onStay={() => { setExitError(false); if (blocker.state === "blocked") blocker.reset(); }}
       onExit={() => {
         if (exiting.current) return;
         if (!onExitConfirmed) { dispatch({ type: "exit" }); if (blocker.state === "blocked") blocker.proceed(); return; }
-        exiting.current = true; setExitError(false);
-        void onExitConfirmed().then(() => { if (blocker.state === "blocked") blocker.proceed(); }, () => { setExitError(true); if (blocker.state === "blocked") blocker.reset(); }).finally(() => { exiting.current = false; });
+        exiting.current = true; setExitBusy(true); setExitError(false);
+        void onExitConfirmed().then(() => { if (blocker.state === "blocked") blocker.proceed(); }, () => { setExitError(true); }).finally(() => { exiting.current = false; setExitBusy(false); });
       }} />}
   </div>;
 }

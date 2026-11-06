@@ -32,10 +32,10 @@ let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => { container = document.createElement("div"); document.body.append(container); root = createRoot(container); });
 afterEach(() => { act(() => root.unmount()); container.remove(); });
-function render(questions = [question], pressureUnit: PressureUnit = "mmHg", grades: Record<string, PartGrade> = {}) {
+function render(questions = [question], pressureUnit: PressureUnit = "mmHg", grades: Record<string, PartGrade> = {}, initialPartId?: string) {
   const sitting: SittingState = { questions, phase: "complete", questionIndex: 0, partIndices: {}, answers: { p1: "My initial answer", p3: "My follow-up answer" },
     pressureUnit: "mmHg", showRanges: true, showTimer: false, startedAt: 0, finishedAt: 1000 };
-  act(() => root.render(<ExamResultsPresentation sitting={sitting} pressureUnit={pressureUnit} onExit={() => {}} feedback={{}} grades={grades} />));
+  act(() => root.render(<ExamResultsPresentation sitting={sitting} pressureUnit={pressureUnit} onExit={() => {}} feedback={{}} grades={grades} initialPartId={initialPartId} />));
 }
 function panel(number = 1) { return container.querySelector<HTMLElement>(`[aria-label="Question ${number} results"]`)!; }
 function selector(number = 1) { return panel(number).querySelector<HTMLElement>('[aria-label="Case review scenario"]')!; }
@@ -61,6 +61,53 @@ it("deduplicates Part selections in Part order and pairs by explicit IDs", () =>
   expect(panel().querySelector(".exam-results__parts")!.textContent).toBe(breakdown);
   expect(panel().querySelector(".metric-comparison")).toBeNull();
 });
+it("opens the linked repeat Part beside its own scenario and gas", () => {
+  render([question], "mmHg", {}, "p3");
+  expect(selector().querySelector('[aria-pressed="true"]')?.textContent).toBe("Repeat VBG");
+  expect(panel().querySelector(".exam-results__scenario")?.textContent).toContain("Following resuscitation");
+  expect(panel().querySelector(".exam-results__scenario")?.textContent).not.toContain("Initial presentation");
+  expect(panel().querySelector('[aria-label="Repeat VBG"]')).not.toBeNull();
+  expect(panel().querySelector('[aria-label="Initial ABG"]')).toBeNull();
+  expect(panel().querySelector('[aria-label="Collapse Part 3"]')?.getAttribute("aria-expanded")).toBe("true");
+});
+it("preserves a manual override of linked context through question changes, refreshes, and units", () => {
+  const second = { ...question, id: "q2", parts: question.parts.map(p => ({ ...p, id: `q2-${p.id}` })) };
+  render([question, second], "mmHg", {}, "q2-p3");
+  expect(panel(2).hidden).toBe(false);
+  expect(selector(2).querySelector('[aria-pressed="true"]')?.textContent).toBe("Repeat VBG");
+  expect(selector().querySelector('[aria-pressed="true"]')?.textContent).toBe("Initial ABG");
+  click("Initial ABG", selector(2));
+  click("Question 1", container); click("Question 2", container);
+  render([structuredClone(question), structuredClone(second)], "kPa", { "q2-p3": { status: "completed", score: 1 } }, "q2-p3");
+  expect(selector(2).querySelector('[aria-pressed="true"]')?.textContent).toBe("Initial ABG");
+  expect(panel(2).querySelector(".exam-results__scenario")?.textContent).toContain("Initial presentation");
+  expect(panel(2).querySelector('[aria-label="Initial ABG"]')?.textContent).toContain("30.4kPa");
+  expect(panel(2).querySelector('[aria-label="Repeat VBG"]')).toBeNull();
+});
+it.each([undefined, "missing", "p1", "p2"])("keeps the first view for ordinary, absent, or shared-initial targets: %s", target => {
+  render([question], "mmHg", {}, target);
+  expect(selector().querySelector('[aria-pressed="true"]')?.textContent).toBe("Initial ABG");
+  expect(panel().querySelector(".exam-results__scenario")?.textContent).toContain("Initial presentation");
+});
+it("keeps legacy shared context when the linked Part has no selectors", () => {
+  const legacy = { ...question, parts: question.parts.map(({ stimulusSectionIds: _ids, ...part }) => part) };
+  render([legacy], "mmHg", {}, "p3");
+  expect(selector()).toBeNull();
+  expect(panel().querySelectorAll(".exam-results__values")).toHaveLength(2);
+  expect(panel().querySelector(".exam-results__scenario")?.textContent).toContain("Initial presentation");
+  expect(panel().querySelector(".exam-results__scenario")?.textContent).toContain("Following resuscitation");
+  render([{ ...legacy, sections: undefined }], "mmHg", {}, "p3");
+  expect(panel().querySelector(".exam-results__scenario")?.textContent).toContain(question.scenario);
+  expect(panel().querySelectorAll(".exam-results__values")).toHaveLength(2);
+});
+it.each([["missing-section"], []])("never substitutes unrelated context for explicit linked selectors: %j", (...ids) => {
+  const linked = { ...question, parts: question.parts.map(part => part.id === "p3" ? { ...part, stimulusSectionIds: ids } : part) };
+  render([linked], "mmHg", {}, "p3");
+  expect(panel().querySelector(".exam-results__scenario")).toBeNull();
+  expect(panel().querySelectorAll(".exam-results__values")).toHaveLength(0);
+  expect(panel().querySelector('[aria-label="Collapse Part 3"]')).not.toBeNull();
+});
+
 it("supports three views and excludes unselected stems and gases", () => {
   const value: ExamQuestion = { ...question, tables: [third, ...question.tables], sections: [...question.sections!,
     { id: "third-story", type: "text", content: "Later reassessment" }, { id: "third-gas-section", type: "data_table", tableId: third.id }],

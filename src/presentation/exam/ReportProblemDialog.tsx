@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { NoticeMessage } from "./ExamNotice";
 import { Flag, LoaderCircle, X } from "lucide-react";
 
 const reasons = ["Incorrect answer or marking", "Values or data look wrong", "Unclear or ambiguous wording",
@@ -30,7 +31,7 @@ function ReportProblemDialog({ number, questionId, onClose, onSubmit, feedbackTa
     requestId.current ??= crypto.randomUUID();
     try { await onSubmit({ requestId: requestId.current, questionId, reason, details,
       ...(feedbackTarget ? { target: "feedback" as const, generationId: feedbackTarget.generationId, partId: feedbackTarget.partId } : {}) }); setSubmitted(true); }
-    catch { setError("We couldn’t submit your report. Please try again."); }
+    catch { setError("We couldn't send your report. Please try again."); }
     finally { sending.current = false; setBusy(false); }
   }
   useEffect(() => { dialog.current?.showModal(); }, []);
@@ -56,7 +57,7 @@ function ReportProblemDialog({ number, questionId, onClose, onSubmit, feedbackTa
       </div></fieldset>
       <label className="exam-report-dialog__details-label" htmlFor={detailsId}>Add details <span>(optional)</span></label>
       <textarea id={detailsId} rows={4} maxLength={2000} disabled={busy} value={details} onChange={event => { changed(); setDetails(event.target.value); }} placeholder="Tell us what you noticed — the more specific, the faster we can fix it." />
-      {error && <p className="exam-report-dialog__error" role="alert">{error}</p>}
+      {error && <p className="exam-report-dialog__error exam-inline-error" role="alert"><NoticeMessage message={error} /></p>}
       </>}
     </div>
     {!submitted && <div className="exam-report-dialog__footer">

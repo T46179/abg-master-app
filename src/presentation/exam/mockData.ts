@@ -4,6 +4,7 @@ import type {
   ExamPrototypeState, StepScorePresentation
 } from "./presentationTypes";
 import { buildHistoryPresentation, buildLatestResultPresentation } from "./presentationModel";
+import { examKindLabel } from "./examLabels";
 
 export const mockDrills: DrillPresentation[] = [
   {
@@ -117,7 +118,7 @@ export const initialPrototypeState: ExamPrototypeState = {
 export const mockLatestResult = buildLatestResultPresentation({
   cases: resultCases,
   steps: resultSteps,
-  sittingLabel: "Mock exam · 27 Aug 2026",
+  sittingLabel: `${examKindLabel("mock")} · 27 Aug 2026`,
   target: 80,
   casePassThreshold: 4,
   percentileLabel: "Top 38% of recent sittings",

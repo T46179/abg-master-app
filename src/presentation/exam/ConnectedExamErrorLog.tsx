@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ExamErrorLog } from "./ExamErrorLog";
+import { examKindLabel } from "./examLabels";
 import { BackLink } from "./ExamUi";
+import { ExamNotice, NoticeMessage, RetryAction } from "./ExamNotice";
 import type { ErrorLogConceptPresentation, ErrorLogExample, ErrorLogExamplePage } from "./errorLogTypes";
 import type { useExamErrorLog } from "./useExamErrorLog";
 
@@ -12,7 +14,7 @@ export function ConnectedExamErrorLog({ log, onBack, onOpenExample, onOpenLatest
   onOpenExample: (attemptId: string, partId: string) => Promise<void>; onOpenLatest?: () => Promise<void>;
 }) {
   const [pages, setPages] = useState<Record<string, Page>>({});
-  const [actionError, setActionError] = useState("");
+  const [actionError, setActionError] = useState<{ message: string; conceptId?: string } | null>(null);
   const [opening, setOpening] = useState(false);
   const generation = useRef(0);
   const inFlight = useRef(new Set<string>());
@@ -28,7 +30,7 @@ export function ConnectedExamErrorLog({ log, onBack, onOpenExample, onOpenLatest
     const request = generation.current;
     const existing = pages[conceptId];
     const cursor = next ? existing?.nextCursor : null;
-    setPages(current => ({ ...current, [conceptId]: { examples: existing?.examples ?? [], nextCursor: cursor ?? null, loading: true } }));
+    setPages(current => ({ ...current, [conceptId]: { examples: existing?.examples ?? [], nextCursor: cursor ?? null, error: existing?.error, loading: true } }));
     try {
       const page = await log.client.examples(conceptId, cursor);
       if (generation.current === request) setPages(current => ({ ...current, [conceptId]: {
@@ -37,26 +39,27 @@ export function ConnectedExamErrorLog({ log, onBack, onOpenExample, onOpenLatest
       } }));
     } catch {
       if (generation.current === request) setPages(current => ({ ...current, [conceptId]: {
-        examples: existing?.examples ?? [], nextCursor: cursor ?? null, error: "Couldn’t load the saved examples.",
+        examples: existing?.examples ?? [], nextCursor: cursor ?? null, error: "We couldn't load your saved examples. Please try again.",
       } }));
     } finally { if (generation.current === request) inFlight.current.delete(conceptId); }
   }, [log.client, pages]);
   const expand = useCallback((id: string) => { if (!pages[id]) void loadExamples(id); }, [pages, loadExamples]);
   async function review(id: string, archive: boolean) {
-    setActionError(""); try { await log.review(id, archive); }
-    catch { setActionError("Couldn’t confirm the review state. Please retry the action."); }
+    setActionError(null); try { await log.review(id, archive); }
+    catch { setActionError({ message: "We couldn't confirm that change. Please try again.", conceptId: id }); }
   }
-  async function open(action: () => Promise<void>) {
+  async function open(action: () => Promise<void>, conceptId?: string) {
     if (opening) return;
-    setOpening(true); setActionError("");
-    try { await action(); } catch { setActionError("Couldn’t open that result. Please retry."); } finally { setOpening(false); }
+    setOpening(true); setActionError(null);
+    try { await action(); } catch { setActionError({ message: "We couldn't open that exam result. Please try again.", conceptId }); } finally { setOpening(false); }
   }
-  if (!log.data) return <div className="exam-error-log"><BackLink onClick={onBack} />
-    <h1>Error log</h1>{log.error ? <p role="alert">{log.error} <button type="button" onClick={() => void log.refresh()}>Retry</button></p> : <p role="status">Loading your Error log…</p>}
+  const pageNotice = log.error ? <ExamNotice><NoticeMessage message={log.error} />{" "}<RetryAction busy={log.loading} onClick={() => void log.refresh()} /></ExamNotice> : undefined;
+  if (!log.data) return <div className="exam-error-log">{pageNotice}<BackLink onClick={onBack} />
+    <h1>Error log</h1>{!log.error && <p role="status">Loading your Error log…</p>}
   </div>;
   function example(e: ErrorLogExample): ErrorLogConceptPresentation["examples"][number] {
     return { id: e.id, attemptId: e.attemptId, partId: e.partId, prompt: e.prompt,
-      part: `Question ${e.questionNumber} · Part ${e.partNumber}`, attempt: e.examKind === "custom" ? "Custom Exam" : "Mock Exam", date: date(e.finishedAt) };
+      part: `Question ${e.questionNumber} · Part ${e.partNumber}`, attempt: examKindLabel(e.examKind), date: date(e.finishedAt) };
   }
   const concepts: ErrorLogConceptPresentation[] = [...log.data.entries].sort((a, b) => {
     const aDate = a.status === "archived" ? a.archivedAt! : a.lastSavedAt;
@@ -71,11 +74,10 @@ export function ConnectedExamErrorLog({ log, onBack, onOpenExample, onOpenLatest
       examples: page?.examples.map(example) ?? [], examplesLoading: page?.loading, examplesError: page?.error, hasMoreExamples: Boolean(page?.nextCursor) };
   });
   return <>
-    {log.error && <p role="alert">{log.error} <button type="button" onClick={() => void log.refresh()}>Retry</button></p>}
-    <ExamErrorLog concepts={concepts} onBack={onBack} busy={log.busy || opening} actionError={actionError}
+    <ExamErrorLog concepts={concepts} onBack={onBack} busy={log.busy || opening} pageNotice={pageNotice} actionError={actionError?.message} actionErrorConceptId={actionError?.conceptId}
       onExpand={expand} onLoadMore={id => void loadExamples(id, Boolean(pages[id]?.nextCursor))}
       onArchive={id => void review(id, true)} onRestore={id => void review(id, false)}
       onOpenResult={onOpenLatest ? () => void open(onOpenLatest) : undefined}
-      onOpenExample={e => { if (e.attemptId && e.partId) void open(() => onOpenExample(e.attemptId!, e.partId!)); }} />
+      onOpenExample={e => { if (e.attemptId && e.partId) void open(() => onOpenExample(e.attemptId!, e.partId!), concepts.find(c => c.examples.includes(e))?.id); }} />
   </>;
 }

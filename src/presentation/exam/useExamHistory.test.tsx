@@ -32,3 +32,19 @@ it("discards late responses across accounts and refreshes on focus",async()=>{
  await act(async()=>resolve(page(1,true)));expect(hook.data?.rows[0].id).toBe(id(2));
  const before=call.mock.calls.length;await act(async()=>window.dispatchEvent(new Event("focus")));expect(call.mock.calls.length).toBe(before+1);
 });
+it("keeps pagination errors separate from page errors and retains rows while retrying", async () => {
+ const call = vi.fn().mockResolvedValue(page(1, true));
+ await act(async () => root.render(<Harness call={call} />));
+ call.mockRejectedValueOnce(new Error("We couldn't update your exam history. Please try again."));
+ await act(async () => hook.loadMore());
+ expect(hook.error).toBe("");
+ expect(hook.loadMoreError).toBe("We couldn't update your exam history. Please try again.");
+ expect(hook.data?.rows).toHaveLength(1);
+ let resolve!: (value: HistoryPage) => void;
+ call.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+ await act(async () => { void hook.loadMore(); });
+ expect(hook.loading).toBe(true);
+ expect(hook.loadMoreError).not.toBe("");
+ await act(async () => resolve(page(2)));
+ expect(hook.loadMoreError).toBe(""); expect(hook.data?.rows).toHaveLength(2);
+});

@@ -38,13 +38,13 @@ export function verifyHistoryPage(v: unknown): HistoryPage {
     || v.summary.trend.length > 10 || v.summary.trend.some((n: unknown) => n === null || !percent(n))
     || (v.nextCursor !== null && (!object(v.nextCursor) || !uuid(v.nextCursor.id) || !date(v.nextCursor.finishedAt)
       || !v.attempts.length || v.nextCursor.id !== v.attempts.at(-1).id || v.nextCursor.finishedAt !== v.attempts.at(-1).finishedAt))) {
-    throw new Error("Couldn’t verify your exam history. Please retry.");
+    throw new Error("We couldn't load your exam history. Please try again.");
   }
   return v as HistoryPage;
 }
 export async function readHistoryPage(call: RuntimeCall, filter: HistoryFilter, cursor?: HistoryCursor) {
   const page = verifyHistoryPage(await call("history_page", { filter, ...(cursor ? { cursor } : {}) }));
-  if (page.total !== page.counts[filter] || page.attempts.some(r => filter !== "all" && r.examKind !== filter)) throw new Error("History filter could not be verified.");
+  if (page.total !== page.counts[filter] || page.attempts.some(r => filter !== "all" && r.examKind !== filter)) throw new Error("We couldn't apply that filter. Please try again.");
   return page;
 }
 export function historyPresentation(page: HistoryPage, rows: HistoryRow[], labels: Record<string, string>): HistoryPresentation {

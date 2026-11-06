@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { examKindLabel } from "./examLabels";
+import { NoticeMessage, RetryAction } from "./ExamNotice";
 import { Surface } from "../primitives/Surface";
 import { ArrowIcon, CheckIcon, ChevronRightIcon, CrossIcon, DotIcon, HistoryIcon, LayersIcon, ReportIcon, SplitIcon } from "./ExamIcons";
 import { AccuracyBar, BackLink, IconBadge, ScoreRing, SummaryTiles, toneStyle } from "./ExamUi";
@@ -66,7 +68,7 @@ export function ExamResults({ result, onBack, onHistory }: {
   </div>;
 }
 
-export function ExamHistory({ history, attempts, filter, onFilterChange, onBack, onOpen, onRetry, onLoadMore, total, loading, busy, unavailable }: {
+export function ExamHistory({ history, attempts, filter, onFilterChange, onBack, onOpen, onRetry, onLoadMore, total, loading, busy, unavailable, loadMoreError }: {
   history: HistoryPresentation;
   attempts: AttemptPresentation[];
   filter: HistoryFilter;
@@ -75,7 +77,7 @@ export function ExamHistory({ history, attempts, filter, onFilterChange, onBack,
   onOpen: (id: string) => void;
   onRetry?: (id: string) => void;
   onLoadMore?: () => void;
-  total?: number; loading?: boolean; busy?: boolean; unavailable?: boolean;
+  total?: number; loading?: boolean; busy?: boolean; unavailable?: boolean; loadMoreError?: string;
 }) {
   const [pagination, setPagination] = useState({ filter, count: 10 });
   const visibleCount = pagination.filter === filter ? pagination.count : 10;
@@ -91,7 +93,7 @@ export function ExamHistory({ history, attempts, filter, onFilterChange, onBack,
   }
   const filters: { value: HistoryFilter; label: string; count: number }[] = [
     { value: "all", label: "All", count: history.counts?.all ?? history.attempts.length },
-    { value: "mock", label: "Mock", count: history.counts?.mock ?? history.attempts.filter(row => row.kind === "mock").length },
+    { value: "mock", label: "Standard", count: history.counts?.mock ?? history.attempts.filter(row => row.kind === "mock").length },
     { value: "custom", label: "Custom", count: history.counts?.custom ?? history.attempts.filter(row => row.kind === "custom").length }
   ];
   const stats = [
@@ -126,7 +128,7 @@ export function ExamHistory({ history, attempts, filter, onFilterChange, onBack,
       <div className="exam-history-columns" aria-hidden="true"><span>Sitting</span><span>Time</span><span>Marks</span><span>Score</span><span /></div>
       <ul className="exam-history-entries">{visibleAttempts.map(attempt => {
         const percent = attemptPercent(attempt);
-        const label = attempt.isTrial ? "Trial Exam" : attempt.kind === "mock" ? "Mock exam" : "Custom exam";
+        const label = attempt.isTrial ? "Trial Exam" : examKindLabel(attempt.kind);
         return <li className="exam-history-entry" key={attempt.id}>
           <button type="button" className="exam-attempt-open" disabled={busy} onClick={() => onOpen(attempt.id)} aria-label={`Review ${label}, ${attempt.date} at ${attempt.time}`}>
             <IconBadge>{attempt.kind === "mock" ? <LayersIcon /> : <SplitIcon />}</IconBadge>
@@ -146,7 +148,9 @@ export function ExamHistory({ history, attempts, filter, onFilterChange, onBack,
         </li>;
       })}</ul>
       {!attempts.length && <p className="exam-empty">{loading ? "Loading your exams…" : unavailable ? "Your exams couldn’t be loaded. Please retry." : "Your completed exams will appear here"}</p>}
-      <footer className="exam-history-footer"><span>Showing <strong>{visibleAttempts.length}</strong> of <strong>{unavailable ? "—" : total ?? attempts.length}</strong></span>{hasMore && <button type="button" className="figma-button figma-button--secondary" disabled={loading || busy} onClick={loadMore}>{loading ? "Loading…" : "Load more"}</button>}</footer>
+      <footer className="exam-history-footer"><span>Showing <strong>{visibleAttempts.length}</strong> of <strong>{unavailable ? "—" : total ?? attempts.length}</strong></span>{hasMore && !loadMoreError && <button type="button" className="figma-button figma-button--secondary" disabled={loading || busy} onClick={loadMore}>{loading ? "Loading…" : "Load more"}</button>}
+        {loadMoreError && <p className="exam-inline-error" role="alert"><NoticeMessage message={loadMoreError} />{" "}<RetryAction busy={Boolean(loading || busy)} onClick={() => onLoadMore?.()} /></p>}
+      </footer>
     </Surface>
   </div>;
 }

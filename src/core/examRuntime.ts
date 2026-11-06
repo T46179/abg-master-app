@@ -19,7 +19,7 @@ export interface RuntimeAttempt {
 }
 export type RuntimeCall = <T>(operation: string, input: Record<string, unknown>) => Promise<T>;
 export class ExamRuntimeError extends Error {
-  constructor(public code: string) { super(code); }
+  constructor(public code: string, public transportFailure?: boolean) { super(code); }
 }
 export function runtimeCall(client: SupabaseClient): RuntimeCall {
   return async <T>(operation: string, input: Record<string, unknown>): Promise<T> => {
@@ -27,7 +27,7 @@ export function runtimeCall(client: SupabaseClient): RuntimeCall {
     if (error) {
       let code = "EXAM_UNAVAILABLE";
       try { const body = await error.context?.json(); if (/^EXAM_[A-Z_]+$/.test(body?.code)) code = body.code; } catch { /* Network/relay errors have no JSON body. */ }
-      throw new ExamRuntimeError(code);
+      throw new ExamRuntimeError(code, error.name === "FunctionsFetchError");
     }
     if (!data || typeof data !== "object") throw new ExamRuntimeError("EXAM_UNAVAILABLE");
     return data as T;
@@ -40,10 +40,23 @@ export function encodeAnswers(sitting: SittingState): WireAnswers {
     return [id, part?.kind === "numeric" ? { text: value as string, unit: part.pressureAnswer ? sitting.pressureUnit : part.answerUnit ?? "1" } : value];
   }));
 }
-export function toSitting(attempt: RuntimeAttempt): SittingState {
+export interface ExamNavigationPosition {
+  questionId: string;
+  partIdsByQuestion: Record<string, string>;
+  phase: "active" | "review";
+}
+export function toSitting(attempt: RuntimeAttempt, navigation?: ExamNavigationPosition): SittingState {
   if (!Array.isArray(attempt.questions) || !attempt.questions.length || attempt.questions.some(q => !q.parts?.length)) throw new ExamRuntimeError("EXAM_INVALID_RESPONSE");
-  return { questions: attempt.questions, phase: attempt.status === "submitted" ? "complete" : "active",
-    questionIndex: 0, partIndices: {}, answers: Object.fromEntries(Object.entries(attempt.answers).map(([id, value]) =>
+  const position = attempt.status === "active" && navigation && typeof navigation === "object" && !Array.isArray(navigation) ? navigation : undefined;
+  const questionIndex = Math.max(0, attempt.questions.findIndex(q => q.id === position?.questionId));
+  const savedParts = position?.partIdsByQuestion;
+  const partIndices = savedParts && typeof savedParts === "object" && !Array.isArray(savedParts)
+    ? Object.fromEntries(attempt.questions.flatMap(q => {
+      const index = q.parts.findIndex(p => p.id === savedParts[q.id]);
+      return index >= 0 ? [[q.id, index]] : [];
+    })) : {};
+  return { questions: attempt.questions, phase: attempt.status === "submitted" ? "complete" : position?.phase === "review" ? "review" : "active",
+    questionIndex, partIndices, answers: Object.fromEntries(Object.entries(attempt.answers).map(([id, value]) =>
       [id, typeof value === "object" && !Array.isArray(value) ? value.text : value])), pressureUnit: attempt.pressureUnit,
     startedAt: Date.parse(attempt.presentedAt ?? attempt.createdAt), finishedAt: attempt.finishedAt ? Date.parse(attempt.finishedAt) : undefined,
     showRanges: true, showTimer: true };
@@ -53,6 +66,7 @@ interface Journal {
   examKind?: ExamKind; excludedCategories?: string[]; unitCount?: number; showTimer?: boolean; showRanges?: boolean;
   requestId: string; recoveryKey: string; pressureUnit: PressureUnit; attemptId?: string; revision?: number;
   dirty?: WireAnswers; submission?: { requestId: string; answers: WireAnswers };
+  navigation?: ExamNavigationPosition;
 }
 // Each mounted controller is a new writer. No sessionStorage ID that a duplicated tab could inherit.
 export class ExamRuntimeSession {
@@ -141,6 +155,24 @@ export class ExamRuntimeSession {
   cancelRejectedSubmission() { if (this.journal) { delete this.journal.submission; this.persist(); } }
   setDisplayPreferences(showTimer: boolean, showRanges: boolean) {
     if (this.journal) { this.journal.showTimer = showTimer; this.journal.showRanges = showRanges; this.persist(); }
+  }
+  setNavigation(sitting: SittingState) {
+    if (!this.journal || this.journal.attemptId !== this.attempt?.id || this.attempt?.status !== "active" || sitting.phase === "complete") return;
+    const question = sitting.questions[sitting.questionIndex];
+    if (!question) return;
+    const navigation: ExamNavigationPosition = {
+      questionId: question.id,
+      partIdsByQuestion: Object.fromEntries(sitting.questions.flatMap(q => {
+        const part = q.parts[sitting.partIndices[q.id] ?? 0];
+        return part ? [[q.id, part.id]] : [];
+      })),
+      phase: sitting.phase,
+    };
+    try {
+      // Commit only after a successful write; failed optional data must not burden answer persistence.
+      this.storage.setItem(this.key, JSON.stringify({ ...this.journal, navigation }));
+      this.journal.navigation = navigation;
+    } catch { /* Position is optional. Navigation and the existing answer journal stay usable. */ }
   }
   clear() { this.journal = null; this.attempt = null; this.persist(); }
 }

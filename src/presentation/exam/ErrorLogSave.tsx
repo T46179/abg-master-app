@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { NoticeMessage } from "./ExamNotice";
 import { CheckIcon, FlagIcon } from "./ExamIcons";
 import type { ErrorLogSaveConcept } from "./errorLogTypes";
 
@@ -19,7 +20,7 @@ export function ErrorLogSave({ concepts, onSave, busy = false }: {
     if (!onSave || busy || pending.current) return;
     pending.current = true; setSaving(true); setError("");
     try { await onSave(ids); setPicked(new Set()); }
-    catch { setError("Couldn’t confirm the save. Please retry."); }
+    catch { setError("We couldn't confirm that this was saved to your Error Log. Please try again."); }
     finally { pending.current = false; setSaving(false); }
   }
   function savedTag(label: string) {
@@ -43,6 +44,6 @@ export function ErrorLogSave({ concepts, onSave, busy = false }: {
       </label>)}
       {concepts.some(c => !saved.has(c.id)) && <button type="button" disabled={!picked.size || busy || saving || !onSave} onClick={() => void save([...picked])}>{saving ? "Saving…" : picked.size ? `Add ${picked.size} to error log` : "Select to add"}</button>}
     </div>}
-    {error && <p role="alert">{error}</p>}
+    {error && <p className="exam-inline-error" role="alert"><NoticeMessage message={error} /></p>}
   </div>;
 }

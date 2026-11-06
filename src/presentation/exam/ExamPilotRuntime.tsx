@@ -1,4 +1,6 @@
 import { useAccountBrowserStorage } from "../../app/AccountWorkspace";
+import { examKindLabel } from "./examLabels";
+import { ExamNotice, NoticeMessage, RetryAction } from "./ExamNotice";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -39,16 +41,16 @@ export type ExamDashboardControls = {
   setTimed: (value: boolean) => void; setShowRanges: (value: boolean) => void;
   begin: () => void;
 };
-type PilotProps = { onReturnToDashboard?: () => void; trialAccessMessage?: string; trialAvailability?: TrialAvailability; onRetryTrial?: () => void; client: SupabaseClient; userId: string; canStart: boolean; canStartStandard?: boolean; limitedDashboard?: boolean; unitCount?: number; allowedUnitCounts?: number[]; customisationCategories?: CustomisationCategory[]; environment?: string; renderDashboard?: (controls: ExamDashboardControls) => ReactNode };
+export type ExamAccessNotice = { visible: boolean; busy: boolean; onRetry: () => void };
+type PilotProps = { accessNotice?: ExamAccessNotice; onReturnToDashboard?: () => void; trialAccessMessage?: string; trialAvailability?: TrialAvailability; onRetryTrial?: () => void; client: SupabaseClient; userId: string; canStart: boolean; canStartStandard: boolean; limitedDashboard?: boolean; unitCount?: number; allowedUnitCounts?: number[]; customisationCategories?: CustomisationCategory[]; environment?: string; renderDashboard?: (controls: ExamDashboardControls) => ReactNode };
 
-export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessage, trialAvailability = "error", onRetryTrial, client, userId, canStart, canStartStandard = false, limitedDashboard = false, unitCount, allowedUnitCounts, customisationCategories = [], environment = "clpfecuohwzwrgmqzeos", renderDashboard }: PilotProps) {
+export default function ExamPilotRuntime({ accessNotice, onReturnToDashboard, trialAccessMessage, trialAvailability = "error", onRetryTrial, client, userId, canStart, canStartStandard, limitedDashboard = false, unitCount, allowedUnitCounts, customisationCategories = [], environment = "clpfecuohwzwrgmqzeos", renderDashboard }: PilotProps) {
   const browserStorage = useAccountBrowserStorage();
   const location = useLocation();
   const navigate = useNavigate();
   const account = `${environment}:${userId}`;
   const navigation: ExamNavigation | undefined = location.state?.examNavigation?.account === account ? location.state.examNavigation : undefined;
   const resultCache = useMemo(() => new Map<string, RuntimeAttempt>(), [account]);
-  const [navigationRevision, setNavigationRevision] = useState(0);
   const [pendingResult, setPendingResult] = useState<RuntimeAttempt | null>(null);
   function pushView(view: ExamNavigation) {
     void navigate(`${location.pathname}${location.search}${location.hash}`, {
@@ -89,7 +91,7 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
     try { browserStorage.setItem(displayKey, JSON.stringify({ showTimer: setupState.timed, showRanges: setupState.showRanges })); } catch { /* Display choices remain usable. */ }
   }, [displayKey, setupState.timed, setupState.showRanges]);
   function configurationLabel(item: { examKind?: ExamKind; excludedCategories?: string[] }) {
-    const label = item.examKind === "custom" ? "Custom Exam" : "Mock Exam";
+    const label = examKindLabel(item.examKind);
     const exclusions = item.excludedCategories ?? [];
     return `${label} · ${exclusions.length ? "Excluded: " + exclusions.map(id => customisationCategories.find(c => c.category_id === id)?.label ?? id).join(", ") : "All Parts included"}`;
   }
@@ -107,11 +109,18 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
   const roomGeneration = useRef(0);
   const [busy, setBusy] = useState(false);
   const [preparing, setPreparing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const scheduleSave = useRef<() => void>(() => {});
+  const cancelSave = useRef<() => void>(() => {});
   const [ready, setReady] = useState(false);
-  const [error, setError] = useState("");
-  const answerError = error.includes("server could not accept an answer");
+  const [runtimeError, setRuntimeError] = useState<{ message: string; transportFailure: boolean } | null>(null);
+  const error = runtimeError?.message ?? "";
+  function setError(message: string, transportFailure = false) { setRuntimeError(message ? { message, transportFailure } : null); }
+  const answerError = error.includes("We couldn't accept that answer.");
   const [refreshError, setRefreshError] = useState("");
   const [exitOpen, setExitOpen] = useState(false);
+  const [exitError, setExitError] = useState("");
+  function openExit() { setExitError(""); setExitOpen(true); }
   const inFlight = useRef(false);
   const session = useMemo(() => {
     try { return new ExamRuntimeSession(runtimeCall(client), browserStorage, `abgm-exam-pilot-${environment}-${userId}`); }
@@ -145,18 +154,20 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; updateSitting({ type: "exit" }); }; }, [updateSitting]);
   function failure(cause: unknown) {
     const code = cause instanceof ExamRuntimeError ? cause.code : "EXAM_UNAVAILABLE";
+    const connectionFailure = code === "EXAM_UNAVAILABLE" && cause instanceof ExamRuntimeError && cause.transportFailure === true && !session?.journal?.submission;
     if (code === "EXAM_TRIAL_DISABLED" || code === "EXAM_TRIAL_CONFIGURATION") {
       setTrialFailure(code === "EXAM_TRIAL_DISABLED" ? "disabled" : "error"); setError(""); return;
     }
-    setError(/CONFLICT/.test(code) ? "This attempt changed in another tab. Your local answers are retained. Close the other tab before recovering."
-      : code === "EXAM_TRIAL_UNAVAILABLE" ? "Your trial has already been submitted. Return to Exam to review it."
-      : code === "EXAM_TRIAL_RELEASED" ? "This trial was released after a marking problem. Return to Exam to start its replacement."
-      : code === "EXAM_DEVICE_REQUIRED" ? "This attempt can only be continued in the browser where it started. You can abandon it here."
-      : code === "EXAM_INVALID_CONFIGURATION" ? "This Custom Exam configuration is unavailable. Refresh your access and try again."
-      : /INVALID|ANSWER|SELECTION|NUMERIC|TEXT/.test(code) ? "The server could not accept an answer. Check numeric values and required selections before trying again."
-      : code === "EXAM_GRADING_COOLDOWN" ? "Please wait 30 seconds before retrying grading."
-      : code === "EXAM_PILOT_CLOSED" ? "New pilot attempts are not open yet."
-      : "We couldn’t confirm the operation. Your local answers are retained. Reconnect and retry.");
+    setError(/CONFLICT/.test(code) ? "Your exam is out of sync. Your answers are saved in this browser. Close any other tabs with this exam open, then retry."
+      : code === "EXAM_TRIAL_UNAVAILABLE" ? "You've already submitted your trial exam. Return to Exam to check its progress or results."
+      : code === "EXAM_TRIAL_RELEASED" ? "We couldn't finish marking your trial exam. Your trial has been restored, so you can start a new one from Exam."
+      : code === "EXAM_DEVICE_REQUIRED" ? "This exam can't be continued in this browser. Return to the browser where you started it, or abandon the exam here."
+      : code === "EXAM_INVALID_CONFIGURATION" ? "These Custom Exam settings are no longer available. Refresh your exam access, then try again."
+      : /INVALID|ANSWER|SELECTION|NUMERIC|TEXT/.test(code) ? "We couldn't accept that answer. Check your numbers and required selections, then try again."
+      : code === "EXAM_GRADING_COOLDOWN" ? "Grading was just retried. Please wait 30 seconds before trying again."
+      : code === "EXAM_PILOT_CLOSED" ? "New pilot exams aren't available yet. Please check back later."
+      : connectionFailure ? "We've lost connection. Check your connection, then retry to continue your exam."
+      : "We couldn't confirm your last action. Your answers are saved in this browser. Check your connection, then retry.", connectionFailure);
   }
   async function loadRoom() {
     if (!session) return;
@@ -192,11 +203,48 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
     }).catch(() => { /* The dashboard and saved-result links remain available. */ });
     return () => { cancelled = true; };
   }, [account, recapId, resultCache, session]);
-  async function run(action: () => Promise<void>) {
+  // Stage every edit immediately; only remote saves wait for a pause in typing.
+  useEffect(() => {
+    let cancelled = false;
+    let saving = false;
+    let due = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const cancel = () => {
+      if (timer !== undefined) clearTimeout(timer);
+      timer = undefined;
+      due = false;
+    };
+    async function flush() {
+      if (cancelled || saving || !due || !session?.journal?.dirty || session.journal.submission) return;
+      due = false;
+      saving = true;
+      try { await session.save(); }
+      catch (cause) { cancel(); if (!cancelled && mounted.current) failure(cause); }
+      finally {
+        saving = false;
+        if (!cancelled && due) void flush();
+      }
+    }
+    const schedule = () => {
+      cancel();
+      timer = setTimeout(() => { timer = undefined; due = true; void flush(); }, 500);
+    };
+    scheduleSave.current = schedule;
+    cancelSave.current = cancel;
+    return () => {
+      cancelled = true;
+      cancel();
+      if (scheduleSave.current === schedule) scheduleSave.current = () => {};
+      if (cancelSave.current === cancel) cancelSave.current = () => {};
+    };
+  }, [session]);
+  async function run(action: () => Promise<void>, submission = false, retainError = false, onFailure = failure) {
     if (inFlight.current) return;
-    inFlight.current = true; setBusy(true); setError("");
-    try { await action(); } catch (cause) { if (mounted.current) failure(cause); }
-    finally { inFlight.current = false; if (mounted.current) setBusy(false); }
+    const submittingOperation = submission || Boolean(session?.journal?.submission);
+    if (submittingOperation) { cancelSave.current(); setSubmitting(true); }
+    inFlight.current = true; setBusy(true); if (!retainError) setError("");
+    try { await action(); if (retainError && mounted.current) setError(""); } catch (cause) { if (mounted.current) onFailure(cause); }
+    finally { inFlight.current = false; if (mounted.current) { setBusy(false); if (submittingOperation) setSubmitting(false); } }
   }
   function show(next: RuntimeAttempt, recordResult = false) {
     if (!mounted.current) return;
@@ -204,18 +252,22 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
     if (recordResult && next.status === "submitted") setPendingResult(next);
     if (next.status === "active" || next.status === "submitted") {
       const display = session?.journal?.attemptId === next.id ? session.journal : undefined;
-      updateSitting({ type: "hydrate", sitting: { ...toSitting(next), showTimer: display?.showTimer ?? true, showRanges: display?.showRanges ?? true } });
+      updateSitting({ type: "hydrate", sitting: { ...toSitting(next, display?.navigation), showTimer: display?.showTimer ?? true, showRanges: display?.showRanges ?? true } });
     }
     else { updateSitting({ type: "exit" }); session?.clear(); setAttempt(null); }
+  }
+  async function readResult(attemptId: string, partId?: string) {
+    const next = await session!.call<RuntimeAttempt>("read", { attemptId });
+    if (next.id !== attemptId || next.status !== "submitted" || (partId && !next.questions.some(q => q.parts.some(p => p.id === partId)))) throw new Error("Saved source unavailable");
+    return next;
   }
   async function openResult(attemptId: string, origin: "exam" | "history" | "error-log", partId?: string) {
     if (!session) return;
     const request = ++sourceOpenVersion.current;
     let next: RuntimeAttempt;
-    try { next = await session.call<RuntimeAttempt>("read", { attemptId }); }
+    try { next = await readResult(attemptId, partId); }
     catch (cause) { if (mounted.current && sourceOpenVersion.current === request) throw cause; return; }
     if (!mounted.current || sourceOpenVersion.current !== request) return;
-    if (next.id !== attemptId || next.status !== "submitted" || (partId && !next.questions.some(q => q.parts.some(p => p.id === partId)))) throw new Error("Saved source unavailable");
     resultCache.set(next.id, next);
     pushView({ account, view: "results", attemptId: next.id, partId, origin });
   }
@@ -242,9 +294,8 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
       else if (session) {
         setAttempt(null); updateSitting({ type: "exit" });
         setBusy(true);
-        void session.call<RuntimeAttempt>("read", { attemptId: entry.attemptId }).then(next => {
+        void readResult(entry.attemptId, entry.partId).then(next => {
           if (!mounted.current || sourceOpenVersion.current !== request) return;
-          if (next.id !== entry.attemptId || next.status !== "submitted" || (entry.partId && !next.questions.some(q => q.parts.some(p => p.id === entry.partId)))) throw new Error("Saved source unavailable");
           resultCache.set(next.id, next); show(next);
         }).catch(cause => { if (mounted.current && sourceOpenVersion.current === request) failure(cause); })
           .finally(() => { if (mounted.current && sourceOpenVersion.current === request) setBusy(false); });
@@ -255,7 +306,7 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
       setBusy(false);
     }
     return () => { ++sourceOpenVersion.current; };
-  }, [location.key, session, navigationRevision]);
+  }, [location.key, session]);
   useEffect(() => {
     if (attempt?.status === "submitted") resultCache.set(attempt.id, attempt);
   }, [attempt, resultCache]);
@@ -280,32 +331,39 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
       if (session.journal?.submission) next = await session.submit(session.journal.submission.answers);
       else {
         if (session.journal?.dirty) next = await session.save();
-        next = await session.present(next.questions[0].id);
+        const navigation = session.journal?.attemptId === next.id ? session.journal.navigation : undefined;
+        const restored = toSitting(next, navigation);
+        next = await session.present(next.questions[restored.questionIndex].id);
       }
     }
     show(next, next.status === "submitted");
   }
   async function leave() {
     if (!session || !attempt) return;
-    await session.abandon(attempt.id);
+    await abandonAttempt(attempt.id);
     updateSitting({ type: "exit" }); setAttempt(null); setExitOpen(false); await loadRoom();
+  }
+  async function abandonAttempt(attemptId: string) {
+    cancelSave.current();
+    await session!.abandon(attemptId);
   }
   function dispatch(action: SittingAction) {
     if (!session || !sitting || busy || (error && !answerError) || session.journal?.submission) return;
     if (action.type === "submit") {
-      void run(async () => show(await session.submit(encodeAnswers(sitting)), true)); return;
+      void run(async () => show(await session.submit(encodeAnswers(sitting)), true), true); return;
     }
-    if (action.type === "exit") { setExitOpen(true); return; }
+    if (action.type === "exit") { openExit(); return; }
     const next = sittingReducer(sitting, action);
     if (!next) return;
     if (action.type === "answer") {
       setError("");
       try { session.stage(encodeAnswers(next)); } catch (cause) { failure(cause); return; }
-      void session.save().catch(cause => { if (mounted.current) failure(cause); });
+      scheduleSave.current();
     }
     if (action.type === "timer" || action.type === "ranges") {
       session.setDisplayPreferences(next.showTimer, next.showRanges); persistDisplay(next.showTimer, next.showRanges);
     }
+    if (next !== sitting && (action.type === "jump" || action.type === "review" || action.type === "return")) session.setNavigation(next);
     updateSitting(action);
     if (action.type === "jump" && next.questionIndex !== sitting.questionIndex) {
       void session.present(next.questions[next.questionIndex].id).catch(cause => { if (mounted.current) failure(cause); });
@@ -332,13 +390,21 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
           const next = await session!.call<RuntimeAttempt>("read", { attemptId: id });
           if (!cancelled) { setAttempt(next); setRefreshError(""); }
         }
-      } catch { if (!cancelled) setRefreshError("Couldn’t refresh grading. Your submission is saved; we’ll try again."); }
+      } catch { if (!cancelled) setRefreshError("We couldn't check your grading progress. Your exam has been submitted, and we'll try again automatically."); }
       if (!cancelled) timer = setTimeout(refresh, 5000);
     }
     timer = setTimeout(refresh, 3000);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [session, attempt?.id, hasPendingGrades]);
-  function dashboard(setupContent?: ReactNode, trial = false, overviewHero?: ReactNode) { if (!session) return null; return (<ExamDashboard trial={trial} setupContent={setupContent} overviewHero={overviewHero}
+  function dashboard(setupContent?: ReactNode, trial = false, overviewHero?: ReactNode) {
+    if (!session) return null;
+    const trialUnavailable = trial && !preparing && !current && !session.journal && (!canStart || trialStatus !== "ready" || trialLifecycle?.state !== "available");
+    return (<>
+      {trialUnavailable && <ExamNotice role={canStart && trialStatus === "error" ? "alert" : "status"}>
+        <NoticeMessage message={!canStart ? trialAccessMessage ?? "Your account doesn't have access to the trial exam. Sign in with an account invited to the pilot." : trialLifecycle && trialLifecycle.state !== "available" ? "You've already started your trial exam. Return to Exam to continue it or view your results." : trialStatus === "disabled" ? "The trial exam isn't available right now. Please try again later." : "We couldn't get your trial exam ready. Please try again."} />{" "}
+        {canStart && trialStatus === "error" && <RetryAction busy={accessNotice?.busy ?? busy} onClick={() => { setTrialFailure(null); onRetryTrial?.(); }} />}
+      </ExamNotice>}
+      <ExamDashboard trial={trial} setupContent={setupContent} overviewHero={overviewHero}
           hideModeSwitch={limitedDashboard}
           navigationVisibility={limitedDashboard ? { latestResult: Boolean(history.latestAttemptId), pastAttempts: Boolean(history.latestAttemptId), errorLog: trialLifecycle?.state === "consumed" || Boolean(errorLog.data?.entries.length) } : undefined}
           feedbackPreference={feedbackPreference}
@@ -367,38 +433,52 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
           startContent={!preparing && (current || session.journal) ? <div className="exam-recovery-actions">
             <p>Would you like to recover your previous session?</p>
             <button className="figma-button exam-primary" disabled={busy || !ready} onClick={() => void run(() => openAttempt(true))}>Recover attempt</button>
-            {current && <button className="figma-button figma-button--secondary" disabled={busy} onClick={() => setExitOpen(true)}>Abandon attempt</button>}
-          </div> : trial && (!canStart || trialStatus !== "ready" || trialLifecycle?.state !== "available") ? <div role={canStart && trialStatus === "error" ? "alert" : "status"}>
+            {current && <button className="figma-button figma-button--secondary" disabled={busy} onClick={openExit}>Abandon attempt</button>}
+          </div> : trialUnavailable ? <div>
             <button className="figma-button exam-primary exam-start" disabled>Begin Trial Exam</button>
-            <p>{!canStart ? trialAccessMessage ?? "Trial access hasn’t been enabled for this account. Sign in with an invited pilot account." : trialLifecycle && trialLifecycle.state !== "available" ? "Your trial exam has already been started or submitted. Return to Exam to continue or review it." : trialStatus === "disabled" ? "Trial exam is currently unavailable." : "We couldn’t prepare the trial exam. Please try again."}</p>
-            {canStart && trialStatus === "error" && <button className="exam-pilot-button" disabled={busy} onClick={() => { setTrialFailure(null); onRetryTrial?.(); }}>Retry</button>}
-          </div> : undefined} />); }
-  if (!session) return <p role="alert">Browser storage is unavailable or unreadable. Enable storage before starting an exam.</p>;
+          </div> : undefined} /></>); }
+  if (!session) return <ExamNotice><NoticeMessage message="Your browser isn't saving exam data. Enable browser storage before starting an exam so your progress can be saved." /></ExamNotice>;
   return <section aria-label="Exam pilot">
-    {error && <div role="alert"><p>{error}</p>
-      <button className="exam-pilot-button" disabled={busy} onClick={() => void run(async () => {
-        if (navigation?.view === "results") setNavigationRevision(value => value + 1);
+    <div className="exam-notice-slot">
+    {error ? <div className="exam-notice" role={runtimeError?.transportFailure ? "status" : "alert"}><p><NoticeMessage message={error} />{" "}
+      <RetryAction busy={busy} onClick={() => {
+        if (inFlight.current) return;
+        if (runtimeError?.transportFailure) accessNotice?.onRetry();
+        void run(async () => {
+        if (navigation?.view === "results" && navigation.attemptId) {
+          const request = ++sourceOpenVersion.current;
+          let next: RuntimeAttempt;
+          try { next = await readResult(navigation.attemptId, navigation.partId); }
+          catch (cause) { if (mounted.current && sourceOpenVersion.current === request) throw cause; return; }
+          if (mounted.current && sourceOpenVersion.current === request) { resultCache.set(next.id, next); show(next); }
+        }
         else if (session.journal) await openAttempt(true); else await loadRoom();
-      })}>{session.journal?.submission ? "Check submission / retry" : session.journal ? "Recover saved attempt" : "Retry"}</button>
-      {!session.journal?.submission && error.includes("another tab") && <button className="exam-pilot-button" disabled={busy} onClick={() => void run(async () => {
+      }, false, true);
+      }}>{session.journal?.submission ? "Check submission / retry" : runtimeError?.transportFailure ? "Retry" : session.journal ? "Recover saved attempt" : "Retry"}</RetryAction></p>
+      {!session.journal?.submission && error.includes("Your exam is out of sync.") && <RetryAction busy={busy} onClick={() => void run(async () => {
         session.keepServerDraft(); await openAttempt(true);
-      })}>Use saved server answers (keep local backup)</button>}
-      {session.journal?.submission && /could not accept/.test(error) && <button className="exam-pilot-button" onClick={() => {
+      }, false, true)}>Use saved server answers (keep local backup)</RetryAction>}
+      {session.journal?.submission && answerError && <button type="button" className="exam-notice__retry" disabled={busy} onClick={() => {
         session.cancelRejectedSubmission(); setError("");
       }}>Return to answers</button>}
-    </div>}
+    </div> : attempt?.status === "submitted" && refreshError ? <ExamNotice role="status"><NoticeMessage message={refreshError} /></ExamNotice>
+    : !attempt && roomView !== "error-log" && history.error ? <ExamNotice><NoticeMessage message={history.error} />{" "}<RetryAction busy={history.loading} onClick={() => void history.refresh()}>Retry history</RetryAction></ExamNotice>
+    : accessNotice?.visible ? <div className="exam-notice" role="status" aria-live="polite">
+      <strong>We're having trouble checking your exam access.</strong>{" "}You can keep working while we try again.{" "}
+      <RetryAction busy={accessNotice.busy} onClick={accessNotice.onRetry} />
+    </div> : null}
+    </div>
     {sitting && attempt ? sitting.phase === "complete" ? <>
-      {refreshError && <p role="status">{refreshError}</p>}
       {attempt.examKind === "custom" && <p>{configurationLabel(attempt)}</p>}
       <ExamResultsPresentation key={`${attempt.id}:${reviewPartId ?? "default"}`} initialPartId={reviewPartId}
         errorLogPresentation={errorLogPresentation} errorLogBusy={errorLog.busy} onErrorLogSave={errorLog.save}
         aiFeedback={supportsFeedback ? aiFeedback : undefined}
         marksAvailable={attempt.marksAvailable ?? Number.NaN} gradingStatus={attempt.gradingStatus} sitting={sitting} pressureUnit={state.sessionState?.pressureUnit ?? sitting.pressureUnit}
-        notice={<>{errorLog.error && <p role="alert">{errorLog.error} <button type="button" onClick={() => void errorLog.refresh()}>Retry Error log</button></p>}<aside className="exam-results__feedback" aria-label="Exam feedback">
+        notice={<aside className="exam-results__feedback" aria-label="Exam feedback">
           <p>Help us improve with a quick anonymous survey</p>
           <a href="https://docs.google.com/forms/d/e/1FAIpQLSdxV6GEYCp5m4jBC4yEu095YjVQtniDPmO3r1HpmywDOND43Q/viewform?usp=publish-editor"
             target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" aria-label="Share your feedback (opens in a new tab)">Share your feedback <span aria-hidden="true">↗</span></a>
-        </aside></>}
+        </aside>}
         feedback={attempt.feedback ?? {}} grades={Object.fromEntries((attempt.parts ?? []).map(p => [p.partId, { status: p.status, score: p.marksAwarded ?? undefined, criteria: p.criteria ?? undefined }]))}
         onReport={async input => {
           const receipt = await session.call<{ reportId: string }>("report_problem", { ...input, attemptId: attempt.id });
@@ -407,13 +487,12 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
         onRetry={attempt.canRetryGrading && !busy ? () => void run(async () => show(await session.call<RuntimeAttempt>("retry_grading", { attemptId: attempt.id }))) : undefined}
         onExit={backToRoom} />
     </> : <>
-      <ExamSitting sitting={sitting} dispatch={dispatch} onExitConfirmed={() => session.abandon(attempt.id)} disabled={busy || (!!error && !answerError) || !!session.journal?.submission} />
-      {exitOpen && <ExitSittingDialog onStay={() => setExitOpen(false)} onExit={() => void run(leave)} />}
+      <ExamSitting sitting={sitting} dispatch={dispatch} onExitConfirmed={() => abandonAttempt(attempt.id)} submitting={submitting} disabled={busy || (!!error && !answerError) || !!session.journal?.submission} />
+      {exitOpen && <ExitSittingDialog busy={busy} error={exitError} onStay={() => setExitOpen(false)} onExit={() => void run(leave, false, true, () => setExitError("We couldn't confirm that you've exited the exam. Check your connection, then try again."))} />}
     </> : <>
       {roomView === "error-log" ? <ConnectedExamErrorLog key={`${environment}:${userId}`} log={errorLog}
         onBack={backToRoom} onOpenExample={(id, partId) => openResult(id, "error-log", partId)}
         onOpenLatest={history.latestAttemptId ? () => openResult(history.latestAttemptId!, "error-log") : undefined} /> : <>
-        {history.error && <p role="alert">{history.error} <button type="button" disabled={history.loading} onClick={() => void history.refresh()}>Retry history</button></p>}
         {roomView === "history" ? <ExamHistory
           history={historyView} unavailable={!history.data}
           attempts={historyView.attempts}
@@ -421,7 +500,7 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
           onOpen={id => void run(() => openResult(id, "history"))}
           onRetry={id => void run(async () => { await session.call<RuntimeAttempt>("retry_grading", { attemptId: id }); await history.refresh(); })}
           onLoadMore={history.data?.page.nextCursor ? () => void history.loadMore() : undefined}
-          total={history.data?.page.total} loading={history.loading} busy={busy} /> : renderDashboard ? renderDashboard({ refreshTrial: () => void run(loadRoom), trialLifecycle, openTrialResult: () => { if (trialLifecycle?.attemptId) void run(() => openResult(trialLifecycle.attemptId!, "exam")); }, fullSetup: dashboard(), trialSetup: dashboard(undefined, true), withSetup: (content, hero) => dashboard(content, false, hero),
+          total={history.data?.page.total} loading={history.loading} busy={busy} loadMoreError={history.loadMoreError} /> : renderDashboard ? renderDashboard({ refreshTrial: () => void run(loadRoom), trialLifecycle, openTrialResult: () => { if (trialLifecycle?.attemptId) void run(() => openResult(trialLifecycle.attemptId!, "exam")); }, fullSetup: dashboard(), trialSetup: dashboard(undefined, true), withSetup: (content, hero) => dashboard(content, false, hero),
           completedTrial: trialRecap?.account === account && trialRecap.result.id === recapId ? trialRecap.result : undefined,
           canRecover: !preparing && Boolean(current || session.journal), ready, busy: busy || preparing,
           canBegin: canStart && ready && !busy && !preparing && counts.includes(setupState.caseCount) && feedbackPreference.canBegin,
@@ -430,7 +509,7 @@ export default function ExamPilotRuntime({ onReturnToDashboard, trialAccessMessa
           setShowRanges: showRanges => persistDisplay(setupState.timed, showRanges),
           begin: () => void run(async () => { setPreparing(true); try { await openAttempt(false); } finally { if (mounted.current) setPreparing(false); } })
         }) : dashboard()}
-        {exitOpen && current && <ExitSittingDialog onStay={() => setExitOpen(false)} onExit={() => void run(async () => { await session.abandon(current); setExitOpen(false); await loadRoom(); })} />}
+        {exitOpen && current && <ExitSittingDialog busy={busy} error={exitError} onStay={() => setExitOpen(false)} onExit={() => void run(async () => { await abandonAttempt(current); setExitOpen(false); await loadRoom(); }, false, true, () => setExitError("We couldn't confirm that you've exited the exam. Check your connection, then try again."))} />}
       </>}
 
     </>}

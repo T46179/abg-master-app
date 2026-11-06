@@ -1,10 +1,11 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
+import { NoticeMessage, RetryAction } from "./ExamNotice";
 import { ArrowIcon, CheckIcon, ChevronRightIcon, CrossIcon, FlagIcon, HistoryIcon } from "./ExamIcons";
 import { BackLink } from "./ExamUi";
 import type { ErrorLogConceptPresentation } from "./errorLogTypes";
 import "./errorLog.css";
 
-export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, onArchive, onRestore, onExpand, onLoadMore, busy, actionError }: {
+export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, onArchive, onRestore, onExpand, onLoadMore, busy, actionError, actionErrorConceptId, pageNotice }: {
   concepts: readonly ErrorLogConceptPresentation[];
   onBack: () => void;
   onOpenResult?: () => void;
@@ -15,6 +16,8 @@ export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, on
   onLoadMore?: (id: string) => void;
   busy?: boolean;
   actionError?: string;
+  actionErrorConceptId?: string;
+  pageNotice?: ReactNode;
 }) {
   const [tab, setTab] = useState<"open" | "archived">("open");
   const [openId, setOpenId] = useState<string | null>(concepts.find(c => !c.archived)?.id ?? null);
@@ -37,17 +40,18 @@ export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, on
   }, [concepts, topic]);
 
   return <div className="exam-error-log">
+    {pageNotice}
     <BackLink onClick={onBack} />
     <header className="exam-error-log__heading">
       <h1>Error log</h1>
       <p>Keep track of challenging concepts from your exams. Reinforce your understanding with focused drills, and use your error log to guide revision alongside your other study resources.</p>
     </header>
-    {actionError && <p role="alert">{actionError}</p>}
     {concepts.length === 0 ? <div className="exam-error-log__empty exam-error-log__empty--initial">
       <span className="exam-error-log__empty-icon"><FlagIcon /></span>
       <h2>Your Error Log is empty</h2>
       <p>Save concepts from your exam results to keep track of areas for improvement. Use <strong>Add to error log</strong> to include it here to guide your revision.</p>
       {onOpenResult && <button type="button" disabled={busy} className="figma-button exam-primary" onClick={onOpenResult}>Review latest result <ArrowIcon /></button>}
+      {actionError && !actionErrorConceptId && <p className="exam-inline-error" role="alert"><NoticeMessage message={actionError} /></p>}
     </div> : <div className="exam-error-log__grid">
       <div className="exam-error-log__main">
         <div className="exam-error-log__toolbar">
@@ -85,14 +89,15 @@ export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, on
                     <span className="exam-error-log__view">View in Results <ChevronRightIcon /></span>
                   </button>)}
                 </div>
-                {c.examplesLoading && <p role="status">Loading saved examples…</p>}
-                {c.examplesError && <p role="alert">{c.examplesError} <button type="button" className="exam-error-log__text-button" onClick={() => onLoadMore?.(c.id)}>Retry</button></p>}
+                {c.examplesLoading && !c.examplesError && <p role="status">Loading saved examples…</p>}
+                {c.examplesError && <p className="exam-inline-error" role="alert"><NoticeMessage message={c.examplesError} />{" "}<RetryAction busy={Boolean(c.examplesLoading)} onClick={() => onLoadMore?.(c.id)} /></p>}
                 {c.hasMoreExamples && !c.examplesError && <button type="button" className="exam-error-log__text-button" disabled={c.examplesLoading} onClick={() => onLoadMore?.(c.id)}>Load more</button>}
                 <div className="exam-error-log__footer">
                   <button type="button" disabled={busy} className={`figma-button exam-error-log__archive${arch ? " figma-button--secondary" : " exam-primary"}`} onClick={() => arch ? onRestore?.(c.id) : onArchive?.(c.id)}>
-                    {arch ? <><HistoryIcon /> Restore to review</> : <><CheckIcon /> Archive</>}
+                    {busy && <span className="figma-button__spinner" aria-hidden="true" />}{arch ? <><HistoryIcon /> Restore to review</> : <><CheckIcon /> Archive</>}
                   </button>
                 </div>
+                {actionError && actionErrorConceptId === c.id && <p className="exam-inline-error" role="alert"><NoticeMessage message={actionError} /></p>}
               </div>
             </section>;
           })}

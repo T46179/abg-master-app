@@ -1,5 +1,7 @@
 import { useId, type ReactNode, type ReactElement } from "react";
 import { LockKeyhole } from "lucide-react";
+import { examKindLabel } from "./examLabels";
+import { NoticeMessage, RetryAction } from "./ExamNotice";
 import { Surface } from "../primitives/Surface";
 import type { PressureUnit } from "../../core/types";
 import {
@@ -143,8 +145,8 @@ function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisab
   const disclaimerId = useId();
   const custom = state.examKind === "custom";
   const kinds: { key: SittingKind; label: string; description: string }[] = [
-    { key: "mock", label: "Standard Exam", description: "default settings" },
-    { key: "custom", label: "Custom Exam", description: trial ? "Full exam feature" : "Choose what's included" }
+    { key: "mock", label: examKindLabel("mock"), description: "default settings" },
+    { key: "custom", label: examKindLabel("custom"), description: trial ? "Full exam feature" : "Choose what's included" }
   ];
   return <div className={"exam-workspace exam-mock-workspace" + (trial ? " exam-trial-builder" : "")} data-kind={state.examKind}>
     {!trial && <ExamOverview state={state} pressureUnit={pressureUnit} hero={overviewHero} />}
@@ -209,13 +211,12 @@ function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisab
             aria-describedby={disclaimerId} onChange={event => feedbackPreference.acknowledge(event.target.checked)} />
             <span>I understand</span></label>
         </>}
-        {feedbackPreference.error && <div className="exam-feedback-tone__error" role="alert">
-          <p>{feedbackPreference.error}</p>
-          <button type="button" className="figma-button figma-button--secondary exam-pill"
-            disabled={feedbackPreference.busy} onClick={() => void feedbackPreference.retry()}>Retry feedback preference</button>
+        {feedbackPreference.error && <div className="exam-feedback-tone__error exam-inline-error" role="alert">
+          <p><NoticeMessage message={feedbackPreference.error} /></p>
+          <RetryAction busy={feedbackPreference.busy} onClick={() => void feedbackPreference.retry()}>Retry feedback preference</RetryAction>
         </div>}
       </section>}
-      {trial && feedbackPreference?.error && <div className="exam-feedback-tone__error" role="alert"><p>{feedbackPreference.error}</p><button type="button" disabled={feedbackPreference.busy} onClick={() => void feedbackPreference.retry()}>Retry</button></div>}
+      {trial && feedbackPreference?.error && <div className="exam-feedback-tone__error exam-inline-error" role="alert"><p><NoticeMessage message={feedbackPreference.error} /></p><RetryAction busy={feedbackPreference.busy} onClick={() => void feedbackPreference.retry()} /></div>}
       <div className="exam-suggested-time"><span>Suggested time</span><strong>~{state.caseCount === 3 ? 15 : 30} min</strong></div>
       </fieldset>
       {startContent ?? <button type="button" className="figma-button exam-primary exam-start" onClick={onBegin} disabled={launching || beginDisabled || (!trial && feedbackPreference && !feedbackPreference.canBegin)} aria-busy={launching || undefined}>

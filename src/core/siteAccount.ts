@@ -26,32 +26,43 @@ export function createSiteAccount(client: SupabaseClient) {
     listeners.forEach(listener => listener());
   }
 
+  function verificationFailed(cause: unknown, expectedId?: string) {
+    const error = cause && typeof cause === "object" ? cause as { status?: number } : undefined;
+    // The SDK wraps failed fetches as AuthRetryableFetchError (status 0), and
+    // gateway failures as 502/503/504. These do not establish a different owner.
+    const retryable = error && (error.status === 0 || [429, 502, 503, 504].includes(error.status ?? -1));
+    if (retryable && snapshot.status === "verified" && snapshot.userId && (!expectedId || expectedId === snapshot.userId)) return;
+    publish("unavailable");
+  }
+
   async function refresh() {
     if (timer !== undefined) { clearTimeout(timer); timer = undefined; }
     const ticket = ++revision;
+    let expectedId: string | undefined;
     try {
       const session = await client.auth.getSession();
       if (!started || ticket !== revision) return;
-      if (session.error) { publish("unavailable"); return; }
+      if (session.error) { verificationFailed(session.error); return; }
       if (!session.data.session) { publish("signed_out"); return; }
       // Only the verified response establishes identity; session metadata is a hint.
-      const expectedId = session.data.session.user.id;
+      expectedId = session.data.session.user.id;
       if (expectedId !== snapshot.userId) publish("checking");
       const result = await client.auth.getUser();
       if (!started || ticket !== revision) return;
       const user = result.data.user;
-      if (result.error || !user || user.id !== expectedId || typeof user.is_anonymous !== "boolean") {
+      if (result.error) { verificationFailed(result.error, expectedId); return; }
+      if (!user || user.id !== expectedId || typeof user.is_anonymous !== "boolean") {
         publish("unavailable"); return;
       }
       if (session.data.session.user.is_anonymous === true && user.is_anonymous === false && user.email_confirmed_at) {
         const refreshed = await client.auth.refreshSession();
         if (!started || ticket !== revision) return;
-        if (refreshed.error) { publish("unavailable"); return; }
+        if (refreshed.error) { verificationFailed(refreshed.error, expectedId); return; }
       }
       publish(user.is_anonymous ? "guest" : user.email && user.email_confirmed_at ? "verified" : "unverified",
         user.id, user.is_anonymous ? null : user.email ?? null);
-    } catch {
-      if (started && ticket === revision) publish("unavailable");
+    } catch (cause) {
+      if (started && ticket === revision) verificationFailed(cause, expectedId);
     }
   }
 

@@ -99,6 +99,48 @@ describe("site-wide account state", () => {
     expect(f.auth.signInAnonymously).not.toHaveBeenCalled();
   });
 
+  it.each([0, 429, 502, 503, 504])("keeps an already verified account scoped during a retryable background failure (%s)", async status => {
+    const f = fixture(); f.account.start(); await f.account.refresh();
+    const before = f.account.getSnapshot();
+    f.auth.getUser.mockResolvedValue({ data: { user: null }, error: { name: "AuthRetryableFetchError", status } });
+    await f.account.refresh();
+    expect(f.account.getSnapshot()).toBe(before);
+    expect(f.account.isCurrent(before.generation, "a")).toBe(true);
+    f.identity("a"); await f.account.refresh();
+    expect(f.account.getSnapshot()).toBe(before);
+  });
+
+  it("retains a verified owner on retryable session refresh failure, but clears it on confirmed session absence", async () => {
+    const f = fixture(); f.account.start(); await f.account.refresh();
+    const before = f.account.getSnapshot();
+    f.auth.getSession.mockResolvedValueOnce({ data: { session: null }, error: { status: 0 } });
+    await f.account.refresh(); expect(f.account.getSnapshot()).toBe(before);
+    f.auth.getSession.mockResolvedValueOnce({ data: { session: null }, error: null });
+    await f.account.refresh();
+    expect(f.account.getSnapshot()).toMatchObject({ status: "signed_out", userId: null });
+  });
+
+  it("does not establish initial identity or carry prior identity across an account change on a retryable failure", async () => {
+    const f = fixture();
+    f.auth.getUser.mockResolvedValue({ data: { user: null }, error: { status: 0 } });
+    f.account.start(); await f.account.refresh();
+    expect(f.account.getSnapshot()).toMatchObject({ status: "unavailable", userId: null });
+    f.identity("a"); await f.account.refresh();
+    f.identity("b"); f.emit("SIGNED_IN", "b");
+    f.auth.getUser.mockResolvedValue({ data: { user: null }, error: { status: 0 } });
+    await vi.runOnlyPendingTimersAsync();
+    expect(f.account.getSnapshot()).toMatchObject({ status: "unavailable", userId: null });
+  });
+
+  it.each([401, 403])("invalidates the owner on confirmed auth rejection (%s)", async status => {
+    const f = fixture(); f.account.start(); await f.account.refresh();
+    const generation = f.account.getSnapshot().generation;
+    f.auth.getUser.mockResolvedValue({ data: { user: null }, error: { status } });
+    await f.account.refresh();
+    expect(f.account.getSnapshot()).toMatchObject({ status: "unavailable", userId: null });
+    expect(f.account.isCurrent(generation, "a")).toBe(false);
+  });
+
   it("distinguishes an unverified permanent account from a guest", async () => {
     const f = fixture();
     f.auth.getUser.mockResolvedValue({ data: { user: { id: "a", is_anonymous: false, email: "a@example.test" } }, error: null });

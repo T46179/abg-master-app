@@ -1,5 +1,16 @@
 import { expect, it, vi } from "vitest";
-import { ExamRuntimeSession, ExamRuntimeError, encodeAnswers, toSitting, type RuntimeAttempt, type RuntimeCall } from "./examRuntime";
+import { ExamRuntimeSession, ExamRuntimeError, encodeAnswers, runtimeCall, toSitting, type ExamNavigationPosition, type RuntimeAttempt, type RuntimeCall } from "./examRuntime";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+it.each([
+ { error: { name: "FunctionsFetchError" }, transport: true, code: "EXAM_UNAVAILABLE" },
+ { error: new Error("unknown failure"), transport: false, code: "EXAM_UNAVAILABLE" },
+ { error: { name: "FunctionsHttpError", context: { json: async () => ({ code: "EXAM_UNAVAILABLE" }) } }, transport: false, code: "EXAM_UNAVAILABLE" },
+ { error: { name: "FunctionsHttpError", context: { json: async () => ({ code: "EXAM_LOCAL_CONFLICT" }) } }, transport: false, code: "EXAM_LOCAL_CONFLICT" },
+])("marks only identifiable transport failures: $code ($transport)", async ({ error, transport, code }) => {
+ const client = { functions: { invoke: vi.fn().mockResolvedValue({ error }) } } as unknown as SupabaseClient;
+ await expect(runtimeCall(client)("read", {})).rejects.toMatchObject({ code, transportFailure: transport });
+});
 const base = (): RuntimeAttempt => ({ id: "attempt", status: "active", revision: 0, pressureUnit: "kPa", createdAt: "2026-09-29T00:00:00Z", presentedAt: null, finishedAt: null, answers: {}, questions: [{ id: "unit", tables: [], parts: [{ id: "number", kind: "numeric", prompt: "Value", marks: 1, pressureAnswer: true }, { id: "text", kind: "concept", prompt: "Explain", marks: 2 }] }] });
 function harness() {
   const entries = new Map<string, string>();
@@ -22,6 +33,79 @@ it("preserves raw numeric text and frozen pressure unit without reshuffling", ()
   expect(sitting.questions).toBe(attempt.questions);
   expect(sitting.answers).toEqual({ number: "  5.00 ", text: " raw " });
   expect(encodeAnswers(sitting)).toEqual(attempt.answers);
+});
+it("restores question and remembered parts by identifier after reordering, including review", () => {
+ const attempt = base();
+ attempt.questions.push({ id: "later", tables: [], parts: [{ id: "later-a", kind: "concept", prompt: "A", marks: 1 }, { id: "later-b", kind: "concept", prompt: "B", marks: 1 }] });
+ const position: ExamNavigationPosition = { questionId: "later", partIdsByQuestion: { unit: "text", later: "later-b" }, phase: "review" };
+ expect(toSitting(attempt, position)).toMatchObject({ questionIndex: 1, partIndices: { unit: 1, later: 1 }, phase: "review" });
+ attempt.questions.reverse(); attempt.questions[0].parts.reverse();
+ expect(toSitting(attempt, position)).toMatchObject({ questionIndex: 0, partIndices: { unit: 1, later: 0 }, phase: "review" });
+});
+it.each([
+ undefined, null, [], "invalid", 12,
+ { questionId: "missing", partIdsByQuestion: { unit: "missing" }, phase: "invalid" },
+ { questionId: "unit", partIdsByQuestion: null },
+ { questionId: "unit", partIdsByQuestion: ["text"] },
+ { questionId: 5, partIdsByQuestion: { unit: {} } },
+])("safely defaults missing or malformed navigation: %j", position => {
+ const attempt = base(); attempt.answers.text = "preserved";
+ expect(toSitting(attempt, position as unknown as ExamNavigationPosition)).toMatchObject({ questionIndex: 0, partIndices: {}, phase: "active", answers: { text: "preserved" } });
+});
+it("ignores stored review navigation when the server attempt is submitted", () => {
+ expect(toSitting({ ...base(), status: "submitted" }, { questionId: "unit", partIdsByQuestion: { unit: "text" }, phase: "review" }))
+  .toMatchObject({ phase: "complete", questionIndex: 0, partIndices: {} });
+});
+it("persists navigation without remote calls and preserves answers and recovery fields through acknowledgements", async () => {
+ const h = harness(); await h.session.start("kPa"); h.session.stage({ text: "draft" });
+ const before = JSON.parse(h.entries.get("owner")!);
+ const sitting = { ...toSitting(base()), partIndices: { unit: 1 }, phase: "review" as const };
+ h.session.setNavigation(sitting);
+ expect(h.invoke.mock.calls.map(c => c[0])).toEqual(["start"]);
+ expect(JSON.parse(h.entries.get("owner")!)).toMatchObject({ ...before, navigation: { questionId: "unit", partIdsByQuestion: { unit: "text" }, phase: "review" } });
+ await h.session.save(); await h.session.present("unit");
+ const restored = new ExamRuntimeSession(h.call, h.storage, "owner"); await restored.recover();
+ expect(toSitting(restored.attempt!, restored.journal?.navigation)).toMatchObject({ phase: "review", partIndices: { unit: 1 }, answers: { text: "draft" } });
+});
+it("retains the last persisted position when a navigation write fails and keeps answer persistence usable", async () => {
+ const h = harness(); await h.session.start("kPa");
+ const original = h.storage.setItem;
+ h.session.setNavigation(toSitting(base()));
+ h.session.stage({ text: "before" });
+ const before = h.entries.get("owner");
+ h.storage.setItem = () => { throw new Error("quota"); };
+ expect(() => h.session.setNavigation({ ...toSitting(base()), partIndices: { unit: 1 }, phase: "review" })).not.toThrow();
+ expect(h.entries.get("owner")).toBe(before);
+ expect(h.session.journal?.navigation?.phase).toBe("active");
+ expect(h.session.journal?.dirty).toEqual({ text: "before" });
+ h.storage.setItem = original;
+ h.session.stage({ text: "after" }); await h.session.save();
+ const restored = new ExamRuntimeSession(h.call, h.storage, "owner"); await restored.recover();
+ expect(toSitting(restored.attempt!, restored.journal?.navigation)).toMatchObject({ phase: "active", partIndices: { unit: 0 }, answers: { text: "after" } });
+});
+it("does not create navigation when optional persistence fails and keeps journals account isolated", async () => {
+ const h = harness(); await h.session.start("kPa");
+ const original = h.storage.setItem;
+ h.storage.setItem = () => { throw new Error("quota"); };
+ h.session.setNavigation({ ...toSitting(base()), partIndices: { unit: 1 } });
+ expect(h.session.journal?.navigation).toBeUndefined();
+ h.storage.setItem = original;
+ const restored = new ExamRuntimeSession(h.call, h.storage, "owner"); await restored.recover();
+ expect(toSitting(restored.attempt!, restored.journal?.navigation)).toMatchObject({ questionIndex: 0, partIndices: {} });
+ expect(new ExamRuntimeSession(h.call, h.storage, "another-owner").journal).toBeNull();
+});
+it("retains submission identity with navigation and clears navigation with the existing journal lifecycle", async () => {
+ const h = harness(); await h.session.start("kPa");
+ h.session.setNavigation({ ...toSitting(base()), phase: "review" });
+ h.invoke.mockRejectedValueOnce(new Error("lost"));
+ await expect(h.session.submit({ text: "frozen" })).rejects.toThrow();
+ const submission = h.session.journal!.submission;
+ h.session.setNavigation(toSitting(base()));
+ expect(JSON.parse(h.entries.get("owner")!).submission).toEqual(submission);
+ await h.session.abandon("attempt");
+ expect(h.entries.has("owner")).toBe(false);
+ await h.session.start("kPa"); expect(h.session.journal?.navigation).toBeUndefined();
+ h.session.clear(); expect(h.entries.has("owner")).toBe(false);
 });
 it("persists start identity before a lost response and retries the same request", async () => {
   const h = harness(); h.invoke.mockRejectedValueOnce(new Error("offline"));

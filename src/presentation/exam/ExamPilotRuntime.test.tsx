@@ -60,13 +60,282 @@ beforeEach(() => {
  container = document.createElement("div"); document.body.append(container); root = createRoot(container);
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); vi.unstubAllGlobals(); });
+async function answer(text: string) {
+ const textarea = container.querySelector("textarea")!;
+ await act(async () => {
+  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(textarea, text);
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+ });
+}
+async function advance(ms: number) { await act(async () => { await vi.advanceTimersByTimeAsync(ms); }); }
+function operations(name: string) { return invoke.mock.calls.filter(c => c[1].body.operation === name); }
+function journal() { return JSON.parse(localStorage.getItem("abgm-exam-pilot-clpfecuohwzwrgmqzeos-test-owner")!); }
+function submittingButton() { return [...container.querySelectorAll("button")].find(b => b.textContent?.trim() === "Submitting…"); }
+
+it("keeps a Results connection notice visible and busy until its retry finishes without adding history", async () => {
+ const id = "12345678-1234-1234-1234-123456789abc";
+ attempt = { ...attempt, id, status: "submitted", finishedAt: "2026-10-05T00:10:00Z", feedback: {}, parts: [{ partId: "part", status: "pending" }] };
+ const original = invoke.getMockImplementation()!;
+ let failed = false;
+ let release!: () => void;
+ const gate = new Promise<void>(resolve => { release = resolve; });
+ invoke.mockImplementation(async (...args) => {
+  if (args[1].body.operation === "read") {
+   if (!failed) { failed = true; return { error: { name: "FunctionsFetchError" } }; }
+   await gate;
+  }
+  return original(...args);
+ });
+ await mount(3, [], undefined, [{ pathname: "/", state: { examNavigation: { account: "clpfecuohwzwrgmqzeos:test-owner", view: "results", attemptId: id, partId: "part" } } }]);
+ const key = router.state.location.key;
+ await click("Retry");
+ expect(container.querySelector(".exam-notice")?.textContent).toContain("We've lost connection.");
+ expect(container.querySelector<HTMLButtonElement>(".exam-notice__retry")!.disabled).toBe(true);
+ expect(container.querySelector(".exam-notice__retry")?.textContent).toBe("Retrying…");
+ await act(async () => release());
+ expect(container.querySelector(".exam-notice")).toBeNull();
+ expect(router.state.location.key).toBe(key);
+ expect(container.querySelector(".exam-results")).not.toBeNull();
+});
+
+function multiPartAttempt() {
+ attempt.questions[0].parts.push({ id: "part-2", kind: "concept", prompt: "First question, second part", marks: 1 });
+ attempt.questions.push({ id: "second-unit", tables: [], parts: [
+  { id: "second-a", kind: "concept", prompt: "Second question, first part", marks: 1 },
+  { id: "second-b", kind: "concept", prompt: "Second question, second part", marks: 1 },
+ ] });
+}
+async function reloadAndRecover() {
+ await act(async () => root.unmount()); root = createRoot(container); await mount(); await click("Recover attempt");
+}
+async function question(number: number) {
+ await act(async () => container.querySelector<HTMLButtonElement>(`[aria-label="Question ${number}"]`)!.click());
+}
+
+it.each([false, true])("restores a later question and part with answers and review state (review: %s)", async review => {
+ vi.useFakeTimers(); multiPartAttempt(); await mount(); await click("Begin");
+ await click("Next part"); await answer("remembered first question");
+ const before = operations("save").length;
+ await click("Next question"); await click("Next part");
+ expect(operations("save")).toHaveLength(before);
+ await answer("later answer");
+ if (review) await click("Review exam");
+ expect(journal().navigation).toEqual({ questionId: "second-unit", partIdsByQuestion: { "test-unit": "part-2", "second-unit": "second-b" }, phase: review ? "review" : "active" });
+ const callsBeforeRecovery = invoke.mock.calls.length;
+ await reloadAndRecover();
+ expect(operations("start")).toHaveLength(1);
+ const recoveryCalls = invoke.mock.calls.slice(callsBeforeRecovery).map(c => c[1].body.operation);
+ expect(recoveryCalls.filter(op => ["read", "claim", "save", "present"].includes(op))).toEqual(["read", "claim", "save", "present"]);
+ expect(operations("present").at(-1)![1].body.input.unitId).toBe("second-unit");
+ expect(container.querySelector('[aria-label="Question 2"]')?.getAttribute("aria-current")).toBe("step");
+ if (review) {
+  expect(container.textContent).toContain("Before you submit");
+  await click("Return to questions");
+ }
+ expect(container.textContent).toContain("Second question, second part");
+ expect(container.querySelector("textarea")!.value).toBe("later answer");
+ await question(1);
+ expect(container.textContent).toContain("First question, second part");
+ expect(container.querySelector("textarea")!.value).toBe("remembered first question");
+});
+
+it("keeps navigation and answers usable when position writes fail and recovers the last saved place", async () => {
+ vi.useFakeTimers(); multiPartAttempt(); await mount(); await click("Begin"); await click("Next part");
+ await answer("first answer");
+ const original = Storage.prototype.setItem;
+ const write = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
+  if (key === "abgm-exam-pilot-clpfecuohwzwrgmqzeos-test-owner") {
+   const position = JSON.parse(value).navigation;
+   if (position?.questionId === "second-unit" || position?.phase === "review") throw new Error("position unavailable");
+  }
+  original.call(this, key, value);
+ });
+ try {
+  await click("Next question"); await click("Next part"); await answer("second answer");
+  await click("Review exam");
+  expect(container.textContent).toContain("Before you submit");
+  await click("Return to questions");
+  expect(container.querySelector("textarea")!.value).toBe("second answer");
+  expect(container.querySelector<HTMLFieldSetElement>(".exam-sitting-controls")!.disabled).toBe(false);
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+  expect(journal().navigation.questionId).toBe("test-unit");
+  expect(journal().navigation.partIdsByQuestion["test-unit"]).toBe("part-2");
+  expect(journal().dirty).toMatchObject({ "part-2": "first answer", "second-b": "second answer" });
+  await advance(500);
+  expect(attempt.answers).toMatchObject({ "part-2": "first answer", "second-b": "second answer" });
+ } finally { write.mockRestore(); }
+ await reloadAndRecover();
+ expect(container.textContent).toContain("First question, second part");
+ expect(container.querySelector("textarea")!.value).toBe("first answer");
+ expect(operations("present").at(-1)![1].body.input.unitId).toBe("test-unit");
+});
+
+it.each([undefined, { questionId: "removed", partIdsByQuestion: { "test-unit": "removed" }, phase: "active" }, "malformed"])("recovers default position without valid navigation: %j", async position => {
+ vi.useFakeTimers(); multiPartAttempt(); await mount(); await click("Begin");
+ await answer("preserved answer");
+ const saved = journal(); saved.navigation = position;
+ localStorage.setItem("abgm-exam-pilot-clpfecuohwzwrgmqzeos-test-owner", JSON.stringify(saved));
+ await reloadAndRecover();
+ expect(container.querySelector('[aria-label="Question 1"]')?.getAttribute("aria-current")).toBe("step");
+ expect(container.querySelector('[aria-label^="Part 1,"]')?.getAttribute("aria-current")).toBe("step");
+ expect(container.querySelector("textarea")!.value).toBe("preserved answer");
+ expect(operations("present").at(-1)![1].body.input.unitId).toBe("test-unit");
+});
+
+it("journals every edit immediately and saves once after a 500 ms pause without save UI", async () => {
+ vi.useFakeTimers(); await mount(); await click("Begin");
+ await answer("first"); expect(journal().dirty.part).toBe("first");
+ await advance(300); await answer("latest");
+ expect(journal().dirty.part).toBe("latest");
+ await advance(499); expect(operations("save")).toHaveLength(0);
+ await advance(1); expect(operations("save")).toHaveLength(1);
+ expect(attempt.answers.part).toBe("latest");
+ expect(container.querySelector("textarea")!.value).toBe("latest");
+ expect(container.textContent).not.toMatch(/Saving…|Saved|Changes saved on this device/);
+});
+
+it("coalesces edits during a slow save without overwriting visible answers", async () => {
+ vi.useFakeTimers(); await mount(); await click("Begin");
+ const original = invoke.getMockImplementation()!;
+ let release!: () => void;
+ const gate = new Promise<void>(resolve => { release = resolve; });
+ invoke.mockImplementation(async (...args) => {
+  if (args[1].body.operation === "save" && operations("save").length === 1) await gate;
+  return original(...args);
+ });
+ await answer("first"); await advance(500);
+ await answer("second"); await advance(200); await answer("latest"); await advance(500);
+ expect(operations("save")).toHaveLength(1);
+ expect(journal().dirty.part).toBe("latest");
+ expect(container.querySelector("textarea")!.value).toBe("latest");
+ await act(async () => release());
+ expect(operations("save")).toHaveLength(2);
+ expect(operations("save").map(c => c[1].body.input.answers.part)).toEqual(["first", "latest"]);
+ expect(attempt.answers.part).toBe("latest");
+ expect(container.querySelector("textarea")!.value).toBe("latest");
+});
+
+it.each([false, true])("shows shared submitting progress and prevents duplicates (answered: %s)", async answered => {
+ vi.useFakeTimers(); await mount(); await click("Begin");
+ if (answered) await answer("latest unsaved answer");
+ await click("Review exam");
+ const original = invoke.getMockImplementation()!;
+ let release!: () => void;
+ const gate = new Promise<void>(resolve => { release = resolve; });
+ invoke.mockImplementation(async (...args) => {
+  if (args[1].body.operation === "submit") await gate;
+  return original(...args);
+ });
+ const button = [...container.querySelectorAll("button")].find(b => b.textContent === (answered ? "Submit" : "Submit anyway"))!;
+ await act(async () => { button.click(); button.click(); });
+ expect(submittingButton()).toBe(button);
+ expect(button.disabled).toBe(true);
+ expect(button.getAttribute("aria-busy")).toBe("true");
+ expect(button.classList.contains("exam-primary")).toBe(true);
+ expect(button.querySelector('.figma-button__spinner[aria-hidden="true"]')).toBeTruthy();
+ expect(container.querySelector<HTMLFieldSetElement>(".exam-sitting-controls")!.disabled).toBe(true);
+ expect(operations("submit")).toHaveLength(1);
+ if (answered) expect(journal().submission.answers.part).toBe("latest unsaved answer");
+ await advance(2000);
+ expect(submittingButton()).toBe(button);
+ expect(operations("save")).toHaveLength(0);
+ await act(async () => release());
+ expect(submittingButton()).toBeUndefined();
+ expect(container.textContent).toContain("Teaching explanation");
+ if (answered) expect(attempt.answers.part).toBe("latest unsaved answer");
+});
+
+it("shows submitting while queued behind a save and submits the newest answers", async () => {
+ vi.useFakeTimers(); await mount(); await click("Begin");
+ const original = invoke.getMockImplementation()!;
+ let release!: () => void;
+ const gate = new Promise<void>(resolve => { release = resolve; });
+ invoke.mockImplementation(async (...args) => {
+  if (args[1].body.operation === "save") await gate;
+  return original(...args);
+ });
+ await answer("saving"); await advance(500);
+ await answer("latest"); await click("Review exam"); await click("Submit");
+ expect(submittingButton()?.disabled).toBe(true);
+ expect(operations("submit")).toHaveLength(0);
+ await advance(1000); expect(submittingButton()).toBeTruthy();
+ await act(async () => release());
+ expect(operations("save")).toHaveLength(1);
+ expect(operations("submit")).toHaveLength(1);
+ expect(operations("submit")[0][1].body.input.answers.part).toBe("latest");
+ expect(attempt.answers.part).toBe("latest");
+ expect(submittingButton()).toBeUndefined();
+});
+
+it("ends progress on failure and restores it throughout a pending-submission retry", async () => {
+ await mount(); await click("Begin"); await click("Review exam");
+ const original = invoke.getMockImplementation()!;
+ let fail = true;
+ let release!: () => void;
+ const gate = new Promise<void>(resolve => { release = resolve; });
+ invoke.mockImplementation(async (...args) => {
+  if (args[1].body.operation === "submit" && fail) { fail = false; return { error: new Error("offline") }; }
+  if (args[1].body.operation === "read") await gate;
+  return original(...args);
+ });
+ await click("Submit anyway");
+ expect(submittingButton()).toBeUndefined();
+ expect(journal().submission).toBeTruthy();
+ expect(container.querySelector<HTMLFieldSetElement>(".exam-sitting-controls")!.disabled).toBe(true);
+ await click("Check submission / retry");
+ expect(submittingButton()?.getAttribute("aria-busy")).toBe("true");
+ await act(async () => release());
+ expect(submittingButton()).toBeUndefined();
+ expect(operations("submit")).toHaveLength(2);
+ expect(operations("submit")[1][1].body.input.requestId).toBe(operations("submit")[0][1].body.input.requestId);
+ expect(container.textContent).toContain("Teaching explanation");
+});
+
+it("retains answers across question navigation and cancels scheduled saves on unmount", async () => {
+ vi.useFakeTimers();
+ attempt.questions.push({ id: "second-unit", tables: [], parts: [{ id: "second-part", kind: "concept", prompt: "Second answer", marks: 1 }] });
+ await mount(); await click("Begin"); await answer("retained");
+ await click("Next question");
+ await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Question 1"]')!.click());
+ expect(container.querySelector("textarea")!.value).toBe("retained");
+ await act(async () => root.unmount()); root = createRoot(container);
+ await advance(1000);
+ expect(operations("save")).toHaveLength(0);
+ expect(journal().dirty.part).toBe("retained");
+});
+
+it("ends submitting after a definite answer rejection and allows correction through existing recovery", async () => {
+ vi.useFakeTimers(); await mount(); await click("Begin"); await answer("rejected answer"); await click("Review exam");
+ invoke.mockResolvedValueOnce({ error: { context: { json: async () => ({ code: "EXAM_INVALID_ANSWER" }) } } });
+ await click("Submit");
+ expect(submittingButton()).toBeUndefined();
+ expect(container.querySelector(".exam-notice strong")?.textContent).toBe("We couldn't accept that answer.");
+ expect(journal().submission.answers.part).toBe("rejected answer");
+ await click("Return to answers"); await click("Return to questions"); await answer("corrected answer");
+ await click("Review exam"); await click("Submit");
+ expect(attempt.answers.part).toBe("corrected answer");
+ expect(operations("submit")).toHaveLength(2);
+ expect(container.textContent).toContain("Teaching explanation");
+});
+
+it("cancels a scheduled save before confirmed abandonment", async () => {
+ vi.useFakeTimers(); await mount(); await click("Begin"); await answer("abandon");
+ await act(async () => { void router.navigate("/away"); });
+ await click("Exit anyway"); await advance(1000);
+ expect(operations("abandon")).toHaveLength(1);
+ expect(operations("save")).toHaveLength(0);
+ expect(localStorage.getItem("abgm-exam-pilot-clpfecuohwzwrgmqzeos-test-owner")).toBeNull();
+});
+
 it("saves raw answers and shows teaching with pending marks only after acceptance", async () => {
  await mount(); await click("Begin");
  const textarea = container.querySelector("textarea")!;
  await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(textarea, "  raw answer  "); textarea.dispatchEvent(new Event("input", { bubbles: true })); });
- expect(attempt.answers.part).toBe("  raw answer  ");
+ expect(JSON.parse(localStorage.getItem("abgm-exam-pilot-clpfecuohwzwrgmqzeos-test-owner")!).dirty.part).toBe("  raw answer  ");
+ expect(invoke.mock.calls.some(c => c[1].body.operation === "save")).toBe(false);
  expect(container.textContent).not.toContain("Teaching explanation");
  await click("Review exam"); await click("Submit");
+ expect(attempt.answers.part).toBe("  raw answer  ");
  expect(container.textContent).toContain("Teaching explanation");
  expect(container.textContent).toContain("Grading pending");
  expect(container.textContent).not.toContain("Development preview");
@@ -99,11 +368,38 @@ it("navigation waits for server abandonment and stays in the exam on failure", a
  invoke.mockResolvedValueOnce({ error: new Error("offline") });
  await click("Exit anyway");
  expect(router.state.location.pathname).toBe("/");
- expect(container.textContent).toContain("Exit could not be confirmed");
+ expect(container.textContent).toContain("We couldn't confirm that you've exited the exam.");
+ expect(container.querySelector('dialog .exam-inline-error')?.textContent).toContain("We couldn't confirm that you've exited the exam.");
+ expect(container.querySelector(".exam-notice")).toBeNull();
  await act(async () => { void router.navigate("/away"); });
  await click("Exit anyway");
  expect(router.state.location.pathname).toBe("/away");
  expect(invoke.mock.calls.filter(c => c[1].body.operation === "abandon")).toHaveLength(2);
+});
+
+it("keeps a failed Load more message beside pagination with retry progress", async () => {
+ const original = invoke.getMockImplementation()!;
+ const first = Array.from({ length: 20 }, (_, i) => row(`00000000-0000-0000-0000-${String(i + 1).padStart(12, "0")}`));
+ let release!: () => void;
+ const gate = new Promise<void>(resolve => { release = resolve; });
+ let failed = false;
+ invoke.mockImplementation(async (...args) => {
+  if (args[1].body.operation !== "history_page") return original(...args);
+  if (args[1].body.input.cursor) {
+   if (!failed) { failed = true; return { error: new Error("offline") }; }
+   await gate;
+   return { data: { ...historyPage([...first, row("00000000-0000-0000-0000-000000000021")]), attempts: [row("00000000-0000-0000-0000-000000000021")] } };
+  }
+  return { data: { ...historyPage([...first, row("00000000-0000-0000-0000-000000000021")]), attempts: first, nextCursor: { id: first[19].id, finishedAt: first[19].finishedAt } } };
+ });
+ await mount(); await click("Past attempts"); await click("Load more"); await click("Load more");
+ expect(container.querySelector(".exam-notice")).toBeNull();
+ expect(container.querySelector(".exam-history-footer .exam-inline-error")).not.toBeNull();
+ expect(container.querySelectorAll(".exam-history-entry")).toHaveLength(20);
+ await click("Retry");
+ expect(container.querySelector(".exam-history-footer .exam-notice__retry")?.textContent).toBe("Retrying…");
+ await act(async () => release());
+ expect(container.querySelector(".exam-history-footer .exam-inline-error")).toBeNull();
 });
 
 it("automatically renders completed server marks without a manual refresh control", async () => {
@@ -157,7 +453,7 @@ it("retains the three-Unit tester description", async () => {
  await mount(); expect(container.textContent).toContain("3 cases");
 });
 
-it("defaults to Mock, remembers Custom inclusions without erasing them, and sends only Custom exclusions", async () => {
+it("defaults to Standard Exam, remembers Custom inclusions without erasing them, and sends only Custom exclusions", async () => {
   localStorage.setItem("abgm-exam-custom-clpfecuohwzwrgmqzeos-test-owner", '["mechanical_ventilation"]');
   await mount(3, categories);
   expect(container.querySelector('[aria-label="Sitting type"] [aria-pressed="true"]')?.textContent).toBe("Standard Examdefault settings");
@@ -195,7 +491,7 @@ it("withholds a connected final score when the persisted denominator is inconsis
   attempt = { ...attempt, marksAvailable: 99, gradingStatus: "completed", parts: [{ partId: "part", status: "completed", marksAwarded: 2 }] };
   await click("Submit anyway");
   expect(container.textContent).toContain("Final score unavailable");
-  expect(container.textContent).toContain("saved marks total does not match");
+  expect(container.querySelector(".exam-results__marks strong")?.textContent).toBe("We found an issue with your exam marks.");
 });
 
 it("keeps a Custom exam with no exclusions labelled Custom in Results", async () => {
@@ -215,9 +511,20 @@ it("shows saved history exclusions using catalogue labels", async () => {
 
 it("opens a saved example's exact historical Question and Part, then returns to Error log", async () => {
   const id = "12345678-1234-1234-1234-123456789abc";
-  attempt = { ...attempt, id, status: "submitted", finishedAt: "2026-10-07T00:00:00Z", marksAvailable: 4,
-    questions: [...attempt.questions, { id: "second-unit", tables: [], parts: [{ id: "target", kind: "concept", prompt: "Historical target", marks: 2 }] }],
-    parts: [{ partId: "part", status: "pending" }, { partId: "target", status: "pending" }], feedback: {} };
+  attempt = { ...attempt, id, status: "submitted", finishedAt: "2026-10-07T00:00:00Z", marksAvailable: 6,
+    questions: [...attempt.questions, { id: "second-unit", tables: [
+      { id: "initial", heading: "Initial ABG", grouping: "", rows: [{ id: "initial-ph", label: "pH", value: 7.1, unit: "" }] },
+      { id: "repeat", heading: "Repeat ABG", grouping: "", rows: [{ id: "repeat-ph", label: "pH", value: 7.3, unit: "" }] },
+    ], sections: [
+      { id: "initial-story", type: "text", content: "Initial historical presentation" },
+      { id: "initial-gas", type: "data_table", tableId: "initial" },
+      { id: "repeat-story", type: "text", content: "Historical reassessment after treatment" },
+      { id: "repeat-gas", type: "data_table", tableId: "repeat" },
+    ], parts: [
+      { id: "initial-part", kind: "concept", prompt: "Initial historical question", marks: 2, stimulusSectionIds: ["initial-story", "initial-gas"] },
+      { id: "target", kind: "concept", prompt: "Historical target", marks: 2, stimulusSectionIds: ["repeat-story", "repeat-gas"] },
+    ] }],
+    parts: [{ partId: "part", status: "pending" }, { partId: "initial-part", status: "pending" }, { partId: "target", status: "pending" }], feedback: {} };
   const log = { catalogue: { topics: [{ id: "acid_base", label: "Acid–base" }], concepts: [{ id: "calculation", label: "Calculation", topicId: "acid_base", errorType: "Calculation", active: true }] },
     entries: [{ conceptId: "calculation", status: "to_review", exampleCount: 1, createdAt: "2026-10-07T00:00:00Z", lastSavedAt: "2026-10-07T00:00:00Z", archivedAt: null, reopenedAt: null }],
     attemptId: null, savedSources: {}, toReviewCount: 1 };
@@ -228,7 +535,7 @@ it("opens a saved example's exact historical Question and Part, then returns to 
    if (operation === "current") return { data: { attempt: null } };
     if (operation === "history_page") return { data: historyPage([row(id)]) };
     if (operation === "error_log_list") return { data: { ...log, attemptId: input.attemptId ?? null } };
-    if (operation === "error_log_examples") return { data: { examples: [{ id, attemptId: id, unitId: "second-unit", partId: "target", prompt: "Historical target", questionNumber: 2, partNumber: 1,
+    if (operation === "error_log_examples") return { data: { examples: [{ id, attemptId: id, unitId: "second-unit", partId: "target", prompt: "Historical target", questionNumber: 2, partNumber: 2,
       examKind: "mock", finishedAt: attempt.finishedAt, savedAt: attempt.finishedAt }], nextCursor: null } };
     return { data: structuredClone(attempt) };
   });
@@ -240,13 +547,19 @@ it("opens a saved example's exact historical Question and Part, then returns to 
   expect(container.querySelector('[aria-label="Question 2"]')!.getAttribute("aria-pressed")).toBe("true");
   const selected = container.querySelector('[aria-label="Question 2 results"]')!;
   expect(selected.hasAttribute("hidden")).toBe(false);
-  expect(selected.querySelector('.exam-results__part-toggle')?.getAttribute("aria-expanded") ?? selected.querySelector('button[aria-expanded]')?.getAttribute("aria-expanded")).toBe("true");
+  expect(selected.querySelector('[aria-label="Collapse Part 2"]')?.getAttribute("aria-expanded")).toBe("true");
+  expect(selected.querySelector('[aria-label="Expand Part 1"]')?.getAttribute("aria-expanded")).toBe("false");
+  expect(selected.querySelector('.exam-results__scenario')?.textContent).toContain("Historical reassessment after treatment");
+  expect(selected.querySelector('.exam-results__scenario')?.textContent).not.toContain("Initial historical presentation");
+  expect(selected.querySelector('[aria-label="Repeat ABG"]')).not.toBeNull();
+  expect(selected.querySelector('[aria-label="Initial ABG"]')).toBeNull();
   expect(scroll).toHaveBeenCalled();
   await act(async () => { await router.navigate(-1); });
   expect(container.querySelector(".exam-error-log h1")?.textContent).toBe("Error log");
   await act(async () => { await router.navigate(1); });
   expect(container.querySelector('[aria-label="Question 2"]')!.getAttribute("aria-pressed")).toBe("true");
   expect(container.querySelector('[aria-label="Question 2 results"]')!.hasAttribute("hidden")).toBe(false);
+  expect(container.querySelector('[aria-label="Question 2 results"] .exam-results__scenario')?.textContent).toContain("Historical reassessment after treatment");
   await click("Back to Exam Room");
   expect(container.querySelector(".exam-error-log h1")?.textContent).toBe("Error log");
   expect(invoke.mock.calls.find(c => c[1].body.operation === "read")![1].body.input).toEqual({ attemptId: id });
@@ -284,7 +597,7 @@ it("derives connected controls from frozen mappings and confirms saves for only 
   expect([...container.querySelectorAll('.exam-results__part-toggle')].every(b => b.getAttribute("aria-expanded") === "false")).toBe(true);
   await act(async () => container.querySelector<HTMLButtonElement>('.exam-results__part-toggle')!.click());
   await click("Add to error log");
-  expect(container.textContent).toContain("Couldn’t confirm the save");
+  expect(container.textContent).toContain("We couldn't confirm that this was saved to your Error Log.");
   expect(container.textContent).not.toContain("Saved");
   await click("Add to error log");
   const parts = [...container.querySelectorAll('.exam-results__part')];
@@ -419,9 +732,12 @@ it("shows ten past attempts at a time and keeps Load more until all attempts are
  expect(container.querySelectorAll(".exam-history-entry")).toHaveLength(25);
  expect(container.querySelector(".exam-history-footer")?.textContent).toContain("Showing 25 of 25");
  expect(container.querySelector(".exam-history-footer button")).toBeNull();
- const mockFilter = [...container.querySelectorAll('[aria-label="Past attempts filter"] button')].find(button => button.textContent?.startsWith("Mock"))!;
- await act(async () => { (mockFilter as HTMLButtonElement).click(); });
+ expect(container.querySelector('.exam-attempt-title strong')?.textContent).toBe("Standard Exam");
+ expect(container.querySelector('.exam-attempt-open')?.getAttribute("aria-label")).toContain("Review Standard Exam,");
+ const standardFilter = [...container.querySelectorAll('[aria-label="Past attempts filter"] button')].find(button => button.textContent?.startsWith("Standard"))!;
+ await act(async () => { (standardFilter as HTMLButtonElement).click(); });
  expect(container.querySelectorAll(".exam-history-entry")).toHaveLength(10);
+ expect(operations("history_page").at(-1)![1].body.input.filter).toBe("mock");
 });
 it("browser Back and Forward follow history and saved Results without starting another exam", async () => {
  const id = "12345678-1234-1234-1234-123456789abc";
@@ -538,7 +854,7 @@ it("blocks Begin while a tone save fails and retries the selected preference", a
  const original=invoke.getMockImplementation()!;let fail=true;
  invoke.mockImplementation(async(...args)=>args[1].body.operation==="preference_update"&&fail?{error:new Error("offline")}:original(...args));
  await mount(); await click("Supportive");
- expect(container.querySelector(".exam-feedback-tone__error")?.textContent).toContain("Couldn’t save your feedback preference.");
+ expect(container.querySelector(".exam-feedback-tone__error")?.textContent).toContain("We couldn't save your feedback settings.");
  expect([...container.querySelectorAll<HTMLButtonElement>("button")].find(b=>b.textContent?.trim()==="Begin")!.disabled).toBe(true);
  expect(invoke.mock.calls.filter(c=>c[1].body.operation==="start")).toHaveLength(0);
  fail=false;await click("Retry feedback preference");
@@ -615,9 +931,10 @@ it("retains Error log access for non-paid users whose saved entries are archived
  expect(container.querySelector('.exam-error-log')).not.toBeNull();
 });
 
-it.each([['disabled', 'Trial exam is currently unavailable.'], ['error', 'We couldn’t prepare the trial exam. Please try again.']] as const)('trial %s blocks Begin without a fallback', async (status, message) => {
+it.each([['disabled', "The trial exam isn't available right now. Please try again later."], ['error', "We couldn't get your trial exam ready. Please try again."]] as const)('trial %s blocks Begin without a fallback', async (status, message) => {
  await mount(3, [], undefined, undefined, true, false, status);
  expect(container.textContent).toContain(message);
+ expect(container.querySelector('.exam-notice strong')?.textContent).toBe(message.slice(0, message.indexOf('. ') + 1));
  expect([...container.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent?.trim()==='Begin Trial Exam')?.disabled).toBe(true);
  expect([...container.querySelectorAll('button')].some(b=>b.textContent?.trim()==='Retry')).toBe(status==='error');
  expect(invoke.mock.calls.some(c=>c[1].body.operation==='start')).toBe(false);
@@ -627,7 +944,7 @@ it.each(['EXAM_TRIAL_DISABLED','EXAM_TRIAL_CONFIGURATION'])('start rechecks avai
  const original=invoke.getMockImplementation()!;
  invoke.mockImplementation(async(...args)=>args[1].body.operation==='start'?{data:null,error:{context:{json:async()=>({code})}}}:original(...args));
  await click('Begin Trial Exam');
- expect(container.textContent).toContain(code==='EXAM_TRIAL_DISABLED'?'Trial exam is currently unavailable.':'We couldn’t prepare the trial exam. Please try again.');
+ expect(container.textContent).toContain(code==='EXAM_TRIAL_DISABLED'?"The trial exam isn't available right now. Please try again later.":"We couldn't get your trial exam ready. Please try again.");
  expect(container.textContent).not.toContain('Recover attempt');
  expect(invoke.mock.calls.filter(c=>c[1].body.operation==='start')).toHaveLength(1);
 });
@@ -643,8 +960,8 @@ it.each(['disabled','error'] as const)('existing trial recovery remains availabl
 
 it.each(['ready','disabled','error'] as const)('explains missing pilot permission independently of trial configuration %s', async status=>{
  await mount(3, [], undefined, undefined, true, false, status, false);
- expect(container.textContent).toContain('Trial access hasn’t been enabled for this account. Sign in with an invited pilot account.');
- expect(container.textContent).not.toContain('Trial exam is currently unavailable.');
+ expect(container.textContent).toContain("Your account doesn't have access to the trial exam. Sign in with an account invited to the pilot.");
+ expect(container.textContent).not.toContain("The trial exam isn't available right now.");
  expect([...container.querySelectorAll('button')].some(b=>b.textContent?.trim()==='Retry')).toBe(false);
  const begin=[...container.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent?.trim()==='Begin Trial Exam')!;
  expect(begin.disabled).toBe(true); await act(async()=>begin.click());
@@ -701,7 +1018,7 @@ it('returns a completed trial from setup to the dashboard with history and an em
  await click('Back to Exam Room');
  await click('Error log'); expect(container.querySelector('.exam-error-log h1')?.textContent).toBe('Error log');
  expect(container.textContent).not.toContain('Loading your Error log');
- expect(container.textContent).not.toContain('Couldn’t refresh your Error log');
+ expect(container.textContent).not.toContain("We couldn't load your Error Log.");
  expect(invoke.mock.calls.filter(c=>c[1].body.operation==='start')).toHaveLength(1);
 });
 

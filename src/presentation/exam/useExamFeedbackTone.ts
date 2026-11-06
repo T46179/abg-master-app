@@ -17,7 +17,7 @@ export function useExamFeedbackTone(call: RuntimeCall | undefined, accountKey: s
     if (!call || changing.current) return;
     const request = ++version.current;
     setStored(old => ({ context, tone: old?.context === context ? old.tone : "professional",
-      ready: false, busy: true, acknowledged: false, error: "" }));
+      ready: false, busy: true, acknowledged: false, error: old?.context === context ? old.error : "" }));
     try {
       const next = await feedbackPreferenceOperation(call, "preference_read");
       if (current.current === context && version.current === request) {
@@ -26,7 +26,7 @@ export function useExamFeedbackTone(call: RuntimeCall | undefined, accountKey: s
     } catch {
       if (current.current === context && version.current === request) {
         setStored(old => ({ context, tone: old?.context === context ? old.tone : "professional",
-          ready: false, busy: false, acknowledged: false, error: "Couldn’t load your feedback preference. Please try again." }));
+          ready: false, busy: false, acknowledged: false, error: "We couldn't load your feedback settings. Please try again." }));
       }
     }
   }, [call, context]);
@@ -43,7 +43,7 @@ export function useExamFeedbackTone(call: RuntimeCall | undefined, accountKey: s
     changing.current = true;
     const request = ++version.current;
     const acknowledged = nextTone === tone ? data.acknowledged : false;
-    setStored({ context, tone: nextTone, ready: true, busy: true, acknowledged, error: "" });
+    setStored({ context, tone: nextTone, ready: true, busy: true, acknowledged, error: data.error });
     try {
       const next = await feedbackPreferenceOperation(call, "preference_update", nextTone);
       if (next.feedbackTone !== nextTone) throw new Error("Preference mismatch");
@@ -53,7 +53,7 @@ export function useExamFeedbackTone(call: RuntimeCall | undefined, accountKey: s
     } catch {
       if (current.current === context && version.current === request) {
         setStored({ context, tone: nextTone, ready: true, busy: false, acknowledged,
-          error: "Couldn’t save your feedback preference. Please try again." });
+          error: "We couldn't save your feedback settings. Please try again." });
       }
       return false;
     } finally {

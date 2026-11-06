@@ -132,8 +132,9 @@ it("withholds totals on failure and retries only the failed Part", () => {
   expect(container.textContent).toContain("No mark assigned");
   expect(container.textContent).toContain("Final score unavailable");
   expect(container.textContent).toContain("Some grading could not be completed");
-  expect(container.textContent).toContain("1 Part could not be graded at this time.");
-  expect(container.querySelector(".exam-results__retry p")?.textContent).toBe("This is a technical problem — your submission is safe and already-graded Parts are shown below. There is no need to resubmit or retake this exam. Retry grading when available. Completed Parts will keep their marks.");
+  expect(container.textContent).toContain("We couldn't grade 1 part of your exam. You can retry grading without losing your completed results.");
+  expect(container.querySelector(".exam-results__retry p")?.textContent).toBe("Some parts of your exam couldn't be graded due to a technical issue. Your submission is safe, and any completed marks are shown below. You don't need to resubmit or retake your exam. You can retry grading when available without affecting your existing marks.");
+  expect(container.querySelector(".exam-results__retry p strong")?.textContent).toBe("Some parts of your exam couldn't be graded due to a technical issue.");
   expect(container.querySelector(".exam-results__ring")).toBeNull();
   expect(panel(1).querySelector(".exam-results__criteria")).toBeNull();
   expect(panel(2).querySelector(".exam-results__part")?.getAttribute("data-status")).toBe("completed");

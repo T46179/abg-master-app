@@ -19,7 +19,7 @@ export function useExamFeedback(call: RuntimeCall | undefined, accountKey: strin
       const next = await feedbackOperation(call, "feedback_read", attemptId);
       if (current.current === context && version.current === request) { setStored({ context, data: next }); setError(""); }
     } catch {
-      if (current.current === context && version.current === request) setError("Couldn’t refresh feedback. Please try again.");
+      if (current.current === context && version.current === request) setError("We couldn't update your feedback. Please try again.");
     } finally {
       if (current.current === context && version.current === request) setLoading(false);
     }
@@ -59,7 +59,7 @@ export function useExamFeedback(call: RuntimeCall | undefined, accountKey: strin
       if (current.current === context && version.current === request) setStored({ context, data: next });
     } catch {
       if (current.current === context && version.current === request) setError(operation === "feedback_vote"
-        ? "Couldn’t save your response. Please try again." : "Couldn’t get feedback. Please try again.");
+        ? "We couldn't save your rating. Please try again." : "We couldn't generate your feedback. Please try again.");
     } finally {
       if (current.current === context && version.current === request) {
         mutating.current = false; setBusy(false); setVotingPart(undefined);

@@ -34,7 +34,7 @@ it("suppresses overlapping saves and refuses start until a failed save is retrie
  expect(controls.canBegin).toBe(false);
  await act(async()=>{resolve({feedbackTone:"supportive"});await saved;});
  call.mockRejectedValueOnce(new Error("offline"));await act(async()=>{await controls.select("professional");});
- expect(controls.tone).toBe("professional");expect(controls.canBegin).toBe(false);expect(controls.error).toContain("Couldn’t save");
+ expect(controls.tone).toBe("professional");expect(controls.canBegin).toBe(false);expect(controls.error).toBe("We couldn't save your feedback settings. Please try again.");
  await act(async()=>{await controls.retry();});expect(controls.canBegin).toBe(true);
 });
 it("ignores stale account responses and never carries acknowledgement to another account",async()=>{
@@ -45,6 +45,6 @@ it("ignores stale account responses and never carries acknowledgement to another
 });
 it("blocks malformed preference responses and supports an explicit read retry",async()=>{
  call.mockImplementationOnce(async()=>({feedbackTone:"unknown"}));await render();
- expect(controls.canBegin).toBe(false);expect(controls.error).toContain("Couldn’t load");
+ expect(controls.canBegin).toBe(false);expect(controls.error).toBe("We couldn't load your feedback settings. Please try again.");
  await act(async()=>{await controls.retry();});expect(controls.canBegin).toBe(true);
 });

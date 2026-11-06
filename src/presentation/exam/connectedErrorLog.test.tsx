@@ -64,13 +64,16 @@ it("loads examples only once on expansion, paginates and uses the exact saved Pa
   expect(examples).toHaveBeenCalledTimes(1);
   expect(container.textContent).toContain("21 examples");
   expect(container.textContent).toContain("Current calculation label");
+  expect(container.querySelector(".exam-error-log__examples")?.textContent).toContain("Standard Exam");
   await click("Load more");
   expect(examples).toHaveBeenLastCalledWith("calculation", cursor);
   expect(container.querySelectorAll(".exam-error-log__examples button")).toHaveLength(2);
   await act(async () => container.querySelector<HTMLButtonElement>(".exam-error-log__examples button")!.click());
   expect(open).toHaveBeenCalledWith(attempt, "historical_part");
   await click("Archive");
-  expect(container.textContent).toContain("Couldn’t confirm the review state");
+  expect(container.textContent).toContain("We couldn't confirm that change.");
+  expect(container.querySelector(".exam-error-log__concept .exam-inline-error")?.textContent).toContain("We couldn't confirm that change.");
+  expect(container.querySelector(".exam-notice")).toBeNull();
   expect(container.querySelector('.exam-error-log__tabs button')!.textContent).toBe("To review 1");
 });
 

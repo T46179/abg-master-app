@@ -25,7 +25,7 @@ vi.mock("../exam/ExamPilotRuntime", () => ({ default: (props: any) => {
   const fullSetup = <p>Full Exam setup for {props.userId}; counts:{props.allowedUnitCounts.join(",")}</p>;
   const trialSetup = <div className="exam-trial-builder"><h3>Your Trial Session</h3><button onClick={m.begin}>Begin Trial Exam</button></div>;
   const controls = { trialLifecycle: m.lifecycle, openTrialResult: vi.fn(), refreshTrial: vi.fn(), fullSetup, trialSetup, withSetup: (content: unknown, hero: unknown) => <div>Trial overview{hero as any}{content as any}</div>, canRecover: m.recover, ready: true, busy: false, canBegin: props.canStart && props.allowedUnitCounts.includes(3), timed: true, showRanges: true, setTimed: vi.fn(), setShowRanges: vi.fn(), begin: m.begin };
-  return <div>{props.renderDashboard(controls)}</div>;
+  return <div>{props.accessNotice?.visible && <button disabled={props.accessNotice.busy} onClick={props.accessNotice.onRetry}>Retry</button>}{props.renderDashboard(controls)}</div>;
 } }));
 import Experience from "./ExamAccountExperience.dev";
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -77,9 +77,10 @@ it("retries slow profile loading without restarting identity or access checks", 
   expect(container.textContent).not.toContain("load your profile");
 });
 
-it("retries slow access loading without reloading the onboarding profile", async () => {
+it("coalesces slow access checks and retries a failed initial check without reloading the profile", async () => {
   current = { id: "a", email: "a@example.test" };
-  m.access.mockImplementationOnce(() => new Promise(() => {}));
+  let reject!: (cause: Error) => void;
+  m.access.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
   await render();
   const verificationCalls = auth.getUser.mock.calls.length;
   expect(profileInvoke).toHaveBeenCalledTimes(1);
@@ -87,7 +88,12 @@ it("retries slow access loading without reloading the onboarding profile", async
   await click("Retry");
   expect(auth.getUser).toHaveBeenCalledTimes(verificationCalls);
   expect(profileInvoke).toHaveBeenCalledTimes(1);
+  expect(m.access).toHaveBeenCalledTimes(1);
+  await act(async () => reject(new Error("offline")));
+  expect(container.textContent).toContain("We couldn't check Exam access");
+  await click("Retry access check");
   expect(m.access).toHaveBeenCalledTimes(2);
+  expect(container.textContent).not.toContain("We couldn't check Exam access");
 });
 beforeEach(() => {
   vi.useFakeTimers(); vi.stubEnv("VITE_EXAM_PILOT_SUPABASE_URL", "https://clpfecuohwzwrgmqzeos.supabase.co"); vi.stubEnv("VITE_EXAM_PILOT_SUPABASE_ANON_KEY", "public");
@@ -359,6 +365,72 @@ describe("unified local pilot account flow", () => {
     await act(async () => emit("SIGNED_IN", "b")); await flush();
     await act(async () => finish({ status: "allowed", canStartStandard: true, allowedUnitCounts: [5] }));
     expect(m.runtime.mock.lastCall?.[0]).toMatchObject({ userId: "b", allowedUnitCounts: [3] });
+  });
+});
+
+describe("background Exam access verification", () => {
+  const notice = () => m.runtime.mock.lastCall?.[0].accessNotice;
+  async function event(name: string) { await act(async () => { window.dispatchEvent(new Event(name)); }); await flush(); }
+  async function advance(ms: number) { await act(async () => { await vi.advanceTimersByTimeAsync(ms); }); }
+  async function signedIn() { current = { id: "a", email: "a@example.test" }; await render(); }
+
+  it("delays the warning, retains permissions, and never retries on a timer", async () => {
+    await signedIn();
+    m.access.mockRejectedValue(new Error("offline"));
+    await event("focus");
+    expect(notice().visible).toBe(false);
+    expect(m.runtime.mock.lastCall?.[0]).toMatchObject({ canStart: true, canStartStandard: true });
+    await advance(10000);
+    await event("focus");
+    await advance(4999);
+    expect(notice().visible).toBe(false);
+    await advance(1);
+    expect(notice().visible).toBe(true);
+    const calls = m.access.mock.calls.length;
+    await advance(60000);
+    expect(m.access).toHaveBeenCalledTimes(calls);
+  });
+
+  it("cancels the warning after silent successful verification on reconnect", async () => {
+    await signedIn();
+    m.access.mockRejectedValueOnce(new Error("offline"));
+    await event("focus");
+    await advance(14999);
+    await event("online");
+    await advance(60000);
+    expect(m.access).toHaveBeenCalledTimes(3);
+    expect(notice().visible).toBe(false);
+  });
+
+  it("coalesces automatic and manual requests, keeps the warning during retry, and applies restrictions", async () => {
+    await signedIn();
+    m.access.mockRejectedValueOnce(new Error("offline"));
+    await event("focus"); await advance(15000);
+    let resolve!: (value: unknown) => void;
+    m.access.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    await click("Retry");
+    const retry = [...container.querySelectorAll("button")].find(b => b.textContent === "Retry")!;
+    expect(retry.disabled).toBe(true);
+    await event("focus"); await event("online");
+    expect(m.access).toHaveBeenCalledTimes(3);
+    expect(notice()).toMatchObject({ visible: true, busy: true });
+    await act(async () => resolve({ status: "closed", canStartStandard: false, allowedUnitCounts: [] }));
+    expect(notice().visible).toBe(false);
+    expect(m.runtime.mock.lastCall?.[0]).toMatchObject({ canStart: false, canStartStandard: false, allowedUnitCounts: [] });
+  });
+
+  it("cleans up the warning and ignores pending background responses after switching accounts", async () => {
+    await signedIn();
+    m.access.mockRejectedValueOnce(new Error("offline"));
+    await event("focus");
+    let resolve!: (value: unknown) => void;
+    m.access.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    await event("online");
+    await act(async () => emit("SIGNED_IN", "b")); await flush();
+    await act(async () => resolve({ status: "closed", canStartStandard: false, allowedUnitCounts: [] }));
+    await advance(15000);
+    expect(notice().visible).toBe(false);
+    expect(m.runtime.mock.lastCall?.[0]).toMatchObject({ userId: "b", canStart: true, canStartStandard: true });
   });
 });
 

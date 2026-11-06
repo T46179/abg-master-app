@@ -6,6 +6,7 @@ import { isCompletedPartGrade } from "./resultsModel";
 import type { ExamPart, ExamQuestion, ExamTable, SittingState } from "./sittingTypes";
 import { MetricRichText } from "../practice/MetricText";
 import { ExamResultValues } from "./ExamResultValues";
+import { NoticeMessage } from "./ExamNotice";
 import { ScoreRing } from "./ExamUi";
 import { ErrorLogSave } from "./ErrorLogSave";
 import type { ErrorLogSaveConcept, ErrorLogSavePresentation } from "./errorLogTypes";
@@ -111,6 +112,10 @@ function Scenario({ children }: { children: ReactNode }) {
 
 type ReviewView = { id: string; label: string; scenario: ReactNode[]; tables: ExamTable[] };
 
+function reviewSectionIds(question: ExamQuestion, part: ExamPart): string[] {
+  return part.stimulusSectionIds ?? question.sections?.map(section => section.id) ?? [];
+}
+
 function reviewViews(question: ExamQuestion): ReviewView[] | undefined {
   if (!question.sections?.length || !question.parts.length) return;
   const views: ReviewView[] = [];
@@ -118,7 +123,7 @@ function reviewViews(question: ExamQuestion): ReviewView[] | undefined {
   for (const part of question.parts) {
     // Legacy Parts use all shared context. Explicit selectors never fall back to
     // unrelated sections when a view has more than one table or a missing ID.
-    const sectionIds = part.stimulusSectionIds ?? question.sections.map(section => section.id);
+    const sectionIds = reviewSectionIds(question, part);
     const id = JSON.stringify(sectionIds);
     if (seen.has(id)) continue;
     const view: ReviewView = { id, label: "", scenario: [], tables: [] };
@@ -143,9 +148,9 @@ function reviewViews(question: ExamQuestion): ReviewView[] | undefined {
   return views;
 }
 
-function CaseReview({ question, pressureUnit, visible }: { question: ExamQuestion; pressureUnit: PressureUnit; visible: boolean }) {
+function CaseReview({ question, pressureUnit, visible, initialPart }: { question: ExamQuestion; pressureUnit: PressureUnit; visible: boolean; initialPart?: ExamPart }) {
   const views = reviewViews(question);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(() => initialPart ? JSON.stringify(reviewSectionIds(question, initialPart)) : null);
   const current = views?.find(view => view.id === selected) ?? views?.[0];
   const hasScenario = views ? Boolean(current?.scenario.length) : Boolean(question.scenario);
   const tables = views ? current?.tables ?? [] : question.tables;
@@ -274,7 +279,7 @@ export default function ExamResultsPresentation({ sitting, onExit, pressureUnit 
           <div className="exam-results__marks" role="status" aria-live="polite">
             <span className="exam-results__badge" data-tone={allDone ? "green" : unresolved ? "amber" : "muted"}><span aria-hidden="true">●</span>{statusText}</span>
             <h1>{allDone ? <>{awarded} <span>/ {available} marks</span></> : unresolved ? "Final score unavailable" : "This may take a moment..."}</h1>
-            {!allDone && <p>{integrityError ? "The saved marks total does not match this attempt. Your submission is retained for review." : unresolved && !failed ? "The grading summary could not be verified. Your submission is retained for review." : failed ? `${failed} ${failed === 1 ? "Part" : "Parts"} could not be graded at this time.` : "You can start reviewing your answers below"}</p>}
+            {!allDone && <p><NoticeMessage message={integrityError ? "We found an issue with your exam marks. Your submission is saved, but we couldn't confirm your final score." : unresolved && !failed ? "We couldn't verify your exam results. Your submission is saved while we check the issue." : failed ? `We couldn't grade ${failed} ${failed === 1 ? "part" : "parts"} of your exam. You can retry grading without losing your completed results.` : "You can start reviewing your answers below"} /></p>}
           </div>
         </div>
         <dl className="exam-results__metadata">
@@ -284,7 +289,7 @@ export default function ExamResultsPresentation({ sitting, onExit, pressureUnit 
         </dl>
       </div>
       {!!failed && !integrityError && <div className="exam-results__retry">
-        <p>This is a technical problem — your submission is safe and already-graded Parts are shown below. There is no need to resubmit or retake this exam. Retry grading when available. Completed Parts will keep their marks.</p>
+        <p><NoticeMessage message="Some parts of your exam couldn't be graded due to a technical issue. Your submission is safe, and any completed marks are shown below. You don't need to resubmit or retake your exam. You can retry grading when available without affecting your existing marks." /></p>
         {onRetry && <button type="button" onClick={onRetry}><RotateCcw size={16} aria-hidden="true" />Retry grading</button>}
       </div>}
     </section>
@@ -294,7 +299,7 @@ export default function ExamResultsPresentation({ sitting, onExit, pressureUnit 
     </nav>
     {sitting.questions.map((question, qi) => <section key={question.id} hidden={selected !== qi} aria-label={`Question ${qi + 1} results`} className="exam-results__question">
       <h2>Question {qi + 1}</h2>
-      <CaseReview question={question} pressureUnit={pressureUnit} visible={selected === qi} />
+      <CaseReview question={question} pressureUnit={pressureUnit} visible={selected === qi} initialPart={question.parts.find(part => part.id === initialPartId)} />
       <div className="exam-results__parts">
         <h3 className="exam-results__eyebrow">Question Breakdown</h3>
         {question.parts.map((part, pi) =>

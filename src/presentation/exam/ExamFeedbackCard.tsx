@@ -1,4 +1,5 @@
 import { Sparkles, LoaderCircle } from "lucide-react";
+import { NoticeMessage, RetryAction } from "./ExamNotice";
 import { MetricInlineText } from "../practice/MetricText";
 import type { ExamFeedbackControls } from "./useExamFeedback";
 import { FeedbackProblemReport, type SubmitProblemReport } from "./ReportProblemDialog";
@@ -34,11 +35,11 @@ export function ExamFeedbackCard({ partId, marksLost, questionId, questionNumber
           : "See why you lost " + marksLost + (marksLost === 1 ? " mark" : " marks") + " and what to focus on next time."}</p>
       </div>
       {failed ? controls.data?.canRetry && <button type="button" className="exam-ai-feedback__cta" disabled={controls.busy || controls.retrySeconds > 0}
-        onClick={() => void controls.retry()}>{controls.retrySeconds > 0 ? "Retry in " + controls.retrySeconds + "s" : "Retry feedback"}</button>
-        : !controls.data && controls.error ? <button type="button" className="exam-ai-feedback__cta" onClick={() => void controls.refresh()}>Retry</button>
+        onClick={() => void controls.retry()} aria-busy={controls.busy || undefined}>{controls.busy ? <><span role="status">Retrying…</span><span className="figma-button__spinner" aria-hidden="true" /></> : controls.retrySeconds > 0 ? "Retry in " + controls.retrySeconds + "s" : "Retry feedback"}</button>
+        : !controls.data && controls.error ? <RetryAction busy={loading} onClick={() => void controls.refresh()} />
         : <button type="button" className="exam-ai-feedback__cta" disabled={pending || loading || !controls.data}
           aria-busy={pending} onClick={() => void controls.request()}>{pending ? <><LoaderCircle size={15} className="exam-report-dialog__spinner" aria-hidden="true" />Generating</> : "Get Feedback"}</button>}
     </div>}
-    {controls.error && <p className="exam-ai-feedback__error" role="alert">{controls.error}</p>}
+    {controls.error && <p className="exam-ai-feedback__error exam-inline-error" role="alert"><NoticeMessage message={controls.error} /></p>}
   </aside>;
 }

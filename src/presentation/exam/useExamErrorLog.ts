@@ -22,7 +22,7 @@ export function useExamErrorLog(call: RuntimeCall | undefined, accountKey: strin
       const data = await client.list(attemptId);
       if (current.current === context && version.current === request) { setStored({ key: accountKey, data }); setError(""); }
     } catch {
-      if (current.current === context && version.current === request) setError("Couldn’t refresh your Error log. Please retry.");
+      if (current.current === context && version.current === request) setError("We couldn't load your Error Log. Please try again.");
     } finally {
       if (current.current === context && version.current === request) setLoading(false);
     }

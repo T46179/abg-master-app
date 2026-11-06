@@ -196,6 +196,9 @@ function RuntimeOwner({ client, userId, generation, paid, page, onPage }: { clie
     removeItem: key => { if (isCurrent()) localStorage.removeItem(key); }
   }), [isCurrent]);
   const [access, setAccess] = useState<ExamAccess | null>(null); const [accessError, setAccessError] = useState(false); const [revision, setRevision] = useState(0);
+  const [accessWarning, setAccessWarning] = useState(false);
+  const [accessBusy, setAccessBusy] = useState(false);
+  const retryAccess = useRef<() => void>(() => {});
   const [draft, setDraft] = useState(() => loadExamOnboarding(storage, STAGING, userId));
   const [storageError, setStorageError] = useState(false);
   const [profile, setProfile] = useState<ExamOnboardingProfile | null>(null);
@@ -226,15 +229,51 @@ function RuntimeOwner({ client, userId, generation, paid, page, onPage }: { clie
     return () => { cancelled = true; };
   }, [ownedClient, isCurrent, storage, userId, profileRevision]);
   useEffect(() => {
-    let cancelled = false; setAccessError(false);
-    void readExamAccess(ownedClient).then(next => { if (!cancelled && isCurrent()) setAccess(next); }).catch(() => { if (!cancelled && isCurrent()) setAccessError(true); });
-    return () => { cancelled = true; };
-  }, [ownedClient, isCurrent, revision]);
-  useEffect(() => {
-    const refresh = () => { void account.refresh(); setRevision(n => n + 1); };
+    let cancelled = false;
+    let inFlight = false;
+    let loaded = false;
+    let warningTimer: ReturnType<typeof setTimeout> | undefined;
+    const current = () => !cancelled && isCurrent();
+    const verify = async () => {
+      if (inFlight || !current()) return;
+      inFlight = true;
+      setAccessBusy(true);
+      setAccessError(false);
+      setRevision(n => n + 1);
+      try {
+        const next = await readExamAccess(ownedClient);
+        if (!current()) return;
+        loaded = true;
+        setAccess(next);
+        setAccessWarning(false);
+        if (warningTimer !== undefined) clearTimeout(warningTimer);
+        warningTimer = undefined;
+      } catch {
+        if (!current()) return;
+        if (!loaded) setAccessError(true);
+        else if (warningTimer === undefined) {
+          // One grace period per unresolved failure; this never retries the request.
+          warningTimer = setTimeout(() => { if (current()) setAccessWarning(true); }, 15000);
+        }
+      } finally {
+        inFlight = false;
+        if (current()) setAccessBusy(false);
+      }
+    };
+    const retry = () => { void verify(); };
+    retryAccess.current = retry;
+    const refresh = () => { void account.refresh(); retry(); };
+    retry();
     window.addEventListener("focus", refresh);
-    return () => window.removeEventListener("focus", refresh);
-  }, [account]);
+    window.addEventListener("online", refresh);
+    return () => {
+      cancelled = true;
+      if (warningTimer !== undefined) clearTimeout(warningTimer);
+      if (retryAccess.current === retry) retryAccess.current = () => {};
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("online", refresh);
+    };
+  }, [account, ownedClient, isCurrent]);
   function updateDraft(value: ExamOnboarding) {
     if (!isCurrent()) return;
     const next = { ...value, complete: false };
@@ -290,10 +329,10 @@ function RuntimeOwner({ client, userId, generation, paid, page, onPage }: { clie
     if (next === "setup") return <div className="account-onboarding account-trial-onboarding"><AccountBack onBack={() => onPage("exam")} /><TrialStepper step={2} onStep={() => onPage("about")} />{controls.trialSetup}<p className="account-footnote account-trial-later"><button type="button" className="account-link" onClick={() => onPage("exam")}>Do this later</button></p></div>;
     return controls.withSetup(<TrialIntroduction signedIn complete={complete} onStart={() => onPage("start")} />);
   }
-  if (accessError) return <div className="account-narrow"><AccountCard title="We couldn't check Exam access"><p role="alert">Your account has not been changed. Reconnect and retry.</p><AccountButton onClick={() => setRevision(n => n + 1)}>Retry access check</AccountButton></AccountCard></div>;
-  if (!access) return <AccountWaiting attempt={revision} retry={() => setRevision(n => n + 1)} />;
+  if (!access && accessError) return <div className="account-narrow"><AccountCard title="We couldn't check Exam access"><p role="alert">Your account has not been changed. Reconnect and retry.</p><AccountButton onClick={() => retryAccess.current()}>Retry access check</AccountButton></AccountCard></div>;
+  if (!access) return <AccountWaiting attempt={revision} retry={() => retryAccess.current()} />;
   return <AccountBrowserStorageProvider value={storage}>
     {access.status === "closed" && <p role="status" className="account-notice">You're signed in. The Exam pilot is not open yet.</p>}
-    <ExamPilotRuntime onReturnToDashboard={() => onPage("exam")} trialAccessMessage={access.status === "closed" ? "The Exam pilot is currently closed." : undefined} trialAvailability={access.trialAvailability ?? "error"} onRetryTrial={() => setRevision(n => n + 1)} client={ownedClient} userId={userId} canStartStandard={access.canStartStandard === true} limitedDashboard={!paid || access.canStartStandard !== true} canStart={access.status === "allowed"} allowedUnitCounts={paid ? access.allowedUnitCounts : access.allowedUnitCounts.filter(n => n === 3)} customisationCategories={paid ? access.customisationCategories : []} renderDashboard={renderDashboard} />
+    <ExamPilotRuntime accessNotice={{ visible: accessWarning, busy: accessBusy, onRetry: () => retryAccess.current() }} onReturnToDashboard={() => onPage("exam")} trialAccessMessage={access.status === "closed" ? "The Exam pilot is currently closed. New exams aren't available at the moment." : undefined} trialAvailability={access.trialAvailability ?? "error"} onRetryTrial={() => retryAccess.current()} client={ownedClient} userId={userId} canStartStandard={access.canStartStandard === true} limitedDashboard={!paid || access.canStartStandard !== true} canStart={access.status === "allowed"} allowedUnitCounts={paid ? access.allowedUnitCounts : access.allowedUnitCounts.filter(n => n === 3)} customisationCategories={paid ? access.customisationCategories : []} renderDashboard={renderDashboard} />
   </AccountBrowserStorageProvider>;
 }

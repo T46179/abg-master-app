@@ -22,6 +22,12 @@
 .exam-screen h4 { font-size: .9rem; line-height: 1.4; }
 .exam-screen button, .exam-screen input { font-family: inherit; }
 .exam-screen button { color: inherit; }
+.exam-notice { box-sizing: border-box; width: min(100%, var(--practice-max)); margin: 20px auto; border: 1px solid #cfdae7; background: #f4f7fa; border-radius: 12px; padding: 12px 16px; font-size: 13.5px; line-height: 1.6; }
+.exam-notice__retry { display: inline-flex; align-items: center; gap: .4rem; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.exam-notice__retry:disabled { cursor: default; opacity: .65; }
+.exam-notice__retry:focus-visible { outline: 2px solid #6b7789; outline-offset: 4px; }
+.exam-inline-error { font-size: .875rem; line-height: 1.5; color: #9a382e; }
+.exam-history-footer .exam-inline-error { flex-basis: 100%; }
 .exam-screen button:focus-visible, .exam-screen input:focus-visible { outline: 2px solid var(--color-navy); outline-offset: 4px; }
 .exam-screen button svg { flex-shrink: 0; }
 .exam-screen .surface { border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
