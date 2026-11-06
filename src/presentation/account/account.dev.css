@@ -234,7 +234,12 @@
 .account-trial-pro li strong { font-size: .875rem; font-weight: 600; }
 .account-trial-pro li p { margin-top: .125rem; font-size: .78125rem; line-height: 1.4; }
 .abg-account .account-trial-pro .account-primary:disabled { opacity: 1; cursor: default; }
-.account-trial-pro .account-trial-pro-note { margin-top: .75rem; text-align: center; font-size: .75rem; }
+.account-trial-pro-actions { display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-top: 1.5rem; text-align: center; }
+.abg-account .account-trial-pro-actions .account-primary { position: relative; width: 100%; margin-top: 0; justify-content: center; text-align: center; padding-inline: 48px; }
+.account-trial-pro-actions .account-primary > svg { position: absolute; right: 20px; }
+.account-trial-practice-link { color: var(--account-muted); font-size: .78125rem; line-height: 1.6; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; border-radius: 3px; }
+.account-trial-practice-link:hover { text-decoration-color: currentColor; }
+.account-trial-practice-link:focus-visible { outline: 2px solid #6b7789; outline-offset: 4px; }
 
 .account-narrow > .account-recovery-card { max-width:420px; margin-inline:auto; }
 .account-recovery-card .account-address { font-size:14px; font-weight:500; }

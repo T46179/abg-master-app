@@ -1,28 +1,31 @@
+import { Link } from "react-router-dom";
 import type { RuntimeAttempt } from "../../core/examRuntime";
 import { Surface } from "../primitives/Surface";
 import { CheckIcon } from "./AccountIcons.dev";
 import { AccountButton } from "./AccountUi.dev";
 
 const proFeatures = [
-  { title: "Standard exams on demand", body: "Fresh multi-part cases, marked in detail, whenever you're ready." },
-  { title: "Custom exams", body: "Choose your topics, including ventilation and toxicology." },
-  { title: "Focused drills", body: "Anion gap, compensation, delta ratio, A-a gradient and corrections." },
-  { title: "Past attempts and Error log", body: "Track every sitting and work through what tripped you up." },
+  { title: "Full exam question bank", body: "Exam-style cases with detailed marking and feedback." },
+  { title: "Custom exams", body: "Build exams around the topics you want to master." },
+  { title: "Focused drills", body: "Practice anion gap, compensation, delta ratio, A-a gradient and corrections." },
+  { title: "Track your progress", body: "Review past attempts and revisit mistakes in your Error Log." },
 ];
 
 export function TrialProCard() {
   return <Surface as="aside" className="account-trial-pro" aria-labelledby="account-trial-pro-title">
-    <div className="account-trial-pro-top"><span>ABG Master Pro</span><span>Trial used</span></div>
-    <h3 id="account-trial-pro-title">Ready for the full Exam Room?</h3>
-    <p>You've seen how exam mode works. Pro opens every exam and drill, so you can keep training until it's second nature.</p>
+    <div className="account-trial-pro-top"><span>ABG Master Pro</span></div>
+    <h3 id="account-trial-pro-title">Ready to take your exam prep further?</h3>
+    <p>You've completed your first exam. Unlock the full question bank, tackle challenging cases, and build confidence in blood gas interpretation.</p>
     <ul>
       {proFeatures.map(({ title, body }) => <li key={title}>
         <span className="account-trial-pro-check"><CheckIcon size={12} /></span>
         <div><strong>{title}</strong><p>{body}</p></div>
       </li>)}
     </ul>
-    <AccountButton disabled>Unlock full exam access</AccountButton>
-    <p className="account-trial-pro-note">Your trial result stays on your account either way.</p>
+    <div className="account-trial-pro-actions">
+      <AccountButton disabled>Unlock full exam access</AccountButton>
+      <Link className="account-trial-practice-link" to="/practice">Or continue with free Practice</Link>
+    </div>
   </Surface>;
 }
 
