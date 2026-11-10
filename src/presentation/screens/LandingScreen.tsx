@@ -534,7 +534,7 @@ export function LandingScreen() {
 
       <section className="landing-section landing-section--counter">
         <div className="landing-shell landing-counter" data-loaded={casesSolvedLoaded}>
-          <strong>{casesSolvedLabel}</strong>
+          <strong>{casesSolvedLoaded ? casesSolvedLabel : "—"}</strong>
           <span>Cases solved by learners worldwide</span>
         </div>
       </section>

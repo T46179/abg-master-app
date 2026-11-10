@@ -106,7 +106,8 @@ export const compensationCheckMetrics: readonly CalibrationMetricDefinition[] = 
 export const compensationCheckOptions = [
   { label: "Appropriate compensation" },
   { label: "Additional respiratory acidosis" },
-  { label: "Additional respiratory alkalosis" }
+  { label: "Additional respiratory alkalosis" },
+  { label: "I'm not sure" }
 ] as const;
 
 export const mixedProcessAbgMetrics: readonly CalibrationMetricDefinition[] = [
@@ -124,7 +125,8 @@ export const mixedProcessOptions = [
   "normal anion gap metabolic acidosis",
   "raised anion gap metabolic acidosis",
   "respiratory acidosis",
-  "mixed metabolic acidosis and respiratory alkalosis"
+  "mixed metabolic acidosis and respiratory alkalosis",
+  "I'm not sure"
 ] as const;
 
 export const calibrationScoringRules = {

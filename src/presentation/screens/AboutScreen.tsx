@@ -43,9 +43,9 @@ const aboutContent = {
 } as const;
 
 export function AboutScreen() {
-  const { casesSolvedCount } = usePublicCasesSolvedCount();
+  const { casesSolvedCount, casesSolvedLoaded } = usePublicCasesSolvedCount();
   const stats = [
-    { value: String(casesSolvedCount), label: "Cases completed" },
+    { value: casesSolvedLoaded ? casesSolvedCount.toLocaleString("en-US") : "—", label: "Cases completed" },
     ...aboutContent.app.stats
   ];
 
