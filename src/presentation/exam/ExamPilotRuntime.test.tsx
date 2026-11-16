@@ -30,8 +30,8 @@ function historyPage(rows: any[] = []) {
  summary: { submitted: rows.length, average: null, best: null, trend: [], totalCases: rows.reduce((n,r)=>n+r.caseCount,0), awaiting: rows.length, pending: rows.length } };
 }
 function row(id: string, kind = "mock", exclusions: string[] = []) { return { id, createdAt: "2026-10-05T00:00:00Z", presentedAt: null, finishedAt: "2026-10-05T00:10:00Z", marksAvailable: 4, marksAwarded: null, caseCount: 3, examKind: kind, excludedCategories: exclusions, gradingStatus: "pending", canRetryGrading: false }; }
-async function mount(unitCount = 3, customisationCategories: typeof categories = [], allowedUnitCounts?: number[], initialEntries?: Array<{ pathname: string; state?: unknown }>, trial = false, limitedDashboard = false, trialAvailability: "ready" | "disabled" | "error" = "ready", canStart = true) {
- router = createMemoryRouter([{ path: "/", element: <ExamSittingProvider><ExamPilotRuntime canStartStandard trialAvailability={trialAvailability} client={client} userId="test-owner" canStart={canStart} limitedDashboard={limitedDashboard} unitCount={unitCount} allowedUnitCounts={allowedUnitCounts} customisationCategories={customisationCategories} renderDashboard={trial ? controls => controls.trialSetup : undefined} /></ExamSittingProvider> }, { path: "/away", element: <p>Away</p> }], { initialEntries });
+async function mount(unitCount = 3, customisationCategories: typeof categories = [], allowedUnitCounts?: number[], initialEntries?: Array<{ pathname: string; state?: unknown }>, trial = false, limitedDashboard = false, trialAvailability: "ready" | "disabled" | "error" = "ready", canStart = true, enableOwnerUnitPicker = false) {
+ router = createMemoryRouter([{ path: "/", element: <ExamSittingProvider><ExamPilotRuntime enableOwnerUnitPicker={enableOwnerUnitPicker} canStartStandard trialAvailability={trialAvailability} client={client} userId="test-owner" canStart={canStart} limitedDashboard={limitedDashboard} unitCount={unitCount} allowedUnitCounts={allowedUnitCounts} customisationCategories={customisationCategories} renderDashboard={trial ? controls => controls.trialSetup : undefined} /></ExamSittingProvider> }, { path: "/away", element: <p>Away</p> }], { initialEntries });
  await act(async () => { root.render(<RouterProvider router={router} />); });
 }
 async function click(text: string) {
@@ -71,6 +71,29 @@ async function advance(ms: number) { await act(async () => { await vi.advanceTim
 function operations(name: string) { return invoke.mock.calls.filter(c => c[1].body.operation === name); }
 function journal() { return JSON.parse(localStorage.getItem("abgm-exam-pilot-clpfecuohwzwrgmqzeos-test-owner")!); }
 function submittingButton() { return [...container.querySelectorAll("button")].find(b => b.textContent?.trim() === "Submitting…"); }
+
+it.each([1, 5])("starts %i selected Units in checkbox order through the existing Begin flow", async count => {
+ const units = Array.from({ length: 6 }, (_, i) => ({
+  unitId: `EXAM-000${i + 1}`, title: `Unit ${i + 1}`, snapshotId: String(i + 1).repeat(64),
+ }));
+ const original = invoke.getMockImplementation()!;
+ invoke.mockImplementation(async (...args) => args[1].body.operation === "owner_unit_list"
+  ? { data: { units } } : original(...args));
+ await mount(3, [], undefined, undefined, false, false, "ready", true, true);
+ await click("Choose units");
+ const picker = [...container.querySelectorAll("fieldset")].find(field => field.querySelector("legend")?.textContent === "Choose units")!;
+ expect(picker.textContent).toContain("EXAM-0001 · Unit 1");
+ const begin = container.querySelector<HTMLButtonElement>(".exam-start")!;
+ expect(begin.disabled).toBe(true);
+ const boxes = [...picker.querySelectorAll<HTMLInputElement>("input[type=checkbox]")].reverse();
+ for (const box of boxes.slice(0, count)) await act(async () => box.click());
+ if (count === 5) expect(boxes[5].disabled).toBe(true);
+ await click("Begin");
+ expect(operations("start")[0][1].body.input).toMatchObject({
+  purpose: "standard", examKind: "mock", snapshotIds: units.slice().reverse().slice(0, count).map(u => u.snapshotId),
+ });
+ expect(operations("start")[0][1].body.input).not.toHaveProperty("unitCount");
+});
 
 it("keeps a Results connection notice visible and busy until its retry finishes without adding history", async () => {
  const id = "12345678-1234-1234-1234-123456789abc";
@@ -125,7 +148,7 @@ it.each([false, true])("restores a later question and part with answers and revi
  await reloadAndRecover();
  expect(operations("start")).toHaveLength(1);
  const recoveryCalls = invoke.mock.calls.slice(callsBeforeRecovery).map(c => c[1].body.operation);
- expect(recoveryCalls.filter(op => ["read", "claim", "save", "present"].includes(op))).toEqual(["read", "claim", "save", "present"]);
+ expect(recoveryCalls.filter(op => ["read", "claim", "save", "present"].includes(op))).toEqual(["read", "claim", "save"]);
  expect(operations("present").at(-1)![1].body.input.unitId).toBe("second-unit");
  expect(container.querySelector('[aria-label="Question 2"]')?.getAttribute("aria-current")).toBe("step");
  if (review) {
@@ -167,7 +190,7 @@ it("keeps navigation and answers usable when position writes fail and recovers t
  await reloadAndRecover();
  expect(container.textContent).toContain("First question, second part");
  expect(container.querySelector("textarea")!.value).toBe("first answer");
- expect(operations("present").at(-1)![1].body.input.unitId).toBe("test-unit");
+ expect(operations("present").filter(c => c[1].body.input.unitId === "test-unit")).toHaveLength(1);
 });
 
 it.each([undefined, { questionId: "removed", partIdsByQuestion: { "test-unit": "removed" }, phase: "active" }, "malformed"])("recovers default position without valid navigation: %j", async position => {
@@ -649,7 +672,7 @@ it("refreshes on history entry and discards a Results response after leaving his
 });
 it("defaults a confirmed private three/five choice to three and sends five when selected",async()=>{
  await mount(5,[],[3,5]);expect(container.textContent).toContain("3 cases");
- await click("5 cases");expect(container.textContent).toContain("30 min");await click("Begin");
+ await click("5 cases");expect(container.textContent).toContain("25 min");await click("Begin");
  expect(invoke.mock.calls.find(c=>c[1].body.operation==="start")![1].body.input.unitCount).toBe(5);
 });
 it("applies and recovers the timer and reference-range choices",async()=>{
@@ -673,7 +696,7 @@ it("keeps dashboard units in sync with the global preference and starts with the
  await click("mmHg"); await click("Begin");
  expect(invoke.mock.calls.find(call => call[1].body.operation === "start")?.[1].body.input.pressureUnit).toBe("mmHg");
 });
-it("keeps the preparing button visible through assembly and opening the first question", async () => {
+it("shows the first question before awaiting its presentation acknowledgement", async () => {
  await mount();
  const defaultInvoke = invoke.getMockImplementation()!;
  let releaseStart!: () => void;
@@ -694,7 +717,8 @@ it("keeps the preparing button visible through assembly and opening the first qu
  expect(invoke.mock.calls.filter(call => call[1].body.operation === "start")).toHaveLength(1);
  await act(async () => { releaseStart(); });
  expect(invoke.mock.calls.some(call => call[1].body.operation === "present")).toBe(true);
- expect(preparingButton()?.querySelector(".figma-button__spinner")).toBeTruthy();
+ expect(preparingButton()).toBeUndefined();
+ expect(container.querySelector("textarea")).toBeTruthy();
  expect(container.textContent).not.toContain("Recover attempt");
  await act(async () => { releasePresent(); });
  expect(preparingButton()).toBeUndefined();
@@ -897,6 +921,15 @@ it("trial paper count is independent of ordinary five-case configuration", async
  expect(invoke.mock.calls.find(c=>c[1].body.operation==='start')![1].body.input).toMatchObject({purpose:'trial',unitCount:3});
 });
 
+it.each([3, 5, 7])("starts the learner-selected %i-Unit ordinary exam", async count => {
+ await mount(3, categories, [3, 5, 7]);
+ await click(`${count} cases`);
+ expect(container.textContent).toContain(`~${count * 5} min`);
+ await click("Begin");
+ expect(invoke.mock.calls.find(c => c[1].body.operation === "start")![1].body.input)
+  .toMatchObject({ purpose: "standard", unitCount: count });
+});
+
 it.each([false, true])("keeps existing dashboard controls when limitedDashboard is %s", async limited => {
  await mount(3, [], undefined, undefined, false, limited);
  expect(Boolean(container.querySelector('.exam-mode-switch'))).toBe(!limited);
@@ -1022,7 +1055,7 @@ it('returns a completed trial from setup to the dashboard with history and an em
  expect(invoke.mock.calls.filter(c=>c[1].body.operation==='start')).toHaveLength(1);
 });
 
-it('keeps trial onboarding and its loading CTA visible until the first unit is ready', async()=>{
+it('shows the trial Unit before waiting for its view acknowledgement', async()=>{
  const original=invoke.getMockImplementation()!;
  let releaseStart!:()=>void; let releasePresent!:()=>void;
  const startGate=new Promise<void>(resolve=>{releaseStart=resolve;});
@@ -1049,9 +1082,9 @@ it('keeps trial onboarding and its loading CTA visible until the first unit is r
  expect(invoke.mock.calls.filter(c=>c[1].body.operation==='start')).toHaveLength(1);
  await act(async()=>releaseStart());
  await act(async()=>window.dispatchEvent(new Event('focus')));
- expect(container.querySelector('.exam-trial-builder')).not.toBeNull();
- expect(container.querySelector('.exam-subnav')).toBeNull();
- expect(preparing()).toBeTruthy();
+ expect(container.querySelector('.exam-trial-builder')).toBeNull();
+ expect(container.querySelector('textarea')).not.toBeNull();
+ expect(preparing()).toBeUndefined();
  expect(container.textContent).not.toContain('Recover attempt');
  await act(async()=>releasePresent());
  expect(container.querySelector('textarea')).not.toBeNull();

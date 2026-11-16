@@ -36,6 +36,8 @@ interface DashboardProps {
   beginDisabled?: boolean;
   setupLocked?: boolean;
   caseCounts?: number[];
+  casePicker?: ReactNode;
+  chooseUnits?: { active: boolean; toggle: () => void };
   startContent?: ReactNode;
   drillsUnavailable?: boolean;
   customDisabled?: boolean;
@@ -141,7 +143,7 @@ function InfoTip({ text, align = "right", children }: { text: string; align?: "l
   </span>;
 }
 
-function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisabled, caseCounts = [3, 5], startContent, customDisabled, pressureUnit, onPressureUnitChange, feedbackPreference, setupContent, overviewHero, trial }: DashboardProps) {
+function MockExam({ state, config, onChange, onBegin, launching, setupLocked, beginDisabled, caseCounts = [3, 5], casePicker, chooseUnits, startContent, customDisabled, pressureUnit, onPressureUnitChange, feedbackPreference, setupContent, overviewHero, trial }: DashboardProps) {
   const disclaimerId = useId();
   const custom = state.examKind === "custom";
   const kinds: { key: SittingKind; label: string; description: string }[] = [
@@ -175,13 +177,16 @@ function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisab
           </section>
         </div>
       </div>}
-      <div className="exam-case-picker-field">
+      {chooseUnits && <button type="button" className="figma-button figma-button--secondary" disabled={setupLocked} onClick={chooseUnits.toggle}>
+        {chooseUnits.active ? "Use preset exam" : "Choose units"}
+      </button>}
+      {casePicker ?? <div className="exam-case-picker-field">
         <div className="exam-field-label">Number of cases</div>
         <div className="exam-case-picker" role="group" aria-label="Number of cases" data-count={state.caseCount} data-options={trial ? 2 : caseCounts.length} data-index={trial ? 0 : caseCounts.indexOf(state.caseCount)}>
           <span className="exam-picker-highlight" aria-hidden="true" />
           {(trial ? [3, 5] : caseCounts).map(count => <button type="button" key={count} disabled={trial && count !== 3} aria-pressed={state.caseCount === count} onClick={() => onChange({ caseCount: count })}>{count} cases{trial && count !== 3 && <LockKeyhole className="exam-feature-lock" aria-hidden="true" />}</button>)}
         </div>
-      </div>
+      </div>}
       <ToggleRow label="Show timer" checked={state.timed} onChange={timed => onChange({ timed })} />
       <ToggleRow label="Reference ranges" checked={state.showRanges} onChange={showRanges => onChange({ showRanges })} />
       <div className="exam-toggle-row">
@@ -217,7 +222,9 @@ function MockExam({ state, onChange, onBegin, launching, setupLocked, beginDisab
         </div>}
       </section>}
       {trial && feedbackPreference?.error && <div className="exam-feedback-tone__error exam-inline-error" role="alert"><p><NoticeMessage message={feedbackPreference.error} /></p><RetryAction busy={feedbackPreference.busy} onClick={() => void feedbackPreference.retry()} /></div>}
-      <div className="exam-suggested-time"><span>Suggested time</span><strong>~{state.caseCount === 3 ? 15 : 30} min</strong></div>
+      {(!casePicker || state.caseCount > 0) && <div className="exam-suggested-time">
+        <span>Suggested time</span><strong>~{state.caseCount * config.minutesPerCase} min</strong>
+      </div>}
       </fieldset>
       {startContent ?? <button type="button" className="figma-button exam-primary exam-start" onClick={onBegin} disabled={launching || beginDisabled || (!trial && feedbackPreference && !feedbackPreference.canBegin)} aria-busy={launching || undefined}>
         {launching ? <><span role="status">Preparing your session</span><span className="figma-button__spinner" aria-hidden="true" /></> : <>{trial ? "Begin Trial Exam" : "Begin"} <ArrowIcon /></>}

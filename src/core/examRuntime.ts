@@ -4,7 +4,7 @@ import type { ExamAnswer, ExamQuestion, SittingState } from "../presentation/exa
 import type { ExamFeedback } from "../presentation/exam/resultsTypes";
 export type ExamPurpose = "standard" | "trial";
 export type ExamKind = "mock" | "custom";
-export interface ExamConfiguration { purpose?: ExamPurpose; examKind: ExamKind; excludedCategories: string[]; unitCount?: number; showTimer?: boolean; showRanges?: boolean }
+export interface ExamConfiguration { purpose?: ExamPurpose; examKind: ExamKind; excludedCategories: string[]; unitCount?: number; snapshotIds?: string[]; showTimer?: boolean; showRanges?: boolean }
 export type WireAnswers = Record<string, ExamAnswer | { text: string; unit: string }>;
 export interface RuntimeAttempt {
   id: string; status: "active" | "submitted" | "abandoned" | "invalidated"; revision: number;
@@ -63,10 +63,12 @@ export function toSitting(attempt: RuntimeAttempt, navigation?: ExamNavigationPo
 }
 interface Journal {
   purpose?: ExamPurpose;
-  examKind?: ExamKind; excludedCategories?: string[]; unitCount?: number; showTimer?: boolean; showRanges?: boolean;
+  examKind?: ExamKind; excludedCategories?: string[]; unitCount?: number; snapshotIds?: string[]; showTimer?: boolean; showRanges?: boolean;
   requestId: string; recoveryKey: string; pressureUnit: PressureUnit; attemptId?: string; revision?: number;
   dirty?: WireAnswers; submission?: { requestId: string; answers: WireAnswers };
   navigation?: ExamNavigationPosition;
+  pendingPresentedUnitIds?: string[];
+  acknowledgedPresentedUnitIds?: string[];
 }
 // Each mounted controller is a new writer. No sessionStorage ID that a duplicated tab could inherit.
 export class ExamRuntimeSession {
@@ -93,16 +95,16 @@ export class ExamRuntimeSession {
   }
   async start(pressureUnit: PressureUnit, configuration: ExamConfiguration = { examKind: "mock", excludedCategories: [] }) {
     if (!this.journal) {
-      this.journal = { purpose: configuration.purpose ?? "standard", unitCount: configuration.unitCount, showTimer: configuration.showTimer, showRanges: configuration.showRanges, examKind: configuration.examKind, excludedCategories: configuration.examKind === "mock" ? [] : [...new Set(configuration.excludedCategories)].sort(), requestId: crypto.randomUUID(), recoveryKey: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, "0")).join(""), pressureUnit };
+      this.journal = { purpose: configuration.purpose ?? "standard", unitCount: configuration.unitCount, snapshotIds: configuration.snapshotIds?.slice(), showTimer: configuration.showTimer, showRanges: configuration.showRanges, examKind: configuration.examKind, excludedCategories: configuration.examKind === "mock" ? [] : [...new Set(configuration.excludedCategories)].sort(), requestId: crypto.randomUUID(), recoveryKey: Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, "0")).join(""), pressureUnit };
       this.persist(); // Persist before sending so a lost response never creates another attempt.
     }
     let result: RuntimeAttempt;
     try {
-      result = await this.call<RuntimeAttempt>("start", { purpose: this.journal.purpose ?? "standard", requestId: this.journal.requestId, recoveryKey: this.journal.recoveryKey, pressureUnit: this.journal.pressureUnit, examKind: this.journal.examKind ?? "mock", excludedCategories: this.journal.excludedCategories ?? [], ...(this.journal.unitCount !== undefined ? { unitCount: this.journal.unitCount } : {}), writerId: this.writerId });
+      result = await this.call<RuntimeAttempt>("start", { purpose: this.journal.purpose ?? "standard", requestId: this.journal.requestId, recoveryKey: this.journal.recoveryKey, pressureUnit: this.journal.pressureUnit, examKind: this.journal.examKind ?? "mock", excludedCategories: this.journal.excludedCategories ?? [], ...(this.journal.unitCount !== undefined ? { unitCount: this.journal.unitCount } : {}), ...(this.journal.snapshotIds ? { snapshotIds: this.journal.snapshotIds } : {}), writerId: this.writerId });
     } catch (error) {
       // This server rejection occurs only before a new attempt is inserted.
       // Network uncertainty and reused-request errors must retain the journal.
-      if (!this.journal.attemptId && error instanceof ExamRuntimeError && ["EXAM_INVALID_CONFIGURATION", "EXAM_TRIAL_DISABLED", "EXAM_TRIAL_CONFIGURATION", "EXAM_TRIAL_UNAVAILABLE", "EXAM_ACCESS_DENIED"].includes(error.code)) {
+      if (!this.journal.attemptId && error instanceof ExamRuntimeError && ["EXAM_NO_APPROVED_CONTENT", "EXAM_INVALID_CONFIGURATION", "EXAM_INVALID_UNIT_SELECTION", "EXAM_TRIAL_DISABLED", "EXAM_TRIAL_CONFIGURATION", "EXAM_TRIAL_UNAVAILABLE", "EXAM_ACCESS_DENIED"].includes(error.code)) {
         this.journal = null; this.persist();
       }
       throw error;
@@ -119,34 +121,66 @@ export class ExamRuntimeSession {
       throw new ExamRuntimeError("EXAM_LOCAL_CONFLICT");
     }
     this.accept(result);
-    return this.accept(await this.call<RuntimeAttempt>("claim", this.input()));
+    this.accept(await this.call<RuntimeAttempt>("claim", this.input()));
+    return this.flushPresented();
   }
   stage(answers: WireAnswers) {
     if (!this.journal || this.journal.submission) throw new ExamRuntimeError("EXAM_SUBMISSION_PENDING");
     this.journal.dirty = answers; this.persist();
   }
   save() { return this.serial(async () => {
+    await this.drainPresented();
     const answers = this.journal?.dirty;
     if (!answers || this.journal?.submission) return this.attempt!;
     const result = await this.call<RuntimeAttempt>("save", { ...this.input(), answers });
     if (this.journal?.dirty === answers) delete this.journal.dirty;
     return this.accept(result);
   }); }
-  present(unitId: string) { return this.serial(async () => this.accept(await this.call<RuntimeAttempt>("present", { ...this.input(), unitId }))); }
+  // Call only after this Unit's assessment view mounts, never on assignment/read.
+  present(unitId: string) {
+    if (!this.journal || this.attempt?.status !== "active" || !this.attempt.questions.some(q => q.id === unitId)) {
+      return Promise.reject(new ExamRuntimeError("EXAM_UNKNOWN_UNIT"));
+    }
+    if (!this.journal.acknowledgedPresentedUnitIds?.includes(unitId)) {
+      const pending = [...new Set([...(this.journal.pendingPresentedUnitIds ?? []), unitId])];
+      // Do not send until the recovery journal has durably accepted the event.
+      this.storage.setItem(this.key, JSON.stringify({ ...this.journal, pendingPresentedUnitIds: pending }));
+      this.journal.pendingPresentedUnitIds = pending;
+    }
+    return this.flushPresented();
+  }
+  private async drainPresented() {
+    while (this.attempt?.status === "active" && this.journal?.pendingPresentedUnitIds?.length) {
+      const unitId = this.journal.pendingPresentedUnitIds[0];
+      this.accept(await this.call<RuntimeAttempt>("present", { ...this.input(), unitId }));
+      this.journal.acknowledgedPresentedUnitIds = [...new Set([...(this.journal.acknowledgedPresentedUnitIds ?? []), unitId])];
+      this.journal.pendingPresentedUnitIds = this.journal.pendingPresentedUnitIds.filter(id => id !== unitId);
+      this.persist();
+    }
+    return this.attempt!;
+  }
+  flushPresented() { return this.serial(() => this.drainPresented()); }
   submit(answers: WireAnswers) {
     if (!this.journal) throw new ExamRuntimeError("EXAM_DEVICE_REQUIRED");
     this.journal.submission ??= { requestId: crypto.randomUUID(), answers };
     this.persist();
     return this.serial(async () => {
+      await this.drainPresented();
       const result = await this.call<RuntimeAttempt>("submit", { ...this.input(), ...this.journal!.submission });
       delete this.journal!.dirty; delete this.journal!.submission;
       return this.accept(result);
     });
   }
-  abandon(attemptId: string) { return this.serial(async () => {
-    await this.call("abandon", { attemptId, confirmed: true });
-    this.attempt = null; this.journal = null; this.persist();
-  }); }
+  async abandon(attemptId: string) {
+    if (this.journal?.attemptId === attemptId && this.journal.pendingPresentedUnitIds?.length && this.attempt?.id !== attemptId) {
+      await this.recover();
+    }
+    return this.serial(async () => {
+      if (this.attempt?.id === attemptId) await this.drainPresented();
+      await this.call("abandon", { attemptId, confirmed: true });
+      this.attempt = null; this.journal = null; this.persist();
+    });
+  }
   keepServerDraft() {
     if (!this.journal || this.journal.submission) return;
     this.storage.setItem(`${this.key}-conflict-backup`, JSON.stringify(this.journal));

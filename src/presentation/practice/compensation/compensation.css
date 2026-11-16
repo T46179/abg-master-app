@@ -186,6 +186,7 @@
   color: var(--color-blue-muted, #5f7897);
   font-size: 0.625rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .cmp-band__bounds--low {
@@ -202,7 +203,6 @@
   left: var(--cmp-center, 50%);
   visibility: hidden;
   transform: translateX(-50%);
-  white-space: nowrap;
 }
 
 .cmp-band__bounds--compact-start {

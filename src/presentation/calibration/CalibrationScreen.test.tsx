@@ -249,7 +249,7 @@ describe("CalibrationScreen", () => {
     expect(getButton("Submitting").disabled).toBe(true);
     expect(container.querySelector(".figma-button__spinner")).toBeTruthy();
     expect(container.textContent).toContain("Almost There");
-    expect(container.querySelectorAll(".calibration-compensation__option:disabled")).toHaveLength(4);
+    expect(container.querySelectorAll(".calibration-compensation__option:disabled")).toHaveLength(5);
 
     act(() => {
       vi.advanceTimersByTime(799);
@@ -430,7 +430,8 @@ describe("CalibrationScreen", () => {
       "normal anion gap metabolic acidosis",
       "raised anion gap metabolic acidosis",
       "respiratory acidosis",
-      "mixed metabolic acidosis and respiratory alkalosis"
+      "mixed metabolic acidosis and respiratory alkalosis",
+      "I'm not sure"
     ]);
     clickButton("raised anion gap metabolic acidosis");
     clickButton("Submit");

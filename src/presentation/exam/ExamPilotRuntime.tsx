@@ -42,9 +42,11 @@ export type ExamDashboardControls = {
   begin: () => void;
 };
 export type ExamAccessNotice = { visible: boolean; busy: boolean; onRetry: () => void };
-type PilotProps = { accessNotice?: ExamAccessNotice; onReturnToDashboard?: () => void; trialAccessMessage?: string; trialAvailability?: TrialAvailability; onRetryTrial?: () => void; client: SupabaseClient; userId: string; canStart: boolean; canStartStandard: boolean; limitedDashboard?: boolean; unitCount?: number; allowedUnitCounts?: number[]; customisationCategories?: CustomisationCategory[]; environment?: string; renderDashboard?: (controls: ExamDashboardControls) => ReactNode };
+type OwnerUnit = { unitId: string; title: string; snapshotId: string };
 
-export default function ExamPilotRuntime({ accessNotice, onReturnToDashboard, trialAccessMessage, trialAvailability = "error", onRetryTrial, client, userId, canStart, canStartStandard, limitedDashboard = false, unitCount, allowedUnitCounts, customisationCategories = [], environment = "clpfecuohwzwrgmqzeos", renderDashboard }: PilotProps) {
+type PilotProps = { enableOwnerUnitPicker?: boolean; accessNotice?: ExamAccessNotice; onReturnToDashboard?: () => void; trialAccessMessage?: string; trialAvailability?: TrialAvailability; onRetryTrial?: () => void; client: SupabaseClient; userId: string; canStart: boolean; canStartStandard: boolean; limitedDashboard?: boolean; unitCount?: number; allowedUnitCounts?: number[]; customisationCategories?: CustomisationCategory[]; environment?: string; renderDashboard?: (controls: ExamDashboardControls) => ReactNode };
+
+export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, accessNotice, onReturnToDashboard, trialAccessMessage, trialAvailability = "error", onRetryTrial, client, userId, canStart, canStartStandard, limitedDashboard = false, unitCount, allowedUnitCounts, customisationCategories = [], environment = "clpfecuohwzwrgmqzeos", renderDashboard }: PilotProps) {
   const browserStorage = useAccountBrowserStorage();
   const location = useLocation();
   const navigate = useNavigate();
@@ -127,6 +129,20 @@ export default function ExamPilotRuntime({ accessNotice, onReturnToDashboard, tr
     catch { return null; }
   }, [client, userId, environment]);
   useEffect(() => { ++sourceOpenVersion.current; setAttempt(null); setCurrent(null); setReady(false); setRoomView("exam"); setReviewPartId(undefined); setError(""); }, [session]);
+  const mayLoadOwnerUnits = enableOwnerUnitPicker && canStart && canStartStandard && environment === "clpfecuohwzwrgmqzeos";
+  const [ownerCatalogue, setOwnerCatalogue] = useState<{ session: ExamRuntimeSession; units: OwnerUnit[] }>();
+  const [selectedSnapshotIds, setSelectedSnapshotIds] = useState<string[] | null>(null);
+  useEffect(() => {
+    setOwnerCatalogue(undefined);
+    setSelectedSnapshotIds(null);
+    if (!mayLoadOwnerUnits || !session) return;
+    let cancelled = false;
+    void session.call<{ units: OwnerUnit[] }>("owner_unit_list", {}).then(({ units }) => {
+      if (!cancelled && Array.isArray(units) && units.length) setOwnerCatalogue({ session, units });
+    }).catch(() => { /* Preset exams remain available without the owner catalogue. */ });
+    return () => { cancelled = true; };
+  }, [mayLoadOwnerUnits, session]);
+  const ownerUnits = mayLoadOwnerUnits && ownerCatalogue?.session === session ? ownerCatalogue?.units : undefined;
   const feedbackPreference = useExamFeedbackTone(session?.call, account);
   const history = useExamHistory(session?.call, `${environment}:${userId}`, !attempt && roomView !== "error-log");
   const historyView = useMemo(() => history.data
@@ -163,6 +179,8 @@ export default function ExamPilotRuntime({ accessNotice, onReturnToDashboard, tr
       : code === "EXAM_TRIAL_RELEASED" ? "We couldn't finish marking your trial exam. Your trial has been restored, so you can start a new one from Exam."
       : code === "EXAM_DEVICE_REQUIRED" ? "This exam can't be continued in this browser. Return to the browser where you started it, or abandon the exam here."
       : code === "EXAM_INVALID_CONFIGURATION" ? "These Custom Exam settings are no longer available. Refresh your exam access, then try again."
+      : code === "EXAM_NO_APPROVED_CONTENT" ? "An exam isn’t available with these settings. Change your exclusions or try again later."
+      : code === "EXAM_INVALID_UNIT_SELECTION" ? "We couldn't start with those units. Check your selection and try again."
       : /INVALID|ANSWER|SELECTION|NUMERIC|TEXT/.test(code) ? "We couldn't accept that answer. Check your numbers and required selections, then try again."
       : code === "EXAM_GRADING_COOLDOWN" ? "Grading was just retried. Please wait 30 seconds before trying again."
       : code === "EXAM_PILOT_CLOSED" ? "New pilot exams aren't available yet. Please check back later."
@@ -317,7 +335,7 @@ export default function ExamPilotRuntime({ accessNotice, onReturnToDashboard, tr
     setPendingResult(null);
     pushView({ account, view: "results", attemptId: pendingResult.id, origin: resultOrigin.current });
   }, [pendingResult, sitting?.phase]);
-  async function openAttempt(recover: boolean, trial = false) {
+  async function openAttempt(recover: boolean, trial = false, snapshotIds?: string[]) {
     if (!session) return;
     if (!recover) {
       if (trial) {
@@ -326,14 +344,11 @@ export default function ExamPilotRuntime({ accessNotice, onReturnToDashboard, tr
       } else if (!await feedbackPreference.confirmForStart()) return;
     }
     resultOrigin.current = "exam";
-    let next = recover ? await session.recover() : await session.start(state.sessionState?.pressureUnit ?? "mmHg", { purpose: trial ? "trial" : "standard", examKind: trial ? "mock" : examKind, unitCount: trial ? 3 : setupState.caseCount, showTimer: setupState.timed, showRanges: setupState.showRanges, excludedCategories: !trial && examKind === "custom" ? customExclusions.filter(id => customisationCategories.some(c => c.category_id === id)) : [] });
+    let next = recover ? await session.recover() : await session.start(state.sessionState?.pressureUnit ?? "mmHg", { purpose: trial ? "trial" : "standard", examKind: trial ? "mock" : examKind, ...(snapshotIds ? { snapshotIds } : { unitCount: trial ? 3 : setupState.caseCount }), showTimer: setupState.timed, showRanges: setupState.showRanges, excludedCategories: !trial && examKind === "custom" ? customExclusions.filter(id => customisationCategories.some(c => c.category_id === id)) : [] });
     if (next.status === "active") {
       if (session.journal?.submission) next = await session.submit(session.journal.submission.answers);
       else {
         if (session.journal?.dirty) next = await session.save();
-        const navigation = session.journal?.attemptId === next.id ? session.journal.navigation : undefined;
-        const restored = toSitting(next, navigation);
-        next = await session.present(next.questions[restored.questionIndex].id);
       }
     }
     show(next, next.status === "submitted");
@@ -365,10 +380,21 @@ export default function ExamPilotRuntime({ accessNotice, onReturnToDashboard, tr
     }
     if (next !== sitting && (action.type === "jump" || action.type === "review" || action.type === "return")) session.setNavigation(next);
     updateSitting(action);
-    if (action.type === "jump" && next.questionIndex !== sitting.questionIndex) {
-      void session.present(next.questions[next.questionIndex].id).catch(cause => { if (mounted.current) failure(cause); });
-    }
   }
+  const visibleUnitId = sitting?.phase === "active" && attempt?.status === "active"
+    ? sitting.questions[sitting.questionIndex]?.id : undefined;
+  useEffect(() => {
+    if (!session || !visibleUnitId) return;
+    const record = () => {
+      if (document.visibilityState === "hidden") return;
+      try { void session.present(visibleUnitId).catch(cause => { if (mounted.current) failure(cause); }); }
+      catch (cause) { if (mounted.current) failure(cause); }
+    };
+    record();
+    window.addEventListener("online", record);
+    document.addEventListener("visibilitychange", record);
+    return () => { window.removeEventListener("online", record); document.removeEventListener("visibilitychange", record); };
+  }, [session, attempt?.id, visibleUnitId]);
   useEffect(() => {
     if (!sitting || sitting.phase === "complete") return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
@@ -398,6 +424,9 @@ export default function ExamPilotRuntime({ accessNotice, onReturnToDashboard, tr
   }, [session, attempt?.id, hasPendingGrades]);
   function dashboard(setupContent?: ReactNode, trial = false, overviewHero?: ReactNode) {
     if (!session) return null;
+    const setupLocked = busy || !ready || !!current || !!session.journal;
+    const canChooseUnits = !trial && examKind === "mock" && !!ownerUnits;
+    const pickedUnits = canChooseUnits ? selectedSnapshotIds : null;
     const trialUnavailable = trial && !preparing && !current && !session.journal && (!canStart || trialStatus !== "ready" || trialLifecycle?.state !== "available");
     return (<>
       {trialUnavailable && <ExamNotice role={canStart && trialStatus === "error" ? "alert" : "status"}>
@@ -413,10 +442,28 @@ export default function ExamPilotRuntime({ accessNotice, onReturnToDashboard, tr
             patchSessionState({ pressureUnit });
             state.storage?.savePressureUnitPreference(pressureUnit);
           }}
-          connected state={{ ...setupState, ...(trial ? { caseCount: 3, mode: "mock" as const } : {}), examKind: trial ? "mock" : examKind, excludedCategories: customExclusions.filter(id => id === "mechanical_ventilation" || id === "toxicology_management") }}
+          connected state={{ ...setupState, ...(trial ? { caseCount: 3, mode: "mock" as const } : pickedUnits !== null ? { caseCount: pickedUnits.length } : {}), examKind: trial ? "mock" : examKind, excludedCategories: customExclusions.filter(id => id === "mechanical_ventilation" || id === "toxicology_management") }}
           drills={unavailableDrills} drillsUnavailable customDisabled={!customisationCategories.length} config={setupConfig}
           setup={buildSetupPresentation(setupState.questionCount, setupState.caseCount, setupState.timed, setupConfig)}
-          caseCounts={trial ? [3] : counts} launching={preparing} beginDisabled={!canStart || !ready || (trial ? (trialStatus !== "ready" || trialLifecycle?.state !== "available") : (!canStartStandard || !counts.includes(setupState.caseCount))) || (trial && (!feedbackPreference.ready || feedbackPreference.busy))} setupLocked={busy || !ready || !!current || !!session.journal}
+          caseCounts={trial ? [3] : counts}
+          casePicker={pickedUnits !== null && ownerUnits ? <fieldset disabled={setupLocked}>
+            <legend>Choose units</legend>
+            {ownerUnits.map(({ unitId, title, snapshotId }) => {
+              const checked = pickedUnits.includes(snapshotId);
+              return <div key={unitId}><label>
+                <input type="checkbox" checked={checked} disabled={!checked && pickedUnits.length >= 5}
+                  onChange={event => {
+                    const selected = event.currentTarget.checked;
+                    setSelectedSnapshotIds(ids => ids === null ? null : selected
+                      ? ids.length < 5 && !ids.includes(snapshotId) ? [...ids, snapshotId] : ids
+                      : ids.filter(id => id !== snapshotId));
+                  }} /> {unitId} · {title}
+              </label></div>;
+            })}
+            <p>{pickedUnits.length} of 5 selected</p>
+          </fieldset> : undefined}
+          chooseUnits={canChooseUnits ? { active: pickedUnits !== null, toggle: () => setSelectedSnapshotIds(pickedUnits === null ? [] : null) } : undefined}
+          launching={preparing} beginDisabled={!canStart || !ready || (trial ? (trialStatus !== "ready" || trialLifecycle?.state !== "available") : (!canStartStandard || (pickedUnits !== null ? pickedUnits.length === 0 : !counts.includes(setupState.caseCount)))) || (trial && (!feedbackPreference.ready || feedbackPreference.busy))} setupLocked={setupLocked}
           latestDisabled={busy || !history.latestAttemptId} errorLogCount={errorLog.error ? undefined : errorLog.data?.toReviewCount}
           onSelectDrill={key => setSetupState(old => ({ ...old, selectedDrill: key, selectedRule: unavailableDrills.find(d => d.key === key)?.rules?.[0]?.key ?? "" }))}
           onChange={patch => {
@@ -427,7 +474,7 @@ export default function ExamPilotRuntime({ accessNotice, onReturnToDashboard, tr
             setSetupState(old => ({ ...old, ...patch }));
           }} onBegin={() => void run(async () => {
             setPreparing(true);
-            try { await openAttempt(false, trial); }
+            try { await openAttempt(false, trial, pickedUnits ?? undefined); }
             finally { if (mounted.current) setPreparing(false); }
           })}
           startContent={!preparing && (current || session.journal) ? <div className="exam-recovery-actions">

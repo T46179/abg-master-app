@@ -27,6 +27,48 @@ function harness() {
   const call = invoke as RuntimeCall;
   return { entries, storage, invoke, call, session: new ExamRuntimeSession(call, storage, "owner") };
 }
+it("queues only viewed Units durably and retries them across recovery without counting assignment", async () => {
+ const h = harness(); await h.session.start("kPa");
+ expect(h.invoke.mock.calls.map(c => c[0])).toEqual(["start"]);
+ const original = h.invoke.getMockImplementation()!;
+ h.invoke.mockImplementation(async (op, input) => { if (op === "present") throw new Error("offline"); return original(op, input); });
+ await expect(h.session.present("unit")).rejects.toThrow("offline");
+ expect(JSON.parse(h.entries.get("owner")!).pendingPresentedUnitIds).toEqual(["unit"]);
+ await expect(h.session.abandon("attempt")).rejects.toThrow("offline");
+ expect(h.invoke.mock.calls.some(c => c[0] === "abandon")).toBe(false);
+ h.invoke.mockImplementation(original);
+ const recovered = new ExamRuntimeSession(h.call, h.storage, "owner"); await recovered.recover();
+ expect(recovered.journal?.pendingPresentedUnitIds).toEqual([]);
+ const count = h.invoke.mock.calls.filter(c => c[0] === "present").length;
+ await recovered.present("unit");
+ expect(h.invoke.mock.calls.filter(c => c[0] === "present")).toHaveLength(count);
+ await expect(recovered.present("unassigned")).rejects.toThrow("EXAM_UNKNOWN_UNIT");
+});
+
+it("flushes pending views before submission and retains the request on failure", async () => {
+ const h = harness(); await h.session.start("kPa");
+ const original = h.invoke.getMockImplementation()!;
+ h.invoke.mockImplementation(async (op, input) => { if (op === "present") throw new Error("offline"); return original(op, input); });
+ await expect(h.session.present("unit")).rejects.toThrow();
+ await expect(h.session.submit({ text: "answer" })).rejects.toThrow();
+ expect(h.invoke.mock.calls.some(c => c[0] === "submit")).toBe(false);
+ const request = h.session.journal!.submission!.requestId;
+ h.invoke.mockImplementation(original);
+ await h.session.submit({ text: "answer" });
+ expect(h.invoke.mock.calls.at(-1)).toMatchObject(["submit", {requestId: request}]);
+});
+
+it("recovers and flushes pending exposure before abandoning from the recovery screen", async () => {
+ const h = harness(); await h.session.start("kPa");
+ const original = h.invoke.getMockImplementation()!;
+ h.invoke.mockImplementation(async (op, input) => { if (op === "present") throw new Error("offline"); return original(op, input); });
+ await expect(h.session.present("unit")).rejects.toThrow("offline");
+ h.invoke.mockImplementation(original);
+ const recovered = new ExamRuntimeSession(h.call, h.storage, "owner");
+ await recovered.abandon("attempt");
+ expect(h.invoke.mock.calls.slice(-4).map(c => c[0])).toEqual(["read", "claim", "present", "abandon"]);
+ expect(h.entries.has("owner")).toBe(false);
+});
 it("preserves raw numeric text and frozen pressure unit without reshuffling", () => {
   const attempt = base(); attempt.answers = { number: { text: "  5.00 ", unit: "kPa" }, text: " raw " };
   const sitting = toSitting(attempt);
@@ -115,18 +157,33 @@ it("persists start identity before a lost response and retries the same request"
   expect(h.invoke.mock.calls[1][1]).toMatchObject({ requestId: h.invoke.mock.calls[0][1].requestId, recoveryKey: h.invoke.mock.calls[0][1].recoveryKey, pressureUnit: "kPa" });
   expect(restored.writerId).not.toBe(h.session.writerId);
 });
+it("replays an ordered owner selection after a lost Begin response and reload", async () => {
+  const h = harness();
+  const snapshotIds = ["f".repeat(64), "a".repeat(64)];
+  h.invoke.mockRejectedValueOnce(new ExamRuntimeError("EXAM_UNAVAILABLE", true));
+  await expect(h.session.start("kPa", { examKind: "mock", excludedCategories: [], snapshotIds })).rejects.toThrow();
+
+  const restored = new ExamRuntimeSession(h.call, h.storage, "owner");
+  await restored.recover();
+  const original = h.invoke.mock.calls[0][1];
+  const [operation, replay] = h.invoke.mock.calls[1];
+  expect(operation).toBe("start");
+  expect(replay).toMatchObject({ snapshotIds, requestId: original.requestId, recoveryKey: original.recoveryKey });
+  expect(replay).not.toHaveProperty("unitCount");
+});
 it("serializes presentation and autosaves using acknowledged revisions", async () => {
   const h = harness(); await h.session.start("kPa");
   h.session.stage({ text: "first" });
   const save = h.session.save(); const present = h.session.present("unit");
   await Promise.all([save, present]);
-  expect(h.invoke.mock.calls.map(c => [c[0], c[1].revision])).toEqual([["start", undefined], ["save", 0], ["present", 1]]);
+  expect(h.invoke.mock.calls.map(c => [c[0], c[1].revision])).toEqual([["start", undefined], ["present", 0], ["save", 1]]);
 });
 it("does not erase a later edit when an earlier save completes", async () => {
   const h = harness(); await h.session.start("kPa");
   let resolve!: (value: RuntimeAttempt) => void;
   h.invoke.mockImplementationOnce(() => new Promise(r => { resolve = r; }));
-  h.session.stage({ text: "first" }); const pending = h.session.save(); await Promise.resolve();
+  h.session.stage({ text: "first" }); const pending = h.session.save();
+  await vi.waitFor(() => expect(resolve).toBeTypeOf("function"));
   h.session.stage({ text: "second" }); resolve({ ...base(), revision: 1 }); await pending;
   expect(h.session.journal?.dirty).toEqual({ text: "second" });
 });
