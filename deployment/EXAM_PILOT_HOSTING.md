@@ -5,8 +5,10 @@ The existing GitHub Pages workflow deploys `main` separately.
 
 Build command: `npm run build:exam-pilot`
 Framework preset: None
-Output directory: `docs`
+Output directory: `dist/exam-pilot/`
 Root directory: repository root
+
+The 17 November 2026 Exam Builder release uploaded this pilot output directly. On 18 November the hosted `/exam` returned HTTP 200 with `X-Robots-Tag: noindex, nofollow`. For a Git-triggered update, verify that Pages builds the intended `features` revision and serves the pilot output.
 
 Configure these Cloudflare build environment variables (use staging public keys only):
 
@@ -24,14 +26,15 @@ Optional monitoring variables should use staging-specific settings.
 
 This explicit Vite mode includes the connected pilot at `/exam`, redirects `/dev/exam-pilot`
 to `/exam`, and leaves development demos excluded. In this mode only, `/exam` skips
-Practice calibration so fresh browsers can reach pilot sign-in directly. Local development and the normal production
-build retain their existing routes. The hosted build does not generate GitHub Pages' root
+Practice calibration so fresh browsers can reach existing-account email-code sign-in directly.
+The unified email/password, registration, recovery and Google account flow runs in staging-connected local development.
+The hosted build does not generate GitHub Pages' root
 `404.html`: Cloudflare's default SPA fallback supports direct links and reloads.
 It also generates `robots.txt` and a `noindex, nofollow` response header for staging.
 These indexing directives do not provide access control: permanent-account verification,
 pilot grants, and the staging backend continue to control Exam data and attempts.
 
-After first deployment:
+For a new host or domain:
 
 1. Verify sign-in and authorized Exam access using the assigned `pages.dev` URL.
 2. In Pages, register the custom domain `staging.abgmaster.com`.
@@ -44,4 +47,4 @@ Cloudflare references:
 - https://developers.cloudflare.com/pages/configuration/serving-pages/
 - https://developers.cloudflare.com/pages/configuration/custom-domains/
 
-Prepared build configuration is not evidence of a deployed or accepted hosted pilot.
+For each release, scan `dist/exam-pilot/` with `npm run check:static-case-leaks -- dist/exam-pilot` and verify the served asset revision. Record the signed-in browser walkthrough separately from deployment and backend acceptance.

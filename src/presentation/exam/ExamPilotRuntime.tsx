@@ -26,6 +26,7 @@ import { unavailableDrills } from "./drillDefinitions";
 import { buildSetupPresentation } from "./presentationModel";
 import type { ExamPrototypeState, ExamPrototypeConfig } from "./presentationTypes";
 const setupConfig: ExamPrototypeConfig = { questionCounts: [5, 10, 15, 20], caseMinimum: 3, caseMaximum: 5, minutesPerDrillQuestion: 1, minutesPerCase: 5, passingTarget: 60 };
+const examOpenInAnotherTab = "Your exam is open in another tab. Return to that tab, or close it and try again here.";
 type RoomView = "exam" | "history" | "error-log";
 type ExamNavigation = { account: string; view: RoomView | "results"; attemptId?: string; partId?: string; origin?: RoomView; returnKey?: string };
 export type ExamDashboardControls = {
@@ -115,9 +116,9 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
   const scheduleSave = useRef<() => void>(() => {});
   const cancelSave = useRef<() => void>(() => {});
   const [ready, setReady] = useState(false);
-  const [runtimeError, setRuntimeError] = useState<{ message: string; transportFailure: boolean } | null>(null);
+  const [runtimeError, setRuntimeError] = useState<{ message: string; transportFailure: boolean; code?: string } | null>(null);
   const error = runtimeError?.message ?? "";
-  function setError(message: string, transportFailure = false) { setRuntimeError(message ? { message, transportFailure } : null); }
+  function setError(message: string, transportFailure = false, code?: string) { setRuntimeError(message ? { message, transportFailure, code } : null); }
   const answerError = error.includes("We couldn't accept that answer.");
   const [refreshError, setRefreshError] = useState("");
   const [exitOpen, setExitOpen] = useState(false);
@@ -127,7 +128,8 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
   const session = useMemo(() => {
     try { return new ExamRuntimeSession(runtimeCall(client), browserStorage, `abgm-exam-pilot-${environment}-${userId}`); }
     catch { return null; }
-  }, [client, userId, environment]);
+  }, [browserStorage, client, userId, environment]);
+  useEffect(() => () => session?.releaseWriter(), [session]);
   useEffect(() => { ++sourceOpenVersion.current; setAttempt(null); setCurrent(null); setReady(false); setRoomView("exam"); setReviewPartId(undefined); setError(""); }, [session]);
   const mayLoadOwnerUnits = enableOwnerUnitPicker && canStart && canStartStandard && environment === "clpfecuohwzwrgmqzeos";
   const [ownerCatalogue, setOwnerCatalogue] = useState<{ session: ExamRuntimeSession; units: OwnerUnit[] }>();
@@ -170,11 +172,14 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; updateSitting({ type: "exit" }); }; }, [updateSitting]);
   function failure(cause: unknown) {
     const code = cause instanceof ExamRuntimeError ? cause.code : "EXAM_UNAVAILABLE";
+    if (code === "EXAM_WRITER_RELEASED") return;
     const connectionFailure = code === "EXAM_UNAVAILABLE" && cause instanceof ExamRuntimeError && cause.transportFailure === true && !session?.journal?.submission;
     if (code === "EXAM_TRIAL_DISABLED" || code === "EXAM_TRIAL_CONFIGURATION") {
       setTrialFailure(code === "EXAM_TRIAL_DISABLED" ? "disabled" : "error"); setError(""); return;
     }
-    setError(/CONFLICT/.test(code) ? "Your exam is out of sync. Your answers are saved in this browser. Close any other tabs with this exam open, then retry."
+    setError(code === "EXAM_TAB_BUSY" ? examOpenInAnotherTab
+      : code === "EXAM_TAB_LOCK_UNAVAILABLE" ? "This browser can't safely save an exam. Try an up-to-date browser with storage enabled."
+      : /CONFLICT/.test(code) ? "Your exam is out of sync. Your answers are saved in this browser. Close any other tabs with this exam open, then retry."
       : code === "EXAM_TRIAL_UNAVAILABLE" ? "You've already submitted your trial exam. Return to Exam to check its progress or results."
       : code === "EXAM_TRIAL_RELEASED" ? "We couldn't finish marking your trial exam. Your trial has been restored, so you can start a new one from Exam."
       : code === "EXAM_DEVICE_REQUIRED" ? "This exam can't be continued in this browser. Return to the browser where you started it, or abandon the exam here."
@@ -185,7 +190,7 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
       : code === "EXAM_GRADING_COOLDOWN" ? "Grading was just retried. Please wait 30 seconds before trying again."
       : code === "EXAM_PILOT_CLOSED" ? "New pilot exams aren't available yet. Please check back later."
       : connectionFailure ? "We've lost connection. Check your connection, then retry to continue your exam."
-      : "We couldn't confirm your last action. Your answers are saved in this browser. Check your connection, then retry.", connectionFailure);
+      : "We couldn't confirm your last action. Your answers are saved in this browser. Check your connection, then retry.", connectionFailure, code);
   }
   async function loadRoom() {
     if (!session) return;
@@ -193,7 +198,10 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
     const lifecycle = await session.call<unknown>("trial_status", {}).catch(() => undefined);
     if (mounted.current && roomGeneration.current === generation) setTrialLifecycle(parseTrialLifecycle(lifecycle));
     const active = await session.call<{ attempt: { id: string } | null }>("current", {});
-    if (mounted.current && roomGeneration.current === generation) { setCurrent(active.attempt?.id ?? null); setReady(true); }
+    if (mounted.current && roomGeneration.current === generation) {
+      session.refreshJournal();
+      setCurrent(active.attempt?.id ?? null); setReady(true);
+    }
   }
   useEffect(() => {
     void loadRoom().catch(cause => { if (mounted.current) failure(cause); });
@@ -271,6 +279,7 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
     if (next.status === "active" || next.status === "submitted") {
       const display = session?.journal?.attemptId === next.id ? session.journal : undefined;
       updateSitting({ type: "hydrate", sitting: { ...toSitting(next, display?.navigation), showTimer: display?.showTimer ?? true, showRanges: display?.showRanges ?? true } });
+      if (recordResult && next.status === "submitted") session?.clear();
     }
     else { updateSitting({ type: "exit" }); session?.clear(); setAttempt(null); }
   }
@@ -295,6 +304,8 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
   function restoreRoom(view: RoomView) {
     ++sourceOpenVersion.current;
     setAttempt(null); setReviewPartId(undefined); updateSitting({ type: "exit" });
+    cancelSave.current();
+    session?.releaseWriter();
     setRoomView(view);
     if (view === "error-log") void errorLog.refresh();
     else void history.refresh();
@@ -319,7 +330,6 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
           .finally(() => { if (mounted.current && sourceOpenVersion.current === request) setBusy(false); });
       }
     } else {
-      if (session && session.journal?.attemptId === attempt?.id && attempt?.status === "submitted") session.clear();
       restoreRoom(entry?.view === "history" || entry?.view === "error-log" ? entry.view : "exam");
       setBusy(false);
     }
@@ -337,21 +347,25 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
   }, [pendingResult, sitting?.phase]);
   async function openAttempt(recover: boolean, trial = false, snapshotIds?: string[]) {
     if (!session) return;
-    if (!recover) {
-      if (trial) {
-        if (!canStart || trialStatus !== "ready" || trialLifecycle?.state !== "available") return;
-        if (!await feedbackPreference.confirmForStart("professional")) throw new Error("Could not prepare trial feedback. Please try again.");
-      } else if (!await feedbackPreference.confirmForStart()) return;
-    }
-    resultOrigin.current = "exam";
-    let next = recover ? await session.recover() : await session.start(state.sessionState?.pressureUnit ?? "mmHg", { purpose: trial ? "trial" : "standard", examKind: trial ? "mock" : examKind, ...(snapshotIds ? { snapshotIds } : { unitCount: trial ? 3 : setupState.caseCount }), showTimer: setupState.timed, showRanges: setupState.showRanges, excludedCategories: !trial && examKind === "custom" ? customExclusions.filter(id => customisationCategories.some(c => c.category_id === id)) : [] });
-    if (next.status === "active") {
-      if (session.journal?.submission) next = await session.submit(session.journal.submission.answers);
-      else {
-        if (session.journal?.dirty) next = await session.save();
+    const writer = await session.acquireWriter();
+    try {
+      if (!recover && !session.journal) {
+        if (trial) {
+          if (!canStart || trialStatus !== "ready" || trialLifecycle?.state !== "available") return;
+          if (!await feedbackPreference.confirmForStart("professional")) throw new Error("Could not prepare trial feedback. Please try again.");
+        } else if (!await feedbackPreference.confirmForStart()) return;
       }
+      if (!session.ownsWriter(writer)) return;
+      resultOrigin.current = "exam";
+      let next = recover || session.journal ? await session.recover() : await session.start(state.sessionState?.pressureUnit ?? "mmHg", { purpose: trial ? "trial" : "standard", examKind: trial ? "mock" : examKind, ...(snapshotIds ? { snapshotIds } : { unitCount: trial ? 3 : setupState.caseCount }), showTimer: setupState.timed, showRanges: setupState.showRanges, excludedCategories: !trial && examKind === "custom" ? customExclusions.filter(id => customisationCategories.some(c => c.category_id === id)) : [] });
+      if (next.status === "active") {
+        if (session.journal?.submission) next = await session.submit(session.journal.submission.answers);
+        else if (session.journal?.dirty) next = await session.save();
+      }
+      if (session.ownsWriter(writer)) show(next, next.status === "submitted");
+    } finally {
+      if (!session.journal) session.releaseWriter(writer);
     }
-    show(next, next.status === "submitted");
   }
   async function leave() {
     if (!session || !attempt) return;
@@ -362,10 +376,17 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
     cancelSave.current();
     await session!.abandon(attemptId);
   }
+  function exitFailure(cause: unknown) {
+    setExitError(cause instanceof ExamRuntimeError && cause.code === "EXAM_TAB_BUSY" ? examOpenInAnotherTab
+      : "We couldn't confirm that you've exited the exam. Check your connection, then try again.");
+  }
   function dispatch(action: SittingAction) {
     if (!session || !sitting || busy || (error && !answerError) || session.journal?.submission) return;
     if (action.type === "submit") {
-      void run(async () => show(await session.submit(encodeAnswers(sitting)), true), true); return;
+      void run(async () => {
+        const submitted = await session.submit(encodeAnswers(sitting));
+        if (session.attempt === submitted) show(submitted, true);
+      }, true); return;
     }
     if (action.type === "exit") { openExit(); return; }
     const next = sittingReducer(sitting, action);
@@ -499,9 +520,9 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
           catch (cause) { if (mounted.current && sourceOpenVersion.current === request) throw cause; return; }
           if (mounted.current && sourceOpenVersion.current === request) { resultCache.set(next.id, next); show(next); }
         }
-        else if (session.journal) await openAttempt(true); else await loadRoom();
+        else if (runtimeError?.code !== "EXAM_TAB_BUSY" && session.journal) await openAttempt(true); else await loadRoom();
       }, false, true);
-      }}>{session.journal?.submission ? "Check submission / retry" : runtimeError?.transportFailure ? "Retry" : session.journal ? "Recover saved attempt" : "Retry"}</RetryAction></p>
+      }}>{runtimeError?.code === "EXAM_TAB_BUSY" ? "Retry" : session.journal?.submission ? "Check submission / retry" : runtimeError?.transportFailure ? "Retry" : session.journal ? "Recover saved attempt" : "Retry"}</RetryAction></p>
       {!session.journal?.submission && error.includes("Your exam is out of sync.") && <RetryAction busy={busy} onClick={() => void run(async () => {
         session.keepServerDraft(); await openAttempt(true);
       }, false, true)}>Use saved server answers (keep local backup)</RetryAction>}
@@ -535,7 +556,7 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
         onExit={backToRoom} />
     </> : <>
       <ExamSitting sitting={sitting} dispatch={dispatch} onExitConfirmed={() => abandonAttempt(attempt.id)} submitting={submitting} disabled={busy || (!!error && !answerError) || !!session.journal?.submission} />
-      {exitOpen && <ExitSittingDialog busy={busy} error={exitError} onStay={() => setExitOpen(false)} onExit={() => void run(leave, false, true, () => setExitError("We couldn't confirm that you've exited the exam. Check your connection, then try again."))} />}
+      {exitOpen && <ExitSittingDialog busy={busy} error={exitError} onStay={() => setExitOpen(false)} onExit={() => void run(leave, false, true, exitFailure)} />}
     </> : <>
       {roomView === "error-log" ? <ConnectedExamErrorLog key={`${environment}:${userId}`} log={errorLog}
         onBack={backToRoom} onOpenExample={(id, partId) => openResult(id, "error-log", partId)}
@@ -556,7 +577,7 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
           setShowRanges: showRanges => persistDisplay(setupState.timed, showRanges),
           begin: () => void run(async () => { setPreparing(true); try { await openAttempt(false); } finally { if (mounted.current) setPreparing(false); } })
         }) : dashboard()}
-        {exitOpen && current && <ExitSittingDialog busy={busy} error={exitError} onStay={() => setExitOpen(false)} onExit={() => void run(async () => { await abandonAttempt(current); setExitOpen(false); await loadRoom(); }, false, true, () => setExitError("We couldn't confirm that you've exited the exam. Check your connection, then try again."))} />}
+        {exitOpen && current && <ExitSittingDialog busy={busy} error={exitError} onStay={() => setExitOpen(false)} onExit={() => void run(async () => { await abandonAttempt(current); setExitOpen(false); await loadRoom(); }, false, true, exitFailure)} />}
       </>}
 
     </>}

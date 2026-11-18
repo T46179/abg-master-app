@@ -1,11 +1,15 @@
-# Local Exam account integration
+# Exam account integration
 
-Implemented on `features` at `/dev/exam-pilot`. Run the ordinary Vite development server (`npm run dev`); the current walkthrough is at http://127.0.0.1:5184/dev/exam-pilot. There is no new preview URL or simulated identity selector.
+## Current entry points — 18 November 2026
 
+- Run `npm run dev -- --port 5184 --strictPort` and open `http://127.0.0.1:5184/dev/exam-pilot`. Configure both `VITE_SUPABASE_*` and `VITE_EXAM_PILOT_SUPABASE_*` for staging with public keys. Dashboard, Practice and Exam share the verified local account workspace. Email/password, email-first registration, password recovery and Google sign-in are implemented on `features`. The owner confirmed the main email sign-in, registration and password reset scenarios. [Registration evidence](EMAIL_FIRST_REGISTRATION.md) · [Password recovery evidence](PASSWORD_RECOVERY.md).
+- Google uses a PKCE return at that exact localhost URL. Google signup can keep guest progress by linking the guest identity or switch to a separate account. A different returned account requires confirmation before replacing an active account. The code and automated coverage are in `src/core/googleAccount.ts`, `src/core/googleAccount.test.ts` and the account experience. The 18 November audit confirmed that staging reports the provider enabled. A browser OAuth round trip remains unverified by this audit.
+- The local unified journey exposes **About You**, the dedicated three-Unit trial and, for the staging owner in the full setup view, a Unit picker. About You drafts are local and completed profiles are saved to the account on staging. The server enforces trial-only/full grants and trial allowance. The local Paid account switch changes presentation, and ordinary starts require the server's full grant.
+- Hosted staging `/exam` uses `ExamPilotAuthScreen.tsx` and existing-account email codes. It shares `ExamPilotRuntime.tsx`, including the new ordinary builder and access checks. The unified sign-in/registration flow, dedicated trial entry and owner Unit picker are wired through local development. [Hosting and build settings](EXAM_PILOT_HOSTING.md).
 
-Update, 31 October 2026: the subsequent email-first milestone connects registration/password completion and joins the local Practice/Exam identity. See `EMAIL_FIRST_REGISTRATION.md` for current behavior, staging-only changes and pending manual acceptance. The original visual-port checkpoint below is retained for context.
+## Original account UI checkpoint — 30 October 2026
 
-Trial update (4 November 2026): local trial starts now request a dedicated server-selected paper. See the private content repository `exam/docs/runtime/EXAM_SWAPPABLE_TRIAL.md`. Trial allowance enforcement is now implemented in the invited staging pilot; see `exam/docs/runtime/EXAM_TRIAL_ALLOWANCE.md` in the private content repository. Public access remains closed. Standard exams and owner preview retain existing selection.
+The sections below record the initial visual-port scope. See the entry points above for the subsequent sign-in, onboarding and trial state.
 
 ## What is connected
 

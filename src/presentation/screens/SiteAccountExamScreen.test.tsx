@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AccountWorkspace } from "../../app/AccountWorkspace";
 import type { RuntimeAttempt } from "../../core/examRuntime";
+import { examTestLocks } from "../../core/examRuntime.testSupport";
 import { ExamSittingProvider } from "../exam/ExamSittingContext";
 import { SiteAccountExamScreen } from "./SiteAccountExamScreen";
 import Experience from "../account/ExamAccountExperience.dev";
@@ -45,6 +46,7 @@ async function render(local = false) {
 function begin() { return [...container.querySelectorAll("button")].find(b => b.textContent?.trim() === "Begin")!; }
 
 beforeEach(() => {
+  Object.defineProperty(navigator, "locks", { configurable: true, value: examTestLocks() });
   localStorage.clear(); mocks.access.mockReset(); mocks.account.refresh.mockReset(); invoke.mockReset();
   mocks.access.mockResolvedValue(granted);
   mocks.client = { functions: { invoke } } as unknown as SupabaseClient;
@@ -67,7 +69,7 @@ beforeEach(() => {
   });
   container = document.createElement("div"); document.body.append(container); root = createRoot(container);
 });
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); });
+afterEach(async () => { await act(async () => root.unmount()); container.remove(); Reflect.deleteProperty(navigator, "locks"); vi.useRealTimers(); });
 
 it("starts a standard exam through the workspace for an eligible account", async () => {
   await render();

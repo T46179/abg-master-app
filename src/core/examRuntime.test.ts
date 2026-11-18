@@ -1,6 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { ExamRuntimeSession, ExamRuntimeError, encodeAnswers, runtimeCall, toSitting, type ExamNavigationPosition, type RuntimeAttempt, type RuntimeCall } from "./examRuntime";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { examTestLocks } from "./examRuntime.testSupport";
 
 it.each([
  { error: { name: "FunctionsFetchError" }, transport: true, code: "EXAM_UNAVAILABLE" },
@@ -25,8 +26,73 @@ function harness() {
     return structuredClone(server);
   });
   const call = invoke as RuntimeCall;
-  return { entries, storage, invoke, call, session: new ExamRuntimeSession(call, storage, "owner") };
+  const locks = examTestLocks();
+  const open = (key = "owner") => new ExamRuntimeSession(call, storage, key, locks);
+  const session = open();
+  return { entries, storage, invoke, open, session, reopen() { session.releaseWriter(); return open(); } };
 }
+
+it("serializes simultaneous Begin across tabs and protects the active journal until the writer leaves", async () => {
+  const h = harness();
+  const secondTab = h.open();
+  const firstStart = h.session.start("kPa");
+  const secondStart = expect(secondTab.start("mmHg")).rejects.toThrow("EXAM_TAB_BUSY");
+  await Promise.all([firstStart, secondStart]);
+  h.session.stage({ text: "unsent answer" });
+  h.session.setNavigation({ ...toSitting(base()), partIndices: { unit: 1 } });
+  const journal = h.entries.get("owner");
+
+  await expect(secondTab.recover()).rejects.toThrow("EXAM_TAB_BUSY");
+  await expect(secondTab.abandon("attempt")).rejects.toThrow("EXAM_TAB_BUSY");
+  expect(h.entries.get("owner")).toBe(journal);
+  expect(h.invoke.mock.calls.map(([operation]) => operation)).toEqual(["start"]);
+
+  h.session.releaseWriter();
+  await secondTab.start("mmHg");
+  await secondTab.save();
+  expect(h.invoke.mock.calls.map(([operation]) => operation)).toEqual(["start", "read", "claim", "save"]);
+  expect(secondTab.attempt).toMatchObject({ id: "attempt", pressureUnit: "kPa", answers: { text: "unsent answer" } });
+  expect(secondTab.journal?.navigation).toMatchObject({ questionId: "unit", partIdsByQuestion: { unit: "text" } });
+});
+
+it("replays an unacknowledged Begin after tab close and ignores the old response", async () => {
+  const h = harness();
+  let finishOldStart!: (attempt: RuntimeAttempt) => void;
+  h.invoke.mockImplementationOnce(() => new Promise(resolve => { finishOldStart = resolve; }));
+  const oldStart = expect(h.session.start("kPa", { examKind: "mock", excludedCategories: [], unitCount: 5 })).rejects.toThrow("EXAM_WRITER_RELEASED");
+  await vi.waitFor(() => expect(finishOldStart).toBeTypeOf("function"));
+  const restarted = h.reopen();
+  await restarted.recover();
+  restarted.stage({ text: "new tab's draft" });
+  const journal = h.entries.get("owner");
+
+  finishOldStart(base());
+  await oldStart;
+  const [first, retry] = h.invoke.mock.calls.filter(([operation]) => operation === "start").map(([, input]) => input);
+  expect(retry).toMatchObject({ requestId: first.requestId, recoveryKey: first.recoveryKey, pressureUnit: "kPa", unitCount: 5 });
+  expect(retry.writerId).not.toBe(first.writerId);
+  expect(h.entries.get("owner")).toBe(journal);
+});
+
+it("keeps the pending submission when the writer leaves before its response arrives", async () => {
+  const h = harness();
+  await h.session.start("kPa");
+  const submitted: RuntimeAttempt = { ...base(), status: "submitted", answers: { text: "final answer" } };
+  let finishSubmit!: (attempt: RuntimeAttempt) => void;
+  h.invoke.mockImplementationOnce(() => new Promise(resolve => { finishSubmit = resolve; }));
+  const oldSubmit = expect(h.session.submit(submitted.answers)).rejects.toThrow("EXAM_WRITER_RELEASED");
+  await vi.waitFor(() => expect(finishSubmit).toBeTypeOf("function"));
+  expect(JSON.parse(h.entries.get("owner")!).submission.answers).toEqual(submitted.answers);
+
+  const restarted = h.reopen();
+  h.invoke.mockResolvedValueOnce(submitted);
+  await expect(restarted.recover()).resolves.toEqual(submitted);
+  restarted.clear();
+  finishSubmit(submitted);
+  await oldSubmit;
+  expect(h.invoke.mock.calls.map(([operation]) => operation)).toEqual(["start", "submit", "read"]);
+  expect(h.entries.has("owner")).toBe(false);
+});
 it("queues only viewed Units durably and retries them across recovery without counting assignment", async () => {
  const h = harness(); await h.session.start("kPa");
  expect(h.invoke.mock.calls.map(c => c[0])).toEqual(["start"]);
@@ -37,7 +103,7 @@ it("queues only viewed Units durably and retries them across recovery without co
  await expect(h.session.abandon("attempt")).rejects.toThrow("offline");
  expect(h.invoke.mock.calls.some(c => c[0] === "abandon")).toBe(false);
  h.invoke.mockImplementation(original);
- const recovered = new ExamRuntimeSession(h.call, h.storage, "owner"); await recovered.recover();
+ const recovered = h.reopen(); await recovered.recover();
  expect(recovered.journal?.pendingPresentedUnitIds).toEqual([]);
  const count = h.invoke.mock.calls.filter(c => c[0] === "present").length;
  await recovered.present("unit");
@@ -64,7 +130,7 @@ it("recovers and flushes pending exposure before abandoning from the recovery sc
  h.invoke.mockImplementation(async (op, input) => { if (op === "present") throw new Error("offline"); return original(op, input); });
  await expect(h.session.present("unit")).rejects.toThrow("offline");
  h.invoke.mockImplementation(original);
- const recovered = new ExamRuntimeSession(h.call, h.storage, "owner");
+ const recovered = h.reopen();
  await recovered.abandon("attempt");
  expect(h.invoke.mock.calls.slice(-4).map(c => c[0])).toEqual(["read", "claim", "present", "abandon"]);
  expect(h.entries.has("owner")).toBe(false);
@@ -106,7 +172,7 @@ it("persists navigation without remote calls and preserves answers and recovery 
  expect(h.invoke.mock.calls.map(c => c[0])).toEqual(["start"]);
  expect(JSON.parse(h.entries.get("owner")!)).toMatchObject({ ...before, navigation: { questionId: "unit", partIdsByQuestion: { unit: "text" }, phase: "review" } });
  await h.session.save(); await h.session.present("unit");
- const restored = new ExamRuntimeSession(h.call, h.storage, "owner"); await restored.recover();
+ const restored = h.reopen(); await restored.recover();
  expect(toSitting(restored.attempt!, restored.journal?.navigation)).toMatchObject({ phase: "review", partIndices: { unit: 1 }, answers: { text: "draft" } });
 });
 it("retains the last persisted position when a navigation write fails and keeps answer persistence usable", async () => {
@@ -122,7 +188,7 @@ it("retains the last persisted position when a navigation write fails and keeps 
  expect(h.session.journal?.dirty).toEqual({ text: "before" });
  h.storage.setItem = original;
  h.session.stage({ text: "after" }); await h.session.save();
- const restored = new ExamRuntimeSession(h.call, h.storage, "owner"); await restored.recover();
+ const restored = h.reopen(); await restored.recover();
  expect(toSitting(restored.attempt!, restored.journal?.navigation)).toMatchObject({ phase: "active", partIndices: { unit: 0 }, answers: { text: "after" } });
 });
 it("does not create navigation when optional persistence fails and keeps journals account isolated", async () => {
@@ -132,9 +198,9 @@ it("does not create navigation when optional persistence fails and keeps journal
  h.session.setNavigation({ ...toSitting(base()), partIndices: { unit: 1 } });
  expect(h.session.journal?.navigation).toBeUndefined();
  h.storage.setItem = original;
- const restored = new ExamRuntimeSession(h.call, h.storage, "owner"); await restored.recover();
+ const restored = h.reopen(); await restored.recover();
  expect(toSitting(restored.attempt!, restored.journal?.navigation)).toMatchObject({ questionIndex: 0, partIndices: {} });
- expect(new ExamRuntimeSession(h.call, h.storage, "another-owner").journal).toBeNull();
+ expect(h.open("another-owner").journal).toBeNull();
 });
 it("retains submission identity with navigation and clears navigation with the existing journal lifecycle", async () => {
  const h = harness(); await h.session.start("kPa");
@@ -152,10 +218,10 @@ it("retains submission identity with navigation and clears navigation with the e
 it("persists start identity before a lost response and retries the same request", async () => {
   const h = harness(); h.invoke.mockRejectedValueOnce(new Error("offline"));
   await expect(h.session.start("kPa")).rejects.toThrow();
-  const restored = new ExamRuntimeSession(h.call, h.storage, "owner");
+  const restored = h.reopen();
   await restored.start("mmHg");
   expect(h.invoke.mock.calls[1][1]).toMatchObject({ requestId: h.invoke.mock.calls[0][1].requestId, recoveryKey: h.invoke.mock.calls[0][1].recoveryKey, pressureUnit: "kPa" });
-  expect(restored.writerId).not.toBe(h.session.writerId);
+  expect(h.invoke.mock.calls[1][1].writerId).not.toBe(h.invoke.mock.calls[0][1].writerId);
 });
 it("replays an ordered owner selection after a lost Begin response and reload", async () => {
   const h = harness();
@@ -163,7 +229,7 @@ it("replays an ordered owner selection after a lost Begin response and reload", 
   h.invoke.mockRejectedValueOnce(new ExamRuntimeError("EXAM_UNAVAILABLE", true));
   await expect(h.session.start("kPa", { examKind: "mock", excludedCategories: [], snapshotIds })).rejects.toThrow();
 
-  const restored = new ExamRuntimeSession(h.call, h.storage, "owner");
+  const restored = h.reopen();
   await restored.recover();
   const original = h.invoke.mock.calls[0][1];
   const [operation, replay] = h.invoke.mock.calls[1];
@@ -192,7 +258,7 @@ it("keeps exact submission after a lost response across reload", async () => {
   h.invoke.mockRejectedValueOnce(new Error("lost response"));
   await expect(h.session.submit({ text: " first " })).rejects.toThrow();
   const original = h.session.journal!.submission;
-  const restored = new ExamRuntimeSession(h.call, h.storage, "owner"); await restored.recover();
+  const restored = h.reopen(); await restored.recover();
   await restored.submit({ text: "replacement" });
   expect(h.invoke.mock.calls.at(-1)![1]).toMatchObject(original!);
   expect(restored.journal?.submission).toBeUndefined();
@@ -226,13 +292,13 @@ it("freezes Custom configuration before a lost start acknowledgement and ignores
   await expect(h.session.start("kPa", { examKind: "custom", excludedCategories: ["mechanical_ventilation", "toxicology_management", "mechanical_ventilation"] })).rejects.toThrow();
   const stored = JSON.parse(h.entries.get("owner")!);
   expect(stored).toMatchObject({ examKind: "custom", excludedCategories: ["mechanical_ventilation", "toxicology_management"] });
-  const reloaded = new ExamRuntimeSession(h.call, h.storage, "owner");
+  const reloaded = h.reopen();
   await reloaded.start("mmHg", { examKind: "mock", excludedCategories: [] });
-  expect(h.invoke.mock.calls.at(-1)![1]).toMatchObject({ requestId: stored.requestId, pressureUnit: "kPa", examKind: "custom", excludedCategories: stored.excludedCategories });
+  expect(h.invoke.mock.calls.filter(([operation]) => operation === "start").at(-1)![1]).toMatchObject({ requestId: stored.requestId, pressureUnit: "kPa", examKind: "custom", excludedCategories: stored.excludedCategories });
 });
 it("recovers a legacy pending-start journal as Mock", async () => {
   const h = harness(); h.entries.set("owner", JSON.stringify({ requestId: "old", recoveryKey: "key", pressureUnit: "kPa" }));
-  const reloaded = new ExamRuntimeSession(h.call, h.storage, "owner"); await reloaded.recover();
+  const reloaded = h.reopen(); await reloaded.recover();
   expect(h.invoke.mock.calls[0][1]).toMatchObject({ examKind: "mock", excludedCategories: [] });
 });
 
@@ -247,7 +313,7 @@ it("allows a new setup after a definite configuration rejection without discardi
 it("retains selected count and display settings across an uncertain start and recovery", async () => {
  const h=harness();h.invoke.mockRejectedValueOnce(new Error("offline"));
  await expect(h.session.start("kPa",{examKind:"mock",excludedCategories:[],unitCount:5,showTimer:false,showRanges:false})).rejects.toThrow();
- const restored=new ExamRuntimeSession(h.call,h.storage,"owner");await restored.start("mmHg",{examKind:"custom",excludedCategories:[],unitCount:3});
+ const restored=h.reopen();await restored.start("mmHg",{examKind:"custom",excludedCategories:[],unitCount:3});
  expect(h.invoke.mock.calls[1][1]).toMatchObject({unitCount:5,examKind:"mock",pressureUnit:"kPa"});
  expect(restored.journal).toMatchObject({showTimer:false,showRanges:false});
  restored.setDisplayPreferences(true,false);expect(JSON.parse(h.entries.get("owner")!)).toMatchObject({showTimer:true,showRanges:false});
@@ -256,7 +322,7 @@ it("retains selected count and display settings across an uncertain start and re
 it('preserves trial purpose after a lost start and reload', async () => {
  const h=harness(); h.invoke.mockRejectedValueOnce(new Error('offline'));
  await expect(h.session.start('kPa',{purpose:'trial',examKind:'mock',unitCount:3,excludedCategories:[]})).rejects.toThrow();
- const restored=new ExamRuntimeSession(h.call,h.storage,'owner'); await restored.recover();
+ const restored=h.reopen(); await restored.recover();
  expect(h.invoke.mock.calls.filter(c=>c[0]==='start').map(c=>c[1].purpose)).toEqual(['trial','trial']);
  expect(h.invoke.mock.calls[1][1].requestId).toBe(h.invoke.mock.calls[0][1].requestId);
 });

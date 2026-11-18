@@ -11,6 +11,7 @@ import { useAppContext } from "./AppProvider";
 import { AppShell } from "../presentation/layout/AppShell";
 import ExamAccountExperience from "../presentation/account/ExamAccountExperience.dev";
 import type { RuntimeAttempt } from "../core/examRuntime";
+import { examTestLocks } from "../core/examRuntime.testSupport";
 
 vi.mock("../core/progressionSync", () => ({ loadRemoteProgressRow: vi.fn(async () => null), completeCalibrationProgress: vi.fn() }));
 vi.mock("../core/analytics", () => ({ trackEvent: vi.fn(), trackPageView: vi.fn() }));
@@ -59,7 +60,7 @@ async function render(f: ReturnType<typeof fixture>, path = "/") {
   </SiteAccountProvider>));
 }
 beforeEach(() => { vi.useFakeTimers(); localStorage.clear(); mounts = 0; loadPayload.mockClear(); host = document.createElement("div"); document.body.append(host); root = createRoot(host); });
-afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.useRealTimers(); });
+afterEach(async () => { await act(async () => root.unmount()); host.remove(); Reflect.deleteProperty(navigator, "locks"); vi.useRealTimers(); });
 
 it("keeps public content mounted through verification, account changes and sign-out", async () => {
   const f = fixture(); const pending = deferred<any>(); f.auth.getUser.mockReturnValueOnce(pending.promise);
@@ -74,6 +75,7 @@ it("keeps public content mounted through verification, account changes and sign-
 });
 
 it("keeps a real exam mounted when offline focus fails both identity and access checks, then reconnects silently", async () => {
+  Object.defineProperty(navigator, "locks", { configurable: true, value: examTestLocks() });
   const f = fixture();
   const onlineUser = f.auth.getUser.getMockImplementation()!;
   let offline = false;

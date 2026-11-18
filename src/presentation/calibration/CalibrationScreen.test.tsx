@@ -594,10 +594,10 @@ describe("CalibrationScreen", () => {
     renderScreen();
 
     expect(container.textContent).toContain("Welcome to ABG Master!");
-    expect(container.textContent).toContain("Begin Calibration");
+    expect(container.textContent).toContain("Find my level");
     expect(container.textContent).not.toContain("Mock Blood Gas Blitz Game");
 
-    clickButton("Begin Calibration");
+    clickButton("Find my level");
 
     expect(storageAdapter.savePracticeIntroSeen).toHaveBeenCalledWith(true);
     expect(storageAdapter.saveAppAreaVisited).toHaveBeenCalledWith(true);
@@ -618,7 +618,7 @@ describe("CalibrationScreen", () => {
     expect(storageAdapter.savePressureUnitPreference).toHaveBeenCalledWith("kPa");
     renderScreen();
     expect(container.querySelector('.main-nav__unit-option[aria-pressed="true"]')?.textContent).toBe("kPa");
-    clickButton("Begin Calibration");
+    clickButton("Find my level");
     clickButton("Mock begin blitz");
     clickButton("Mock finish blitz");
     expect(container.querySelector('.calibration-build-gas__row-unit')?.textContent).toBe("kPa");
@@ -653,7 +653,7 @@ describe("CalibrationScreen", () => {
     storageAdapter.loadPracticeIntroSeen.mockReturnValue(false);
     storageAdapter.loadAppAreaVisited.mockReturnValue(false);
     renderScreen();
-    clickButton("Begin Calibration");
+    clickButton("Find my level");
 
     act(() => root.unmount());
     root = createRoot(container);
@@ -674,7 +674,7 @@ describe("CalibrationScreen", () => {
     storageAdapter.loadAppAreaVisited.mockReturnValue(false);
     renderScreen();
 
-    const skipButton = getButton("Skip and start at Beginner");
+    const skipButton = getButton("Choose my own difficulty");
     act(() => {
       skipButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });

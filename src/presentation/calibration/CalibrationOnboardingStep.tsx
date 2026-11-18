@@ -13,8 +13,8 @@ const CALIBRATION_INTRO_COPY = {
   title: "Let's find your starting level",
   bodyLead: "Four short challenges. Two minutes.",
   bodyDetail: "We'll estimate where you should begin so practice feels right.",
-  cta: "Begin Calibration",
-  skip: "Skip and start at Beginner"
+  cta: "Find my level",
+  skip: "Choose my own difficulty"
 } as const;
 
 export function CalibrationOnboardingStep(props: CalibrationOnboardingStepProps) {

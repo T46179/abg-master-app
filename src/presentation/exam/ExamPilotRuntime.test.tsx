@@ -8,6 +8,7 @@ import { ExamSittingProvider } from "./ExamSittingContext";
 import ExamPilotRuntime from "./ExamPilotRuntime";
 import { TrialResultHero } from "../account/TrialComplete.dev";
 import type { RuntimeAttempt } from "../../core/examRuntime";
+import { examTestLocks } from "../../core/examRuntime.testSupport";
 const unitPreferences = vi.hoisted(() => ({ patchSessionState: vi.fn(), savePressureUnitPreference: vi.fn() }));
 vi.mock("../../app/AppProvider", () => ({ useAppContext: () => {
  const [pressureUnit, setPressureUnit] = useState<"mmHg" | "kPa">("kPa");
@@ -39,6 +40,7 @@ async function click(text: string) {
  expect(button).toBeTruthy(); await act(async () => button.click());
 }
 beforeEach(() => {
+ Object.defineProperty(navigator, "locks", { configurable: true, value: examTestLocks() });
  Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function (this: HTMLDialogElement) { this.open = true; } });
  savedFeedbackTone = "professional"; localStorage.clear(); invoke.mockReset(); unitPreferences.patchSessionState.mockReset(); unitPreferences.savePressureUnitPreference.mockReset(); loseSubmission = false;
  attempt = { id: "test-attempt", marksAvailable: 2, status: "active", revision: 0, pressureUnit: "kPa", createdAt: new Date().toISOString(), presentedAt: null, finishedAt: null, answers: {}, questions: [{ id: "test-unit", tables: [], parts: [{ id: "part", kind: "concept", prompt: "Explain your answer", marks: 2 }] }] };
@@ -59,7 +61,7 @@ beforeEach(() => {
  });
  container = document.createElement("div"); document.body.append(container); root = createRoot(container);
 });
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(async () => { await act(async () => root.unmount()); container.remove(); Reflect.deleteProperty(navigator, "locks"); vi.useRealTimers(); vi.unstubAllGlobals(); });
 async function answer(text: string) {
  const textarea = container.querySelector("textarea")!;
  await act(async () => {
@@ -71,6 +73,51 @@ async function advance(ms: number) { await act(async () => { await vi.advanceTim
 function operations(name: string) { return invoke.mock.calls.filter(c => c[1].body.operation === name); }
 function journal() { return JSON.parse(localStorage.getItem("abgm-exam-pilot-clpfecuohwzwrgmqzeos-test-owner")!); }
 function submittingButton() { return [...container.querySelectorAll("button")].find(b => b.textContent?.trim() === "Submitting…"); }
+
+it("shows the second tab a recovery path and restores the first tab's answer after it closes", async () => {
+  vi.useFakeTimers();
+  await mount();
+  const otherContainer = document.createElement("div");
+  document.body.append(otherContainer);
+  const otherRoot = createRoot(otherContainer);
+  const otherRouter = createMemoryRouter([{ path: "/", element: <ExamSittingProvider><ExamPilotRuntime client={client} userId="test-owner" canStart canStartStandard unitCount={3} /></ExamSittingProvider> }]);
+  const clickOther = async (text: string) => {
+    const button = [...otherContainer.querySelectorAll("button")].find(candidate => candidate.textContent?.trim() === text);
+    expect(button).toBeDefined();
+    await act(async () => button!.click());
+  };
+  try {
+    await act(async () => otherRoot.render(<RouterProvider router={otherRouter} />));
+    await click("Begin");
+    await answer("Answer still waiting to sync");
+    const saved = journal();
+    await clickOther("Begin");
+    expect(otherContainer.textContent).toContain("Your exam is open in another tab.");
+    expect(journal()).toEqual(saved);
+    expect(operations("start")).toHaveLength(1);
+    expect(operations("claim")).toHaveLength(0);
+
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await clickOther("Retry");
+    await clickOther("Recover attempt");
+    expect(otherContainer.querySelector("textarea")?.value).toBe("Answer still waiting to sync");
+    expect(operations("start")).toHaveLength(1);
+    expect(operations("claim")).toHaveLength(1);
+  } finally {
+    await act(async () => otherRoot.unmount());
+    otherContainer.remove();
+  }
+});
+
+it("leaves the journal and server alone when browser locks are unavailable", async () => {
+  Object.defineProperty(navigator, "locks", { configurable: true, value: undefined });
+  await mount();
+  await click("Begin");
+  expect(container.textContent).toContain("This browser can't safely save an exam.");
+  expect(operations("start")).toHaveLength(0);
+  expect(journal()).toBeNull();
+});
 
 it.each([1, 5])("starts %i selected Units in checkbox order through the existing Begin flow", async count => {
  const units = Array.from({ length: 6 }, (_, i) => ({
