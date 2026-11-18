@@ -19,7 +19,7 @@ vi.mock("../../app/SiteAccountProvider", () => ({ useSiteAccount: () => ({
   account: mocks.account,
 }) }));
 vi.mock("../../app/RegistrationProvider", () => ({ useRegistration: () => ({
-  registration: { emailPurpose: () => null }, registrationState: { phase: "idle" }, paid: true, hasPassword: true,
+  registration: { emailPurpose: () => null }, registrationState: { phase: "idle" }, paid: true, accountReady: true,
 }) }));
 vi.mock("../../app/AppProvider", async () => {
   const { initialAppState } = await import("../../app/state");

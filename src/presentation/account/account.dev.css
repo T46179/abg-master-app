@@ -283,3 +283,7 @@ button.account-stepper-label:hover > span { text-decoration:underline; text-unde
 .account-about-card .account-question[aria-invalid="true"] .account-question-required,
 .abg-account .account-about-card .account-field-error { color:var(--color-red,#a73c2b); }
 .abg-account .account-about-card .account-field-error { font-size:.78125rem; margin-top:8px; }
+.account-google-option { display: grid; gap: 12px; }
+.abg-account .account-primary.account-google-button { gap: 10px; justify-content: center; background: #fff; color: #1f1f1f; border: 1px solid #747775; }
+.account-google-divider { display: flex; align-items: center; gap: 12px; }
+.account-google-divider::before, .account-google-divider::after { content: ""; flex: 1; border-top: 1px solid currentColor; opacity: .25; }

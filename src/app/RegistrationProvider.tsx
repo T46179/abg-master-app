@@ -1,14 +1,25 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createAccountRegistration, REGISTRATION_AUTH_KEY, readAccountSetupStatus, type AccountRegistration, type RegistrationSnapshot } from "../core/accountRegistration";
 import type { RegistrationCallback } from "../core/registrationCallback";
+import { hasGoogleSignIn, type GoogleAccount, type GoogleCompletion } from "../core/googleAccount";
 import { useSiteAccount } from "./SiteAccountProvider";
 export const LOCAL_ACCOUNT_URL = "https://clpfecuohwzwrgmqzeos.supabase.co";
-type RegistrationContextValue = { registration: AccountRegistration; registrationState: RegistrationSnapshot; hasPassword: boolean | null;
+type RegistrationContextValue = { registration: AccountRegistration; registrationState: RegistrationSnapshot; accountReady: boolean | null;
+  google: GoogleAccount | null; takeGoogleCompletion: () => GoogleCompletion | null;
   setupError: boolean; retrySetup: () => void; paid: boolean; togglePaid: () => void };
 const Context = createContext<RegistrationContextValue | null>(null);
-export function RegistrationProvider({ client, callback, children }: { client: SupabaseClient; callback?: RegistrationCallback | null; children: ReactNode }) {
+export function RegistrationProvider({ client, callback, google = null, googleCompletion, children }: {
+  client: SupabaseClient; callback?: RegistrationCallback | null; google?: GoogleAccount | null;
+  googleCompletion?: GoogleCompletion | null; children: ReactNode;
+}) {
   const { account, identity } = useSiteAccount();
+  const pendingGoogle = useRef(googleCompletion ?? null);
+  const takeGoogleCompletion = useCallback(() => {
+    const result = pendingGoogle.current;
+    pendingGoogle.current = null;
+    return result;
+  }, []);
   const registration = useMemo(() => createAccountRegistration(account, client, kind => createClient(LOCAL_ACCOUNT_URL, import.meta.env.VITE_EXAM_PILOT_SUPABASE_ANON_KEY, {
     auth: { storageKey: kind === "pending" ? REGISTRATION_AUTH_KEY : "abgm-registration-callback", persistSession: kind === "pending", autoRefreshToken: false, detectSessionInUrl: false, flowType: "implicit" }
   }), window.localStorage), [account, client]);
@@ -33,21 +44,29 @@ export function RegistrationProvider({ client, callback, children }: { client: S
     if (registrationState.phase === "complete" && registrationState.completedUserId === id && registrationState.completedGeneration === generation) {
       setSetup({ userId: id, generation, value: true }); return;
     }
-    void readAccountSetupStatus(client).then(value => { if (!cancelled && account.isCurrent(generation, id)) setSetup({ userId: id, generation, value }); })
+    void (async () => {
+      if (google) {
+        const result = await client.auth.getUser();
+        if (result.error || result.data.user?.id !== id) throw new Error("Account could not be checked.");
+        if (hasGoogleSignIn(result.data.user)) return true;
+      }
+      return readAccountSetupStatus(client);
+    })().then(value => { if (!cancelled && account.isCurrent(generation, id)) setSetup({ userId: id, generation, value }); })
       .catch(() => { if (!cancelled && account.isCurrent(generation, id)) setSetupError(true); });
     return () => { cancelled = true; };
-  }, [identity.status, identity.userId, identity.generation, client, account, revision, registrationState.phase === "complete"]);
+  }, [identity.status, identity.userId, identity.generation, client, account, google, revision, registrationState.phase === "complete"]);
   useEffect(() => {
     const refresh = () => { void account.refresh(); setRevision(n => n + 1); };
     window.addEventListener("focus", refresh);
     return () => window.removeEventListener("focus", refresh);
   }, [account]);
   const value = useMemo(() => ({ registration, registrationState,
-    hasPassword: identity.status === "verified" && setup?.userId === identity.userId && setup.generation === identity.generation ? setup.value : null,
+    accountReady: identity.status === "verified" && setup?.userId === identity.userId && setup.generation === identity.generation ? setup.value : null,
+    google, takeGoogleCompletion,
     setupError, retrySetup: () => setRevision(n => n + 1),
     paid: paidOwner?.id === identity.userId && paidOwner?.generation === identity.generation,
     togglePaid: () => setPaidOwner(old => identity.status === "verified" && identity.userId ? old?.id === identity.userId && old.generation === identity.generation ? null : { id: identity.userId, generation: identity.generation } : null)
-  }), [registration, registrationState, setup, setupError, paidOwner, identity]);
+  }), [registration, registrationState, setup, setupError, paidOwner, identity, google, takeGoogleCompletion]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 export function useOptionalRegistration() { return useContext(Context); }

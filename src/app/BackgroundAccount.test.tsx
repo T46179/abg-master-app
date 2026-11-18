@@ -17,7 +17,7 @@ vi.mock("../core/analytics", () => ({ trackEvent: vi.fn(), trackPageView: vi.fn(
 vi.mock("../presentation/layout/MainNav", () => ({ MainNav: () => <nav>Navigation</nav> }));
 vi.mock("../core/accountDataClient", () => ({ createAccountDataClient: (_config: unknown, client: unknown) => client }));
 vi.mock("./RegistrationProvider", () => ({ useRegistration: () => ({
-  registration: { emailPurpose: () => null }, registrationState: { phase: "idle" }, hasPassword: true, paid: true,
+  registration: { emailPurpose: () => null }, registrationState: { phase: "idle" }, accountReady: true, paid: true,
 }) }));
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const config = { SUPABASE_URL: "https://clpfecuohwzwrgmqzeos.supabase.co", SUPABASE_ANON_KEY: "public" };

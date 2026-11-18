@@ -49,6 +49,7 @@ export interface AppContextValue {
   patchSessionState: (patch: Partial<SessionState>) => void;
   patchPracticeState: (patch: Partial<PracticeFlowState>) => void;
   retryPendingSubmissionNow: () => void;
+  syncBeforeAccountSwitch?: () => Promise<boolean>;
   discardPendingSubmission: () => void;
   saveLocalCalibrationCompletion: (completion: CalibrationCompletionRecord) => Promise<void>;
   skipCalibrationOnboarding: () => Promise<void>;
@@ -512,7 +513,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePendingCalibrationCompletion(browserStorage, pending);
     setPendingCalibrationCompletion(pending);
 
-    void settleWithTimeout((async () => {
+    return settleWithTimeout((async () => {
       const session = await resolveSession(runtime);
       if (session.syncUnavailable || !session.userId || !runtime.supabase) {
         throw new Error("Remote progress is unavailable.");
@@ -752,7 +753,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       syncMessage: PROTECTED_PRACTICE_MESSAGES.retrying
     });
 
-    void completePendingSubmissionSuccess(pendingSubmission)
+    return completePendingSubmissionSuccess(pendingSubmission)
       .catch((error) => {
         if (
           isProtectedPracticeError(error) &&
@@ -788,6 +789,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!state.practiceState.pendingSubmission) return;
     clearPendingSubmissionState(state.practiceState.pendingSubmission, null);
   }, [clearPendingSubmissionState, state.practiceState.pendingSubmission]);
+
+  const syncBeforeAccountSwitch = useCallback(async () => {
+    if (!isActive() || state.status !== "ready") return false;
+    const practice = settleWithTimeout(Promise.resolve(retryPendingSubmissionNow()), REMOTE_PROGRESS_TIMEOUT_MS);
+    const calibration = retryPendingCalibrationNow();
+    await Promise.all([practice, calibration]);
+    return isActive() && !retryInFlightRef.current && !calibrationRetryInFlightRef.current &&
+      !loadPendingPracticeSubmission(browserStorage) && !loadPendingCalibrationCompletion(browserStorage);
+  }, [browserStorage, isActive, retryPendingCalibrationNow, retryPendingSubmissionNow, state.status]);
 
   useEffect(() => {
     if (
@@ -966,6 +976,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         patchSessionState,
         patchPracticeState,
         retryPendingSubmissionNow,
+        syncBeforeAccountSwitch,
         discardPendingSubmission,
         saveLocalCalibrationCompletion,
         skipCalibrationOnboarding

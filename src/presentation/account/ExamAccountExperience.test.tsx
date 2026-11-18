@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
 import type { RegistrationCallback } from "../../core/registrationCallback";
+import type { GoogleAccount, GoogleCompletion } from "../../core/googleAccount";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SiteAccountProvider, useSiteAccount } from "../../app/SiteAccountProvider";
 import { RegistrationProvider } from "../../app/RegistrationProvider";
@@ -11,13 +12,13 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { emptyExamOnboarding, examOnboardingKey, saveExamOnboarding } from "../../core/examOnboarding";
 
-const m = vi.hoisted(() => ({ client: null as unknown, temporary: null as any, lifecycle: undefined as any, access: vi.fn(), active: false, recover: false, runtime: vi.fn(), begin: vi.fn() }));
+const m = vi.hoisted(() => ({ client: null as unknown, temporary: null as any, lifecycle: undefined as any, access: vi.fn(), active: false, recover: false, runtime: vi.fn(), begin: vi.fn(), sync: vi.fn() }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: () => m.temporary ?? m.client }));
 vi.mock("../../core/examAuth", () => ({ createExamAuthClient: () => m.client, readExamAccess: m.access }));
 vi.mock("../../core/accountDataClient", () => ({ createAccountDataClient: (_config: unknown, client: unknown) => client }));
 vi.mock("../../app/AppProvider", async () => {
   const { initialAppState } = await import("../../app/state");
-  return { useAppContext: () => ({ state: { ...initialAppState, status: "ready", sessionState: { ...initialAppState.sessionState, pressureUnit: "mmHg" }, calibrationState: { ...initialAppState.calibrationState, remoteStatus: "loaded" } } }) };
+  return { useAppContext: () => ({ syncBeforeAccountSwitch: m.sync, state: { ...initialAppState, status: "ready", sessionState: { ...initialAppState.sessionState, pressureUnit: "mmHg" }, calibrationState: { ...initialAppState.calibrationState, remoteStatus: "loaded" } } }) };
 });
 vi.mock("../exam/ExamSittingContext", () => ({ useOptionalExamSitting: () => ({ sitting: m.active ? { phase: "active" } : null }), useExamSitting: () => ({ sitting: m.active ? { phase: "active" } : null }) }));
 vi.mock("../exam/ExamPilotRuntime", () => ({ default: (props: any) => {
@@ -42,10 +43,14 @@ function emit(event: string, id: string | null) {
 async function flush() { await act(async () => { await vi.advanceTimersByTimeAsync(0); }); }
 async function click(text: string) { const scope = host.querySelector(".exam-account-menu") ?? container; const button = [...scope.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === text); expect(button, text).toBeTruthy(); await act(async () => button!.click()); await flush(); }
 async function fill(id: string, value: string) { await act(async () => { const input = document.getElementById(id) as HTMLInputElement; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value); input.dispatchEvent(new Event("input", { bubbles: true })); }); }
-function OwnedExperience() { const { identity } = useSiteAccount(); return <Experience key={identity.generation} />; }
+function OwnedExperience({ strict = false }: { strict?: boolean }) {
+  const { identity } = useSiteAccount();
+  const screen = <Experience key={identity.generation} />;
+  return strict ? <StrictMode>{screen}</StrictMode> : screen;
+}
 function RouteProbe() { const location = useLocation(); return <output data-testid="account-location">{location.pathname + location.search}</output>; }
 function route() { return container.querySelector('[data-testid="account-location"]')?.textContent; }
-async function render(callback?: RegistrationCallback, initialEntry = "/") { await act(async () => root.render(<MemoryRouter initialEntries={[initialEntry]}><RouteProbe /><SiteAccountProvider client={m.client as SupabaseClient}><RegistrationProvider client={m.client as SupabaseClient} callback={callback}>{createPortal(<AccountNav />, host)}<OwnedExperience /></RegistrationProvider></SiteAccountProvider></MemoryRouter>)); await flush(); }
+async function render(callback?: RegistrationCallback, initialEntry = "/", googleCompletion?: GoogleCompletion, google?: GoogleAccount) { await act(async () => root.render(<MemoryRouter initialEntries={[initialEntry]}><RouteProbe /><SiteAccountProvider client={m.client as SupabaseClient}><RegistrationProvider client={m.client as SupabaseClient} callback={callback} google={google} googleCompletion={googleCompletion}>{createPortal(<AccountNav />, host)}<OwnedExperience strict={Boolean(googleCompletion)} /></RegistrationProvider></SiteAccountProvider></MemoryRouter>)); await flush(); }
 async function login(id = "a") {
   await fill("exam-signin-email", ` ${id}@example.test `); await fill("exam-signin-password", " password ");
   await act(async () => container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))); await flush();
@@ -127,9 +132,44 @@ beforeEach(() => {
   host = document.createElement("div"); host.id = "exam-account-nav-slot"; document.body.append(host);
   container = document.createElement("div"); document.body.append(container); root = createRoot(container);
   vi.spyOn(window, "confirm").mockReturnValue(true);
+  m.sync.mockReset().mockResolvedValue(true);
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); host.remove(); vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllEnvs(); });
 describe("unified local pilot account flow", () => {
+  it("opens Exam for a verified Google-only owner without asking for a password", async () => {
+    current = { id: "google", email: "google@example.test" };
+    auth.getUser.mockResolvedValue({ data: { user: { ...current, email_confirmed_at: "verified",
+      is_anonymous: false, identities: [{ provider: "google" }] } } });
+    await render(undefined, "/sign-in?return_to=trial", undefined, { begin: vi.fn(), complete: vi.fn() });
+    expect((m.client as any).rpc).not.toHaveBeenCalled();
+    expect(route()).toBe("/dev/exam-pilot?return_to=trial&account=start");
+    expect(m.access).toHaveBeenCalled();
+    expect(container.textContent).not.toContain("Create your password");
+  });
+
+  it("waits for switch confirmation and sync, then preserves Trial Exam across the owner remount", async () => {
+    current = { id: "guest", email: "guest@example.test" };
+    auth.getUser.mockImplementation(async () => ({ data: { user: current?.id === "guest"
+      ? { ...current, is_anonymous: true }
+      : { ...current, is_anonymous: false, email_confirmed_at: "verified", identities: [{ provider: "google" }] } } }));
+    const candidate = { email: "google@example.test", destination: "trial" as const, requiresConfirmation: true,
+      cancel: vi.fn(async () => {}), adopt: vi.fn(async () => { emit("SIGNED_IN", "google"); return "google"; }) };
+    m.sync.mockResolvedValueOnce(false);
+    await render(undefined, "/dev/exam-pilot", {
+      callback: { attempt: { action: "signin", destination: "trial", owner: "guest", ownerSession: "guest-session", started: Date.now() }, code: "code", conflict: false },
+      result: { candidate }
+    }, { begin: vi.fn(), complete: vi.fn() });
+    expect(candidate.adopt).not.toHaveBeenCalled();
+    expect(candidate.cancel).not.toHaveBeenCalled();
+    await click("Switch account");
+    expect(candidate.adopt).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("could not sync");
+    await click("Retry sync and switch");
+    expect(candidate.adopt).toHaveBeenCalledOnce();
+    expect(candidate.cancel).not.toHaveBeenCalled();
+    expect(route()).toBe("/dev/exam-pilot?return_to=trial&account=start");
+  });
+
   it.each([
     ["/sign-in", "#exam-signin-email"],
     ["/create-account", "#registration-email"],
