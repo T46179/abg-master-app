@@ -108,8 +108,7 @@
 .abg-account .account-entry-card h1 { font-size:28px; font-weight:500; line-height:1.25; letter-spacing:-.035em; color:var(--account-ink); }
 .abg-account .account-entry-card .account-eyebrow { margin:0 0 12px; font-size:12px; font-weight:500; line-height:1.5; color:var(--account-ink); }
 .abg-account .account-entry-card .account-entry-intro { margin:18px 0 0; font-size:14px; font-weight:300; line-height:1.6; }
-.account-signup-benefit { display:flex; align-items:center; gap:14px; margin-top:24px; padding:14px 18px; border:1px solid #c6e1d7; border-radius:14px; background:#f3f8f6; color:#33465a; font-size:15px; font-weight:400; line-height:1.5; }
-.account-signup-benefit svg { flex-shrink:0; color:#479d7c; }
+.account-signup-layout > .account-entry-card > :is(h1, .account-eyebrow, .account-entry-intro) { text-align:center; }
 .account-entry-card .account-form { margin-top:24px; gap:20px; }
 .account-entry-card .account-field label { font-size:15px; font-weight:400; }
 .account-entry-card .account-input { border-radius:14px; }
@@ -120,6 +119,11 @@
 .abg-account .account-entry-card .account-entry-submit { justify-content:center; min-height:54px; margin-top:0; border-radius:14px; font-size:16px; font-weight:500; }
 .abg-account .account-entry-card .account-entry-footer { margin:24px 0 0; text-align:center; font-size:14px; font-weight:400; }
 .account-entry-footer .account-link { font-weight:500; color:var(--account-ink); text-decoration-color:#c8ced7; }
+.account-google-confirmation, .account-google-recovery { max-width:420px; margin-inline:auto; text-align:center; overflow-wrap:anywhere; }
+.abg-account .account-google-confirmation .account-entry-submit { margin-top:32px; }
+.abg-account .account-google-recovery > .account-entry-submit { margin-top:32px; }
+.abg-account :is(.account-google-confirmation, .account-google-recovery) .account-entry-footer { margin-top:12px; }
+.account-google-recovery .account-form { text-align:start; }
 .account-free-benefits { border:1px solid var(--account-border); border-radius:18px; background:var(--color-surface); overflow:hidden; }
 .abg-account .account-free-benefits h2 { margin:0; padding:24px 24px 10px; color:var(--account-muted); font-size:12px; font-weight:500; line-height:1.5; text-transform:uppercase; letter-spacing:.16em; }
 .account-free-benefits ul { list-style:none; padding:0; margin:0; }
@@ -139,6 +143,7 @@
 
 .account-signin-layout { width:100%; max-width:720px; margin-inline:auto; }
 .account-signin-layout > .account-card { max-width:420px; margin-inline:auto; }
+.account-signin-layout > .account-card h1 { text-align:center; }
 .account-field--with-aside { display:grid; grid-template-columns:minmax(0,1fr) auto; }
 .account-field--with-aside > div:first-child { grid-column:1; grid-row:1; }
 .account-field--with-aside > .account-input { grid-column:1 / -1; grid-row:2; }
@@ -284,6 +289,7 @@ button.account-stepper-label:hover > span { text-decoration:underline; text-unde
 .abg-account .account-about-card .account-field-error { color:var(--color-red,#a73c2b); }
 .abg-account .account-about-card .account-field-error { font-size:.78125rem; margin-top:8px; }
 .account-google-option { display: grid; gap: 12px; }
+:is(.account-signin-layout, .account-signup-layout) .account-google-option { gap: 20px; }
 .abg-account .account-primary.account-google-button { gap: 10px; justify-content: center; background: #fff; color: #1f1f1f; border: 1px solid #747775; }
 .account-google-divider { display: flex; align-items: center; gap: 12px; }
 .account-google-divider::before, .account-google-divider::after { content: ""; flex: 1; border-top: 1px solid currentColor; opacity: .25; }

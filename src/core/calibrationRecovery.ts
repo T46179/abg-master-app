@@ -1,7 +1,7 @@
 import type { BrowserStorageLike } from "./storage";
 import type { CalibrationPlacement } from "./types";
 
-const PENDING_CALIBRATION_STORAGE_KEY = "abgmaster_pendingCalibrationCompletion";
+export const PENDING_CALIBRATION_STORAGE_KEY = "abgmaster_pendingCalibrationCompletion";
 
 export interface PendingCalibrationCompletion {
   operationId: string;

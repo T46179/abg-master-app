@@ -1,5 +1,5 @@
 import { REGISTRATION_RETURN_URL, takeRegistrationCallback } from "../core/registrationCallback";
-import { createGoogleAccount, takeGoogleReturn, type GoogleCompletion } from "../core/googleAccount";
+import { createGoogleAccount, GoogleLinkConflict, takeGoogleReturn, type GoogleCompletion } from "../core/googleAccount";
 import { createRuntimeSupabaseClient } from "../core/supabase";
 import { LOCAL_ACCOUNT_URL } from "../app/RegistrationProvider";
 
@@ -18,15 +18,16 @@ export async function mountLocalAccountApp(container: HTMLElement) {
   const googleReturn = tab ? takeGoogleReturn(window.location, tab) : null;
   const emailCallback = takeRegistrationCallback(window.location, window.history);
   const client = createRuntimeSupabaseClient(config, { manualCallback: true }).supabase!;
-  const google = tab ? createGoogleAccount(client, LOCAL_ACCOUNT_URL, apiKey, tab) : null;
+  const google = tab ? createGoogleAccount(client, LOCAL_ACCOUNT_URL, apiKey, tab,
+    import.meta.env.VITE_ENABLE_LOCAL_GOOGLE_CODE_RECOVERY === "true") : null;
   let googleCompletion: GoogleCompletion | null = null;
   if (google && googleReturn) {
     try {
       googleCompletion = { callback: googleReturn, result: { candidate: await google.complete(googleReturn) } };
     } catch (cause) {
-      googleCompletion = { callback: googleReturn, result: {
-        error: cause instanceof Error ? cause.message : "Google sign-in could not finish. Please retry."
-      } };
+      googleCompletion = { callback: googleReturn, result: cause instanceof GoogleLinkConflict
+        ? { linkConflict: true }
+        : { error: cause instanceof Error ? cause.message : "Google sign-in could not finish. Please retry." } };
     }
   }
   const { mountLocalAccountRoot } = await import("./localAccountRoot");

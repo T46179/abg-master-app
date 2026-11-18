@@ -8,6 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_EXAM_PILOT_SUPABASE_ANON_KEY?: string;
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;
+  readonly VITE_ENABLE_LOCAL_GOOGLE_CODE_RECOVERY?: string;
   readonly VITE_POSTHOG_KEY?: string;
   readonly VITE_POSTHOG_HOST?: string;
 

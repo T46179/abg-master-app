@@ -8,6 +8,7 @@ type Attempt = {
   owner: string | null;
   ownerSession: string | null;
   started: number;
+  hadProgress?: boolean;
 };
 export type GoogleReturn = { attempt: Attempt; code: string | null; conflict: boolean };
 
@@ -91,7 +92,9 @@ async function readSession(client: SupabaseClient) {
   return result.data.session;
 }
 
-export function createGoogleAccount(canonical: SupabaseClient, url: string, apiKey: string, tab: Storage) {
+export class GoogleLinkConflict extends Error {}
+
+export function createGoogleAccount(canonical: SupabaseClient, url: string, apiKey: string, tab: Storage, enableCodeRecovery = false) {
   async function checkOwner(attempt: Attempt) {
     const current = await readSession(canonical);
     if ((current?.user.id ?? null) !== attempt.owner || sessionId(current) !== attempt.ownerSession) {
@@ -99,10 +102,93 @@ export function createGoogleAccount(canonical: SupabaseClient, url: string, apiK
     }
   }
 
+  function verifiedCandidate(attempt: Attempt, temporary: { client: SupabaseClient; release: () => void }, session: Session, email: string, method: "google" | "email") {
+    let adoptionStarted = false;
+    let settled = false;
+    async function cancel() {
+      if (settled) return;
+      settled = true;
+      try {
+        if (attempt.action !== "link" || method === "email") {
+          await revokeTemporaryGoogleSession(temporary.client, canonical, session, adoptionStarted);
+        }
+      } finally { temporary.release(); }
+    }
+    return {
+      email,
+      method,
+      destination: attempt.destination,
+      requiresConfirmation: !!attempt.owner && attempt.owner !== session.user.id,
+      cancel,
+      async adopt(beforeCommit?: () => boolean) {
+        if (settled || adoptionStarted) throw new Error("Start sign-in again.");
+        try {
+          await checkOwner(attempt);
+          if (session.expires_at && session.expires_at * 1000 <= Date.now()) {
+            throw new Error("This sign-in expired. Start again.");
+          }
+          if (beforeCommit && !beforeCommit()) return null;
+          if (attempt.action !== "link" && attempt.owner === session.user.id) {
+            await cancel();
+            return session.user.id;
+          }
+          adoptionStarted = true;
+          const adopted = await canonical.auth.setSession({
+            access_token: session.access_token, refresh_token: session.refresh_token
+          });
+          if (adopted.error || adopted.data.session?.user.id !== session.user.id) throw new Error("Sign-in could not finish. Please retry.");
+          settled = true;
+          temporary.release();
+          return session.user.id;
+        } catch (error) {
+          await cancel();
+          throw error;
+        }
+      }
+    };
+  }
+
   return {
-    async begin(action: Action, destination: RegistrationDestination) {
+    requestExistingCode: enableCodeRecovery ? async (callback: GoogleReturn, email: string) => {
+      const { attempt } = callback;
+      if (!callback.conflict || attempt.action !== "link" || !attempt.owner) throw new Error("Start Google account setup again.");
+      await checkOwner(attempt);
+      const address = email.trim();
+      // Numeric codes need no redirect or PKCE storage. Use a separate client for the candidate.
+      const client = createClient(url, apiKey, { auth: {
+        storageKey: key + "-" + crypto.randomUUID(), persistSession: false, autoRefreshToken: false, detectSessionInUrl: false
+      } });
+      const request = await client.auth.signInWithOtp({ email: address, options: { shouldCreateUser: false } });
+      await checkOwner(attempt);
+      if (request.error) throw new Error("We couldn't send a code. Check your email address or try again shortly.");
+      return async (code: string) => {
+        await checkOwner(attempt);
+        const result = await client.auth.verifyOtp({ email: address, token: code, type: "email" });
+        const session = result.data.session;
+        if (result.error || !session) throw new Error("This code couldn't be verified. Try again or request a new code.");
+        // Capture the verified session before any owner check that could fail, so it can be revoked on failure.
+        const candidate = verifiedCandidate(attempt, { client, release: () => {} }, session, address, "email");
+        try {
+          const checked = await client.auth.getUser();
+          const user = checked.data.user;
+          if (checked.error || !hasGoogleSignIn(user) || !user || user.id !== session.user.id || user.id === attempt.owner ||
+              user.email?.toLowerCase() !== address.toLowerCase()) {
+            throw new Error("Use the email address on your existing Google-linked account.");
+          }
+          await checkOwner(attempt);
+          return { ...candidate, email: user.email };
+        } catch (error) {
+          await candidate.cancel();
+          throw error;
+        }
+      };
+    } : undefined,
+    async begin(action: Action, destination: RegistrationDestination, options?: { expectedOwner: string | null; hadProgress: boolean }) {
       clearGoogleAttempt(tab);
       const current = await readSession(canonical);
+      if (options && (current?.user.id ?? null) !== options.expectedOwner) {
+        throw new Error("The active account changed. Start Google sign-in again.");
+      }
       if (action === "link") {
         const verified = await canonical.auth.getUser();
         if (verified.error || !current || verified.data.user?.id !== current.user.id ||
@@ -111,7 +197,7 @@ export function createGoogleAccount(canonical: SupabaseClient, url: string, apiK
         }
       }
       const attempt: Attempt = { action, destination, owner: current?.user.id ?? null,
-        ownerSession: sessionId(current), started: Date.now() };
+        ownerSession: sessionId(current), started: Date.now(), hadProgress: options?.hadProgress };
       const temporary = createGoogleClient(url, apiKey, tab, action === "link" ? current : null);
       try {
         const credentials = { provider: "google" as const, options: {
@@ -134,24 +220,14 @@ export function createGoogleAccount(canonical: SupabaseClient, url: string, apiK
       const { attempt, code, conflict } = callback;
       if (!code) {
         clearGoogleAttempt(tab);
-        throw new Error(conflict
-          ? "This Google account is already linked. Your current account is still active. Choose Sign in to use that account."
-          : "Google sign-in was cancelled or could not finish. You can try again.");
+        if (conflict && attempt.action === "link") {
+          await checkOwner(attempt);
+          throw new GoogleLinkConflict("This Google account is already linked.");
+        }
+        throw new Error("Google sign-in was cancelled or could not finish. You can try again.");
       }
       const temporary = createGoogleClient(url, apiKey, tab);
       let candidate: Session | null = null;
-      let adoptionStarted = false;
-      let settled = false;
-
-      async function cancel() {
-        if (settled) return;
-        settled = true;
-        try {
-          if (candidate && attempt.action !== "link") {
-            await revokeTemporaryGoogleSession(temporary.client, canonical, candidate, adoptionStarted);
-          }
-        } finally { temporary.clear(); }
-      }
 
       try {
         await checkOwner(attempt);
@@ -165,36 +241,13 @@ export function createGoogleAccount(canonical: SupabaseClient, url: string, apiK
           throw new Error("Google sign-in could not be verified. Please retry.");
         }
         await checkOwner(attempt);
-        const session = candidate;
-        return {
-          email: user.email,
-          destination: attempt.destination,
-          requiresConfirmation: !!attempt.owner && attempt.owner !== user.id,
-          cancel,
-          async adopt() {
-            if (settled || adoptionStarted) throw new Error("Start Google sign-in again.");
-            try {
-              await checkOwner(attempt);
-              if (attempt.action !== "link" && attempt.owner === user.id) {
-                await cancel();
-                return user.id;
-              }
-              adoptionStarted = true;
-              const adopted = await canonical.auth.setSession({
-                access_token: session.access_token, refresh_token: session.refresh_token
-              });
-              if (adopted.error || adopted.data.session?.user.id !== user.id) throw new Error("Google sign-in could not finish. Please retry.");
-              settled = true;
-              temporary.clear();
-              return user.id;
-            } catch (error) {
-              await cancel();
-              throw error;
-            }
-          }
-        };
+        return verifiedCandidate(attempt, temporary, candidate, user.email, "google");
       } catch (error) {
-        await cancel();
+        try {
+          if (candidate && attempt.action !== "link") {
+            await revokeTemporaryGoogleSession(temporary.client, canonical, candidate, false);
+          }
+        } finally { temporary.clear(); }
         throw error;
       }
     }
@@ -220,5 +273,5 @@ export type GoogleAccount = ReturnType<typeof createGoogleAccount>;
 export type GoogleCandidate = Awaited<ReturnType<GoogleAccount["complete"]>>;
 export type GoogleCompletion = {
   callback: GoogleReturn;
-  result: { candidate: GoogleCandidate } | { error: string };
+  result: { candidate: GoogleCandidate } | { error: string } | { linkConflict: true };
 };

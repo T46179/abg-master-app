@@ -16,7 +16,7 @@ function session(user: User, id: string): Session {
     refresh_token: id, token_type: "bearer", expires_in: 3600 };
 }
 
-function fixture(existing = session(guest, "guest-session"), candidate = session(googleUser, "temporary")) {
+function fixture(existing = session(guest, "guest-session"), candidate = session(googleUser, "temporary"), enableCodeRecovery = false) {
   const tab = new Map<string, string>();
   const storage = {
     getItem: (key: string) => tab.get(key) ?? null,
@@ -35,6 +35,8 @@ function fixture(existing = session(guest, "guest-session"), candidate = session
     getSession: vi.fn(async () => ({ data: { session: candidate } })),
     getUser: vi.fn(async () => ({ data: { user: candidate.user } })),
     signInWithOAuth: vi.fn(async () => ({ data: { url: "https://accounts.google.com/" } })),
+    signInWithOtp: vi.fn().mockResolvedValue({ error: null }),
+    verifyOtp: vi.fn().mockResolvedValue({ data: { session: candidate }, error: null }),
     linkIdentity: vi.fn(async () => ({ data: { url: "https://accounts.google.com/" } })),
     exchangeCodeForSession: vi.fn(async () => ({ data: { session: candidate } })),
     stopAutoRefresh: vi.fn(async () => {}),
@@ -44,7 +46,7 @@ function fixture(existing = session(guest, "guest-session"), candidate = session
     }),
   };
   createClient.mockReturnValue({ auth: temporary });
-  const google = createGoogleAccount({ auth: active } as unknown as SupabaseClient, url, "public-key", storage);
+  const google = createGoogleAccount({ auth: active } as unknown as SupabaseClient, url, "public-key", storage, enableCodeRecovery);
 
   async function receive(action: "link" | "signup" | "signin", query = "code=single-use") {
     await google.begin(action, "trial");
@@ -151,6 +153,41 @@ describe("Google account flow", () => {
       expect(f.temporary.signOut).not.toHaveBeenCalled();
       expect(f.tab.size).toBe(0);
     }
+  });
+
+  it("only requests existing-account codes when recovery is enabled for a link conflict", async () => {
+    expect(fixture().google.requestExistingCode).toBeUndefined();
+    const f = fixture(undefined, undefined, true);
+    const invalid = await f.receive("signin");
+    await expect(f.google.requestExistingCode!(invalid, googleUser.email!)).rejects.toThrow("Start Google account setup again");
+    expect(f.temporary.signInWithOtp).not.toHaveBeenCalled();
+    f.temporary.signInWithOAuth.mockClear();
+
+    const conflict = await f.receive("link", "error_code=identity_already_exists");
+    const verify = await f.google.requestExistingCode!(conflict, googleUser.email!);
+    expect(f.temporary.signInWithOtp).toHaveBeenCalledExactlyOnceWith({
+      email: googleUser.email, options: { shouldCreateUser: false }
+    });
+    const result = await verify("123456");
+    expect(f.temporary.verifyOtp).toHaveBeenCalledExactlyOnceWith({ email: googleUser.email, token: "123456", type: "email" });
+    expect(result.method).toBe("email");
+    expect(f.active.setSession).not.toHaveBeenCalled();
+    expect(await result.adopt(() => false)).toBeNull();
+    expect(f.active.setSession).not.toHaveBeenCalled();
+    expect(await result.adopt(() => true)).toBe(googleUser.id);
+    expect(f.temporary.signInWithOAuth).not.toHaveBeenCalled();
+    expect(f.temporary.signOut).not.toHaveBeenCalled();
+  });
+
+  it("rejects a code candidate without a matching Google identity and keeps the guest", async () => {
+    const candidate = session({ ...googleUser, identities: [] }, "temporary");
+    const f = fixture(undefined, candidate, true);
+    const conflict = await f.receive("link", "error_code=identity_already_exists");
+    const verify = await f.google.requestExistingCode!(conflict, googleUser.email!);
+    await expect(verify("123456")).rejects.toThrow("existing Google-linked account");
+    expect(f.active.setSession).not.toHaveBeenCalled();
+    expect(f.temporary.signOut).toHaveBeenCalledExactlyOnceWith({ scope: "local" });
+    expect(f.readback.session).toBe(f.existing);
   });
 
   it("rejects adoption after another tab changes the active session", async () => {

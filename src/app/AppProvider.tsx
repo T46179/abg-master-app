@@ -15,6 +15,7 @@ import {
 import {
   clearPendingCalibrationCompletion,
   loadPendingCalibrationCompletion,
+  PENDING_CALIBRATION_STORAGE_KEY,
   savePendingCalibrationCompletion
 } from "../core/calibrationRecovery";
 import { completeCalibrationProgress, loadRemoteProgressRow } from "../core/progressionSync";
@@ -23,7 +24,8 @@ import {
   clearPracticeSlotCache,
   clearPendingPracticeSubmission,
   loadPendingPracticeSubmission,
-  loadPracticeSlotsCache
+  loadPracticeSlotsCache,
+  PENDING_SUBMISSION_STORAGE_KEY
 } from "../core/protectedPracticeCache";
 import type { CalibrationCompletionRecord, PracticeFlowState, SessionState, UserState } from "../core/types";
 import {
@@ -42,6 +44,7 @@ import {
 import { getPendingRetryDelayMs, getPendingSubmissionInvalidReason } from "./protectedPracticeRecovery";
 import { PROTECTED_PRACTICE_MESSAGES } from "./protectedPracticeMessages";
 import { appReducer, initialAppState, type AppState } from "./state";
+import { hasUnfinishedPracticeAnswers, meaningfulRegistrationProgress, readLocalGuestProgress } from "../core/registrationProgress";
 
 export interface AppContextValue {
   state: AppState;
@@ -50,6 +53,9 @@ export interface AppContextValue {
   patchPracticeState: (patch: Partial<PracticeFlowState>) => void;
   retryPendingSubmissionNow: () => void;
   syncBeforeAccountSwitch?: () => Promise<boolean>;
+  checkGuestProgress?: (userId: string) => Promise<boolean | null>;
+  hasPendingAccountSwitchWork?: () => boolean;
+  retryAccountBootstrap?: () => void;
   discardPendingSubmission: () => void;
   saveLocalCalibrationCompletion: (completion: CalibrationCompletionRecord) => Promise<void>;
   skipCalibrationOnboarding: () => Promise<void>;
@@ -65,11 +71,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ? Promise.resolve({ userId: workspace.isCurrent() ? workspace.userId : null, syncUnavailable: !workspace.isCurrent() })
     : ensureAnonymousSession(runtime);
   const [state, rawDispatch] = useReducer(appReducer, initialAppState);
+  const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
   const mountedRef = useRef(true);
   const isActive = useCallback(() => mountedRef.current && (!workspace || workspace.isCurrent()), [workspace]);
   const dispatch = useCallback((action: Parameters<typeof rawDispatch>[0]) => {
     if (isActive()) rawDispatch(action);
   }, [isActive]);
+  const retryAccountBootstrap = useCallback(() => {
+    dispatch({ type: "loading" });
+    setBootstrapAttempt(attempt => attempt + 1);
+  }, [dispatch]);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
   const [pendingCalibrationCompletion, setPendingCalibrationCompletion] = useState(() => (
     typeof window === "undefined" ? null : loadPendingCalibrationCompletion(browserStorage)
@@ -330,7 +341,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [bootstrapAttempt]);
 
   const setUserState = useCallback(async (userState: UserState) => {
     if (state.storage) {
@@ -488,11 +499,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
   }, [reconcileRemoteProgress, state.calibrationState.remoteStatus, state.payload, state.status]);
 
-  const retryPendingCalibrationNow = useCallback(() => {
+  const retryPendingCalibrationNow = useCallback((readLatest = false) => {
+    const queued = (readLatest ? loadPendingCalibrationCompletion(browserStorage) : null) ?? pendingCalibrationCompletion;
     if (
       !isActive() ||
       calibrationRetryInFlightRef.current ||
-      !pendingCalibrationCompletion ||
+      !queued ||
       state.status !== "ready" ||
       !state.payload ||
       typeof window === "undefined"
@@ -504,13 +516,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!runtime?.supabaseEnabled || !runtime.supabase) return;
     const payload = state.payload;
 
-    calibrationRetryInFlightRef.current = true;
-    clearCalibrationRetryTimer();
     const pending = {
-      ...pendingCalibrationCompletion,
+      ...queued,
       lastAttemptAt: new Date().toISOString()
     };
     savePendingCalibrationCompletion(browserStorage, pending);
+    calibrationRetryInFlightRef.current = true;
+    clearCalibrationRetryTimer();
     setPendingCalibrationCompletion(pending);
 
     return settleWithTimeout((async () => {
@@ -583,6 +595,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         calibrationRetryInFlightRef.current = false;
       });
   }, [
+    browserStorage,
     clearCalibrationRetryTimer,
     pendingCalibrationCompletion,
     reconcileRemoteProgress,
@@ -720,7 +733,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     state.userState
   ]);
 
-  const retryPendingSubmissionNow = useCallback(() => {
+  const retryPendingSubmission = useCallback((preserveOnFailure = false) => {
     if (
       !isActive() ||
       retryInFlightRef.current ||
@@ -737,11 +750,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const invalidReason = getPendingSubmissionInvalidReason(pendingSubmission, state.payload?.contentVersion);
     if (invalidReason === "expired") {
-      clearPendingSubmissionState(pendingSubmission, PROTECTED_PRACTICE_MESSAGES.savedCaseExpired);
+      if (!preserveOnFailure) clearPendingSubmissionState(pendingSubmission, PROTECTED_PRACTICE_MESSAGES.savedCaseExpired);
       return;
     }
     if (invalidReason === "content_mismatch") {
-      clearPendingSubmissionState(pendingSubmission, PROTECTED_PRACTICE_MESSAGES.savedCaseOutOfDate);
+      if (!preserveOnFailure) clearPendingSubmissionState(pendingSubmission, PROTECTED_PRACTICE_MESSAGES.savedCaseOutOfDate);
       return;
     }
 
@@ -759,7 +772,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           isProtectedPracticeError(error) &&
           (error.code === "CASE_TOKEN_EXPIRED" || (error.code === "CASE_SLOT_UNAVAILABLE" && error.status === 404))
         ) {
-          clearPendingSubmissionState(pendingSubmission, PROTECTED_PRACTICE_MESSAGES.caseExpiredBeforeCheck);
+          if (!preserveOnFailure) clearPendingSubmissionState(pendingSubmission, PROTECTED_PRACTICE_MESSAGES.caseExpiredBeforeCheck);
           return;
         }
 
@@ -784,20 +797,63 @@ export function AppProvider({ children }: { children: ReactNode }) {
     state.status,
     state.supabase
   ]);
+  const retryPendingSubmissionNow = useCallback(() => retryPendingSubmission(), [retryPendingSubmission]);
 
   const discardPendingSubmission = useCallback(() => {
     if (!state.practiceState.pendingSubmission) return;
     clearPendingSubmissionState(state.practiceState.pendingSubmission, null);
   }, [clearPendingSubmissionState, state.practiceState.pendingSubmission]);
 
+  const hasPendingAccountSwitchWork = useCallback(() => {
+    try {
+      return !isActive() || retryInFlightRef.current || calibrationRetryInFlightRef.current ||
+        latestStateRef.current.practiceState.syncState === "submitting" ||
+        browserStorage.getItem(PENDING_SUBMISSION_STORAGE_KEY) !== null ||
+        browserStorage.getItem(PENDING_CALIBRATION_STORAGE_KEY) !== null;
+    } catch {
+      return true;
+    }
+  }, [browserStorage, isActive]);
+
+  const checkGuestProgress = useCallback(async (userId: string): Promise<boolean | null> => {
+    const runtime = runtimeSupabaseRef.current;
+    const current = latestStateRef.current;
+    const supabase = runtime?.supabase;
+    if (!isActive() || current.status !== "ready" || current.userId !== userId || !supabase || !current.payload) return null;
+    try {
+      const response = await settleWithTimeout(Promise.all([
+        loadRemoteProgressRow({ supabase, userId, progressionConfig: current.payload.progressionConfig }),
+        supabase.from("attempts").select("id").eq("user_id", userId).limit(1),
+        supabase.from("calibration_attempts").select("id").eq("user_id", userId).limit(1)
+      ]), REMOTE_PROGRESS_TIMEOUT_MS);
+      if (response.status !== "resolved" || !isActive()) return null;
+      const [remote, practice, calibration] = response.value;
+      if (practice.error || calibration.error || !practice.data || !calibration.data) return null;
+      const latest = latestStateRef.current;
+      if (latest.status !== "ready" || latest.userId !== userId || latest.payload !== current.payload) return null;
+      const local = readLocalGuestProgress(browserStorage, latest.userState,
+        Boolean(hasUnfinishedPracticeAnswers(latest.practiceState, latest.sessionState) || latest.practiceState.pendingSubmission ||
+          latest.practiceState.syncState === "submitting" || latest.calibrationState.localCompletion));
+      if (local === null) return null;
+      const remoteUser = { ...createEmptyUserState(), ...mapProgressRowToUserState(remote) };
+      return local || practice.data.length > 0 || calibration.data.length > 0 ||
+        meaningfulRegistrationProgress({ user: remoteUser, seen: {}, unfinished: false, checked: true }) === true;
+    } catch {
+      return null;
+    }
+  }, [browserStorage, isActive]);
+
   const syncBeforeAccountSwitch = useCallback(async () => {
     if (!isActive() || state.status !== "ready") return false;
-    const practice = settleWithTimeout(Promise.resolve(retryPendingSubmissionNow()), REMOTE_PROGRESS_TIMEOUT_MS);
-    const calibration = retryPendingCalibrationNow();
-    await Promise.all([practice, calibration]);
-    return isActive() && !retryInFlightRef.current && !calibrationRetryInFlightRef.current &&
-      !loadPendingPracticeSubmission(browserStorage) && !loadPendingCalibrationCompletion(browserStorage);
-  }, [browserStorage, isActive, retryPendingCalibrationNow, retryPendingSubmissionNow, state.status]);
+    try {
+      const practice = settleWithTimeout(Promise.resolve(retryPendingSubmission(true)), REMOTE_PROGRESS_TIMEOUT_MS);
+      const calibration = retryPendingCalibrationNow(true);
+      const [result] = await Promise.all([practice, calibration]);
+      return result.status === "resolved" && !hasPendingAccountSwitchWork();
+    } catch {
+      return false;
+    }
+  }, [hasPendingAccountSwitchWork, isActive, retryPendingCalibrationNow, retryPendingSubmission, state.status]);
 
   useEffect(() => {
     if (
@@ -977,6 +1033,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         patchPracticeState,
         retryPendingSubmissionNow,
         syncBeforeAccountSwitch,
+        checkGuestProgress,
+        hasPendingAccountSwitchWork,
+        retryAccountBootstrap,
         discardPendingSubmission,
         saveLocalCalibrationCompletion,
         skipCalibrationOnboarding

@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useSiteAccount } from "../../app/SiteAccountProvider";
 import { AccountWaiting } from "../shared/AccountWaiting";
-import { AccountBrowserStorageProvider } from "../../app/AccountWorkspace";
+import { AccountBrowserStorageProvider, useAccountBrowserStorage } from "../../app/AccountWorkspace";
 import { useAppContext } from "../../app/AppProvider";
 import { createAccountDataClient } from "../../core/accountDataClient";
 import { readExamAccess, type ExamAccess } from "../../core/examAuth";
@@ -25,6 +25,9 @@ import { useRegistration } from "../../app/RegistrationProvider";
 import { registrationDestination, registrationDestinationPath, type RegistrationDestination } from "../../core/registrationCallback";
 import { clearGoogleAttempt, type GoogleCandidate, type GoogleReturn } from "../../core/googleAccount";
 import { GoogleButton } from "./GoogleButton.dev";
+import { hasUnfinishedPracticeAnswers, readLocalGuestProgress } from "../../core/registrationProgress";
+import { loadPendingPracticeSubmission } from "../../core/protectedPracticeCache";
+import { GoogleLinkRecovery } from "./GoogleLinkRecovery.dev";
 
 import { accountPageFromPath, accountPageUrl } from "../../core/accountRoutes";
 
@@ -37,7 +40,10 @@ export default function ExamAccountExperience() {
 }
 function AccountExperience({ client }: { client: SupabaseClient }) {
   const { account, identity } = useSiteAccount();
-  const { state, syncBeforeAccountSwitch } = useAppContext();
+  const { state, syncBeforeAccountSwitch, checkGuestProgress, hasPendingAccountSwitchWork, retryAccountBootstrap } = useAppContext();
+  const browserStorage = useAccountBrowserStorage();
+  const latestState = useRef(state);
+  latestState.current = state;
   const { registration, registrationState: flow, paid, accountReady, setupError, retrySetup, google, takeGoogleCompletion } = useRegistration();
   const navigate = useNavigate(); const location = useLocation();
   const query = new URLSearchParams(location.search);
@@ -52,11 +58,34 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
   const mounted = useRef(false);
   const pendingGoogle = useRef<GoogleCandidate | null>(null);
   const [candidate, setCandidate] = useState<GoogleCandidate | null>(null);
+  const [linkConflict, setLinkConflict] = useState<GoogleReturn | null>(null);
   const [googleNotice, setGoogleNotice] = useState("");
-  const [syncIssue, setSyncIssue] = useState<"practice" | "exam" | null>(null);
+  const [switchPhase, setSwitchPhase] = useState<"checking" | "confirm" | "progress" | "practice" | "exam">("checking");
+  const switchConfirmed = useRef(false);
+  const hadGuestProgress = useRef(false);
+  const [verifiedGuestProgress, setVerifiedGuestProgress] = useState<{ userId: string; meaningful: boolean } | null>(null);
   const [waitingAttempt, setWaitingAttempt] = useState(0);
   const resumedCodeEntry = useRef(false);
   const verified = identity.status === "verified" && Boolean(identity.userId);
+  const guest = identity.status === "guest";
+  const localGuestProgress = guest && state.userId === identity.userId && state.status === "ready"
+    ? readLocalGuestProgress(browserStorage, state.userState, Boolean(hasUnfinishedPracticeAnswers(state.practiceState, state.sessionState) ||
+      state.practiceState.pendingSubmission || state.calibrationState.localCompletion || readExamWork(identity.userId)))
+    : null;
+  const guestProgress = localGuestProgress === false
+    ? verifiedGuestProgress?.userId === identity.userId ? verifiedGuestProgress?.meaningful ?? null : null
+    : localGuestProgress;
+  useEffect(() => {
+    if ((page !== "signin" && page !== "signup") || candidate || localGuestProgress !== false ||
+        !identity.userId || !checkGuestProgress) return;
+    let cancelled = false;
+    const userId = identity.userId;
+    setVerifiedGuestProgress(null);
+    void checkGuestProgress(userId).then(meaningful => {
+      if (!cancelled && meaningful !== null) setVerifiedGuestProgress({ userId, meaningful });
+    });
+    return () => { cancelled = true; };
+  }, [page, candidate, localGuestProgress, identity.userId, checkGuestProgress, state.calibrationState.remoteStatus]);
   function open(next: Page, entry: "trial" | "account" = intent) {
     setError(""); const params = new URLSearchParams(location.search);
     if (entry === "trial") params.set("return_to", "trial");
@@ -84,11 +113,11 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
     }
   }, [flow.phase, flow.destination, page, location.search, registration, navigate]);
   function setPage(next: Page) { open(next); }
-  function finish(target: RegistrationDestination) {
+  function finish(target: RegistrationDestination, savedGuestProgressFor?: string) {
     registration.resetView();
     if (target === "trial") open("start", "trial");
     else if (target === "exam") open("exam", "account");
-    else void navigate(registrationDestinationPath(target));
+    else void navigate(registrationDestinationPath(target), { state: savedGuestProgressFor ? { savedGuestProgressFor } : undefined });
   }
   useEffect(() => {
     if (flow.phase === "complete" && flow.completedUserId === identity.userId && flow.completedGeneration === identity.generation) finish(flow.destination);
@@ -107,16 +136,27 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
     void navigate(accountPageUrl(callback.attempt.action === "signin" ? "signin" : "signup", params.toString()), { replace: true });
   }
 
-  async function adoptGoogle(result: GoogleCandidate) {
+  async function adoptGoogle(result: GoogleCandidate, beforeCommit?: () => boolean, notice?: string) {
     const returnLocation = window.location.href;
     // Changing owner remounts the Exam shell. Finish from the committed result,
     // including when the old owner's screen has already unmounted.
+    const adopted = await result.adopt(beforeCommit);
+    if (!adopted) return;
     pendingGoogle.current = null;
-    await result.adopt();
+    if (notice) setGoogleNotice(notice);
     await account.refresh();
     if (window.location.href !== returnLocation) return;
     retrySetup();
-    finish(result.destination);
+    finish(result.destination, notice ? adopted : undefined);
+  }
+
+  function holdCandidate(result: GoogleCandidate, hadProgress = false) {
+    pendingGoogle.current = result;
+    switchConfirmed.current = false;
+    hadGuestProgress.current = hadProgress;
+    setLinkConflict(null);
+    setSwitchPhase(guest ? "checking" : "confirm");
+    setCandidate(result);
   }
 
   useEffect(() => {
@@ -148,16 +188,26 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
     if (!completion) return;
     const { callback, result } = completion;
     if ("error" in result) { googleFailure(result.error, callback); return; }
+    if ("linkConflict" in result) {
+      if (guest && callback.attempt.owner === identity.userId) setLinkConflict(callback);
+      else googleFailure("Your active account changed. Start Google sign-in again.", callback);
+      return;
+    }
     if (result.candidate.requiresConfirmation) {
-      pendingGoogle.current = result.candidate;
-      setCandidate(result.candidate);
+      if (identity.userId === callback.attempt.owner) {
+        holdCandidate(result.candidate, callback.attempt.hadProgress);
+      } else {
+        void result.candidate.cancel();
+        googleFailure("Your active account changed. Start Google sign-in again.", callback);
+      }
       return;
     }
     googleInFlight.current = true;
     setGoogleBusy(true);
     void (async () => {
       try {
-        await adoptGoogle(result.candidate);
+        const preserveNotice = callback.attempt.action === "link" && (callback.attempt.hadProgress || guestProgress === true);
+        await adoptGoogle(result.candidate, undefined, preserveNotice ? "Your progress is now saved to your account." : undefined);
       } catch (cause) {
         if (mounted.current) googleFailure(cause instanceof Error ? cause.message : "Google sign-in could not finish. Please retry.", callback);
       } finally {
@@ -167,12 +217,25 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
     })();
   }, [google, identity.status, takeGoogleCompletion]);
 
-  async function startGoogle(action: "link" | "signup" | "signin") {
+  async function startGoogle(action: "link" | "signup" | "signin", target = destination) {
     if (!google || googleInFlight.current || inFlight.current || registration.isBusy()) return;
+    const practice = latestState.current.practiceState;
+    const hasAnswers = hasUnfinishedPracticeAnswers(practice, latestState.current.sessionState);
+    const pending = hasAnswers || practice.pendingSubmission
+      ? loadPendingPracticeSubmission(browserStorage) : null;
+    if (guest && (practice.syncState === "submitting" ||
+      (hasAnswers && (!pending || pending.caseToken !== practice.currentCaseToken)) ||
+      (practice.pendingSubmission && pending?.caseToken !== practice.pendingSubmission.caseToken))) {
+      setGoogleNotice("Finish or save your current Practice case before continuing with Google.");
+      return;
+    }
     googleInFlight.current = true;
     setGoogleBusy(true);
     setGoogleNotice("");
-    try { window.location.assign(await google.begin(action, destination)); }
+    try {
+      const url = await google.begin(action, target, { expectedOwner: identity.userId, hadProgress: guestProgress === true });
+      window.location.assign(url);
+    }
     catch (cause) {
       googleInFlight.current = false;
       setGoogleBusy(false);
@@ -180,34 +243,64 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
     }
   }
 
-  async function switchGoogle(result: GoogleCandidate) {
+  async function switchGoogle(result: GoogleCandidate, confirmed: boolean) {
     if (googleInFlight.current) return;
+    switchConfirmed.current = confirmed;
     googleInFlight.current = true;
     setGoogleBusy(true);
     try {
+      async function canSwitch() {
+        const exam = readExamWork(identity.userId);
+        if (exam === null && guest) { setSwitchPhase("progress"); return false; }
+        if (exam === null || exam?.pending) { setSwitchPhase("exam"); return false; }
+        if (!guest) return true;
+
+        const progress = identity.userId ? await checkGuestProgress?.(identity.userId) : null;
+        if (!mounted.current || pendingGoogle.current !== result) return false;
+        if (progress == null) { setSwitchPhase("progress"); return false; }
+        if (!confirmed && (progress || exam?.exists || hadGuestProgress.current)) { setSwitchPhase("confirm"); return false; }
+        return true;
+      }
+      if (!await canSwitch()) return;
       if (!await syncBeforeAccountSwitch?.()) {
-        setSyncIssue("practice");
+        setSwitchPhase("practice");
         return;
       }
-      // Resume Exam through its own writer and recovery flow. A new writer
-      // here could take over a sitting open in another tab.
-      if (hasPendingExamWork(identity.userId)) {
-        setSyncIssue("exam");
-        return;
-      }
-      await adoptGoogle(result);
-      pendingGoogle.current = null;
-      setCandidate(null);
-    } catch {
+      if (guest && !await canSwitch()) return;
+      await adoptGoogle(result, () => {
+        if (!mounted.current || pendingGoogle.current !== result) return false;
+        const exam = readExamWork(identity.userId);
+        if (exam === null && guest) { setSwitchPhase("progress"); return false; }
+        if (exam === null || exam?.pending) { setSwitchPhase("exam"); return false; }
+        if (hasPendingAccountSwitchWork?.()) { setSwitchPhase("practice"); return false; }
+        if (guest) {
+          const latest = latestState.current;
+          const local = latest.status === "ready" && latest.userId === identity.userId
+            ? readLocalGuestProgress(browserStorage, latest.userState, hasUnfinishedPracticeAnswers(latest.practiceState, latest.sessionState))
+            : null;
+          if (local === null) { setSwitchPhase("progress"); return false; }
+          if (!confirmed && (local || exam?.exists)) { setSwitchPhase("confirm"); return false; }
+        }
+        pendingGoogle.current = null;
+        return true;
+      });
+      if (!pendingGoogle.current && mounted.current) setCandidate(null);
+    } catch (cause) {
       await result.cancel();
       pendingGoogle.current = null;
       setCandidate(null);
-      googleFailure("Google sign-in could not finish. You can try again.");
+      googleFailure(cause instanceof Error ? cause.message : "Sign-in could not finish. You can try again.");
     } finally {
       googleInFlight.current = false;
       setGoogleBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (!candidate || switchPhase !== "checking") return;
+    if (state.status === "ready") void switchGoogle(candidate, false);
+    else if (state.status === "error") setSwitchPhase("progress");
+  }, [candidate, switchPhase, state.status]);
 
   async function cancelGoogle(result: GoogleCandidate) {
     if (googleInFlight.current) return;
@@ -217,10 +310,9 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
     finally {
       pendingGoogle.current = null;
       setCandidate(null);
-      setSyncIssue(null);
+      setSwitchPhase("checking");
       setGoogleBusy(false);
       googleInFlight.current = false;
-      setGoogleNotice("Account switch cancelled. Your current account is still active.");
     }
   }
   function startTrial() {
@@ -242,15 +334,48 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
   const recoveryPage = ["forgot", "reset"].includes(page) || (registration.emailPurpose() === "reset" && registrationActive);
   const registrationPage = ["signup", "checkEmail", "password", "completion", "link"].includes(page);
   if (candidate) {
+    const googleConfirmation = switchPhase === "confirm" && guest && candidate.method === "google";
+    const title = switchPhase === "checking" ? "Checking your progress"
+      : switchPhase === "progress" ? "We couldn’t verify your progress"
+      : switchPhase === "exam" ? "Your Exam has pending work"
+      : !guest ? "Switch accounts?"
+      : candidate.method === "email" ? "Continue to your account?" : "Continue with Google?";
+    const continueLabel = !guest ? "Switch account" : candidate.method === "email" ? "Continue to account" : "Continue with Google";
     body = <div className="account-narrow ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">
-      <AccountCard title="Switch accounts?">
-        <p>Continue as <strong>{candidate.email}</strong>? Your current progress stays with its original account. Guest progress may become inaccessible after switching.</p>
-        {syncIssue === "practice" && <p role="alert">Your pending work could not sync. Stay with your current account or retry syncing.</p>}
-        {syncIssue === "exam" && <p role="alert">Your Exam has pending work. Keep your current account and recover the sitting in the Exam Room before switching.</p>}
-        <AccountButton busy={googleBusy} disabled={syncIssue === "exam"} onClick={() => void switchGoogle(candidate)}>{syncIssue === "practice" ? "Retry sync and switch" : "Switch account"}</AccountButton>
-        <p><button type="button" className="account-link" disabled={googleBusy} onClick={() => void cancelGoogle(candidate)}>Keep current account</button></p>
+      <AccountCard title={title} className={googleConfirmation ? "account-entry-card account-google-confirmation" : undefined}>
+        {switchPhase === "checking" && <p role="status">Checking saved progress and pending work.</p>}
+        {switchPhase === "progress" && <p role="alert">We couldn’t check all of your saved progress. Retry before switching accounts.</p>}
+        {switchPhase === "exam" && <p role="alert">Recover your sitting in the Exam Room before switching accounts.</p>}
+        {switchPhase === "practice" && <p role="alert">Your pending work could not sync. Stay with your current account or retry syncing.</p>}
+        {switchPhase === "confirm" && <>
+          <p>You’re signing in as <strong>{candidate.email}</strong>.</p>
+          {googleConfirmation ? <p><strong>You'll lose access to your current progress as a guest if you continue</strong></p>
+            : guest ? <><p><strong>Your guest progress won’t transfer.</strong></p>
+            <p>Your current practice progress belongs to your guest account. You may not be able to access it again after switching.</p></>
+            : <p>Your current progress stays with its original account.</p>}
+        </>}
+        {switchPhase === "progress" && <AccountButton busy={googleBusy} onClick={() => {
+          if (state.status === "error" && retryAccountBootstrap) {
+            retryAccountBootstrap();
+            setSwitchPhase("checking");
+          } else void switchGoogle(candidate, switchConfirmed.current);
+        }}>Retry progress check</AccountButton>}
+        {switchPhase === "confirm" && <AccountButton busy={googleBusy} className={googleConfirmation ? "account-entry-submit" : undefined}
+          showArrow={!googleConfirmation} onClick={() => void switchGoogle(candidate, true)}>{continueLabel}</AccountButton>}
+        {switchPhase === "practice" && <AccountButton busy={googleBusy} onClick={() => void switchGoogle(candidate, switchConfirmed.current)}>Retry sync and switch</AccountButton>}
+        <p className={googleConfirmation ? "account-entry-footer" : undefined}><button type="button" className="account-link" disabled={googleBusy} onClick={() => void cancelGoogle(candidate)}>{guest ? "Stay as guest" : "Keep current account"}</button></p>
       </AccountCard>
     </div>;
+  } else if (linkConflict && guest && linkConflict.attempt.owner === identity.userId && !googleBusy) {
+    const request = google?.requestExistingCode;
+    body = <GoogleLinkRecovery
+      requestCode={request ? email => request(linkConflict, email) : undefined}
+      onCandidate={result => holdCandidate(result, linkConflict.attempt.hadProgress)}
+      onGoogle={() => void startGoogle("signin", linkConflict.attempt.destination)}
+      onCancel={() => {
+        setLinkConflict(null);
+        setGoogleNotice("Your guest account is still active.");
+      }} />;
   } else if (googleBusy || identity.status === "checking") {
     body = <AccountWaiting attempt={waitingAttempt} retry={() => { setWaitingAttempt(n => n + 1); void account.retryVerification(); }} />;
   } else if (identity.status === "unavailable" && !registrationActive && !["signin", "completion", "forgot", "reset"].includes(page)) {
@@ -264,10 +389,12 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
   } else if (registrationActive || registrationPage || identity.status === "unverified") {
     body = <div className="account-registration">{intent === "trial" && <TrialStepper step={0} />}
       <RegistrationPages page={registrationPage ? page as AccountPage : "link"} destination={destination} onPage={setPage}
-        onGoogle={google ? keep => void startGoogle(identity.status === "guest" && keep ? "link" : "signup") : undefined} />
+        guestProgress={guestProgress} onGoogle={google ? () => void startGoogle(guest ? "link" : "signup") : undefined} />
     </div>;
   } else if (page === "signin") {
-    body = <div className="account-signin-layout">{intent === "trial" && <TrialStepper step={0} />}<SignInForm busy={busy} error={error} onSubmit={signIn} onPage={p => { registration.resetView(); open(p); }} onGoogle={google ? () => void startGoogle("signin") : undefined} /></div>;
+    body = <div className="account-signin-layout">{intent === "trial" && <TrialStepper step={0} />}<SignInForm
+      busy={busy} error={error} onSubmit={signIn} onPage={p => { registration.resetView(); open(p); }}
+      onGoogle={google ? () => void startGoogle("signin") : undefined} /></div>;
   } else if (verified && identity.userId) {
     body = accountReady !== true ? setupError
       ? <div className="account-narrow"><AccountCard title="We couldn't check account setup"><p role="status">Your account has not been replaced. Please retry.</p><AccountButton onClick={retrySetup}>Retry account check</AccountButton></AccountCard></div>
@@ -279,15 +406,16 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
   return <main className="app-shell__page exam-screen abg-account">{googleNotice && <p role="status" className="account-notice">{googleNotice}</p>}{body}</main>;
 }
 
-function hasPendingExamWork(userId: string | null): boolean {
-  if (!userId) return false;
+function readExamWork(userId: string | null): { exists: true; pending: boolean } | undefined | null {
+  if (!userId) return undefined;
   try {
     const raw = localStorage.getItem("abgm-exam-pilot-clpfecuohwzwrgmqzeos-" + userId);
-    if (!raw) return false;
+    if (raw === null) return undefined;
     const journal: ExamRuntimeSession["journal"] = JSON.parse(raw);
-    return Boolean(journal && (!journal.attemptId || journal.dirty || journal.submission || journal.pendingPresentedUnitIds?.length));
+    if (!journal || typeof journal !== "object" || Array.isArray(journal)) return null;
+    return { exists: true, pending: Boolean(!journal.attemptId || journal.dirty || journal.submission || journal.pendingPresentedUnitIds?.length) };
   } catch {
-    return true;
+    return null;
   }
 }
 
@@ -300,7 +428,7 @@ function SignInForm({ busy, error, onSubmit, onPage, onGoogle }: { busy: boolean
     if (!password) { document.getElementById("exam-signin-password")?.focus(); return; }
     const value = password; setPassword(""); void onSubmit(email, value);
   }
-  return <AccountCard className="account-entry-card" eyebrow="Welcome back" title="Sign in">
+  return <AccountCard className="account-entry-card" title="Welcome Back">
     <form noValidate onSubmit={submit} className="account-form ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">
       {onGoogle && <GoogleButton disabled={busy} onClick={onGoogle} />}
       <AccountField id="exam-signin-email" label="Email" placeholder="you@example.com" value={email} onChange={setEmail} error={emailError} disabled={busy} />

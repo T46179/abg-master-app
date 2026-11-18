@@ -40,7 +40,8 @@ vi.mock("../core/supabase", () => ({
   ensureAnonymousSession: (...args: unknown[]) => ensureAnonymousSession(...args)
 }));
 
-vi.mock("../core/storage", () => ({
+vi.mock("../core/storage", async importOriginal => ({
+  ...await importOriginal<typeof import("../core/storage")>(),
   createAppStorage: (...args: unknown[]) => createAppStorage(...args)
 }));
 
@@ -196,6 +197,30 @@ describe("AppProvider protected practice recovery", () => {
     await flush();
 
     expect(container.querySelector("[data-testid='pressure-unit']")?.textContent).toBe("kPa");
+  });
+
+  it("verifies guest progress from owner-scoped history and fails closed when a read fails", async () => {
+    const attempts = vi.fn().mockResolvedValueOnce({ data: null, error: new Error("offline") })
+      .mockResolvedValueOnce({ data: [], error: null })
+      .mockResolvedValueOnce({ data: [{ id: "old-attempt" }], error: null });
+    const eq = vi.fn((_column: string, _owner: string) => ({ limit: attempts }));
+    const from = vi.fn((table: string) => ({
+      select: () => table === "attempts" ? { eq } : { eq: () => ({ limit: async () => ({ data: [], error: null }) }) }
+    }));
+    createRuntimeSupabaseClient.mockReturnValue({ supabase: { auth: {}, from }, supabaseEnabled: true });
+    let check: ReturnType<typeof useAppContext>["checkGuestProgress"];
+    function ProgressProbe() {
+      check = useAppContext().checkGuestProgress;
+      return null;
+    }
+    await act(async () => root.render(<AppProvider><ProgressProbe /></AppProvider>));
+    await flush();
+    expect(await check!("another-user")).toBeNull();
+    expect(from).not.toHaveBeenCalled();
+    expect(await check!("user-1")).toBeNull();
+    expect(await check!("user-1")).toBe(false);
+    expect(await check!("user-1")).toBe(true);
+    expect(eq).toHaveBeenCalledWith("user_id", "user-1");
   });
 
   afterEach(() => {

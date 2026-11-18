@@ -3,7 +3,7 @@ import { act, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
 import type { RegistrationCallback } from "../../core/registrationCallback";
-import type { GoogleAccount, GoogleCompletion } from "../../core/googleAccount";
+import type { GoogleAccount, GoogleCandidate, GoogleCompletion, GoogleReturn } from "../../core/googleAccount";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SiteAccountProvider, useSiteAccount } from "../../app/SiteAccountProvider";
 import { RegistrationProvider } from "../../app/RegistrationProvider";
@@ -12,13 +12,19 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { emptyExamOnboarding, examOnboardingKey, saveExamOnboarding } from "../../core/examOnboarding";
 
-const m = vi.hoisted(() => ({ client: null as unknown, temporary: null as any, lifecycle: undefined as any, access: vi.fn(), active: false, recover: false, runtime: vi.fn(), begin: vi.fn(), sync: vi.fn() }));
+const m = vi.hoisted(() => ({ client: null as unknown, temporary: null as any, lifecycle: undefined as any, access: vi.fn(), active: false, recover: false, runtime: vi.fn(), begin: vi.fn(), sync: vi.fn(), checkProgress: vi.fn(), practice: null as any, hasAnswers: false }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: () => m.temporary ?? m.client }));
 vi.mock("../../core/examAuth", () => ({ createExamAuthClient: () => m.client, readExamAccess: m.access }));
 vi.mock("../../core/accountDataClient", () => ({ createAccountDataClient: (_config: unknown, client: unknown) => client }));
 vi.mock("../../app/AppProvider", async () => {
   const { initialAppState } = await import("../../app/state");
-  return { useAppContext: () => ({ syncBeforeAccountSwitch: m.sync, state: { ...initialAppState, status: "ready", sessionState: { ...initialAppState.sessionState, pressureUnit: "mmHg" }, calibrationState: { ...initialAppState.calibrationState, remoteStatus: "loaded" } } }) };
+  return { useAppContext: () => ({ syncBeforeAccountSwitch: m.sync, checkGuestProgress: m.checkProgress, state: {
+    ...initialAppState, userId: current?.id ?? null, status: "ready",
+    practiceState: { ...initialAppState.practiceState, ...m.practice },
+    sessionState: { ...initialAppState.sessionState, pressureUnit: "mmHg",
+      selectedAnswers: m.hasAnswers ? [{ key: "step", label: "Step", chosen: "answer" }] : [] },
+    calibrationState: { ...initialAppState.calibrationState, remoteStatus: "loaded" }
+  } }) };
 });
 vi.mock("../exam/ExamSittingContext", () => ({ useOptionalExamSitting: () => ({ sitting: m.active ? { phase: "active" } : null }), useExamSitting: () => ({ sitting: m.active ? { phase: "active" } : null }) }));
 vi.mock("../exam/ExamPilotRuntime", () => ({ default: (props: any) => {
@@ -50,6 +56,26 @@ function OwnedExperience({ strict = false }: { strict?: boolean }) {
 }
 function RouteProbe() { const location = useLocation(); return <output data-testid="account-location">{location.pathname + location.search}</output>; }
 function route() { return container.querySelector('[data-testid="account-location"]')?.textContent; }
+const mockGoogle = () => ({ begin: vi.fn(), complete: vi.fn(), requestExistingCode: undefined });
+function guestGoogleReturn(action: "signin" | "link" = "signin"): GoogleReturn {
+  current = { id: "guest", email: "guest@example.test" };
+  auth.getUser.mockImplementation(async () => ({ data: { user: current?.id === "guest"
+    ? { ...current, is_anonymous: true }
+    : { ...current, is_anonymous: false, email_confirmed_at: "verified", identities: [{ provider: "google" }] } } }));
+  return { attempt: { action, destination: "trial", owner: "guest", ownerSession: "guest-session", started: Date.now() },
+    code: action === "link" ? null : "code", conflict: action === "link" };
+}
+function googleCandidate(method: "google" | "email" = "google") {
+  return {
+    email: "google@example.test", method, destination: "trial", requiresConfirmation: true,
+    cancel: vi.fn(async () => {}),
+    adopt: vi.fn(async (beforeCommit?: () => boolean) => {
+      if (beforeCommit && !beforeCommit()) return null;
+      emit("SIGNED_IN", "google");
+      return "google";
+    })
+  } satisfies GoogleCandidate;
+}
 async function render(callback?: RegistrationCallback, initialEntry = "/", googleCompletion?: GoogleCompletion, google?: GoogleAccount) { await act(async () => root.render(<MemoryRouter initialEntries={[initialEntry]}><RouteProbe /><SiteAccountProvider client={m.client as SupabaseClient}><RegistrationProvider client={m.client as SupabaseClient} callback={callback} google={google} googleCompletion={googleCompletion}>{createPortal(<AccountNav />, host)}<OwnedExperience strict={Boolean(googleCompletion)} /></RegistrationProvider></SiteAccountProvider></MemoryRouter>)); await flush(); }
 async function login(id = "a") {
   await fill("exam-signin-email", ` ${id}@example.test `); await fill("exam-signin-password", " password ");
@@ -133,6 +159,9 @@ beforeEach(() => {
   container = document.createElement("div"); document.body.append(container); root = createRoot(container);
   vi.spyOn(window, "confirm").mockReturnValue(true);
   m.sync.mockReset().mockResolvedValue(true);
+  m.checkProgress.mockReset().mockResolvedValue(true);
+  m.practice = null;
+  m.hasAnswers = false;
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); host.remove(); vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllEnvs(); });
 describe("unified local pilot account flow", () => {
@@ -140,7 +169,7 @@ describe("unified local pilot account flow", () => {
     current = { id: "google", email: "google@example.test" };
     auth.getUser.mockResolvedValue({ data: { user: { ...current, email_confirmed_at: "verified",
       is_anonymous: false, identities: [{ provider: "google" }] } } });
-    await render(undefined, "/sign-in?return_to=trial", undefined, { begin: vi.fn(), complete: vi.fn() });
+    await render(undefined, "/sign-in?return_to=trial", undefined, mockGoogle());
     expect((m.client as any).rpc).not.toHaveBeenCalled();
     expect(route()).toBe("/dev/exam-pilot?return_to=trial&account=start");
     expect(m.access).toHaveBeenCalled();
@@ -148,26 +177,138 @@ describe("unified local pilot account flow", () => {
   });
 
   it("waits for switch confirmation and sync, then preserves Trial Exam across the owner remount", async () => {
-    current = { id: "guest", email: "guest@example.test" };
-    auth.getUser.mockImplementation(async () => ({ data: { user: current?.id === "guest"
-      ? { ...current, is_anonymous: true }
-      : { ...current, is_anonymous: false, email_confirmed_at: "verified", identities: [{ provider: "google" }] } } }));
-    const candidate = { email: "google@example.test", destination: "trial" as const, requiresConfirmation: true,
-      cancel: vi.fn(async () => {}), adopt: vi.fn(async () => { emit("SIGNED_IN", "google"); return "google"; }) };
+    const callback = guestGoogleReturn();
+    const candidate = googleCandidate();
     m.sync.mockResolvedValueOnce(false);
-    await render(undefined, "/dev/exam-pilot", {
-      callback: { attempt: { action: "signin", destination: "trial", owner: "guest", ownerSession: "guest-session", started: Date.now() }, code: "code", conflict: false },
-      result: { candidate }
-    }, { begin: vi.fn(), complete: vi.fn() });
+    await render(undefined, "/dev/exam-pilot", { callback, result: { candidate } }, mockGoogle());
     expect(candidate.adopt).not.toHaveBeenCalled();
     expect(candidate.cancel).not.toHaveBeenCalled();
-    await click("Switch account");
+    expect(container.textContent).toContain("You'll lose access to your current progress as a guest if you continue");
+    await click("Continue with Google");
     expect(candidate.adopt).not.toHaveBeenCalled();
     expect(container.textContent).toContain("could not sync");
     await click("Retry sync and switch");
     expect(candidate.adopt).toHaveBeenCalledOnce();
     expect(candidate.cancel).not.toHaveBeenCalled();
     expect(route()).toBe("/dev/exam-pilot?return_to=trial&account=start");
+  });
+
+  it("skips the switch prompt for an empty guest and still syncs before adoption", async () => {
+    const callback = guestGoogleReturn();
+    const candidate = googleCandidate();
+    m.checkProgress.mockResolvedValue(false);
+    await render(undefined, "/dev/exam-pilot", { callback, result: { candidate } }, mockGoogle());
+    expect(m.sync).toHaveBeenCalledOnce();
+    expect(candidate.adopt).toHaveBeenCalledOnce();
+    expect(container.textContent).not.toContain("You'll lose access to your current progress as a guest if you continue");
+    expect(route()).toBe("/dev/exam-pilot?return_to=trial&account=start");
+  });
+
+  it("blocks unavailable progress and lets the guest retry before choosing to stay", async () => {
+    const callback = guestGoogleReturn();
+    const candidate = googleCandidate();
+    m.checkProgress.mockResolvedValueOnce(null);
+    await render(undefined, "/dev/exam-pilot", { callback, result: { candidate } }, mockGoogle());
+    expect(container.textContent).toContain("We couldn’t verify your progress");
+    expect(container.textContent).not.toContain("Continue with Google");
+    expect(m.sync).not.toHaveBeenCalled();
+    await click("Retry progress check");
+    expect(container.textContent).toContain("You'll lose access to your current progress as a guest if you continue");
+    await click("Stay as guest");
+    expect(candidate.adopt).not.toHaveBeenCalled();
+    expect(candidate.cancel).toHaveBeenCalledOnce();
+    expect(current?.id).toBe("guest");
+  });
+
+  it("rechecks an empty guest after sync before committing", async () => {
+    const callback = guestGoogleReturn();
+    const candidate = googleCandidate();
+    m.checkProgress.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    await render(undefined, "/dev/exam-pilot", { callback, result: { candidate } }, mockGoogle());
+    expect(m.sync).toHaveBeenCalledOnce();
+    expect(candidate.adopt).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("You'll lose access to your current progress as a guest if you continue");
+  });
+
+  it("blocks adoption when Exam work is pending", async () => {
+    const callback = guestGoogleReturn();
+    const candidate = googleCandidate();
+    localStorage.setItem("abgm-exam-pilot-clpfecuohwzwrgmqzeos-guest", JSON.stringify({ attemptId: "attempt", dirty: { part: "answer" } }));
+    await render(undefined, "/dev/exam-pilot", { callback, result: { candidate } }, mockGoogle());
+    expect(container.textContent).toContain("Your Exam has pending work");
+    expect(candidate.adopt).not.toHaveBeenCalled();
+    await click("Stay as guest");
+    expect(candidate.cancel).toHaveBeenCalledOnce();
+  });
+
+  it("does not leave the app when an in-memory Practice case cannot be recovered", async () => {
+    guestGoogleReturn();
+    m.practice = { currentCase: { id: "running-case" }, currentCaseToken: "in-memory" };
+    m.hasAnswers = true;
+    const google = mockGoogle();
+    await render(undefined, "/sign-in", undefined, google);
+    expect(container.textContent).not.toContain("Save my guest progress");
+    await click("Continue with Google");
+    expect(google.begin).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("Finish or save your current Practice case");
+  });
+
+  it("lets a fresh guest sign in when Practice auto-loaded an unanswered case", async () => {
+    guestGoogleReturn();
+    m.practice = { currentCase: { id: "loaded-case" }, currentCaseToken: "in-memory" };
+    m.checkProgress.mockResolvedValue(false);
+    const google = mockGoogle();
+    google.begin.mockRejectedValue(new Error("Test redirect stopped"));
+    await render(undefined, "/sign-in", undefined, google);
+    expect(container.textContent).not.toContain("Save my guest progress");
+    await click("Continue with Google");
+    expect(google.begin).toHaveBeenCalledExactlyOnceWith("signin", "exam", { expectedOwner: "guest", hadProgress: false });
+    expect(container.textContent).not.toContain("Finish or save your current Practice case");
+  });
+
+  it.each([["/sign-in", "signin"], ["/create-account", "link"]] as const)("starts the appropriate Google flow from %s", async (path, action) => {
+    guestGoogleReturn();
+    m.checkProgress.mockResolvedValue(false);
+    const google = mockGoogle();
+    google.begin.mockRejectedValue(new Error("Test redirect stopped"));
+    await render(undefined, path, undefined, google);
+    expect(container.textContent).not.toContain("Keep my current progress");
+    await click("Continue with Google");
+    expect(google.begin).toHaveBeenCalledExactlyOnceWith(action, "exam", { expectedOwner: "guest", hadProgress: false });
+  });
+
+  it("links a guest without waiting for progress verification and shows a saved notice", async () => {
+    const callback = guestGoogleReturn("link");
+    callback.attempt.hadProgress = true;
+    callback.code = "code";
+    callback.conflict = false;
+    const candidate = { ...googleCandidate(), requiresConfirmation: false, adopt: vi.fn().mockResolvedValue("guest") };
+    m.checkProgress.mockResolvedValue(null);
+    await render(undefined, "/dev/exam-pilot", { callback, result: { candidate } }, mockGoogle());
+    expect(candidate.adopt).toHaveBeenCalledOnce();
+    expect(m.checkProgress).not.toHaveBeenCalled();
+    expect(m.sync).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("Your progress is now saved to your account.");
+  });
+
+  it("keeps the guest active during signup conflict and gates the recovered email-code candidate", async () => {
+    const callback = guestGoogleReturn("link");
+    const candidate = googleCandidate("email");
+    const verify = vi.fn().mockResolvedValue(candidate);
+    const requestExistingCode = vi.fn().mockResolvedValue(verify);
+    await render(undefined, "/dev/exam-pilot", { callback, result: { linkConflict: true } }, { ...mockGoogle(), requestExistingCode });
+    expect(container.textContent).toContain("You already have an account");
+    expect(container.textContent).toContain("This Google account is already registered with ABG Master. Sign in to continue where you left off.");
+    await fill("google-existing-email", "google@example.test");
+    await click("Send me a sign-in code");
+    expect(requestExistingCode).toHaveBeenCalledWith(callback, "google@example.test");
+    await fill("google-existing-code", "123456");
+    await click("Verify sign-in code");
+    expect(verify).toHaveBeenCalledWith("123456");
+    expect(container.textContent).toContain("Continue to your account?");
+    expect(current?.id).toBe("guest");
+    await click("Continue to account");
+    expect(candidate.adopt).toHaveBeenCalledOnce();
   });
 
   it.each([

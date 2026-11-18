@@ -34,6 +34,7 @@ function AppShellContent() {
   const background = useBackgroundAccount();
   const site = useOptionalSiteAccount();
   const accountRoute = Boolean(accountPageFromPath(location.pathname)) || location.pathname === "/dev/exam-pilot";
+  const localAccountRoute = import.meta.env.DEV && Boolean(background && accountRoute);
   const needsGuest = /^\/(practice|dashboard|insights|learn|calibration|featured-case)(\/|$)/.test(location.pathname);
   const [guestError, setGuestError] = useState(false);
   const [guestAttempt, setGuestAttempt] = useState(0);
@@ -44,8 +45,11 @@ function AppShellContent() {
     void site.account.continueAsGuest().catch(() => { if (!cancelled) setGuestError(true); });
     return () => { cancelled = true; };
   }, [Boolean(background), needsGuest, site?.identity.status, site?.account, guestAttempt]);
-  const accountWaiting = Boolean(background && (!background.ready || site?.identity.status === "checking" ||
+  const accountWaiting = Boolean(background && ((!background.ready && !localAccountRoute) || site?.identity.status === "checking" ||
     (!accountRoute && (background.error || (needsGuest && site?.identity.status === "signed_out")))));
+  const appBlocking = localAccountRoute ? null : state.appStatus.blocking;
+  const savedGuestProgress = import.meta.env.DEV && site?.identity.status === "verified" &&
+    location.state?.savedGuestProgressFor === site.identity.userId;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const learnOpenedTrackedRef = useRef(false);
@@ -196,18 +200,19 @@ function AppShellContent() {
         ))}
       </div>
 
-      {accountWaiting && !state.appStatus.blocking ? (
+      {savedGuestProgress && <p role="status" className="app-shell__page">Your progress is now saved to your account.</p>}
+      {accountWaiting && !appBlocking ? (
         <main className="app-shell__page status-screen"><AccountWaiting attempt={(background?.attempt ?? 0) + guestAttempt}
           error={background?.error ? "We couldn't check your account." : guestError ? "We couldn't start guest Practice." : undefined}
           retry={() => { if (site?.identity.status === "signed_out") setGuestAttempt(n => n + 1); else background?.retry(); }} />
           {background?.error && <p><a href="/sign-in">Sign in</a> or <a href="/forgot-password">recover your account</a></p>}
         </main>
-      ) : state.appStatus.blocking ? (
+      ) : appBlocking ? (
         <main className="app-shell__page status-screen">
           <Surface className="status-panel">
             <span className="status-panel__eyebrow">Application blocked</span>
-            <h1>{state.appStatus.blocking.title ?? "Something went wrong."}</h1>
-            <p>{state.appStatus.blocking.message ?? "The frontend could not initialize."}</p>
+            <h1>{appBlocking.title ?? "Something went wrong."}</h1>
+            <p>{appBlocking.message ?? "The frontend could not initialize."}</p>
           </Surface>
         </main>
       ) : shouldHoldLearnerRoute ? (
