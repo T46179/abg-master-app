@@ -250,7 +250,7 @@ function GaugeMarker({ marker }: { marker: AnionGapGaugeMarker }) {
   );
 }
 
-function ClassificationGauge(props: {
+export function AnionGapClassificationGauge(props: {
   reference: AnionGapVisualData["reference"];
   unit: string;
   primaryMarker: AnionGapGaugeMarker;
@@ -615,7 +615,7 @@ export function AnionGapVisualContent(props: AnionGapVisualContentProps) {
 
   return (
     <div className="ag">
-      <ClassificationGauge
+      <AnionGapClassificationGauge
         reference={model.reference}
         unit={model.unit}
         primaryMarker={model.primaryMarker}

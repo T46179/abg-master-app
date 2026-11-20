@@ -265,7 +265,7 @@ describe("Exam presentation interactions", () => {
       { path: "/exam", element: <ExamScreen /> }
     ] }], { initialEntries: ["/exam"] });
     act(() => root.render(<RouterProvider router={router!} />));
-    click("Exam");
+    expect(container.textContent).not.toContain("Focused Drills");
     await act(async () => {
       click("Begin");
       await vi.dynamicImportSettled();

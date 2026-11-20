@@ -4,6 +4,32 @@ export type { PressureUnit } from "./types";
 
 const MMHG_TO_KPA = 0.133322;
 
+export const standardMetricRanges = {
+  pH: [7.35, 7.45],
+  PaCO2: [35, 45],
+  HCO3: [22, 26],
+  PaO2: [80, 100],
+  Na: [135, 145],
+  Cl: [98, 106],
+  Glucose: [3.9, 7.8]
+} as const;
+
+function buildStandardMetric(
+  label: keyof typeof standardMetricRanges,
+  value: CaseMetricDefinition["value"],
+  decimals: number,
+  unit: string,
+  options?: Pick<CaseMetricDefinition, "group" | "pressureUnitConvertible" | "minDifficultyLevel"> & { displayLabel?: string }
+): CaseMetricDefinition {
+  const [low, high] = standardMetricRanges[label];
+  return {
+    label, displayLabel: label, value, decimals, unit,
+    reference: `Normal: ${low} - ${high}${unit ? ` ${unit}` : ""}`,
+    abnormal: Number(value) < low || Number(value) > high,
+    ...options
+  };
+}
+
 export function formatValue(value: unknown, decimals = 1): string {
   if (value == null || Number.isNaN(Number(value))) return "--";
   return Number(value).toFixed(decimals);
@@ -12,6 +38,10 @@ export function formatValue(value: unknown, decimals = 1): string {
 export function convertMmHgToKPa(value: unknown): number | null {
   if (value == null || Number.isNaN(Number(value))) return null;
   return Number(value) * MMHG_TO_KPA;
+}
+
+export function formatMetricReferenceLimit(limit: number, unit: string): string {
+  return unit === "kPa" ? formatValue(convertMmHgToKPa(limit), 1) : String(limit);
 }
 
 function formatPressureReference(reference: string, pressureUnit: PressureUnit): string {
@@ -64,34 +94,9 @@ export function buildCaseMetricDefinitions(caseItem: CaseData): CaseMetricDefini
   const lactate = getCaseLactateValue(caseItem);
 
   return [
-    {
-      label: "pH",
-      displayLabel: "pH",
-      reference: "Normal: 7.35 - 7.45",
-      value: gas.ph,
-      decimals: 2,
-      unit: "",
-      abnormal: Number(gas.ph) < 7.35 || Number(gas.ph) > 7.45
-    },
-    {
-      label: "PaCO2",
-      displayLabel: "PaCO2",
-      reference: "Normal: 35 - 45 mmHg",
-      value: gas.paco2_mmHg,
-      decimals: 1,
-      unit: "mmHg",
-      abnormal: Number(gas.paco2_mmHg) < 35 || Number(gas.paco2_mmHg) > 45,
-      pressureUnitConvertible: true
-    },
-    {
-      label: "HCO3",
-      displayLabel: "HCO3",
-      reference: "Normal: 22 - 26 mmol/L",
-      value: gas.hco3_mmolL,
-      decimals: 1,
-      unit: "mmol/L",
-      abnormal: Number(gas.hco3_mmolL) < 22 || Number(gas.hco3_mmolL) > 26
-    },
+    buildStandardMetric("pH", gas.ph, 2, ""),
+    buildStandardMetric("PaCO2", gas.paco2_mmHg, 1, "mmHg", { pressureUnitConvertible: true }),
+    buildStandardMetric("HCO3", gas.hco3_mmolL, 1, "mmol/L"),
     {
       label: "FiO2",
       displayLabel: "FiO2",
@@ -102,17 +107,10 @@ export function buildCaseMetricDefinitions(caseItem: CaseData): CaseMetricDefini
       abnormal: false,
       group: "oxygenation"
     },
-    {
-      label: "PaO2",
-      displayLabel: "PaO2",
-      reference: "Normal: 80 - 100 mmHg",
-      value: gas.pao2_mmHg,
-      decimals: 1,
-      unit: "mmHg",
-      abnormal: Number(gas.pao2_mmHg) < 80 || Number(gas.pao2_mmHg) > 100,
+    buildStandardMetric("PaO2", gas.pao2_mmHg, 1, "mmHg", {
       pressureUnitConvertible: true,
       group: "oxygenation"
-    },
+    }),
     {
       label: "SpO2",
       displayLabel: "SpO2",
@@ -132,15 +130,7 @@ export function buildCaseMetricDefinitions(caseItem: CaseData): CaseMetricDefini
       unit: "mEq/L",
       abnormal: Number(gas.base_excess_mEqL) < -2 || Number(gas.base_excess_mEqL) > 2
     },
-    {
-      label: "Na",
-      displayLabel: "Na+",
-      reference: "Normal: 135 - 145 mmol/L",
-      value: electrolytes.na_mmolL,
-      decimals: 0,
-      unit: "mmol/L",
-      abnormal: Number(electrolytes.na_mmolL) < 135 || Number(electrolytes.na_mmolL) > 145
-    },
+    buildStandardMetric("Na", electrolytes.na_mmolL, 0, "mmol/L", { displayLabel: "Na+" }),
     {
       label: "K",
       displayLabel: "K+",
@@ -150,25 +140,8 @@ export function buildCaseMetricDefinitions(caseItem: CaseData): CaseMetricDefini
       unit: "mmol/L",
       abnormal: Number(electrolytes.k_mmolL) < 3.5 || Number(electrolytes.k_mmolL) > 5
     },
-    {
-      label: "Cl",
-      displayLabel: "Cl-",
-      reference: "Normal: 98 - 106 mmol/L",
-      value: electrolytes.cl_mmolL,
-      decimals: 0,
-      unit: "mmol/L",
-      abnormal: Number(electrolytes.cl_mmolL) < 98 || Number(electrolytes.cl_mmolL) > 106
-    },
-    {
-      label: "Glucose",
-      displayLabel: "Glucose",
-      reference: "Normal: 3.9 - 7.8 mmol/L",
-      value: electrolytes.glucose_mmolL,
-      decimals: 1,
-      unit: "mmol/L",
-      abnormal: Number(electrolytes.glucose_mmolL) < 3.9 || Number(electrolytes.glucose_mmolL) > 7.8,
-      minDifficultyLevel: 3
-    },
+    buildStandardMetric("Cl", electrolytes.cl_mmolL, 0, "mmol/L", { displayLabel: "Cl-" }),
+    buildStandardMetric("Glucose", electrolytes.glucose_mmolL, 1, "mmol/L", { minDifficultyLevel: 3 }),
     {
       label: "Lactate",
       displayLabel: "Lactate",

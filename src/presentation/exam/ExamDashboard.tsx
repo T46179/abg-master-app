@@ -1,30 +1,22 @@
 import { useId, type ReactNode, type ReactElement } from "react";
+import type { DrillLoader } from "../../core/examDrills";
 import { LockKeyhole } from "lucide-react";
 import { examKindLabel } from "./examLabels";
 import { NoticeMessage, RetryAction } from "./ExamNotice";
 import { Surface } from "../primitives/Surface";
 import type { PressureUnit } from "../../core/types";
 import {
-  ArrowIcon, CheckIcon, DropletIcon, FlagIcon, GapIcon, HistoryIcon, InfoIcon, LayersIcon,
-  LungIcon, ReportIcon, ScaleIcon, SplitIcon
+  ArrowIcon, DropletIcon, FlagIcon, HistoryIcon, InfoIcon, LayersIcon, LungIcon, ReportIcon
 } from "./ExamIcons";
-import { AccuracyBar, IconBadge, SegmentedControl, ToggleRow, toneStyle } from "./ExamUi";
-import type { buildSetupPresentation } from "./presentationModel";
-import type { DrillIcon, DrillPresentation, ExamPrototypeConfig, ExamPrototypeState, SittingKind, SpecialistCategory } from "./presentationTypes";
-
-const drillIcons: Record<DrillIcon, () => ReactElement> = {
-  gap: GapIcon, scale: ScaleIcon, split: SplitIcon, lung: LungIcon, droplet: DropletIcon
-};
-
+import { IconBadge, SegmentedControl, ToggleRow } from "./ExamUi";
+import { FocusedDrills } from "./FocusedDrills";
+import type { ExamPrototypeState, SittingKind, SpecialistCategory } from "./presentationTypes";
 import type { ExamFeedbackToneControls } from "./useExamFeedbackTone";
 
 interface DashboardProps {
   state: ExamPrototypeState;
-  drills: DrillPresentation[];
-  config: ExamPrototypeConfig;
-  setup: ReturnType<typeof buildSetupPresentation>;
+  minutesPerCase: number;
   onChange: (patch: Partial<ExamPrototypeState>) => void;
-  onSelectDrill: (key: string) => void;
   pressureUnit: PressureUnit;
   onPressureUnitChange: (unit: PressureUnit) => void;
   feedbackPreference?: ExamFeedbackToneControls;
@@ -39,95 +31,47 @@ interface DashboardProps {
   casePicker?: ReactNode;
   chooseUnits?: { active: boolean; toggle: () => void };
   startContent?: ReactNode;
-  drillsUnavailable?: boolean;
+  focusedDrills?: { loadDrill: DrillLoader; accountKey: string };
   customDisabled?: boolean;
   setupContent?: ReactNode;
   overviewHero?: ReactNode;
   trial?: boolean;
-  hideModeSwitch?: boolean;
   navigationVisibility?: { latestResult: boolean; pastAttempts: boolean; errorLog: boolean };
 }
 
 export function ExamDashboard(props: DashboardProps) {
-  const { state, onChange } = props;
+  const { state, onChange, focusedDrills } = props;
   if (props.trial) return <MockExam {...props} />;
   const showLatest = props.navigationVisibility?.latestResult ?? true;
   const showHistory = props.navigationVisibility?.pastAttempts ?? true;
   const showErrorLog = props.navigationVisibility?.errorLog ?? (props.connected || props.errorLogCount !== undefined);
-  return <>
-    {(showLatest || showHistory || showErrorLog) && <div className="exam-subnav">
-      <div className="exam-actions">
-        {showLatest && <button type="button" className="figma-button figma-button--secondary exam-pill" disabled={props.latestDisabled || props.launching} onClick={() => onChange({ view: "results" })}>
-          <ReportIcon /> Latest result
-        </button>}
-        {showHistory && <button type="button" className="figma-button figma-button--secondary exam-pill" onClick={() => onChange({ view: "history" })}>
-          <HistoryIcon /> Past attempts
-        </button>}
-        {showErrorLog && <button type="button" className="figma-button figma-button--secondary exam-pill" onClick={() => onChange({ view: "error-log" })}>
-          <FlagIcon /> Error log {props.errorLogCount !== undefined && props.errorLogCount > 0 && <span className="exam-error-log-count">{props.errorLogCount}</span>}
-        </button>}
-      </div>
-    </div>}
-    <ExamPageHeading />
-    {!props.hideModeSwitch && <div className="exam-mode-switch">
-      <SegmentedControl label="Exam mode" value={state.mode}
-        options={[{ value: "mock", label: "Exam" }, { value: "drills", label: "Focused Drills" }]}
-        onChange={mode => onChange({ mode })} />
-    </div>}
-    {!props.hideModeSwitch && state.mode === "drills" ? <FocusedDrills {...props} /> : <MockExam {...props} />}
-  </>;
-}
-
-function FocusedDrills({ state, drills, config, setup, onChange, onSelectDrill, drillsUnavailable }: DashboardProps) {
-  const drill = drills.find(item => item.key === state.selectedDrill)!;
-  const SelectedIcon = drillIcons[drill.icon];
-  return <div className="exam-workspace">
-    <div className="exam-drill-grid" role="group" aria-label="Focused drill">
-      {drills.map(item => {
-        const Icon = drillIcons[item.icon];
-        return <Surface as="button" type="button" key={item.key}
-          className="exam-drill-card" data-unavailable={drillsUnavailable || undefined} style={toneStyle(item.tone)}
-          aria-pressed={item.key === state.selectedDrill} onClick={() => onSelectDrill(item.key)}>
-          <span className="exam-card-top">
-            <IconBadge tone={item.tone}><Icon /></IconBadge>
-            <span className="exam-accent exam-number">{item.accuracy === null ? "—" : `${item.accuracy}%`}</span>
-          </span>
-          <span className="exam-card-title">{item.title}</span>
-          <span className="exam-drill-blurb">{item.blurb}</span>
-          <AccuracyBar percent={item.accuracy ?? 0} tone={item.tone} />
-          <span className="exam-small">{item.attempted === null ? "— attempted · accuracy unavailable" : `${item.attempted} attempted · last 10 accuracy`}</span>
-        </Surface>;
-      })}
-    </div>
-    <Surface as="aside" className="exam-setup">
-      <p className="exam-eyebrow">Drill setup</p>
-      <div className="exam-setup-title">
-        <IconBadge tone={drill.tone}><SelectedIcon /></IconBadge>
-        <div><h3>{drill.title}</h3><p className="exam-small">Isolated step · untimed</p></div>
-      </div>
-      {drill.rules && <div className="exam-field">
-        <span className="exam-field-label" id="exam-rule-label">Rule to practice</span>
-        <div className="exam-rules" role="group" aria-labelledby="exam-rule-label">
-          {drill.rules.map(rule => <button type="button" key={rule.key} className="exam-rule" disabled={drillsUnavailable}
-            aria-pressed={state.selectedRule === rule.key} onClick={() => onChange({ selectedRule: rule.key })}>
-            <span><strong>{rule.label}</strong><span className="exam-small">{rule.hint}</span></span>
-            <span className="exam-rule-check" aria-hidden="true"><CheckIcon /></span>
-          </button>)}
+  const showActions = showLatest || showHistory || showErrorLog;
+  const header = <>
+    {(focusedDrills || showActions) && <div className="exam-toolbar">
+      {focusedDrills && <div className="exam-mode-switch">
+        <SegmentedControl label="Exam mode" value={state.mode}
+          options={[{ value: "mock", label: "Exam" }, { value: "drills", label: "Focused Drills" }]}
+          onChange={mode => onChange({ mode })} />
+      </div>}
+      {showActions && <div className="exam-subnav">
+        <div className="exam-actions">
+          {showLatest && <button type="button" className="figma-button figma-button--secondary exam-pill" disabled={props.latestDisabled || props.launching} onClick={() => onChange({ view: "results" })}>
+            <ReportIcon /> <span className="exam-action-label">Latest result</span>
+          </button>}
+          {showHistory && <button type="button" className="figma-button figma-button--secondary exam-pill" onClick={() => onChange({ view: "history" })}>
+            <HistoryIcon /> <span className="exam-action-label">Past attempts</span>
+          </button>}
+          {showErrorLog && <button type="button" className="figma-button figma-button--secondary exam-pill exam-error-log-action" onClick={() => onChange({ view: "error-log" })}>
+            <FlagIcon /> <span className="exam-action-label">Error log</span> {props.errorLogCount !== undefined && props.errorLogCount > 0 && <span className="exam-error-log-count">{props.errorLogCount}</span>}
+          </button>}
         </div>
       </div>}
-      <div className="exam-field">
-        <div className="exam-label-row"><span className="exam-field-label">Questions</span><strong className="exam-number">{state.questionCount}</strong></div>
-        <div className="exam-counts" role="group" aria-label="Questions">
-          {config.questionCounts.map(count => <button type="button" key={count} disabled={drillsUnavailable} aria-pressed={state.questionCount === count}
-            onClick={() => onChange({ questionCount: count })}>{count}</button>)}
-        </div>
-      </div>
-      <ToggleRow disabled={drillsUnavailable} label="Adaptive difficulty" hint="Ramp up as you succeed" checked={state.adaptive} onChange={adaptive => onChange({ adaptive })} />
-      <ToggleRow disabled={drillsUnavailable} label="Reveal working" hint="Show steps after each answer" checked={state.revealWorking} onChange={revealWorking => onChange({ revealWorking })} />
-      <button type="button" className="figma-button exam-primary exam-start" disabled={drillsUnavailable}>Start {drill.title} drill <ArrowIcon /></button>
-      <p className="exam-footnote">{drillsUnavailable ? "Coming soon" : `~${setup.drillMinutes} min · no effect on level XP`}</p>
-    </Surface>
-  </div>;
+    </div>}
+    <ExamPageHeading showDrills={!!focusedDrills} drillsSelected={!!focusedDrills && state.mode === "drills"} />
+  </>;
+  if (focusedDrills && state.mode === "drills") return <FocusedDrills key={focusedDrills.accountKey}
+    loadDrill={focusedDrills.loadDrill} dashboardHeader={header} pressureUnit={props.pressureUnit} />;
+  return <>{header}<MockExam {...props} /></>;
 }
 
 const specialistTopics: { key: SpecialistCategory; label: string; info: string; Icon: () => ReactElement }[] = [
@@ -143,7 +87,7 @@ function InfoTip({ text, align = "right", children }: { text: string; align?: "l
   </span>;
 }
 
-function MockExam({ state, config, onChange, onBegin, launching, setupLocked, beginDisabled, caseCounts = [3, 5], casePicker, chooseUnits, startContent, customDisabled, pressureUnit, onPressureUnitChange, feedbackPreference, setupContent, overviewHero, trial }: DashboardProps) {
+function MockExam({ state, minutesPerCase, onChange, onBegin, launching, setupLocked, beginDisabled, caseCounts = [3, 5], casePicker, chooseUnits, startContent, customDisabled, pressureUnit, onPressureUnitChange, feedbackPreference, setupContent, overviewHero, trial }: DashboardProps) {
   const disclaimerId = useId();
   const custom = state.examKind === "custom";
   const kinds: { key: SittingKind; label: string; description: string }[] = [
@@ -223,7 +167,7 @@ function MockExam({ state, config, onChange, onBegin, launching, setupLocked, be
       </section>}
       {trial && feedbackPreference?.error && <div className="exam-feedback-tone__error exam-inline-error" role="alert"><p><NoticeMessage message={feedbackPreference.error} /></p><RetryAction busy={feedbackPreference.busy} onClick={() => void feedbackPreference.retry()} /></div>}
       {(!casePicker || state.caseCount > 0) && <div className="exam-suggested-time">
-        <span>Suggested time</span><strong>~{state.caseCount * config.minutesPerCase} min</strong>
+        <span>Suggested time</span><strong>~{state.caseCount * minutesPerCase} min</strong>
       </div>}
       </fieldset>
       {startContent ?? <button type="button" className="figma-button exam-primary exam-start" onClick={onBegin} disabled={launching || beginDisabled || (!trial && feedbackPreference && !feedbackPreference.canBegin)} aria-busy={launching || undefined}>
@@ -241,9 +185,12 @@ function Feature({ icon, title, body, info }: { icon: ReactElement; title: strin
   </div>;
 }
 
-export function ExamPageHeading({ guest = false }: { guest?: boolean }) { return (<header className="exam-page-heading">
-      <h1>Preparing for exams?</h1>
-      <p>{guest ? "Practise exam-style clinical scenarios, develop your reasoning, and learn from detailed marking and personalised feedback. Start with a free trial exam." : "Consistent, spaced practice works best. Try one exam per day, review your mistakes, then use Focused Drills to target your weak areas."}</p>
+export function ExamPageHeading({ guest = false, showDrills = false, drillsSelected = false }: { guest?: boolean; showDrills?: boolean; drillsSelected?: boolean }) { return (<header className="exam-page-heading">
+      <h1>{drillsSelected ? "Target your weak areas" : "Preparing for exams?"}</h1>
+      <p>{drillsSelected ? "Choose a topic and work through short, targeted questions to build speed and accuracy."
+        : guest ? "Practise exam-style clinical scenarios, develop your reasoning, and learn from detailed marking and personalised feedback. Start with a free trial exam."
+        : showDrills ? "Sit an exam, review your mistakes, or use Focused Drills to practise an individual skill."
+        : "Practise exam-style clinical scenarios and review your results and worked explanations."}</p>
     </header>); }
 
 export function ExamOverview({ state, pressureUnit, guest = false, hero }: Pick<DashboardProps, "state" | "pressureUnit"> & { guest?: boolean; hero?: ReactNode }) {

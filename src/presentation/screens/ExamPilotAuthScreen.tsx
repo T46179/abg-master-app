@@ -104,7 +104,7 @@ function LegacyExamPilotAuthScreen() {
       <h1>Exam pilot sign-in</h1>
       {!client ? <p>Staging sign-in is not configured.</p> : <>
         {checking ? <p role="status">Checking sign-in…</p> : signedIn ? <>
-          <p role="status">{access?.status === "allowed" ? "Your account has pilot access." : access?.status === "closed" ? "You’re signed in. The Exam pilot is not open yet." : access?.status === "not_invited" ? "You’re signed in, but this account does not have pilot access." : "You’re signed in. Pilot access has not been verified."}</p>
+          <p role="status">{access?.status === "allowed" ? "Your account has pilot access." : access?.canStartDrills ? "New Exams are currently unavailable." : access?.status === "closed" ? "You’re signed in. The Exam pilot is not open yet." : access?.status === "not_invited" ? "You’re signed in, but this account does not have pilot access." : "You’re signed in. Pilot access has not been verified."}</p>
         </> : <>
           <p>Use the email address registered for your pilot invitation.</p>
           {!sentTo ? <form onSubmit={send}>
@@ -122,6 +122,6 @@ function LegacyExamPilotAuthScreen() {
         {error && <div role="alert"><p>{error}</p><button className="exam-pilot-button" disabled={busy || checking} onClick={() => setRevision(n => n + 1)}>Retry access check</button></div>}
       </>}
     </section>}
-    {client && signedIn && userId && (!checking || access !== null) && <ExamPilotRuntime key={`${import.meta.env.VITE_EXAM_PILOT_SUPABASE_URL}:${userId}`} client={client} userId={userId} canStartStandard={access?.canStartStandard === true} canStart={access?.status === "allowed"} allowedUnitCounts={access?.allowedUnitCounts} customisationCategories={access?.customisationCategories} environment={new URL(import.meta.env.VITE_EXAM_PILOT_SUPABASE_URL).hostname.split(".")[0]} unitCount={access?.allowedUnitCounts.length === 1 ? access.allowedUnitCounts[0] : undefined} />}
+    {client && signedIn && userId && (!checking || access !== null) && <ExamPilotRuntime key={`${import.meta.env.VITE_EXAM_PILOT_SUPABASE_URL}:${userId}`} client={client} userId={userId} canStartStandard={access?.canStartStandard === true} canStartDrills={access?.canStartDrills === true} canStart={access?.status === "allowed"} allowedUnitCounts={access?.allowedUnitCounts} customisationCategories={access?.customisationCategories} environment={new URL(import.meta.env.VITE_EXAM_PILOT_SUPABASE_URL).hostname.split(".")[0]} unitCount={access?.allowedUnitCounts.length === 1 ? access.allowedUnitCounts[0] : undefined} />}
   </main>;
 }

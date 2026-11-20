@@ -3,7 +3,7 @@ import type { PressureUnit } from "../../core/metrics";
 import type { CaseData } from "../../core/types";
 import { splitMetrics } from "../../app/viewHelpers";
 import { Surface } from "../primitives/Surface";
-import { MetricLabel, MetricReference, MetricValue } from "./MetricText";
+import { MetricCard } from "./MetricCard";
 import { SecondaryMetricRail } from "./SecondaryMetricRail";
 import { cn } from "../utils";
 
@@ -13,17 +13,6 @@ interface ValuePanelsProps {
   showAbnormalHighlighting: boolean;
   pressureUnit?: PressureUnit;
   onToggleAdvancedRanges?: () => void;
-}
-
-function getMetricCardClass(
-  metric: { group?: string; pressureUnitConvertible?: boolean },
-  ...classes: string[]
-): string {
-  return cn(
-    ...classes,
-    metric.group === "oxygenation" ? "metric-card--oxygenation" : null,
-    metric.pressureUnitConvertible ? "metric-card--pressure-unit-convertible" : null
-  );
 }
 
 export function ValuePanels(props: ValuePanelsProps) {
@@ -59,18 +48,12 @@ export function ValuePanels(props: ValuePanelsProps) {
 
         <div className="metric-grid metric-grid--primary">
           {primary.map(metric => (
-            <article
+            <MetricCard
               key={metric.label}
-              className={getMetricCardClass(metric, "metric-card")}
-            >
-              <span className="metric-card__label"><MetricLabel label={metric.label} /></span>
-              <MetricValue
-                renderedValue={metric.renderedValue}
-                unit={metric.unit}
-                abnormal={props.showAbnormalHighlighting && metric.abnormal}
-              />
-              {showReferences ? <MetricReference reference={metric.reference} /> : null}
-            </article>
+              {...metric}
+              abnormal={props.showAbnormalHighlighting && metric.abnormal}
+              reference={showReferences ? metric.reference : undefined}
+            />
           ))}
         </div>
       </Surface>

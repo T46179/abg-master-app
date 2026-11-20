@@ -1,5 +1,5 @@
 import type {
-  AttemptPresentation, CaseResultPresentation, ExamPrototypeConfig, ExamTone,
+  AttemptPresentation, CaseResultPresentation, ExamTone,
   HistoryFilter, HistoryPresentation, LatestResultPresentation, StepScorePresentation
 } from "./presentationTypes";
 
@@ -63,14 +63,5 @@ export function attemptPercent(attempt: AttemptPresentation): number | null {
 }
 export function filterAttempts(attempts: AttemptPresentation[], filter: HistoryFilter) {
   return attempts.filter(row => filter === "all" || row.kind === filter);
-}
-export function buildSetupPresentation(questionCount: number, caseCount: number, timed: boolean, config: ExamPrototypeConfig) {
-  const minutes = caseCount * config.minutesPerCase;
-  return {
-    drillMinutes: Math.round(questionCount * config.minutesPerDrillQuestion),
-    timeLimit: timed ? `${minutes}m` : "—",
-    estimatedLength: timed ? `${minutes} min` : "Untimed",
-    timingHint: timed ? `${config.minutesPerCase} min per case` : "Work at your own pace"
-  };
 }
 

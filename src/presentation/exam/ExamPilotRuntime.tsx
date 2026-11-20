@@ -22,10 +22,8 @@ import { ExamDashboard } from "./ExamDashboard";
 import { ExamHistory } from "./ExamReview";
 import { useExamHistory } from "./useExamHistory";
 import { historyPresentation } from "../../core/examHistory";
-import { unavailableDrills } from "./drillDefinitions";
-import { buildSetupPresentation } from "./presentationModel";
-import type { ExamPrototypeState, ExamPrototypeConfig } from "./presentationTypes";
-const setupConfig: ExamPrototypeConfig = { questionCounts: [5, 10, 15, 20], caseMinimum: 3, caseMaximum: 5, minutesPerDrillQuestion: 1, minutesPerCase: 5, passingTarget: 60 };
+import type { ExamPrototypeState } from "./presentationTypes";
+import { requestDrill, type DrillLoader } from "../../core/examDrills";
 const examOpenInAnotherTab = "Your exam is open in another tab. Return to that tab, or close it and try again here.";
 type RoomView = "exam" | "history" | "error-log";
 type ExamNavigation = { account: string; view: RoomView | "results"; attemptId?: string; partId?: string; origin?: RoomView; returnKey?: string };
@@ -45,13 +43,16 @@ export type ExamDashboardControls = {
 export type ExamAccessNotice = { visible: boolean; busy: boolean; onRetry: () => void };
 type OwnerUnit = { unitId: string; title: string; snapshotId: string };
 
-type PilotProps = { enableOwnerUnitPicker?: boolean; accessNotice?: ExamAccessNotice; onReturnToDashboard?: () => void; trialAccessMessage?: string; trialAvailability?: TrialAvailability; onRetryTrial?: () => void; client: SupabaseClient; userId: string; canStart: boolean; canStartStandard: boolean; limitedDashboard?: boolean; unitCount?: number; allowedUnitCounts?: number[]; customisationCategories?: CustomisationCategory[]; environment?: string; renderDashboard?: (controls: ExamDashboardControls) => ReactNode };
+type PilotProps = { enableOwnerUnitPicker?: boolean; accessNotice?: ExamAccessNotice; onReturnToDashboard?: () => void; trialAccessMessage?: string; trialAvailability?: TrialAvailability; onRetryTrial?: () => void; client: SupabaseClient; userId: string; canStart: boolean; canStartStandard: boolean; canStartDrills?: boolean; loadPreviewDrill?: DrillLoader; limitedDashboard?: boolean; unitCount?: number; allowedUnitCounts?: number[]; customisationCategories?: CustomisationCategory[]; environment?: string; renderDashboard?: (controls: ExamDashboardControls) => ReactNode };
 
-export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, accessNotice, onReturnToDashboard, trialAccessMessage, trialAvailability = "error", onRetryTrial, client, userId, canStart, canStartStandard, limitedDashboard = false, unitCount, allowedUnitCounts, customisationCategories = [], environment = "clpfecuohwzwrgmqzeos", renderDashboard }: PilotProps) {
+export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, accessNotice, onReturnToDashboard, trialAccessMessage, trialAvailability = "error", onRetryTrial, client, userId, canStart, canStartStandard, canStartDrills = false, loadPreviewDrill, limitedDashboard = false, unitCount, allowedUnitCounts, customisationCategories = [], environment = "clpfecuohwzwrgmqzeos", renderDashboard }: PilotProps) {
   const browserStorage = useAccountBrowserStorage();
   const location = useLocation();
   const navigate = useNavigate();
   const account = `${environment}:${userId}`;
+  const loadDrill: DrillLoader | undefined = canStartDrills
+    ? (request, signal) => requestDrill(client, request, signal)
+    : import.meta.env.DEV ? loadPreviewDrill : undefined;
   const navigation: ExamNavigation | undefined = location.state?.examNavigation?.account === account ? location.state.examNavigation : undefined;
   const resultCache = useMemo(() => new Map<string, RuntimeAttempt>(), [account]);
   const [pendingResult, setPendingResult] = useState<RuntimeAttempt | null>(null);
@@ -81,9 +82,9 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
   const [setupState, setSetupState] = useState<ExamPrototypeState>(() => {
     let prefs: { showTimer?: boolean; showRanges?: boolean } = {};
     try { prefs = JSON.parse(browserStorage.getItem(displayKey) ?? "{}"); } catch { /* Use defaults. */ }
-    return { view: "exam", mode: "mock", selectedDrill: "anion-gap", selectedRule: "met-acidosis", questionCount: 5,
+    return { view: "exam", mode: "mock",
       caseCount: counts.includes(3) ? 3 : counts[0] ?? 3, timed: prefs?.showTimer !== false, showRanges: prefs?.showRanges !== false,
-      examKind: "mock", excludedCategories: [], adaptive: false, revealWorking: false, historyFilter: "all" };
+      examKind: "mock", excludedCategories: [], historyFilter: "all" };
   });
   useEffect(() => { if (counts.length && !counts.includes(setupState.caseCount)) setSetupState(old => ({ ...old, caseCount: counts.includes(3) ? 3 : counts[0] })); }, [counts.join(","), setupState.caseCount]);
   function persistDisplay(showTimer: boolean, showRanges: boolean) {
@@ -455,7 +456,7 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
         {canStart && trialStatus === "error" && <RetryAction busy={accessNotice?.busy ?? busy} onClick={() => { setTrialFailure(null); onRetryTrial?.(); }} />}
       </ExamNotice>}
       <ExamDashboard trial={trial} setupContent={setupContent} overviewHero={overviewHero}
-          hideModeSwitch={limitedDashboard}
+          focusedDrills={loadDrill ? { loadDrill, accountKey: account } : undefined}
           navigationVisibility={limitedDashboard ? { latestResult: Boolean(history.latestAttemptId), pastAttempts: Boolean(history.latestAttemptId), errorLog: trialLifecycle?.state === "consumed" || Boolean(errorLog.data?.entries.length) } : undefined}
           feedbackPreference={feedbackPreference}
           pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"}
@@ -464,8 +465,7 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
             state.storage?.savePressureUnitPreference(pressureUnit);
           }}
           connected state={{ ...setupState, ...(trial ? { caseCount: 3, mode: "mock" as const } : pickedUnits !== null ? { caseCount: pickedUnits.length } : {}), examKind: trial ? "mock" : examKind, excludedCategories: customExclusions.filter(id => id === "mechanical_ventilation" || id === "toxicology_management") }}
-          drills={unavailableDrills} drillsUnavailable customDisabled={!customisationCategories.length} config={setupConfig}
-          setup={buildSetupPresentation(setupState.questionCount, setupState.caseCount, setupState.timed, setupConfig)}
+          customDisabled={!customisationCategories.length} minutesPerCase={5}
           caseCounts={trial ? [3] : counts}
           casePicker={pickedUnits !== null && ownerUnits ? <fieldset disabled={setupLocked}>
             <legend>Choose units</legend>
@@ -486,7 +486,6 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
           chooseUnits={canChooseUnits ? { active: pickedUnits !== null, toggle: () => setSelectedSnapshotIds(pickedUnits === null ? [] : null) } : undefined}
           launching={preparing} beginDisabled={!canStart || !ready || (trial ? (trialStatus !== "ready" || trialLifecycle?.state !== "available") : (!canStartStandard || (pickedUnits !== null ? pickedUnits.length === 0 : !counts.includes(setupState.caseCount)))) || (trial && (!feedbackPreference.ready || feedbackPreference.busy))} setupLocked={setupLocked}
           latestDisabled={busy || !history.latestAttemptId} errorLogCount={errorLog.error ? undefined : errorLog.data?.toReviewCount}
-          onSelectDrill={key => setSetupState(old => ({ ...old, selectedDrill: key, selectedRule: unavailableDrills.find(d => d.key === key)?.rules?.[0]?.key ?? "" }))}
           onChange={patch => {
             if (patch.view === "results" && history.latestAttemptId) { void run(() => openResult(history.latestAttemptId!, "exam")); return; }
             if (patch.view === "history" || patch.view === "error-log") { enterRoom(patch.view); return; }

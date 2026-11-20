@@ -30,6 +30,7 @@ import { loadPendingPracticeSubmission } from "../../core/protectedPracticeCache
 import { GoogleLinkRecovery } from "./GoogleLinkRecovery.dev";
 
 import { accountPageFromPath, accountPageUrl } from "../../core/accountRoutes";
+import { isLocalDrillPreview, loadLocalDrill } from "../../dev/examDrillsPreviewClient";
 
 const STAGING = "https://clpfecuohwzwrgmqzeos.supabase.co";
 type Page = AccountPage | "start";
@@ -454,7 +455,7 @@ export function ProfileControl({ email, busy, paid, active, onPage, onSignOut, o
     {email && open && <section className="exam-account-menu" id="exam-account-menu" aria-label="Account">
       <strong className="account-private ph-no-capture" data-clarity-mask="true">{email}</strong><p>{paid ? "Paid account" : "Free account"}</p>
         <button type="button" className="account-menu-action" disabled={busy} onClick={() => { setOpen(false); onSignOut(); }}><SignOutIcon />Sign out</button>
-        <div className="account-paid-control"><span>Local development</span><label><input type="checkbox" role="switch" checked={paid} disabled={active || busy} onChange={onPaid} />Paid account</label><small>Interface only. Existing pilot permissions still apply.</small></div>
+        <div className="account-paid-control"><span>Local development</span><label><input type="checkbox" role="switch" checked={paid} disabled={active || busy} onChange={onPaid} />Paid account</label><small>{isLocalDrillPreview() ? "Includes a local Focused Drills preview. Exam starts still require pilot access." : "Interface only. Existing pilot permissions still apply."}</small></div>
     </section>}
   </div>;
 }
@@ -592,8 +593,11 @@ function RuntimeOwner({ client, userId, generation, paid, page, onPage }: { clie
       if (isCurrent()) setSavingProfile(false);
     }
   }
+  const canStartDrills = access?.canStartDrills === true;
+  const loadPreviewDrill = paid && isLocalDrillPreview() ? loadLocalDrill : undefined;
+  const showFullDashboard = canStartDrills || !!loadPreviewDrill || (paid && access?.canStartStandard === true);
   function renderDashboard(controls: ExamDashboardControls) {
-    if ((paid && access?.canStartStandard === true) || controls.canRecover) return controls.fullSetup;
+    if (showFullDashboard || controls.canRecover) return controls.fullSetup;
     const lifecycle = controls.trialLifecycle;
     if (lifecycle?.state === "consumed") return controls.withSetup(<TrialProCard />, <TrialResultHero result={controls.completedTrial} />);
     if (!lifecycle || lifecycle.state === "reserved") {
@@ -619,7 +623,7 @@ function RuntimeOwner({ client, userId, generation, paid, page, onPage }: { clie
   if (!access && accessError) return <div className="account-narrow"><AccountCard title="We couldn't check Exam access"><p role="alert">Your account has not been changed. Reconnect and retry.</p><AccountButton onClick={() => retryAccess.current()}>Retry access check</AccountButton></AccountCard></div>;
   if (!access) return <AccountWaiting attempt={revision} retry={() => retryAccess.current()} />;
   return <AccountBrowserStorageProvider value={storage}>
-    {access.status === "closed" && <p role="status" className="account-notice">You're signed in. The Exam pilot is not open yet.</p>}
-    <ExamPilotRuntime enableOwnerUnitPicker={paid} accessNotice={{ visible: accessWarning, busy: accessBusy, onRetry: () => retryAccess.current() }} onReturnToDashboard={() => onPage("exam")} trialAccessMessage={access.status === "closed" ? "The Exam pilot is currently closed. New exams aren't available at the moment." : undefined} trialAvailability={access.trialAvailability ?? "error"} onRetryTrial={() => retryAccess.current()} client={ownedClient} userId={userId} canStartStandard={access.canStartStandard === true} limitedDashboard={!paid || access.canStartStandard !== true} canStart={access.status === "allowed"} allowedUnitCounts={paid ? access.allowedUnitCounts : access.allowedUnitCounts.filter(n => n === 3)} customisationCategories={paid ? access.customisationCategories : []} renderDashboard={renderDashboard} />
+    {access.status === "closed" && <p role="status" className="account-notice">{canStartDrills ? "New Exams are currently unavailable." : "You're signed in. The Exam pilot is not open yet."}</p>}
+    <ExamPilotRuntime enableOwnerUnitPicker={paid} accessNotice={{ visible: accessWarning, busy: accessBusy, onRetry: () => retryAccess.current() }} onReturnToDashboard={() => onPage("exam")} trialAccessMessage={access.status === "closed" ? "The Exam pilot is currently closed. New exams aren't available at the moment." : undefined} trialAvailability={access.trialAvailability ?? "error"} onRetryTrial={() => retryAccess.current()} client={ownedClient} userId={userId} canStartStandard={access.canStartStandard === true} canStartDrills={canStartDrills} loadPreviewDrill={loadPreviewDrill} limitedDashboard={!showFullDashboard} canStart={access.status === "allowed"} allowedUnitCounts={paid || canStartDrills ? access.allowedUnitCounts : access.allowedUnitCounts.filter(n => n === 3)} customisationCategories={paid || canStartDrills ? access.customisationCategories : []} renderDashboard={renderDashboard} />
   </AccountBrowserStorageProvider>;
 }

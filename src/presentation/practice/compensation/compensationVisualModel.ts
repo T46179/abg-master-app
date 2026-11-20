@@ -127,6 +127,10 @@ export interface CompensationVisualModel {
   accessibleDescription: string;
 }
 
+export type CompensationRangeVisualModel = Pick<CompensationVisualModel,
+  "targetLabel" | "measuredDisplay" | "unit" | "markerPercent" | "bands" | "accessibleDescription"
+>;
+
 export interface CompensationFallbackModel {
   kind: "fallback";
   explanation: string;
@@ -165,21 +169,37 @@ function buildClinicalSentence(result: CompensationResult) {
   }
 }
 
-function buildLinearPositionMap(result: CompensationResult) {
+export function buildCompensationRangeGeometry(
+  measuredValue: number,
+  comparisonBands: CompensationComparisonBand[],
+  formatDisplayNumber = formatNumber
+): Pick<CompensationRangeVisualModel, "bands" | "markerPercent"> {
   const anchors = Array.from(new Set([
-    result.measuredValue,
-    ...result.comparisonBands.flatMap(band => [band.low, band.high])
+    measuredValue,
+    ...comparisonBands.flatMap(band => [band.low, band.high])
   ]));
   const minimum = Math.min(...anchors);
   const maximum = Math.max(...anchors);
   const span = maximum - minimum;
 
-  return new Map(
-    anchors.map(anchor => [
-      anchor,
-      span === 0 ? 50 : ((anchor - minimum) / span) * 100
-    ])
-  );
+  const position = (value: number) => span === 0 ? 50 : ((value - minimum) / span) * 100;
+
+  return {
+    markerPercent: position(measuredValue),
+    bands: comparisonBands.map(band => {
+      const lowPos = position(band.low);
+      const highPos = position(band.high);
+      return {
+        ...band,
+        label: BAND_LABELS[band.labelKey] ?? band.labelKey.replaceAll("_", " "),
+        lowDisplay: formatDisplayNumber(band.low),
+        highDisplay: formatDisplayNumber(band.high),
+        lowPos,
+        highPos,
+        centerPos: lowPos + ((highPos - lowPos) / 2)
+      };
+    })
+  };
 }
 
 function rawCalculationRows(lines: string[]): CompensationCalculationRowVisualModel[] {
@@ -289,7 +309,6 @@ export function buildCompensationVisualModel(
     };
   }
 
-  const positions = buildLinearPositionMap(result);
   const displayInKPa = options?.pressureUnit === "kPa"
     && result.targetAnalyte === "paco2"
     && result.unit === "mmHg";
@@ -298,19 +317,7 @@ export function buildCompensationVisualModel(
     if (!displayInKPa) return formatNumber(value);
     return formatValue(convertMmHgToKPa(value), 1);
   };
-  const bands = result.comparisonBands.map(band => {
-    const lowPos = positions.get(band.low) ?? 0;
-    const highPos = positions.get(band.high) ?? 100;
-    return {
-      ...band,
-      label: BAND_LABELS[band.labelKey] ?? band.labelKey.replaceAll("_", " "),
-      lowDisplay: formatDisplayNumber(band.low),
-      highDisplay: formatDisplayNumber(band.high),
-      lowPos,
-      highPos,
-      centerPos: lowPos + ((highPos - lowPos) / 2)
-    };
-  });
+  const { bands, markerPercent } = buildCompensationRangeGeometry(result.measuredValue, result.comparisonBands, formatDisplayNumber);
   const targetLabel = result.targetAnalyte === "paco2" ? "PaCO₂" : "HCO₃⁻";
   const interpretationLabel = INTERPRETATION_LABELS[result.interpretationKey];
   const qualifierMessages = (result.qualifierKeys ?? []).map(
@@ -351,7 +358,7 @@ export function buildCompensationVisualModel(
     measuredDisplay: formatDisplayNumber(result.measuredValue),
     unit: displayUnit,
     canonicalUnit: result.unit,
-    markerPercent: positions.get(result.measuredValue) ?? 50,
+    markerPercent,
     bands,
     interpretationLabel,
     interpretationKey: result.interpretationKey,

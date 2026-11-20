@@ -72,6 +72,13 @@ describe("Exam permanent authentication", () => {
     expect(await readExamAccess(client)).toEqual({ canStartStandard: false, trialLifecycle: undefined, status: "allowed", allowedUnitCounts: [3], trialAvailability: "error" });
     expect(functions.invoke).toHaveBeenCalledWith("exam-access", { body: {} });
   });
+  it("accepts a separate paid drill capability with ordinary starts closed", async () => {
+    const { client, functions } = fixture();
+    functions.invoke.mockResolvedValue({ data: { status: "closed", allowedUnitCounts: [], canStartDrills: true } });
+    expect(await readExamAccess(client)).toMatchObject({ canStartStandard: false, canStartDrills: true, status: "closed" });
+    functions.invoke.mockResolvedValue({ data: { status: "closed", allowedUnitCounts: [], canStartDrills: "true" } });
+    expect((await readExamAccess(client)).canStartDrills).toBeUndefined();
+  });
   it("validates category support and retains catalogue labels", async () => {
     const { client, functions } = fixture();
     const categories = [{ category_id: "mechanical_ventilation", label: "Mechanical ventilation" }];

@@ -50,9 +50,9 @@ export function SiteAccountExamScreen({ workspace }: { workspace: AccountWorkspa
 
   return <main className="app-shell__page exam-screen">
 
-    {access.status !== "allowed" && <p role="status">{access.status === "closed" ? "You’re signed in. The Exam pilot is not open yet." : "You’re signed in, but this account does not have pilot access."}</p>}
+    {access.status !== "allowed" && <p role="status">{access.canStartDrills ? "New Exams are currently unavailable." : access.status === "closed" ? "You’re signed in. The Exam pilot is not open yet." : "You’re signed in, but this account does not have pilot access."}</p>}
 
-    <ExamPilotRuntime client={workspace.client} userId={workspace.userId} canStart={access.status === "allowed"} canStartStandard={access.canStartStandard === true}
+    <ExamPilotRuntime client={workspace.client} userId={workspace.userId} canStart={access.status === "allowed"} canStartStandard={access.canStartStandard === true} canStartDrills={access.canStartDrills === true}
 
       allowedUnitCounts={access.allowedUnitCounts} customisationCategories={access.customisationCategories}
 

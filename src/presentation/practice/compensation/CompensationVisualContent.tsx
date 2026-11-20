@@ -15,6 +15,7 @@ import {
   buildCompensationVisualModel,
   type CompensationBandVisualModel,
   type CompensationCalculationRowVisualModel,
+  type CompensationRangeVisualModel,
   type CompensationVisualModel
 } from "./compensationVisualModel";
 import "./compensation.css";
@@ -178,7 +179,7 @@ function ComparisonBand({ band }: { band: CompensationBandVisualModel }) {
   );
 }
 
-function MeasuredMarker({ model }: { model: CompensationVisualModel }) {
+function MeasuredMarker({ model }: { model: CompensationRangeVisualModel }) {
   const alignment = model.markerPercent <= 12
     ? "start"
     : model.markerPercent >= 88
@@ -195,7 +196,7 @@ function MeasuredMarker({ model }: { model: CompensationVisualModel }) {
   );
 }
 
-function SchematicRangeVisual({ model }: { model: CompensationVisualModel }) {
+export function CompensationRangeRail({ model }: { model: CompensationRangeVisualModel }) {
   return (
     <div className="cmp-visual">
       <div className="cmp-visual__meta" aria-hidden="true">
@@ -447,7 +448,7 @@ export function CompensationVisualContent(props: CompensationVisualContentProps)
 
   return (
     <div className="cmp">
-      <SchematicRangeVisual model={model} />
+      <CompensationRangeRail model={model} />
       <div className="cmp-interpretation">
         <InterpretationStatus model={model} />
         <p className="cmp-sentence"><MetricInlineText text={model.clinicalSentence} /></p>

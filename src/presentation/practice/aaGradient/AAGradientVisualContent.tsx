@@ -27,6 +27,9 @@ interface AAGradientVisualContentProps {
 
 type BarLabelKey = "alveolar" | "arterial" | "gradient";
 type BarLabelModes = Record<BarLabelKey, AAGradientLabelMode>;
+type OxygenPressureBarsModel = Pick<AAGradientVisualData, "unit" | "geometry" | "accessibleDescription"> & {
+  bars: Record<BarLabelKey, { mainValue: string }>;
+};
 
 interface BarLayout {
   labelModes: BarLabelModes;
@@ -59,7 +62,7 @@ function labelText(
   return mode === "full" ? `${analyte} · ${value} ${unit}` : `${analyte} · ${value}`;
 }
 
-function defaultBarLayout(model: AAGradientVisualData): BarLayout {
+function defaultBarLayout(model: OxygenPressureBarsModel): BarLayout {
   return {
     labelModes: DEFAULT_LABEL_MODES,
     widths: {
@@ -77,7 +80,7 @@ function barLayoutsMatch(left: BarLayout, right: BarLayout) {
     && Math.abs(left.widths.gradient - right.widths.gradient) < 0.0001;
 }
 
-function OxygenPressureBars({ model }: { model: AAGradientVisualData }) {
+export function OxygenPressureBars({ model }: { model: OxygenPressureBarsModel }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [layout, setLayout] = useState<BarLayout>(() => defaultBarLayout(model));
 

@@ -1,63 +1,10 @@
 // Figma prototype fixtures only; never learner records or grading rules.
 import type {
-  AttemptPresentation, CaseResultPresentation, DrillPresentation, ExamPrototypeConfig,
+  AttemptPresentation, CaseResultPresentation,
   ExamPrototypeState, StepScorePresentation
 } from "./presentationTypes";
 import { buildHistoryPresentation, buildLatestResultPresentation } from "./presentationModel";
 import { examKindLabel } from "./examLabels";
-
-export const mockDrills: DrillPresentation[] = [
-  {
-    key: "anion-gap",
-    title: "Anion Gap",
-    blurb: "Calculate and correct the gap, then decide if it's raised.",
-    tone: "blue",
-    accuracy: 67,
-    attempted: 45,
-    icon: "gap",
-  },
-  {
-    key: "compensation",
-    title: "Compensation",
-    blurb: "Apply Winter's and the 1-2-4-5 rule to judge the response.",
-    tone: "coral",
-    accuracy: 49,
-    attempted: 47,
-    icon: "scale",
-    rules: [
-      { key: "met-acidosis", label: "Metabolic acidosis", hint: "Winter's formula" },
-      { key: "met-alkalosis", label: "Metabolic alkalosis", hint: "Expected PaCO₂ rise" },
-      { key: "respiratory", label: "Respiratory rules", hint: "Acute & chronic, 1-2-4-5" },
-    ],
-  },
-  {
-    key: "delta-ratio",
-    title: "Delta Ratio",
-    blurb: "Unmask a second metabolic process hiding in the numbers.",
-    tone: "purple",
-    accuracy: 3,
-    attempted: 31,
-    icon: "split",
-  },
-  {
-    key: "aa-gradient",
-    title: "A-a Gradient",
-    blurb: "Compute the gradient and judge the cause of hypoxaemia.",
-    tone: "green",
-    accuracy: 55,
-    attempted: 18,
-    icon: "lung",
-  },
-  {
-    key: "corrections",
-    title: "Glucose / Sodium Correction",
-    blurb: "Correct sodium for hyperglycaemia before you interpret it.",
-    tone: "coral",
-    accuracy: 41,
-    attempted: 12,
-    icon: "droplet",
-  },
-]
 
 const resultSteps: StepScorePresentation[] = [
   { label: "pH", correct: 8, total: 8 },
@@ -90,28 +37,14 @@ const attempts: AttemptPresentation[] = [
 ]
 
 
-export const prototypeConfig: ExamPrototypeConfig = {
-  questionCounts: [5, 10, 15, 20],
-  caseMinimum: 3,
-  caseMaximum: 5,
-  minutesPerDrillQuestion: 0.75,
-  minutesPerCase: 12,
-  passingTarget: 80
-};
-
 export const initialPrototypeState: ExamPrototypeState = {
   view: "exam",
-  mode: "drills",
-  selectedDrill: "compensation",
-  selectedRule: "met-acidosis",
-  questionCount: 10,
+  mode: "mock",
   caseCount: 3,
   timed: true,
   examKind: "mock",
   excludedCategories: [],
   showRanges: true,
-  adaptive: true,
-  revealWorking: true,
   historyFilter: "all"
 };
 

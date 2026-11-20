@@ -82,6 +82,36 @@ async function login(id = "a") {
   await act(async () => container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))); await flush();
 }
 async function menu() { await act(async () => host.querySelector<HTMLButtonElement>("button")!.click()); }
+it("shows the full dashboard for a paid drill account while standard Exam starts are closed", async () => {
+  current = { id: "a", email: "a@example.test" };
+  m.access.mockResolvedValue({ status: "closed", canStartStandard: false, canStartDrills: true, allowedUnitCounts: [] });
+  await render();
+  expect(container.textContent).toContain("Full Exam setup for a");
+  expect(m.runtime.mock.lastCall?.[0]).toMatchObject({
+    canStart: false, canStartStandard: false, canStartDrills: true, limitedDashboard: false,
+  });
+});
+it.each(["development", "account-staging"])("limits the Paid account drill preview to normal local development (%s)", async mode => {
+  vi.stubEnv("MODE", mode);
+  current = { id: "a", email: "a@example.test" };
+  m.access.mockResolvedValue({ status: "closed", canStartStandard: false, allowedUnitCounts: [] });
+  await render();
+  expect(m.runtime.mock.lastCall?.[0].loadPreviewDrill).toBeUndefined();
+  await menu();
+  const paidPreview = host.querySelector<HTMLInputElement>(".account-paid-control input")!;
+  expect(paidPreview.disabled).toBe(false);
+  await act(async () => paidPreview.click());
+  await flush();
+  const props = m.runtime.mock.lastCall?.[0];
+  expect(props).toMatchObject({ canStart: false, canStartStandard: false, canStartDrills: false });
+  if (mode === "development") {
+    expect(props.loadPreviewDrill).toEqual(expect.any(Function));
+    expect(container.textContent).toContain("Full Exam setup for a");
+  } else {
+    expect(props.loadPreviewDrill).toBeUndefined();
+    expect(container.textContent).not.toContain("Full Exam setup for a");
+  }
+});
 it("shows pending identity as loading rather than an account error", async () => {
   current = { id: "a", email: "a@example.test" };
   auth.getUser.mockImplementation(() => new Promise(() => {}));

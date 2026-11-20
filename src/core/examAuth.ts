@@ -21,7 +21,7 @@ export function parseTrialLifecycle(value: unknown): TrialLifecycle | undefined 
     || (v.retryAvailableAt !== null && (typeof v.retryAvailableAt !== "string" || !Number.isFinite(Date.parse(v.retryAvailableAt))))) return undefined;
   return v as unknown as TrialLifecycle;
 }
-export type ExamAccess = { canStartStandard?: boolean; trialLifecycle?: TrialLifecycle; trialAvailability?: TrialAvailability; status: "allowed" | "closed" | "not_invited"; allowedUnitCounts: number[]; customisationCategories?: CustomisationCategory[] };
+export type ExamAccess = { canStartStandard?: boolean; canStartDrills?: boolean; trialLifecycle?: TrialLifecycle; trialAvailability?: TrialAvailability; status: "allowed" | "closed" | "not_invited"; allowedUnitCounts: number[]; customisationCategories?: CustomisationCategory[] };
 export type ExamIdentity = { status: "signed_out" } | { status: "signed_in"; userId: string };
 const clients = new Map<string, SupabaseClient>();
 
@@ -77,5 +77,6 @@ export async function readExamAccess(client: SupabaseClient): Promise<ExamAccess
     throw new Error("Pilot access could not be checked. Please try again.");
   }
   return { canStartStandard: data.canStartStandard === true, trialLifecycle: parseTrialLifecycle(data.trialLifecycle), trialAvailability: ["ready", "disabled", "error"].includes(data.trialAvailability) ? data.trialAvailability : "error", status: data.status, allowedUnitCounts: data.allowedUnitCounts,
+    ...(data.canStartDrills === true ? { canStartDrills: true } : {}),
     ...(categories !== undefined ? { customisationCategories: categories as CustomisationCategory[] } : {}) };
 }

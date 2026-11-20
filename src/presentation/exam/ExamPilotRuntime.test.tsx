@@ -678,16 +678,172 @@ it("derives connected controls from frozen mappings and confirms saves for only 
     .toEqual([{ attemptId: id, partId: "part", conceptIds: ["calculation"] }, { attemptId: id, partId: "part", conceptIds: ["calculation"] }]);
 });
 
-it("keeps history failure independent of Begin and disables unfinished drill actions",async()=>{
+it("keeps history failure independent of Begin and hides drills without paid access",async()=>{
  const original=invoke.getMockImplementation()!;
  invoke.mockImplementation(async(...args)=>args[1].body.operation==="history_page"?{error:new Error("offline")}:original(...args));
  await mount();expect(container.textContent).toContain("Retry history");
  expect([...container.querySelectorAll<HTMLButtonElement>("button")].find(b=>b.textContent?.trim()==="Begin")!.disabled).toBe(false);
- await click("Focused Drills");expect(container.textContent).toContain("Coming soon");
- expect(container.textContent).not.toContain("67%");expect(container.textContent).not.toContain("45 attempted");
- expect(container.querySelector<HTMLButtonElement>(".exam-start")!.disabled).toBe(true);
+ expect(container.textContent).not.toContain("Focused Drills");
+ expect(invoke.mock.calls.some(c=>c[0]==="exam-drills")).toBe(false);
  expect(invoke.mock.calls.some(c=>c[1].body.operation==="start")).toBe(false);
 });
+
+it.each([true, false])("runs a paid drill locally when standard Exam starts are %s", async canStartStandard => {
+ const original = invoke.getMockImplementation()!;
+ const question = {
+   values: [{ label: "Na⁺", value: 140, unit: "mmol/L" }, { label: "Cl⁻", value: 106, unit: "mmol/L" }, { label: "HCO₃⁻", value: 18, unit: "mmol/L" }],
+   numeric: { prompt: "Calculate the anion gap", target: 16, tolerance: 0.05, decimals: 1, unit: "mmol/L", working: "140 − (106 + 18) = 16.0 mmol/L." },
+   choice: { prompt: "Is the anion gap raised? Use a reference interval of 4–12 mmol/L.", options: [{ id: "within", label: "Within the reference interval" }, { id: "raised", label: "Raised" }], correctId: "raised", working: "16 is above 12." },
+   visual: { kind: "range", label: "Anion gap", value: 16, low: 4, high: 12, unit: "mmol/L" },
+ };
+ let fail = true;
+ invoke.mockImplementation(async (name, options) => {
+   if (name !== "exam-drills") return original(name, options);
+   if (fail) { fail = false; return { error: new Error("offline") }; }
+   return { data: { help: { title: "Anion gap", formula: "Na⁺ − (Cl⁻ + HCO₃⁻)" }, questions: Array.from({ length: options.body.count }, () => question) } };
+ });
+ const generationCalls = () => invoke.mock.calls.filter(([name]) => name === "exam-drills");
+ router = createMemoryRouter([{ path: "/", element: <ExamSittingProvider>
+   <ExamPilotRuntime client={client} userId="paid-owner" unitCount={3} canStart={canStartStandard} canStartStandard={canStartStandard} canStartDrills />
+ </ExamSittingProvider> }]);
+ await act(async () => root.render(<RouterProvider router={router} />));
+ expect(container.querySelector<HTMLButtonElement>(".exam-start")!.disabled).toBe(!canStartStandard);
+ await click("Focused Drills");
+ const counts = () => [...container.querySelectorAll<HTMLButtonElement>(".exam-counts button")];
+ expect(counts().map(button => button.textContent)).toEqual(["5", "10", "15", "20"]);
+ expect(counts().find(button => button.getAttribute("aria-pressed") === "true")?.textContent).toBe("5");
+ await click("20");
+ expect(counts().find(button => button.getAttribute("aria-pressed") === "true")?.textContent).toBe("20");
+ await click("5");
+ await click("Start Anion Gap drill");
+ expect(container.textContent).toContain("We couldn’t generate this drill");
+ await click("Start Anion Gap drill");
+ expect(generationCalls()).toHaveLength(2);
+ expect(generationCalls()[1][1].body).toEqual({ drill: "anion-gap", count: 5 });
+ expect(container.querySelector("label.exam-drill-prompt")?.textContent).toBe("What is the anion gap?");
+ expect(container.querySelector(".exam-drill-step-waiting")?.textContent).toBe("Is it raised?");
+ expect(container.querySelector(".exam-drill-rule-notes li")?.textContent).toContain("4–12 mmol/L");
+ const cards = [...container.querySelectorAll(".exam-drill-values .metric-card")];
+ expect(cards.map(card => card.querySelector(".metric-card__label")?.textContent)).toEqual(["Na+", "Cl-", "HCO3-"]);
+ expect(container.querySelector(".exam-drill-values .metric-card__value--abnormal")?.querySelector("span")?.textContent).toBe("18");
+ expect(container.querySelectorAll(".exam-drill-values .metric-card__value--abnormal")).toHaveLength(1);
+ async function enterNumber(text: string) {
+   const input = container.querySelector<HTMLInputElement>('input[inputmode="decimal"]')!;
+   expect(document.activeElement).toBe(input);
+   await act(async () => {
+     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, text);
+     input.dispatchEvent(new Event("input", { bubbles: true }));
+   });
+   await click("Check");
+ }
+ await enterNumber("16junk");
+ expect(container.textContent).toContain("Enter a number, without units.");
+ for (let i = 0; i < 5; i++) {
+   const submitted = i === 0 ? "1" : "16.05";
+   await enterNumber(submitted);
+   expect(container.querySelector(".exam-drill-feedback-heading strong")?.textContent).toBe(i === 0 ? "Not Quite" : "Correct");
+   expect(container.querySelector(".exam-drill-calculation")?.previousElementSibling?.textContent).toBe(`Your answer: ${submitted} mmol/L`);
+   expect(container.querySelector(".exam-drill-calculation strong")?.textContent).toBe("16.0 mmol/L");
+   expect(container.querySelector(".exam-drill-choices legend")?.textContent).toBe("Is it raised?");
+   expect([...container.querySelectorAll(".exam-drill-choices button")].map(button => button.textContent)).toEqual(["Raised", "Not raised"]);
+   await click("Raised");
+   await click(i === 4 ? "See summary" : "Next question");
+ }
+ expect(container.textContent).toContain("9 of 10 steps correct");
+ expect(generationCalls()).toHaveLength(2);
+ expect(operations("start")).toHaveLength(0);
+ await click("Practise another set");
+ expect(generationCalls()).toHaveLength(3);
+ expect(generationCalls()[2][1].body).toEqual(generationCalls()[1][1].body);
+ expect(container.querySelector('.exam-drill-runner-header [role="progressbar"]')?.getAttribute("aria-valuetext")).toBe("Question 1 of 5");
+ await click("End drill");
+ expect(container.textContent).toContain("Drill setup");
+ expect(container.querySelector('input[inputmode="decimal"]')).toBeNull();
+});
+
+it("uses the global pressure unit for new drill sets and keeps the current set consistent", async () => {
+ const original = invoke.getMockImplementation()!;
+ invoke.mockImplementation(async (name, options) => {
+   if (name !== "exam-drills") return original(name, options);
+   const { count, pressureUnit } = options.body;
+   const question = {
+     values: [{ label: "PaO₂", value: pressureUnit === "kPa" ? 10.7 : 79, unit: pressureUnit }],
+     numeric: options.body.drill === "compensation" ? {
+       prompt: "Calculate the expected PaCO₂", target: 4.7, tolerance: 0.05, decimals: 1, unit: "kPa",
+       working: "1.5 × 18 + 8 = 35.0 mmHg ≈ 4.7 kPa. Expected range: 4.4–4.9 kPa.",
+     } : { prompt: "Calculate the result", target: 20, tolerance: 0.05, decimals: 1, unit: pressureUnit, working: "Divide by 0.5." },
+     choice: options.body.drill === "compensation" ? {
+       prompt: "How does the measured PaCO₂ compare with the expected range?",
+       options: [
+         { id: "below", label: "Below the expected range" },
+         { id: "within", label: "Within the expected range" },
+         { id: "above", label: "Above the expected range" },
+       ],
+       correctId: "above",
+       working: "Measured PaCO₂ is above the expected range.",
+     } : undefined,
+   };
+   const formula = options.body.drill === "compensation" ? "Expected PaCO₂ = 1.5 × HCO₃⁻ + 8" : "PaO₂ ÷ 0.5";
+   const title = options.body.drill === "pf-ratio" ? "P/F ratio" : "Pressure drill";
+   return { data: { help: { title, formula }, questions: Array.from({ length: count }, () => question) } };
+ });
+ router = createMemoryRouter([{ path: "/", element: <ExamSittingProvider>
+   <ExamPilotRuntime client={client} userId="paid-owner" canStart={false} canStartStandard={false} canStartDrills />
+ </ExamSittingProvider> }]);
+ await act(async () => root.render(<RouterProvider router={router} />));
+ await click("Focused Drills");
+ const generationCalls = () => invoke.mock.calls.filter(([name]) => name === "exam-drills");
+
+ for (const [title, drill] of [["Compensation", "compensation"], ["A–a Gradient", "aa-gradient"], ["P/F Ratio", "pf-ratio"]]) {
+   const card = [...container.querySelectorAll<HTMLButtonElement>(".exam-drill-card")]
+     .find(button => button.querySelector(".exam-card-title")?.textContent === title)!;
+   await act(async () => card.click());
+   expect(container.querySelector(".exam-setup")?.textContent).not.toMatch(/mmHg|kPa/);
+   await click(`Start ${title} drill`);
+   expect(generationCalls().at(-1)?.[1].body).toMatchObject({ drill, pressureUnit: "kPa" });
+   if (drill === "compensation") {
+     expect(container.querySelector(".exam-drill-formula")?.textContent).toBe("PaCO₂ = 1.5 × HCO₃⁻ + 8 ± 2");
+     expect(container.querySelector(".exam-drill-formula-tolerance")?.textContent?.trim()).toBe("± 2");
+     expect(container.querySelector(".exam-drill-step-waiting")?.textContent).toBe("Interpret the respiratory response.");
+     const input = container.querySelector<HTMLInputElement>('input[inputmode="decimal"]')!;
+     await act(async () => {
+       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "4.7");
+       input.dispatchEvent(new Event("input", { bubbles: true }));
+     });
+     await click("Check");
+     expect(container.querySelector(".exam-drill-calculation")?.textContent).toBe("1.5 × 18 + 8 = 35.0 mmHg ≈ 4.7 kPa");
+     expect(container.querySelector(".exam-drill-choices legend")?.textContent).toBe("Interpret the respiratory response.");
+     expect([...container.querySelectorAll(".exam-drill-choices button")].map(button => button.textContent)).toEqual([
+       "Additional respiratory acidosis", "Additional respiratory alkalosis", "Appropriate respiratory compensation",
+     ]);
+     await click("Additional respiratory acidosis");
+     expect(container.querySelector('.exam-drill-choices [data-result="correct"]')?.textContent).toBe("Additional respiratory acidosis");
+     expect(container.querySelector('.exam-drill-choices legend [role="status"]')?.textContent).toBe("Correct");
+     expect(container.textContent).not.toContain("Measured PaCO₂ is above the expected range.");
+   }
+   if (drill !== "pf-ratio") await click("End drill");
+ }
+
+ expect(container.querySelectorAll(".exam-drill-ratio-notes dt")).toHaveLength(4);
+ expect(container.querySelector('[aria-label="About the P/F ratio"]')).not.toBeNull();
+ await act(async () => { unitPreferences.patchSessionState({ pressureUnit: "mmHg" }); });
+ expect(container.querySelector(".exam-drill-values .metric-card__value small")?.textContent).toBe("kPa");
+ expect(container.querySelector(".exam-drill-values .metric-card__reference")?.textContent).toBe("10.7 - 13.3 kPa");
+ expect(container.querySelector(".exam-drill-values .metric-card__value--abnormal")).toBeNull();
+ for (let i = 0; i < 5; i++) {
+   const input = container.querySelector<HTMLInputElement>('input[inputmode="decimal"]')!;
+   await act(async () => {
+     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "20");
+     input.dispatchEvent(new Event("input", { bubbles: true }));
+   });
+   await click("Check");
+   await click(i === 4 ? "See summary" : "Next question");
+ }
+ await click("Practise another set");
+ expect(generationCalls().at(-1)?.[1].body).toEqual({ drill: "pf-ratio", count: 5, pressureUnit: "mmHg" });
+ expect(container.querySelector(".exam-drill-values .metric-card__value--abnormal small")?.textContent).toBe("mmHg");
+});
+
 it("opens the actual Latest result and returns to a filtered history without clearing an active journal",async()=>{
  const id="12345678-1234-1234-1234-123456789abc";
  const original=invoke.getMockImplementation()!;
@@ -977,9 +1133,9 @@ it.each([3, 5, 7])("starts the learner-selected %i-Unit ordinary exam", async co
   .toMatchObject({ purpose: "standard", unitCount: count });
 });
 
-it.each([false, true])("keeps existing dashboard controls when limitedDashboard is %s", async limited => {
+it.each([false, true])("preserves Exam navigation and hides unpaid drills when limitedDashboard is %s", async limited => {
  await mount(3, [], undefined, undefined, false, limited);
- expect(Boolean(container.querySelector('.exam-mode-switch'))).toBe(!limited);
+ expect(container.querySelector('.exam-mode-switch')).toBeNull();
  expect(Boolean(container.querySelector('.exam-subnav'))).toBe(!limited);
  expect(container.textContent).toContain("Your Session");
 });
