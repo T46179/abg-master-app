@@ -14,5 +14,5 @@ export const loadLocalDrill: DrillLoader = async (request, signal) => {
   });
   if (response.status === 503) throw new Error("The local generator couldn’t load. Use Node 24 and keep abg-master-content next to abg-master-app.");
   if (!response.ok) throw new Error("We couldn’t generate this local drill. Please try again.");
-  return readDrillSet(await response.json(), request.count);
+  return readDrillSet(await response.json(), request);
 };

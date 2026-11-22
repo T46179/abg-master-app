@@ -7,7 +7,7 @@ import { CompensationRangeRail } from "../practice/compensation/CompensationVisu
 import { buildCompensationRangeGeometry } from "../practice/compensation/compensationVisualModel";
 import { AccuracyBar } from "./ExamUi";
 
-export function DrillResult({ visual, request }: { visual: DrillVisual; request: DrillRequest }) {
+export function DrillResult({ visual, request, correctedGap }: { visual: DrillVisual; request: DrillRequest; correctedGap?: boolean }) {
   if (request.drill === "compensation" && visual.kind === "range") {
     const { value, low, high, unit } = visual;
     const respiratory = request.rule === "respiratory";
@@ -33,15 +33,20 @@ export function DrillResult({ visual, request }: { visual: DrillVisual; request:
 
   if (request.drill === "anion-gap" && visual.kind === "range") {
     const { value, low, high, unit } = visual;
+    const corrected = correctedGap === true;
+    const classification = value < low ? "low" : value > high ? "raised" : "normal";
     const model = buildAnionGapVisualModel({
       measuredValue: value, unit, referenceLowerLimit: low, referenceUpperLimit: high,
-      classification: value < low ? "low" : value > high ? "raised" : "normal",
+      classification,
       includesPotassium: false,
     }, undefined, "");
     if (model.kind === "visual") return <div className="exam-drill-visualiser">
       <div className="ag">
-        <AnionGapClassificationGauge reference={model.reference} unit={model.unit} primaryMarker={model.primaryMarker} />
-        <p className="ag-visually-hidden">{model.accessibleDescription}</p>
+        <AnionGapClassificationGauge reference={model.reference} unit={model.unit}
+          primaryMarker={corrected ? { ...model.primaryMarker, label: visual.label } : model.primaryMarker} />
+        <p className="ag-visually-hidden">{corrected
+          ? `Albumin-corrected anion gap ${model.calculatedDisplay} ${unit}, classified ${classification}. Reference range ${low} to ${high} ${unit}.`
+          : model.accessibleDescription}</p>
       </div>
     </div>;
   }

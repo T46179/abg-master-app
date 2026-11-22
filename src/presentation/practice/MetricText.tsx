@@ -58,8 +58,12 @@ export function MetricValue(props: MetricValueProps) {
   );
 }
 
+function formatReferenceRange(reference: string): string {
+  return reference.replace(/^([+−-]?\d+(?:\.\d+)?)\s*[–−-]\s*([+−-]?\d+(?:\.\d+)?)(?=\s|%|$)/, "$1 - $2");
+}
+
 export function MetricReference({ reference }: { reference: string }) {
-  const cleanedReference = reference.replace(/^Normal:\s*/, "");
+  const cleanedReference = formatReferenceRange(reference.replace(/^Normal:\s*/, ""));
 
   return (
     <span className="metric-card__reference">
@@ -79,7 +83,7 @@ export function MetricComparisonFooter({ comparison, showReference }: {
 }) {
   return <div className="metric-card__comparison">
     <span className="metric-card__comparison-initial"><span>INITIAL</span><strong>{comparison.initialValue}</strong></span>
-    {showReference && comparison.referenceRange && <span className="metric-card__comparison-reference"><span>REF</span><strong>{comparison.referenceRange}</strong></span>}
+    {showReference && comparison.referenceRange && <span className="metric-card__comparison-reference"><span>REF</span><strong>{formatReferenceRange(comparison.referenceRange)}</strong></span>}
   </div>;
 }
 

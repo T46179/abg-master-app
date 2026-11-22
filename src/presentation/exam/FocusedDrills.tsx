@@ -5,7 +5,7 @@ import { Surface } from "../primitives/Surface";
 import { compensationRules, drillCards, drillDefinitions } from "./drillDefinitions";
 import { DrillRunner } from "./DrillRunner";
 import { ArrowIcon, CheckIcon } from "./ExamIcons";
-import { IconBadge, toneStyle } from "./ExamUi";
+import { IconBadge } from "./ExamUi";
 import "./drills.css";
 
 const rules = Object.keys(compensationRules) as CompensationRule[];
@@ -62,19 +62,21 @@ export function FocusedDrills({ loadDrill, dashboardHeader, pressureUnit }: {
     title={ruleTitle ? `${selected.title} · ${ruleTitle}` : selected.title}
     set={session.set}
     request={session.request}
+    pressureUnit={pressureUnit}
     busy={busy} error={error}
     onRepeat={() => void start("pressureUnit" in session.request ? { ...session.request, pressureUnit } : session.request)}
     onExit={backToSetup} />;
 
   const input: DrillRequest = drill === "compensation" ? { drill, count, rule, pressureUnit }
-    : drill === "aa-gradient" || drill === "pf-ratio" ? { drill, count, pressureUnit } : { drill, count };
+    : drill === "aa-gradient" || drill === "pf-ratio" || drill === "delta-ratio"
+      ? { drill, count, pressureUnit } : { drill, count };
   return <>
     {dashboardHeader}
     <div className="exam-workspace exam-drill-workspace">
       <div className="exam-drill-grid" role="group" aria-label="Focused drill">
         {drillCards.map(({ drill: key, shortTitle }) => {
           const { Icon, title, blurb, tone } = drillDefinitions[key];
-          return <Surface as="button" type="button" key={key} className="exam-drill-card" style={toneStyle(tone)}
+          return <Surface as="button" type="button" key={key} className="exam-drill-card"
             disabled={busy} aria-pressed={drill === key} onClick={() => { selectDrill(key); setError(""); }}>
             <IconBadge tone={tone}><Icon /></IconBadge>
             <span className="exam-card-title">

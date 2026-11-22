@@ -220,13 +220,12 @@ function AnionGapStatus(props: {
   );
 }
 
-function GaugeMarker({ marker }: { marker: AnionGapGaugeMarker }) {
+function GaugeMarker({ marker, corrected = false }: { marker: AnionGapGaugeMarker; corrected?: boolean }) {
   const edgeClass = marker.position <= 8
     ? "ag-marker--start"
     : marker.position >= 92
       ? "ag-marker--end"
       : "";
-  const corrected = marker.label === "Albumin-corrected AG";
   const style = {
     "--ag-pos": `${marker.position}%`
   } as CSSProperties;
@@ -288,7 +287,7 @@ export function AnionGapClassificationGauge(props: {
 
           <GaugeMarker marker={props.primaryMarker} />
           {props.correctedMarker
-            ? <GaugeMarker marker={props.correctedMarker} />
+            ? <GaugeMarker marker={props.correctedMarker} corrected />
             : null}
         </div>
 

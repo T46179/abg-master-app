@@ -7,18 +7,20 @@ export type DrillKey = "anion-gap" | "compensation" | "delta-ratio" | "aa-gradie
 export type CompensationRule = "met-acidosis" | "met-alkalosis" | "respiratory";
 export type DrillRequest =
   | { drill: "compensation"; count: DrillCount; rule: CompensationRule; pressureUnit: PressureUnit }
-  | { drill: "aa-gradient" | "pf-ratio"; count: DrillCount; pressureUnit: PressureUnit }
-  | { drill: "anion-gap" | "delta-ratio" | "corrections"; count: DrillCount };
+  | { drill: "aa-gradient" | "pf-ratio" | "delta-ratio"; count: DrillCount; pressureUnit: PressureUnit }
+  | { drill: "anion-gap" | "corrections"; count: DrillCount };
 export type DrillVisual =
   | { kind: "range"; label: string; value: number; low: number; high: number; unit: string }
   | { kind: "difference"; label: string; alveolar: number; arterial: number; gradient: number; unit: string };
 export type DrillQuestion = {
+  correctedGap?: boolean;
+  respiratoryPattern?: string;
   values: { label: string; value: number; unit: string; decimals?: number; reference?: string }[];
   numeric: { prompt: string; target: number; tolerance: number; decimals: number; unit: string; working: string };
   choice?: { prompt: string; options: { id: string; label: string }[]; correctId: string; working: string };
   visual?: DrillVisual;
 };
-export type DrillSet = { help: { title: string; formula: string; note?: string }; questions: DrillQuestion[] };
+export type DrillSet = { help: { title: string; formula: string; note?: string }; questions: DrillQuestion[]; alternateQuestions?: DrillQuestion[] };
 export type DrillLoader = (request: DrillRequest, signal: AbortSignal) => Promise<DrillSet>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
@@ -28,6 +30,8 @@ const validDecimals = (value: unknown) => isFiniteNumber(value) && Number.isInte
 
 function validQuestion(question: unknown): question is DrillQuestion {
   if (!isRecord(question)) return false;
+  if (question.correctedGap !== undefined && typeof question.correctedGap !== "boolean") return false;
+  if (question.respiratoryPattern !== undefined && !hasText(question.respiratoryPattern)) return false;
   const { values, numeric, choice, visual } = question;
   if (!Array.isArray(values) || !values.length || !values.every(tile => isRecord(tile)
     && hasText(tile.label) && isFiniteNumber(tile.value) && typeof tile.unit === "string"
@@ -55,20 +59,69 @@ function validSet(value: unknown, count: DrillCount): value is DrillSet {
     && Array.isArray(value.questions) && value.questions.length === count && value.questions.every(validQuestion);
 }
 
-export function readDrillSet(data: unknown, count: DrillCount): DrillSet {
-  if (!validSet(data, count)) throw new Error("We couldn’t load this drill. Please try again.");
-  return data;
+const respiratoryResponseOptions = [
+  { id: "above", label: "Additional respiratory acidosis" },
+  { id: "below", label: "Additional respiratory alkalosis" },
+  { id: "within", label: "Appropriate respiratory compensation" },
+];
+
+const metabolicResponseOptions = [
+  { id: "within", label: "Appropriate metabolic compensation" },
+  { id: "below", label: "Additional metabolic acidosis" },
+  { id: "above", label: "Additional metabolic alkalosis" },
+];
+
+function normalizeLegacyQuestion(question: DrillQuestion, request: DrillRequest): DrillQuestion {
+  const { numeric, choice, visual } = question;
+  if (request.drill === "anion-gap") return {
+    ...question, choice: undefined, correctedGap: question.correctedGap ?? (visual?.label === "Albumin-corrected AG"),
+    numeric: { ...numeric, prompt: "What is the anion gap?", working: numeric.working.replace(/^(?!AG = )/, "AG = ")
+      .replace(". Correct for albumin: ", "\nCorrected AG = ") },
+  };
+  if (request.drill === "compensation") {
+    const pattern = numeric.prompt.match(/^Calculate the expected HCO₃⁻ for ((?:acute|chronic) respiratory (?:acidosis|alkalosis))$/)?.[1];
+    return { ...question, respiratoryPattern: pattern,
+      numeric: { ...numeric, prompt: pattern ? `Calculate the expected HCO₃⁻ (${pattern.split(" ")[0]})` : numeric.prompt,
+        working: numeric.working.split(". Expected range: ", 1)[0] },
+      choice: choice && { ...choice,
+        prompt: choice.prompt === "How does the measured PaCO₂ compare with the expected range?" ? "Interpret the respiratory response."
+          : choice.prompt === "How does the measured HCO₃⁻ compare with the expected range?" ? "Interpret the HCO₃⁻ response." : choice.prompt,
+        options: request.rule === "respiratory" ? metabolicResponseOptions : respiratoryResponseOptions },
+    };
+  }
+  if (request.drill === "delta-ratio" && choice?.prompt === "What does this delta ratio suggest in high anion gap metabolic acidosis?")
+    return { ...question, choice: { ...choice, prompt: "What acid–base disorder does this suggest?" } };
+  return question;
+}
+
+export function readDrillSet(data: unknown, request: DrillRequest): DrillSet {
+  const invalid = () => new Error("We couldn’t load this drill. Please try again.");
+  if (!validSet(data, request.count)) throw invalid();
+  if (data.alternateQuestions !== undefined) {
+    if (!("pressureUnit" in request) || !Array.isArray(data.alternateQuestions)
+      || data.alternateQuestions.length !== request.count
+      || !data.alternateQuestions.every((q, i) => validQuestion(q) && q.choice?.correctId === data.questions[i].choice?.correctId))
+      throw invalid();
+    return data;
+  }
+  const formula = data.help.formula.replace(/^Expected (?=(?:PaCO₂|HCO₃⁻) = )/, "")
+    .replace("0.3(Glucose − 5.5)", "0.3 × (Glucose − 5.5)").replace("(Anion gap − 12)", "(AG − 12)");
+  const legacyFormula = request.drill === "compensation" && request.rule === "respiratory"
+    ? "HCO₃⁻ = 24 + multiplier × (PaCO₂ − 40) ÷ 10 ± 2"
+    : formula === "PaCO₂ = 1.5 × HCO₃⁻ + 8" ? formula + " ± 2"
+    : formula === "PaCO₂ = 40 + 0.7 × (HCO₃⁻ − 24)" ? formula + " ± 3" : formula;
+  return { help: { ...data.help, formula: legacyFormula }, questions: data.questions.map(q => normalizeLegacyQuestion(q, request)) };
 }
 
 export async function requestDrill(client: SupabaseClient, request: DrillRequest, signal: AbortSignal): Promise<DrillSet> {
   const { data, error } = await client.functions.invoke("exam-drills", { body: request, signal });
   if (error) {
     const status = error.context?.status;
-    throw new Error(status === 401 || status === 403
-      ? "Focused Drills require an active paid Exam plan."
+    throw new Error(status === 401 ? "Your session has expired. Please sign in again." : status === 403
+      ? "Focused Drills require an active Exam plan."
       : "We couldn’t generate this drill. Please try again.");
   }
-  return readDrillSet(data, request.count);
+  return readDrillSet(data, request);
 }
 
 export function checkDrillNumber(entry: string, { target, tolerance }: DrillQuestion["numeric"]): boolean | null {

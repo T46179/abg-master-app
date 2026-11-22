@@ -171,6 +171,14 @@
   margin: 0 0 1.5rem;
 }
 
+.exam-drill-values:has(+ .exam-drill-anion-gap) {
+  margin-bottom: .75rem;
+}
+
+.exam-screen .exam-drill-anion-gap {
+  margin-bottom: 1.5rem;
+}
+
 .exam-drill-steps {
   display: grid;
   gap: 1.5rem;
@@ -228,11 +236,6 @@
 
 .exam-screen .exam-drill-next:focus-visible {
   outline: none;
-}
-
-.exam-drill-next:focus-visible > span {
-  text-decoration: underline;
-  text-underline-offset: .2em;
 }
 
 .exam-drill-input {

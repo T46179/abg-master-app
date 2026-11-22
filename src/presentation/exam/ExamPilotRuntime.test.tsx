@@ -691,9 +691,8 @@ it("keeps history failure independent of Begin and hides drills without paid acc
 it.each([true, false])("runs a paid drill locally when standard Exam starts are %s", async canStartStandard => {
  const original = invoke.getMockImplementation()!;
  const question = {
-   values: [{ label: "Na⁺", value: 140, unit: "mmol/L" }, { label: "Cl⁻", value: 106, unit: "mmol/L" }, { label: "HCO₃⁻", value: 18, unit: "mmol/L" }],
-   numeric: { prompt: "Calculate the anion gap", target: 16, tolerance: 0.05, decimals: 1, unit: "mmol/L", working: "140 − (106 + 18) = 16.0 mmol/L." },
-   choice: { prompt: "Is the anion gap raised? Use a reference interval of 4–12 mmol/L.", options: [{ id: "within", label: "Within the reference interval" }, { id: "raised", label: "Raised" }], correctId: "raised", working: "16 is above 12." },
+   values: [{ label: "Na⁺", value: 140, unit: "mmol/L" }, { label: "Cl⁻", value: 106, unit: "mmol/L" }, { label: "HCO₃⁻", value: 18, unit: "mmol/L" }, { label: "Albumin", value: 42, unit: "g/L" }],
+   numeric: { prompt: "What is the anion gap?", target: 16, tolerance: 0.05, decimals: 1, unit: "mmol/L", working: "AG = 140 − (106 + 18) = 16.0 mmol/L" },
    visual: { kind: "range", label: "Anion gap", value: 16, low: 4, high: 12, unit: "mmol/L" },
  };
  let fail = true;
@@ -721,10 +720,17 @@ it.each([true, false])("runs a paid drill locally when standard Exam starts are 
  expect(generationCalls()).toHaveLength(2);
  expect(generationCalls()[1][1].body).toEqual({ drill: "anion-gap", count: 5 });
  expect(container.querySelector("label.exam-drill-prompt")?.textContent).toBe("What is the anion gap?");
- expect(container.querySelector(".exam-drill-step-waiting")?.textContent).toBe("Is it raised?");
- expect(container.querySelector(".exam-drill-rule-notes li")?.textContent).toContain("4–12 mmol/L");
+ expect(container.querySelectorAll(".exam-drill-steps li")).toHaveLength(1);
+ expect([...container.querySelectorAll(".exam-drill-rule-notes li")].map(note => note.textContent)).toEqual([
+   "Albumin correction: Corrected AG = AG + 0.25 × (40 − albumin in g/L).",
+   "Hypoalbuminaemia lowers the AG and may mask a HAGMA.",
+   "Interpret the corrected AG when albumin is low.",
+   "Some AG rules include K+",
+ ]);
+ expect(container.querySelector(".exam-drill-rule-notes :is(strong, b)")).toBeNull();
  const cards = [...container.querySelectorAll(".exam-drill-values .metric-card")];
- expect(cards.map(card => card.querySelector(".metric-card__label")?.textContent)).toEqual(["Na+", "Cl-", "HCO3-"]);
+ expect(cards.map(card => card.querySelector(".metric-card__label")?.textContent)).toEqual(["Na+", "Cl-", "HCO3-", "Albumin"]);
+ expect(cards[3].querySelector(".metric-card__reference")?.textContent).toBe("35 - 50 g/L");
  expect(container.querySelector(".exam-drill-values .metric-card__value--abnormal")?.querySelector("span")?.textContent).toBe("18");
  expect(container.querySelectorAll(".exam-drill-values .metric-card__value--abnormal")).toHaveLength(1);
  async function enterNumber(text: string) {
@@ -739,17 +745,19 @@ it.each([true, false])("runs a paid drill locally when standard Exam starts are 
  await enterNumber("16junk");
  expect(container.textContent).toContain("Enter a number, without units.");
  for (let i = 0; i < 5; i++) {
+   expect(container.querySelector(".ag-gauge")).toBeNull();
    const submitted = i === 0 ? "1" : "16.05";
    await enterNumber(submitted);
    expect(container.querySelector(".exam-drill-feedback-heading strong")?.textContent).toBe(i === 0 ? "Not Quite" : "Correct");
-   expect(container.querySelector(".exam-drill-calculation")?.previousElementSibling?.textContent).toBe(`Your answer: ${submitted} mmol/L`);
-   expect(container.querySelector(".exam-drill-calculation strong")?.textContent).toBe("16.0 mmol/L");
-   expect(container.querySelector(".exam-drill-choices legend")?.textContent).toBe("Is it raised?");
-   expect([...container.querySelectorAll(".exam-drill-choices button")].map(button => button.textContent)).toEqual(["Raised", "Not raised"]);
-   await click("Raised");
+   expect([...container.querySelectorAll(".exam-drill-submitted-answer, .exam-drill-calculation")].map(line => line.textContent)).toEqual([
+     `Your answer: ${submitted} mmol/L`,
+     "AG = 140 − (106 + 18) = 16.0 mmol/L",
+   ]);
+   expect(container.querySelector(".exam-drill-choices")).toBeNull();
+   expect(container.querySelector(".ag-gauge")).not.toBeNull();
    await click(i === 4 ? "See summary" : "Next question");
  }
- expect(container.textContent).toContain("9 of 10 steps correct");
+ expect(container.textContent).toContain("4 of 5 steps correct");
  expect(generationCalls()).toHaveLength(2);
  expect(operations("start")).toHaveLength(0);
  await click("Practise another set");
@@ -767,7 +775,12 @@ it("uses the global pressure unit for new drill sets and keeps the current set c
    if (name !== "exam-drills") return original(name, options);
    const { count, pressureUnit } = options.body;
    const question = {
-     values: [{ label: "PaO₂", value: pressureUnit === "kPa" ? 10.7 : 79, unit: pressureUnit }],
+     values: options.body.drill === "delta-ratio" ? [
+       { label: "pH", value: 7.31, unit: "", decimals: 2 },
+       { label: "PaCO₂", value: pressureUnit === "kPa" ? 4.1 : 30.5, unit: pressureUnit },
+       { label: "HCO₃⁻", value: 15, unit: "mmol/L" },
+       { label: "Anion gap", value: 23, unit: "mmol/L" },
+     ] : [{ label: "PaO₂", value: pressureUnit === "kPa" ? 10.7 : 79, unit: pressureUnit }],
      numeric: options.body.drill === "compensation" ? {
        prompt: "Calculate the expected PaCO₂", target: 4.7, tolerance: 0.05, decimals: 1, unit: "kPa",
        working: "1.5 × 18 + 8 = 35.0 mmHg ≈ 4.7 kPa. Expected range: 4.4–4.9 kPa.",
@@ -794,7 +807,7 @@ it("uses the global pressure unit for new drill sets and keeps the current set c
  await click("Focused Drills");
  const generationCalls = () => invoke.mock.calls.filter(([name]) => name === "exam-drills");
 
- for (const [title, drill] of [["Compensation", "compensation"], ["A–a Gradient", "aa-gradient"], ["P/F Ratio", "pf-ratio"]]) {
+ for (const [title, drill] of [["Compensation", "compensation"], ["Delta Ratio", "delta-ratio"], ["A–a Gradient", "aa-gradient"], ["P/F Ratio", "pf-ratio"]]) {
    const card = [...container.querySelectorAll<HTMLButtonElement>(".exam-drill-card")]
      .find(button => button.querySelector(".exam-card-title")?.textContent === title)!;
    await act(async () => card.click());

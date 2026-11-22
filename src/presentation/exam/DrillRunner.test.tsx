@@ -2,7 +2,8 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { DrillQuestion, DrillRequest } from "../../core/examDrills";
+import { readDrillSet, type DrillQuestion, type DrillRequest } from "../../core/examDrills";
+import { FocusedDrills } from "./FocusedDrills";
 import { DrillRunner } from "./DrillRunner";
 
 let container: HTMLDivElement;
@@ -23,7 +24,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function renderQuestion(request: DrillRequest, visual?: DrillQuestion["visual"], withChoice = true) {
+function renderQuestion(request: DrillRequest, visual?: DrillQuestion["visual"], withChoice = true, overrides: Partial<DrillQuestion> = {}) {
   const respiratoryCompensation = request.drill === "compensation" && request.rule === "respiratory";
   const prompt = respiratoryCompensation
     ? "Calculate the expected HCO₃⁻ for chronic respiratory acidosis"
@@ -38,11 +39,29 @@ function renderQuestion(request: DrillRequest, visual?: DrillQuestion["visual"],
       correctId: "within",
       working: "Compare the result with the supplied range.",
     } } : {}),
+    ...overrides,
   };
+  const help = respiratoryCompensation
+    ? { title: "Respiratory compensation", formula: "HCO₃⁻ = 24 + factor × (PaCO₂ − 40) ÷ 10 ± 2" }
+    : { title: "Rule", formula: "Formula" };
+  const set = readDrillSet({ help, questions: Array(request.count).fill(question) }, request);
   act(() => root.render(<DrillRunner title="Focused drill" request={request} busy={false} error=""
-    set={{ help: { title: "Rule", formula: "Formula" }, questions: [question, question] }}
+    set={{ ...set, questions: set.questions.slice(0, 2) }}
     onRepeat={() => {}} onExit={() => {}} />));
 }
+
+it("shows the respiratory compensation rule card with the supplied tolerance", () => {
+  renderQuestion({ drill: "compensation", count: 5, rule: "respiratory", pressureUnit: "mmHg" });
+
+  expect(container.querySelector(".exam-drill-rule")?.textContent)
+    .toContain("HCO₃⁻ = 24 + multiplier × (PaCO₂ − 40) ÷ 10 ± 2");
+  expect([...container.querySelectorAll(".exam-drill-rule-notes li")].map(note => note.textContent)).toEqual([
+    "Respiratory acidosis: 1 acute, 4 chronic",
+    "Respiratory alkalosis: 2 acute, 5 chronic",
+    "HCO₃⁻ above expected: additional metabolic alkalosis",
+    "HCO₃⁻ below expected: additional metabolic acidosis",
+  ]);
+});
 
 function clickButton(label: string) {
   const button = [...container.querySelectorAll("button")].find(item => item.textContent?.trim() === label);
@@ -50,10 +69,10 @@ function clickButton(label: string) {
   act(() => button!.click());
 }
 
-function submitNumber() {
+function submitNumber(entry = "10") {
   const input = container.querySelector<HTMLInputElement>('input[inputmode="decimal"]')!;
   act(() => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "10");
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, entry);
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   clickButton("Check");
@@ -153,15 +172,84 @@ it.each([[4, "normal", "30%"], [12, "normal", "70%"], [16, "raised", "85%"]])(
   "plots anion gap %s against the drill's reference limits",
   (value, classification, position) => {
     renderQuestion({ drill: "anion-gap", count: 5 },
-      { kind: "range", label: "Anion gap", value, low: 4, high: 12, unit: "mmol/L" });
-    submitNumber();
+      { kind: "range", label: "Anion gap", value, low: 4, high: 12, unit: "mmol/L" }, false);
     expect(container.querySelector(".ag-gauge")).toBeNull();
-    clickButton("Not raised");
+    submitNumber();
     expect(container.querySelector(".exam-drill-visualiser .ag-gauge__meta")?.textContent).toBe("Reference range 4–12 mmol/L");
     expect(container.querySelector<HTMLElement>(".ag-marker")?.style.getPropertyValue("--ag-pos")).toBe(position);
     expect(container.querySelector(".ag-visually-hidden")?.textContent).toContain(`Calculated anion gap ${value} mmol/L, classified ${classification}.`);
   },
 );
+
+it("grades a rounded albumin-corrected gap and displays its chart without a legacy choice step", () => {
+  renderQuestion({ drill: "anion-gap", count: 5 },
+    { kind: "range", label: "Albumin-corrected AG", value: 13.5, low: 4, high: 12, unit: "mmol/L" }, true, {
+      values: [{ label: "Albumin", value: 26, unit: "g/L" }],
+      numeric: {
+        prompt: "Calculate the albumin-corrected anion gap", target: 13.5, tolerance: 1, decimals: 1, unit: "mmol/L",
+        working: "140 − (112 + 18) = 10.0 mmol/L. Correct for albumin: 10.0 + 0.25 × (40 − 26) = 13.5 mmol/L.",
+      },
+      choice: {
+        prompt: "Is the albumin-corrected gap raised?",
+        options: [{ id: "within", label: "Not raised" }, { id: "raised", label: "Raised" }],
+        correctId: "raised",
+        working: "The albumin-corrected gap is above 12 mmol/L.",
+      },
+    });
+  expect(container.querySelector(".metric-card__label")?.textContent).toBe("Albumin");
+  expect(container.querySelector(".metric-card__value span")?.textContent).toBe("26");
+  expect(container.querySelector(".metric-card__value small")?.textContent).toBe("g/L");
+  expect(container.querySelector(".metric-card__reference")?.textContent).toBe("35 - 50 g/L");
+  expect(container.querySelector(".metric-card__value--abnormal span")?.textContent).toBe("26");
+  expect(container.querySelector("label.exam-drill-prompt")?.textContent).toBe("What is the anion gap?");
+  expect(container.textContent).not.toContain("Correct for albumin.");
+  const descriptionId = container.querySelector("input")!.getAttribute("aria-describedby")!;
+  expect(document.getElementById(descriptionId)?.textContent).toBe("mmol/L");
+  expect(container.querySelectorAll(".exam-drill-steps li")).toHaveLength(1);
+  submitNumber("14.5");
+  expect(container.querySelector(".exam-drill-numeric-feedback .exam-drill-feedback-status")?.textContent).toBe("Correct");
+  expect([...container.querySelectorAll(".exam-drill-submitted-answer, .exam-drill-calculation")].map(line => line.textContent)).toEqual([
+    "Your answer: 14.5 mmol/L",
+    "AG = 140 − (112 + 18) = 10.0 mmol/L",
+    "Corrected AG = 10.0 + 0.25 × (40 − 26) = 13.5 mmol/L",
+  ]);
+  expect(container.querySelector(".exam-drill-choices")).toBeNull();
+  expect(container.querySelector(".ag-marker__chip")?.textContent).toBe("Albumin-corrected AG 13.5");
+  expect(container.querySelector(".ag-marker--corrected")).toBeNull();
+  expect(container.querySelector(".ag-visually-hidden")?.textContent).toContain("Albumin-corrected anion gap 13.5 mmol/L, classified raised.");
+});
+
+it("scores numerical accuracy independently of interpretation across a clinical threshold", () => {
+  renderQuestion({ drill: "delta-ratio", count: 5, pressureUnit: "mmHg" }, undefined, true, {
+    numeric: {
+      prompt: "Calculate the delta ratio", target: 0.78, tolerance: 0.1, decimals: 2, unit: "", working: "Result = 0.78.",
+    },
+    choice: {
+      prompt: "What does this delta ratio suggest in high anion gap metabolic acidosis?",
+      options: [{ id: "nagma", label: "Additional NAGMA" }, { id: "isolated", label: "Isolated HAGMA" }],
+      correctId: "nagma",
+      working: "The calculated ratio is below 0.8.",
+    },
+  });
+
+  const interpretationPrompt = "What acid–base disorder does this suggest?";
+  expect(container.querySelector(".exam-drill-step-waiting")?.textContent).toBe(interpretationPrompt);
+  submitNumber("0.85");
+  expect(container.querySelector(".exam-drill-choices legend")?.textContent).toBe(interpretationPrompt);
+  expect(container.querySelector(".exam-drill-numeric-feedback .exam-drill-feedback-status")?.textContent).toBe("Correct");
+  clickButton("Isolated HAGMA");
+  expect(container.querySelector(".exam-drill-choices [role='status']")?.textContent).toBe("Not Quite");
+  expect(container.querySelector("button.exam-drill-next")?.textContent?.trim()).toBe("Next question");
+  clickButton("Next question");
+
+  submitNumber("0.89");
+  expect(container.querySelector(".exam-drill-numeric-feedback .exam-drill-feedback-status")?.textContent).toBe("Not Quite");
+  clickButton("Additional NAGMA");
+  expect(container.querySelector(".exam-drill-choices [role='status']")?.textContent).toBe("Correct");
+  expect(container.querySelector("button.exam-drill-next")?.textContent?.trim()).toBe("See summary");
+  clickButton("See summary");
+  expect(container.querySelector(".exam-drill-summary-score")?.textContent).toBe("2 of 4 steps correct");
+});
 
 it("reflows native A–a gradient labels without changing the displayed pressures", () => {
   let width = 700;
@@ -194,15 +282,46 @@ it("reflows native A–a gradient labels without changing the displayed pressure
   expect(container.querySelector(".aag-bars__callout--gradient")).toBeNull();
 });
 
-it.each([
-  { drill: "delta-ratio", label: "Delta ratio", value: 1.2, low: 0.8, high: 2, unit: "" },
-  { drill: "corrections", label: "Corrected sodium", value: 146, low: 135, high: 145, unit: "mmol/L" },
-] as const)("keeps the existing $label chart", ({ drill, label, value, low, high, unit }) => {
-  renderQuestion({ drill, count: 5 }, { kind: "range", label, value, low, high, unit });
+it("shows the calculated gap below the gas metrics without a delta ratio chart", () => {
+  renderQuestion({ drill: "delta-ratio", count: 5, pressureUnit: "mmHg" },
+    { kind: "range", label: "Delta ratio", value: 1.2, low: 0.8, high: 2, unit: "" }, true, {
+      values: [
+        { label: "pH", value: 7.31, unit: "", decimals: 2 },
+        { label: "PaCO₂", value: 30.5, unit: "mmHg" },
+        { label: "HCO₃⁻", value: 15, unit: "mmol/L" },
+        { label: "Anion gap", value: 23, unit: "mmol/L" },
+      ],
+    });
+  const metrics = container.querySelector(".exam-drill-values")!;
+  expect([...metrics.querySelectorAll(".metric-card__label")].map(label => label.textContent)).toEqual(["pH", "PaCO2", "HCO3-"]);
+  expect(metrics.nextElementSibling?.textContent).toBe("Anion gap 23 mmol/L");
   submitNumber();
   clickButton("Within the range");
-  expect(container.querySelector(".exam-drill-graphic figcaption")?.textContent).toBe(label);
-  expect(container.querySelector(".exam-drill-visualiser")).toBeNull();
+  expect(container.querySelector(".exam-drill-visualiser, .exam-drill-graphic")).toBeNull();
+});
+
+it.each([
+  { response: "calculation only", withChoice: false },
+  { response: "legacy interpretation", withChoice: true },
+])("scores only the sodium calculation with a $response response", ({ withChoice }) => {
+  const legacyVisual: DrillQuestion["visual"] = withChoice ? {
+    kind: "range", label: "Corrected sodium", value: 146, low: 135, high: 145, unit: "mmol/L",
+  } : undefined;
+  renderQuestion({ drill: "corrections", count: 5 }, legacyVisual, withChoice, {
+    numeric: {
+      prompt: "Calculate the corrected sodium", target: 146, tolerance: 1, decimals: 1, unit: "mmol/L",
+      working: "142 + 0.3 × (18.8 − 5.5) ≈ 146.0 mmol/L.",
+    },
+  });
+  expect(container.querySelectorAll(".exam-drill-steps li")).toHaveLength(1);
+  submitNumber("146");
+  expect(container.querySelector(".exam-drill-choices")).toBeNull();
+  expect(container.querySelector(".exam-drill-visualiser, .exam-drill-graphic")).toBeNull();
+  expect(container.querySelector(".exam-drill-calculation strong")?.textContent).toBe("146.0 mmol/L");
+  clickButton("Next question");
+  submitNumber("143");
+  clickButton("See summary");
+  expect(container.querySelector(".exam-drill-summary-score")?.textContent).toBe("1 of 2 steps correct");
 });
 
 it("completes P/F ratio without a chart", () => {
@@ -218,4 +337,59 @@ it("completes P/F ratio without a chart", () => {
   expect(container.querySelector(".exam-drill-progress-count")?.textContent).toBe("2/2");
   expect(progress?.firstElementChild?.getAttribute("data-step")).toBe("complete");
   expect(progress?.lastElementChild?.getAttribute("data-step")).toBe("current");
+});
+
+it.each(["met-acidosis", "respiratory"] as const)("keeps drafts and checked verdicts consistent during live %s unit changes", async rule => {
+  const respiratory = rule === "respiratory";
+  function makeQuestion(unit: "mmHg" | "kPa"): DrillQuestion {
+    const answerUnit = respiratory ? "mmol/L" : unit;
+    const target = respiratory ? 25 : unit === "mmHg" ? 40 : 5.3;
+    return {
+      values: [{ label: "PaCO₂", value: unit === "mmHg" ? 50 : 6.7, unit }],
+      numeric: { prompt: "Calculate", target, tolerance: 0.1, unit: answerUnit, decimals: 1, working: `Result = ${target} ${answerUnit}` },
+      choice: { prompt: "Interpret", options: [{ id: "above", label: "Above" }, { id: "within", label: "Within" }],
+        correctId: "above", working: "Above the range." },
+    };
+  }
+  const loadDrill = vi.fn(async () => ({
+    help: { title: "Rule", formula: "Formula" }, questions: [makeQuestion("mmHg"), makeQuestion("mmHg")],
+    alternateQuestions: [makeQuestion("kPa"), makeQuestion("kPa")],
+  }));
+  const renderUnit = (unit: "mmHg" | "kPa") => act(() => root.render(
+    <FocusedDrills loadDrill={loadDrill} pressureUnit={unit} dashboardHeader={null} />));
+  renderUnit("mmHg");
+  const buttons = () => [...container.querySelectorAll<HTMLButtonElement>("button")];
+  act(() => buttons().find(b => b.querySelector(".exam-card-title")?.textContent === "Compensation")!.click());
+  if (respiratory) act(() => buttons().find(b => b.classList.contains("exam-rule") && /respiratory/i.test(b.querySelector("strong")!.textContent!))!.click());
+  await act(async () => buttons().find(b => b.textContent?.includes("Start Compensation drill"))!.click());
+  const notes = () => [...container.querySelectorAll(".exam-drill-rule-notes li")].map(li => li.textContent);
+  const originalNotes = notes();
+  const input = container.querySelector<HTMLInputElement>("input")!;
+  act(() => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "12");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  renderUnit("kPa");
+  expect(input.value).toBe(respiratory ? "12" : "");
+  const conversion = "kPa → mmHg: ×7.5 | mmHg → kPa: ×0.133";
+  expect(notes()).toEqual(respiratory ? [...originalNotes, conversion] : originalNotes);
+  expect(container.textContent?.includes(conversion)).toBe(respiratory);
+  submitNumber(respiratory ? "25" : "5.3");
+  renderUnit("mmHg");
+  expect(container.textContent).not.toContain(conversion);
+  expect(container.querySelector(".exam-drill-submitted-answer")?.textContent)
+    .toBe(respiratory ? "Your answer: 25 mmol/L" : "Your answer: 5.3 kPa");
+  clickButton("Within");
+  renderUnit("kPa");
+  renderUnit("mmHg");
+  const verdicts = () => [...container.querySelectorAll(".exam-drill-feedback-status")].map(el => el.textContent);
+  expect(verdicts()).toEqual(["Correct", "Not Quite"]);
+  clickButton("Next question");
+  submitNumber("0");
+  clickButton("Above");
+  renderUnit("kPa");
+  expect(verdicts()).toEqual(["Not Quite", "Correct"]);
+  clickButton("See summary");
+  expect(container.querySelector(".exam-drill-summary-score")?.textContent).toBe("2 of 4 steps correct");
+  expect(loadDrill).toHaveBeenCalledTimes(1);
 });

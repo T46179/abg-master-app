@@ -7,37 +7,37 @@ type DrillCardContent = { title: string; blurb: string; tone: ExamTone; Icon: ty
 export const drillDefinitions = {
   "anion-gap": {
     title: "Anion Gap",
-    blurb: "Calculate the gap, then decide if it’s raised.",
+    blurb: "Calculate the anion gap and correct for albumin when needed.",
     tone: "blue",
     Icon: GapIcon,
   },
   compensation: {
     title: "Compensation",
-    blurb: "Apply compensation rules and judge the measured response.",
+    blurb: "Predict the expected response and identify mixed acid–base disorders.",
     tone: "coral",
     Icon: ScaleIcon,
   },
   "delta-ratio": {
     title: "Delta Ratio",
-    blurb: "Unmask a second metabolic process hiding in the numbers.",
+    blurb: "Uncover additional metabolic disorders using the delta ratio.",
     tone: "purple",
     Icon: SplitIcon,
   },
   "aa-gradient": {
     title: "A–a Gradient",
-    blurb: "Calculate the difference between alveolar and arterial oxygen pressure.",
+    blurb: "Calculate the gradient and assess oxygen transfer.",
     tone: "green",
     Icon: LungIcon,
   },
   "pf-ratio": {
     title: "P/F Ratio",
-    blurb: "Calculate the ratio of arterial oxygen pressure to inspired oxygen fraction.",
+    blurb: "Calculate the ratio and assess oxygenation impairment.",
     tone: "navy",
     Icon: LungIcon,
   },
   corrections: {
     title: "Glucose / Sodium Correction",
-    blurb: "Correct sodium for hyperglycaemia, then interpret the result.",
+    blurb: "Calculate the corrected sodium in hyperglycaemia.",
     tone: "coral",
     Icon: DropletIcon,
   },

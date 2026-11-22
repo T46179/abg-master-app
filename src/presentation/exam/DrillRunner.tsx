@@ -10,28 +10,32 @@ function FeedbackStatus({ correct }: { correct: boolean }) {
   return <strong className="exam-drill-feedback-status" data-correct={correct}>{correct ? "Correct" : "Not Quite"}</strong>;
 }
 
-function NumericPrompt({ text }: { text: string }) {
-  if (text === "Calculate the anion gap") return "What is the anion gap?";
-  const match = text.match(/^Calculate the expected HCO₃⁻ for (acute|chronic) respiratory (?:acidosis|alkalosis)$/);
-  return match ? <>Calculate the expected HCO₃⁻ (<strong>{match[1]}</strong>)</> : text;
+function NumericPrompt({ text, pattern }: { text: string; pattern?: string }) {
+  const duration = pattern?.split(" ")[0];
+  const start = duration ? text.indexOf(duration) : -1;
+  return duration && start >= 0
+    ? <>{text.slice(0, start)}<strong>{duration}</strong>{text.slice(start + duration.length)}</>
+    : text;
 }
 
-function NumericFeedback({ correct, numeric, submittedAnswer }: {
+function NumericFeedback({ correct, numeric, submittedAnswer, pattern }: {
   correct: boolean;
   numeric: DrillQuestion["numeric"];
   submittedAnswer: string;
+  pattern?: string;
 }) {
   const answer = `${numeric.target.toFixed(numeric.decimals)} ${numeric.unit}`.trim();
-  const [working] = numeric.working.split(". Expected range: ", 1);
-  const calculation = working.replace(/\.$/, "");
+  const calculations = numeric.working.split(/\r?\n/).map(line => line.replace(/\.$/, ""));
+  const calculation = calculations[calculations.length - 1];
   const answerStart = calculation.lastIndexOf(answer);
 
   return <div className="exam-drill-numeric-feedback" role="status">
     <div className="exam-drill-feedback-heading">
-      <p className="exam-drill-prompt"><NumericPrompt text={numeric.prompt} /></p>
+      <p className="exam-drill-prompt"><NumericPrompt text={numeric.prompt} pattern={pattern} /></p>
       <FeedbackStatus correct={correct} />
     </div>
-    <p className="exam-drill-submitted-answer">Your answer: {submittedAnswer.trim()}{numeric.unit && ` ${numeric.unit}`}</p>
+    <p className="exam-drill-submitted-answer">Your answer: {submittedAnswer}</p>
+    {calculations.slice(0, -1).map((line, index) => <p key={index} className="exam-drill-calculation">{line}</p>)}
     <p className="exam-drill-calculation">
       {answerStart === -1 ? <>{calculation} · <strong>{answer}</strong></> : <>
         {calculation.slice(0, answerStart)}<strong>{answer}</strong>{calculation.slice(answerStart + answer.length)}
@@ -133,27 +137,11 @@ function PFRatioInfo() {
   </DrillRuleInfo>;
 }
 
-const respiratoryResponseOptions = [
-  { id: "above", label: "Additional respiratory acidosis" },
-  { id: "below", label: "Additional respiratory alkalosis" },
-  { id: "within", label: "Appropriate respiratory compensation" },
-];
-
-const metabolicResponseOptions = [
-  { id: "within", label: "Appropriate metabolic compensation" },
-  { id: "below", label: "Additional metabolic acidosis" },
-  { id: "above", label: "Additional metabolic alkalosis" },
-];
-
-const anionGapOptions = [
-  { id: "raised", label: "Raised" },
-  { id: "within", label: "Not raised" },
-];
-
-export function DrillRunner({ title, set, request, busy, error, onRepeat, onExit }: {
+export function DrillRunner({ title, set, request, pressureUnit, busy, error, onRepeat, onExit }: {
   title: string;
   set: DrillSet;
   request: DrillRequest;
+  pressureUnit?: "mmHg" | "kPa";
   busy: boolean;
   error: string;
   onRepeat: () => void;
@@ -163,35 +151,42 @@ export function DrillRunner({ title, set, request, busy, error, onRepeat, onExit
   const [correctSoFar, setCorrectSoFar] = useState(0);
   const [answer, setAnswer] = useState("");
   const [numberCorrect, setNumberCorrect] = useState<boolean | null>(null);
-  const [choiceAnswer, setChoiceAnswer] = useState<string | null>(null);
+  const [choiceAnswer, setChoiceAnswer] = useState<{ id: string; correct: boolean } | null>(null);
   const [invalid, setInvalid] = useState(false);
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const firstChoice = useRef<HTMLButtonElement>(null);
   const nextButton = useRef<HTMLButtonElement>(null);
   const summaryHeading = useRef<HTMLHeadingElement>(null);
-  const question = set.questions[index];
-  const choice = question?.choice;
+  const initialUnit = "pressureUnit" in request ? request.pressureUnit : undefined;
+  const displayUnit = set.alternateQuestions ? pressureUnit ?? initialUnit : initialUnit;
+  const questions = displayUnit !== initialUnit && set.alternateQuestions ? set.alternateQuestions : set.questions;
+  const question = questions[index];
+  const [entryUnit, setEntryUnit] = useState(question?.numeric.unit);
+  if (question && numberCorrect === null && entryUnit !== question.numeric.unit) {
+    setEntryUnit(question.numeric.unit);
+    setAnswer("");
+    setInvalid(false);
+  }
+  const isSodiumCorrection = request.drill === "corrections";
   const isAnionGap = request.drill === "anion-gap";
-  const choicePrompt = isAnionGap ? "Is it raised?"
-    : choice?.prompt === "How does the measured PaCO₂ compare with the expected range?"
-    ? "Interpret the respiratory response."
-    : choice?.prompt === "How does the measured HCO₃⁻ compare with the expected range?"
-      ? "Interpret the HCO₃⁻ response."
-      : choice?.prompt;
-  const choiceOptions = request.drill === "compensation"
-    ? (request.rule === "respiratory" ? metabolicResponseOptions : respiratoryResponseOptions)
-    : isAnionGap ? anionGapOptions : choice?.options ?? [];
+  // Older responses can still include a classification step for these drills.
+  const calculationOnly = isSodiumCorrection || isAnionGap;
+  const choice = calculationOnly ? undefined : question?.choice;
+  const choicePrompt = choice?.prompt;
+  const choiceOptions = choice?.options ?? [];
+  const hasChoice = !!choice;
   const finished = !question;
   const completeQuestion = numberCorrect !== null && (!choice || choiceAnswer !== null);
-  const totalSteps = set.questions.reduce((total, item) => total + (item.choice ? 2 : 1), 0);
+  const totalSteps = calculationOnly ? set.questions.length
+    : set.questions.reduce((total, item) => total + (item.choice ? 2 : 1), 0);
 
   useEffect(() => {
     if (finished) summaryHeading.current?.focus();
     else if (numberCorrect === null) inputRef.current?.focus();
-    else if (choice && choiceAnswer === null) firstChoice.current?.focus();
+    else if (hasChoice && choiceAnswer === null) firstChoice.current?.focus();
     else nextButton.current?.focus();
-  }, [index, finished, numberCorrect, choice, choiceAnswer]);
+  }, [index, finished, numberCorrect, choiceAnswer, hasChoice]);
 
   if (finished) return <Surface className="exam-drill-summary">
     <p className="exam-eyebrow">Drill complete</p>
@@ -209,7 +204,7 @@ export function DrillRunner({ title, set, request, busy, error, onRepeat, onExit
 
   function next() {
     if (!completeQuestion) return;
-    setCorrectSoFar(correctSoFar + Number(numberCorrect === true) + Number(!!choice && choiceAnswer === choice.correctId));
+    setCorrectSoFar(correctSoFar + Number(numberCorrect === true) + Number(!!choice && choiceAnswer?.correct === true));
     setAnswer("");
     setNumberCorrect(null);
     setChoiceAnswer(null);
@@ -217,27 +212,21 @@ export function DrillRunner({ title, set, request, busy, error, onRepeat, onExit
     setIndex(index + 1);
   }
 
-  const { numeric } = question;
+  const numeric = question.numeric;
   const anionGapReferenceInterval = isAnionGap && question.visual?.kind === "range"
     ? `${question.visual.low}–${question.visual.high} ${question.visual.unit}`
     : "4–12 mmol/L";
-  const isPFRatio = set.help.title === "P/F ratio";
-  const suppliedFormula = set.help.formula.replace(/^Expected (?=(?:PaCO₂|HCO₃⁻) = )/, "");
-  const ruleFormula = suppliedFormula === "PaCO₂ = 1.5 × HCO₃⁻ + 8"
-    ? "PaCO₂ = 1.5 × HCO₃⁻ + 8 ± 2"
-    : suppliedFormula === "PaCO₂ = 40 + 0.7 × (HCO₃⁻ − 24)"
-      ? `${suppliedFormula} ± 3`
-      : suppliedFormula === "HCO₃⁻ = 24 + factor × (PaCO₂ − 40) ÷ 10"
-      ? `${suppliedFormula} ± 2`
-      : suppliedFormula.replace("(Anion gap − 12)", "(AG − 12)").replace("0.3(Glucose − 5.5)", "0.3 × (Glucose − 5.5)");
-  const ruleNotes = ruleFormula === "PaCO₂ = 1.5 × HCO₃⁻ + 8 ± 2"
+  const isPFRatio = request.drill === "pf-ratio";
+  const rule = request.drill === "compensation" ? request.rule : undefined;
+  const ruleFormula = set.help.formula;
+  const ruleNotes = rule === "met-acidosis"
     ? [
       "PaCO₂ above expected range → Additional respiratory acidosis.",
       "PaCO₂ below expected range → Additional respiratory alkalosis.",
       "PaCO₂ within expected range → Appropriate respiratory compensation.",
       "Convert mmHg to kPa: Multiply by 0.133.",
     ]
-    : ruleFormula.startsWith("PaCO₂ = 40 + 0.7 × (HCO₃⁻ − 24)")
+    : rule === "met-alkalosis"
     ? [
       "Tip: PaCO₂ ≈ HCO₃⁻ + 15 (less accurate at higher HCO₃⁻).",
       "Hypoxaemia limits compensation. PaCO₂ rarely exceeds 55 mmHg.",
@@ -245,27 +234,27 @@ export function DrillRunner({ title, set, request, busy, error, onRepeat, onExit
       "PaCO₂ below expected range → Additional respiratory alkalosis.",
       "PaCO₂ within expected range → Appropriate respiratory compensation.",
     ]
-    : ruleFormula === "HCO₃⁻ = 24 + factor × (PaCO₂ − 40) ÷ 10 ± 2"
+    : rule === "respiratory"
     ? [
-      "Respiratory acidosis: Factor 1 (acute), 4 (chronic).",
-      "Respiratory alkalosis: Factor 2 (acute), 5 (chronic).",
-      "HCO₃⁻ above expected: Additional metabolic alkalosis.",
-      "HCO₃⁻ below expected: Additional metabolic acidosis.",
+      "Respiratory acidosis: 1 acute, 4 chronic",
+      "Respiratory alkalosis: 2 acute, 5 chronic",
+      "HCO₃⁻ above expected: additional metabolic alkalosis",
+      "HCO₃⁻ below expected: additional metabolic acidosis",
     ]
-    : ruleFormula === "A–a gradient = PAO₂ − PaO₂"
+    : request.drill === "aa-gradient"
     ? [
       <>PAO₂ = FiO₂ × (P<sub>atm</sub> − P<sub>H₂O</sub>) − PaCO₂/R</>,
       "PAO₂ ≈ 150 − (PaCO₂ ÷ 0.8) at sea level on room air",
       "Expected A–a gradient: (Age ÷ 4) + 4 mmHg",
     ]
-    : ruleFormula === "Na⁺ − (Cl⁻ + HCO₃⁻)"
+    : isAnionGap
     ? [
-      <><strong>Drill reference interval</strong> {anionGapReferenceInterval} (excluding K⁺).</>,
-      <><strong>Albumin correction:</strong> Corrected AG = AG + 0.25 × (40 − albumin in g/L).</>,
-      <><strong>Hypoalbuminaemia lowers the AG</strong> and may mask a HAGMA.</>,
-      <><strong>Interpret the corrected AG</strong> when albumin is low.</>,
+      "Albumin correction: Corrected AG = AG + 0.25 × (40 − albumin in g/L).",
+      "Hypoalbuminaemia lowers the AG and may mask a HAGMA.",
+      "Interpret the corrected AG when albumin is low.",
+      "Some AG rules include K+",
     ]
-    : set.help.title === "Corrected sodium"
+    : isSodiumCorrection
     ? [
       "Use Na⁺ and glucose in mmol/L.",
       "Glucose pulls water out of cells and dilutes the sodium.",
@@ -288,7 +277,7 @@ export function DrillRunner({ title, set, request, busy, error, onRepeat, onExit
     </Surface>
     <div className="exam-workspace exam-drill-runner-workspace">
       <Surface className="exam-drill-question value-panels__card">
-        <DrillValues values={question.values} />
+        <DrillValues values={question.values} drill={request.drill} />
         <ol className="exam-drill-steps">
           <li>
             <span className="exam-drill-step-number" data-complete={numberCorrect === true} aria-hidden="true">
@@ -301,7 +290,7 @@ export function DrillRunner({ title, set, request, busy, error, onRepeat, onExit
                 if (correct === null) { setInvalid(true); return; }
                 setNumberCorrect(correct);
               }}>
-                <label htmlFor={inputId} className="exam-drill-prompt"><NumericPrompt text={numeric.prompt} /></label>
+                <label htmlFor={inputId} className="exam-drill-prompt"><NumericPrompt text={numeric.prompt} pattern={question.respiratoryPattern} /></label>
                 <div className="exam-drill-entry">
                   <div className="exam-drill-input">
                     <input id={inputId} ref={inputRef} type="text" inputMode="decimal" autoComplete="off"
@@ -315,7 +304,7 @@ export function DrillRunner({ title, set, request, busy, error, onRepeat, onExit
                   </button>
                 </div>
                 {invalid && <p className="exam-inline-error" role="alert">Enter a number, without units.</p>}
-              </form> : <NumericFeedback correct={numberCorrect} numeric={numeric} submittedAnswer={answer} />}
+              </form> : <NumericFeedback correct={numberCorrect} numeric={numeric} pattern={question.respiratoryPattern} submittedAnswer={`${answer.trim()} ${entryUnit ?? ""}`.trim()} />}
             </div>
           </li>
           {choice && <li>
@@ -325,22 +314,24 @@ export function DrillRunner({ title, set, request, busy, error, onRepeat, onExit
                 <legend className="exam-drill-prompt">
                   <span className="exam-drill-feedback-heading">
                     <span>{choicePrompt}</span>
-                    <span role="status">{choiceAnswer !== null && <FeedbackStatus correct={choiceAnswer === choice.correctId} />}</span>
+                    <span role="status">{choiceAnswer !== null && <FeedbackStatus correct={choiceAnswer?.correct === true} />}</span>
                   </span>
                 </legend>
                 {choiceOptions.map((option, optionIndex) => {
                   const result = choiceAnswer !== null && option.id === choice.correctId ? "correct"
-                    : option.id === choiceAnswer ? "incorrect" : undefined;
+                    : option.id === choiceAnswer?.id ? "incorrect" : undefined;
                   return <button type="button" key={option.id} ref={optionIndex === 0 ? firstChoice : undefined}
                     data-result={result} aria-label={result ? `${option.label} (${result === "correct" ? "correct answer" : "your answer, incorrect"})` : undefined}
-                    onClick={() => setChoiceAnswer(option.id)}>{option.label}</button>;
+                    onClick={() => setChoiceAnswer({ id: option.id, correct: option.id === choice.correctId })}>{option.label}</button>;
                 })}
               </fieldset>
             </div>}
           </li>}
         </ol>
         {completeQuestion && <>
-          {question.visual && <DrillResult key={index} visual={question.visual} request={request} />}
+          {!isSodiumCorrection && request.drill !== "delta-ratio" && question.visual && (
+            <DrillResult key={index} visual={question.visual} request={request} correctedGap={question.correctedGap} />
+          )}
           <button type="button" ref={nextButton} className="figma-button exam-primary exam-start exam-drill-next" onClick={next}>
             <span>{index + 1 === set.questions.length ? "See summary" : "Next question"}</span> <ArrowIcon />
           </button>
@@ -355,10 +346,10 @@ export function DrillRunner({ title, set, request, busy, error, onRepeat, onExit
           </summary>
           <div className="exam-drill-rule-name-row">
             <p className="exam-drill-rule-name">{set.help.title}</p>
-            {ruleFormula === "Na⁺ − (Cl⁻ + HCO₃⁻)" && <AnionGapInfo referenceInterval={anionGapReferenceInterval} />}
-            {ruleFormula === "(AG − 12) ÷ (24 − HCO₃⁻)" && <DeltaRatioInfo />}
-            {ruleFormula === "A–a gradient = PAO₂ − PaO₂" && <AAGradientInfo />}
-            {set.help.title === "Corrected sodium" && <SodiumCorrectionInfo />}
+            {isAnionGap && <AnionGapInfo referenceInterval={anionGapReferenceInterval} />}
+            {request.drill === "delta-ratio" && <DeltaRatioInfo />}
+            {request.drill === "aa-gradient" && <AAGradientInfo />}
+            {isSodiumCorrection && <SodiumCorrectionInfo />}
             {isPFRatio && <PFRatioInfo />}
           </div>
           <DrillFormula text={ruleFormula} />
@@ -371,7 +362,7 @@ export function DrillRunner({ title, set, request, busy, error, onRepeat, onExit
               <dt>≤100</dt><dd>Severe oxygenation impairment.</dd>
             </dl>
             <p>P/F alone does not diagnose ARDS.</p>
-          </div> : ruleFormula === "(AG − 12) ÷ (24 − HCO₃⁻)" ? <div className="exam-drill-rule-notes exam-drill-ratio-notes">
+          </div> : request.drill === "delta-ratio" ? <div className="exam-drill-rule-notes exam-drill-ratio-notes">
             <p>Use only when the corrected AG is raised</p>
             <dl>
               <dt>&lt; 0.4</dt><dd>Predominantly NAGMA</dd>
@@ -381,6 +372,7 @@ export function DrillRunner({ title, set, request, busy, error, onRepeat, onExit
             </dl>
           </div> : ruleNotes && <ul className="exam-drill-rule-notes">
             {ruleNotes.map((note, index) => <li key={index}>{note}</li>)}
+            {rule === "respiratory" && displayUnit === "kPa" && <li>kPa → mmHg: ×7.5 | mmHg → kPa: ×0.133</li>}
           </ul>}
         </details>
       </Surface>

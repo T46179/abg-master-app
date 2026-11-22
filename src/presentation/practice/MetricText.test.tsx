@@ -4,9 +4,32 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MetricInlineText, MetricRichText } from "./MetricText";
+import { MetricComparisonFooter, MetricInlineText, MetricReference, MetricRichText } from "./MetricText";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+describe("Metric reference ranges", () => {
+  it.each([
+    ["7.35–7.45", "7.35 - 7.45"],
+    ["35-45 mmHg", "35 - 45 mmHg"],
+    ["Normal: 4.7–6.0 kPa", "4.7 - 6.0 kPa"],
+    ["135 - 145 mmol/L", "135 - 145 mmol/L"],
+    ["94–98%", "94 - 98%"],
+    ["−2–+2 mEq/L", "−2 - +2 mEq/L"],
+    ["-2 to +2 mEq/L", "-2 to +2 mEq/L"],
+    ["Room air: 0.21", "Room air: 0.21"],
+  ])("displays %s as %s", (reference, expected) => {
+    const element = document.createElement("div");
+    element.innerHTML = renderToStaticMarkup(<MetricReference reference={reference} />);
+    expect(element.textContent).toBe(expected);
+  });
+
+  it("uses the same spacing in comparison cards", () => {
+    const element = document.createElement("div");
+    element.innerHTML = renderToStaticMarkup(<MetricComparisonFooter comparison={{ initialValue: "7.32", referenceRange: "7.35–7.45" }} showReference />);
+    expect(element.querySelector(".metric-card__comparison-reference strong")?.textContent).toBe("7.35 - 7.45");
+  });
+});
 
 describe("MetricInlineText pressure text rendering", () => {
   const containers: HTMLDivElement[] = [];

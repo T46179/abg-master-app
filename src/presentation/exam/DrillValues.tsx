@@ -1,4 +1,4 @@
-import type { DrillQuestion } from "../../core/examDrills";
+import type { DrillKey, DrillQuestion } from "../../core/examDrills";
 import { formatMetricReferenceLimit, formatValue, standardMetricRanges } from "../../core/metrics";
 import { MetricCard } from "../practice/MetricCard";
 
@@ -10,6 +10,7 @@ const metricLabels = new Map([
 const referenceRanges = new Map(Object.entries({
   ...standardMetricRanges,
   "Anion gap": [8, 16] as const,
+  Albumin: [35, 50] as const,
 }));
 
 function presentDrillMetric(tile: DrillQuestion["values"][number]) {
@@ -34,8 +35,12 @@ function presentDrillMetric(tile: DrillQuestion["values"][number]) {
   };
 }
 
-export function DrillValues({ values }: Pick<DrillQuestion, "values">) {
-  return <div className="metric-grid exam-drill-values" role="group" aria-label="Question values">
-    {values.map(tile => <MetricCard key={tile.label} {...presentDrillMetric(tile)} />)}
-  </div>;
+export function DrillValues({ values, drill }: Pick<DrillQuestion, "values"> & { drill: DrillKey }) {
+  const anionGap = drill === "delta-ratio" ? values.find(tile => tile.label === "Anion gap") : undefined;
+  return <>
+    <div className="metric-grid exam-drill-values" role="group" aria-label="Question values">
+      {values.filter(tile => tile !== anionGap).map(tile => <MetricCard key={tile.label} {...presentDrillMetric(tile)} />)}
+    </div>
+    {anionGap && <p className="exam-drill-anion-gap">Anion gap {anionGap.value} {anionGap.unit}</p>}
+  </>;
 }
