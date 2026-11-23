@@ -18,7 +18,7 @@ export function TrialStepper({ step, onStep }: { step: number; onStep?: (step: n
 }
 export function AccountField({ id, label, password = false, error, disabled = false, value, onChange, aside, autoComplete, placeholder }: { placeholder?: string; autoComplete?: string; id: string; label: string; password?: boolean; error?: string; disabled?: boolean; value: string; onChange: (v: string) => void; aside?: ReactNode }) {
   const [shown, setShown] = useState(false);
-  return <div className={"account-field ph-no-capture" + (aside ? " account-field--with-aside" : "")} data-clarity-mask="true" data-sentry-mask="true"><div><label htmlFor={id}>{label}</label></div><div className="account-input" data-invalid={Boolean(error)}>
+  return <div className={"account-field ph-no-capture" + (aside ? " account-field--with-aside" : "")} data-sentry-mask="true"><div><label htmlFor={id}>{label}</label></div><div className="account-input" data-invalid={Boolean(error)}>
     <input id={id} name={id} placeholder={placeholder} type={password && !shown ? "password" : password ? "text" : "email"} value={value} onChange={event => onChange(event.target.value)} disabled={disabled} autoComplete={autoComplete ?? (password ? "current-password" : "username")} aria-invalid={Boolean(error)} aria-describedby={error ? id + "-error" : undefined} />
     {password && <button type="button" onClick={() => setShown(v => !v)} aria-label={shown ? "Hide password" : "Show password"} aria-pressed={shown} aria-controls={id} disabled={disabled}>{shown ? <EyeOffIcon /> : <EyeIcon />}</button>}
   </div>{aside && <div className="account-field-aside">{aside}</div>}{error && <p id={id + "-error"} className="account-field-error" role="alert">{error}</p>}</div>;
@@ -52,7 +52,7 @@ export function AccountPasswordPair({ passwordId, confirmId, password, confirm, 
 }) {
   const [shown, setShown] = useState(false);
   const [confirmShown, setConfirmShown] = useState(false);
-  return <div className="account-password-pair ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">
+  return <div className="account-password-pair ph-no-capture" data-sentry-mask="true">
     <label htmlFor={passwordId}>{label}</label>
     <div className="account-input"><input id={passwordId} name={passwordId} disabled={disabled} type={shown ? "text" : "password"} autoComplete="new-password" value={password} onChange={event => onPassword(event.target.value)} /></div>
     <label htmlFor={confirmId}>{confirmLabel}</label>

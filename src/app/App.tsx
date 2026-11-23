@@ -2,9 +2,8 @@ import { useEffect } from "react";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./routes";
 import { normalizeDevHashRoute } from "../core/authoredCasePreview";
-import { AnalyticsConsentBanner } from "../presentation/layout/AnalyticsConsentBanner";
 
-export function App({ analyticsConsent = true }: { analyticsConsent?: boolean }) {
+export function App() {
   if (typeof window !== "undefined") {
     normalizeDevHashRoute();
   }
@@ -22,10 +21,5 @@ export function App({ analyticsConsent = true }: { analyticsConsent?: boolean })
     };
   }, []);
 
-  return (
-    <>
-      <RouterProvider router={router} />
-      {analyticsConsent && <AnalyticsConsentBanner />}
-    </>
-  );
+  return <RouterProvider router={router} />;
 }

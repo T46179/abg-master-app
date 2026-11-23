@@ -342,7 +342,7 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
       : !guest ? "Switch accounts?"
       : candidate.method === "email" ? "Continue to your account?" : "Continue with Google?";
     const continueLabel = !guest ? "Switch account" : candidate.method === "email" ? "Continue to account" : "Continue with Google";
-    body = <div className="account-narrow ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">
+    body = <div className="account-narrow ph-no-capture" data-sentry-mask="true">
       <AccountCard title={title} className={googleConfirmation ? "account-entry-card account-google-confirmation" : undefined}>
         {switchPhase === "checking" && <p role="status">Checking saved progress and pending work.</p>}
         {switchPhase === "progress" && <p role="alert">We couldn’t check all of your saved progress. Retry before switching accounts.</p>}
@@ -382,7 +382,7 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
   } else if (identity.status === "unavailable" && !registrationActive && !["signin", "completion", "forgot", "reset"].includes(page)) {
     body = <div className="account-narrow"><AccountCard title="We couldn't check your account"><p>Your saved account has not been replaced.</p><AccountButton onClick={() => void account.refresh()}>Try again</AccountButton></AccountCard></div>;
   } else if (recoveryPage) {
-    body = <div className="account-narrow ph-no-capture" data-clarity-mask="true" data-sentry-mask="true"><PasswordRecoveryPages page={page as AccountPage} destination={destination} onPage={next => {
+    body = <div className="account-narrow ph-no-capture" data-sentry-mask="true"><PasswordRecoveryPages page={page as AccountPage} destination={destination} onPage={next => {
       if (next !== "signin") { setPage(next); return; }
       const params = new URLSearchParams(location.search); params.set("account", "signin"); params.set("reauthenticate", "1");
       void navigate(accountPageUrl("signin", params.toString()));
@@ -430,7 +430,7 @@ function SignInForm({ busy, error, onSubmit, onPage, onGoogle }: { busy: boolean
     const value = password; setPassword(""); void onSubmit(email, value);
   }
   return <AccountCard className="account-entry-card" title="Welcome Back">
-    <form noValidate onSubmit={submit} className="account-form ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">
+    <form noValidate onSubmit={submit} className="account-form ph-no-capture" data-sentry-mask="true">
       {onGoogle && <GoogleButton disabled={busy} onClick={onGoogle} />}
       <AccountField id="exam-signin-email" label="Email" placeholder="you@example.com" value={email} onChange={setEmail} error={emailError} disabled={busy} />
       <AccountField id="exam-signin-password" label="Password" password value={password} onChange={setPassword} error={error || (submitted && !password && !busy ? "Enter your password" : undefined)} disabled={busy} aside={<button type="button" className="account-link account-forgot-link" onClick={() => onPage("forgot")}>Forgot password?</button>} />
@@ -450,10 +450,10 @@ export function ProfileControl({ email, busy, paid, active, onPage, onSignOut, o
     ref.current?.querySelector<HTMLButtonElement>(".exam-account-menu button")?.focus();
     return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", key); };
   }, [open]);
-  return <div className="exam-account-control ph-no-capture" data-clarity-mask="true" data-sentry-mask="true" ref={ref}>
+  return <div className="exam-account-control ph-no-capture" data-sentry-mask="true" ref={ref}>
     <button ref={trigger} type="button" className="exam-account-trigger" aria-label={email ? `Account: ${email}` : "Sign in"} aria-expanded={email ? open : undefined} aria-controls={email ? "exam-account-menu" : undefined} disabled={!email && busy} onClick={() => { if (email) setOpen(v => !v); else onPage("signin"); }}>{email ? <span className="exam-account-avatar">{email.slice(0, 1).toUpperCase()}</span> : <><UserIcon /><span>Sign in</span></>}</button>
     {email && open && <section className="exam-account-menu" id="exam-account-menu" aria-label="Account">
-      <strong className="account-private ph-no-capture" data-clarity-mask="true">{email}</strong><p>{paid ? "Paid account" : "Free account"}</p>
+      <strong className="account-private ph-no-capture">{email}</strong><p>{paid ? "Paid account" : "Free account"}</p>
         <button type="button" className="account-menu-action" disabled={busy} onClick={() => { setOpen(false); onSignOut(); }}><SignOutIcon />Sign out</button>
         <div className="account-paid-control"><span>Local development</span><label><input type="checkbox" role="switch" checked={paid} disabled={active || busy} onChange={onPaid} />Paid account</label><small>{isLocalDrillPreview() ? "Includes a local Focused Drills preview. Exam starts still require pilot access." : "Interface only. Existing pilot permissions still apply."}</small></div>
     </section>}

@@ -72,7 +72,7 @@ function CreatePassword({ onGoogle }: { onGoogle?: () => void }) {
   }
   return <AccountCard className="account-entry-card account-password-card" eyebrow="Email verified" title="Create your password">
     <PasswordRequirements password={password} />
-    <form noValidate onSubmit={submit} className="account-form ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">
+    <form noValidate onSubmit={submit} className="account-form ph-no-capture" data-sentry-mask="true">
       {onGoogle && <GoogleButton disabled={busy} onClick={onGoogle} />}
       {(error || flow.error) && <p role="alert" className="account-field-error">{error || flow.error}</p>}
       <AccountPasswordPair passwordId="registration-password" confirmId="registration-confirm" password={password} confirm={confirm} disabled={busy} onPassword={setPassword} onConfirm={setConfirm} />

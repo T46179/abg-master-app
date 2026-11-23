@@ -43,7 +43,7 @@ export function PasswordRecoveryPages({ page, destination, onPage }: { page: Acc
   return <AccountCard className="account-entry-card account-recovery-card" eyebrow="Reset password" title="Forgot your password?">
     <p className="account-entry-intro">Enter your email address and we'll send you a link to reset your password.</p>
 
-    <form noValidate onSubmit={submit} className="account-form ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">
+    <form noValidate onSubmit={submit} className="account-form ph-no-capture" data-sentry-mask="true">
       {flow.error && !resetLinkError && <p role="alert" className="account-field-error">{flow.error}</p>}
       <AccountField id="reset-request-email" label="Email" disabled={busy} value={email} onChange={setEmail} error={invalidEmail ? "Enter a valid email address" : resetLinkError} />
       <AccountButton key={invalidAttempts} type="submit" className={"account-entry-submit" + (invalidAttempts > 0 ? " account-submit-rejected" : "")} showArrow={false} busy={busy} spinnerOnly busyLabel="Sending reset email">Send reset link</AccountButton>
@@ -67,7 +67,7 @@ function ResetPassword() {
   return <AccountCard className="account-entry-card account-recovery-card" eyebrow="Reset password" title="Set a new password">
     <p className="account-entry-intro">Choose a new password for your account.</p>
     <PasswordRequirements password={password} />
-    <form noValidate onSubmit={submit} className="account-form ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">
+    <form noValidate onSubmit={submit} className="account-form ph-no-capture" data-sentry-mask="true">
       {(error || flow.error) && <p role="alert" className="account-field-error">{error || flow.error}</p>}
       <AccountPasswordPair passwordId="reset-password" confirmId="reset-confirm-password" label="New password" confirmLabel="Confirm new password" password={password} confirm={confirm} onPassword={setPassword} onConfirm={setConfirm} disabled={busy} />
       <AccountButton type="submit" className="account-entry-submit" showArrow={false} busy={busy} spinnerOnly busyLabel="Saving new password">Save new password</AccountButton>

@@ -54,7 +54,7 @@ export function mountAccountStagingApp(container: HTMLElement) {
         {error && <p role="alert">{error}</p>}
       </aside>
       {active && <AccountWorkspaceProvider key={identity.generation} canonical={client} config={config} loadPayload={loadPayload}>
-        <AppProvider><App analyticsConsent={false} /></AppProvider>
+        <AppProvider><App /></AppProvider>
       </AccountWorkspaceProvider>}
     </>;
   }

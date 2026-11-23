@@ -42,7 +42,7 @@ export function GoogleLinkRecovery({ requestCode, onCandidate, onGoogle, onCance
     }
   }
 
-  return <div className="account-narrow ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">
+  return <div className="account-narrow ph-no-capture" data-sentry-mask="true">
     <AccountCard title="You already have an account" className="account-entry-card account-google-recovery">
       <p className="account-entry-intro">This Google account is already registered with ABG Master. Sign in to continue where you left off.</p>
       {requestCode ? <form className="account-form" onSubmit={event => void submit(event)}>

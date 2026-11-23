@@ -34,9 +34,9 @@ export function VerificationCodeCard({ onChangeEmail, onStart }: { onChangeEmail
   const error = validation || flow.error;
   return <AccountCard className="account-entry-card account-verification-card" eyebrow="Check your inbox" title={request?.purpose === "complete" ? "Finish creating your account" : "Verify your email"}>
     {!request ? <><p className="account-entry-intro">Enter your email address to request a verification code.</p><AccountButton className="account-entry-submit" showArrow={false} onClick={onStart}>Create your account</AccountButton></> : <>
-      <p className="account-entry-intro">{request.purpose === "complete" ? "If this account can continue registration, we'll send a verification code to " : "We have sent a verification code to "}<span className="account-address ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">{request.email}</span>.</p>
+      <p className="account-entry-intro">{request.purpose === "complete" ? "If this account can continue registration, we'll send a verification code to " : "We have sent a verification code to "}<span className="account-address ph-no-capture" data-sentry-mask="true">{request.email}</span>.</p>
       <p className="account-entry-intro">Enter the code below to continue. You may need to check your spam folder. The code will expire in 1 hour.</p>
-      <form noValidate onSubmit={verify} className="account-form ph-no-capture" data-clarity-mask="true" data-sentry-mask="true">
+      <form noValidate onSubmit={verify} className="account-form ph-no-capture" data-sentry-mask="true">
         <div className="account-field">
           <label htmlFor="registration-code">Verification code</label>
           <div className="account-input" data-invalid={Boolean(error)}><input ref={input} id="registration-code" name="verification-code" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={10} value={code} onChange={event => { setCode(event.target.value.replace(/\D/g, "")); setValidation(""); }} disabled={busy} aria-invalid={Boolean(error)} aria-describedby={error ? "registration-code-error" : undefined} /></div>
