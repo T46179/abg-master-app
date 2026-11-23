@@ -1,6 +1,5 @@
 import { useId, type CSSProperties, type ReactNode } from "react";
 import { Surface } from "../primitives/Surface";
-import { ChevronLeftIcon } from "./ExamIcons";
 import { scoreTone } from "./presentationModel";
 import type { ExamTone, SummaryTilePresentation } from "./presentationTypes";
 
@@ -10,12 +9,6 @@ export function toneStyle(tone: ExamTone): CSSProperties {
 
 export function IconBadge({ children, tone }: { children: ReactNode; tone?: ExamTone }) {
   return <span className="exam-icon-badge" style={tone ? toneStyle(tone) : undefined} aria-hidden="true">{children}</span>;
-}
-
-export function BackLink({ onClick }: { onClick: () => void }) {
-  return <button type="button" className="exam-back" onClick={onClick}>
-    <ChevronLeftIcon /> Back to Exam Room
-  </button>;
 }
 
 export function SegmentedControl<T extends string | number>({ label, options, value, onChange }: {

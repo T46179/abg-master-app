@@ -881,7 +881,7 @@ it("refreshes on history entry and discards a Results response after leaving his
  await mount();const before=invoke.mock.calls.filter(c=>c[1].body.operation==="history_page").length;
  await click("Past attempts");expect(invoke.mock.calls.filter(c=>c[1].body.operation==="history_page").length).toBeGreaterThan(before);
  await act(async()=>container.querySelector<HTMLButtonElement>(".exam-attempt-open")!.click());
- await click("Back to Exam Room");
+ await act(async () => { await router.navigate(-1); });
  await act(async()=>resolveRead({data:{...attempt,id,status:"submitted",finishedAt:"2026-10-07T00:00:00Z",feedback:{},parts:[{partId:"part",status:"pending"}]}}));
  expect(container.querySelector(".exam-history")).toBeNull();expect(container.querySelector(".exam-results")).toBeNull();
  expect(container.textContent).toContain("Latest result");
@@ -997,8 +997,8 @@ it("browser Back and Forward follow history and saved Results without starting a
  expect(invoke.mock.calls.filter(c => c[1].body.operation === "start")).toHaveLength(0);
 });
 it("browser Back within the same Exam URL still protects an active sitting", async () => {
- await mount(); await click("Past attempts"); await click("Back to Exam Room");
- // Returning with the UI Back button leaves the history screen available to Forward.
+ await mount(); await click("Past attempts"); await act(async () => { await router.navigate(-1); });
+ // Returning with browser Back leaves the history screen available to Forward.
  await act(async () => { await router.navigate(1); });
  await act(async () => { await router.navigate(-1); });
  await click("Begin");
@@ -1264,7 +1264,7 @@ it('returns a completed trial from setup to the dashboard with history and an em
  expect(container.querySelector('.exam-attempt-title strong')?.textContent).toBe('Trial Exam');
  await act(async()=>container.querySelector<HTMLButtonElement>('.exam-attempt-open')!.click());
  await click('Back to Exam Room'); expect(container.querySelector('.exam-history')).not.toBeNull();
- await click('Back to Exam Room');
+ await act(async () => { await router.navigate(-1); });
  await click('Error log'); expect(container.querySelector('.exam-error-log h1')?.textContent).toBe('Error log');
  expect(container.textContent).not.toContain('Loading your Error log');
  expect(container.textContent).not.toContain("We couldn't load your Error Log.");

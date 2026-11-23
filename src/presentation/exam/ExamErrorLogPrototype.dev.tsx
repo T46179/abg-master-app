@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ExamErrorLog } from "./ExamErrorLog";
 import { demoErrorLogConcepts } from "./errorLogFixtures.dev";
 
-export default function ExamErrorLogPrototype(props: { onBack: () => void; onOpenResult: () => void }) {
+export default function ExamErrorLogPrototype(props: { onOpenResult: () => void }) {
   const [preview, setPreview] = useState<"populated" | "allReviewed" | "empty">("populated");
   const [archived, setArchived] = useState(() => new Set(demoErrorLogConcepts.filter(c => c.archived).map(c => c.id)));
   const concepts = preview === "empty" ? [] : demoErrorLogConcepts.map(c => ({ ...c, archived: archived.has(c.id) }));

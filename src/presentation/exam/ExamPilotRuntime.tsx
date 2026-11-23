@@ -557,12 +557,12 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
       {exitOpen && <ExitSittingDialog busy={busy} error={exitError} onStay={() => setExitOpen(false)} onExit={() => void run(leave, false, true, exitFailure)} />}
     </> : <>
       {roomView === "error-log" ? <ConnectedExamErrorLog key={`${environment}:${userId}`} log={errorLog} loadDrill={loadDrill} pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"}
-        onBack={backToRoom} onOpenExample={(id, partId) => openResult(id, "error-log", partId)}
+        onOpenExample={(id, partId) => openResult(id, "error-log", partId)}
         onOpenLatest={history.latestAttemptId ? () => openResult(history.latestAttemptId!, "error-log") : undefined} /> : <>
         {roomView === "history" ? <ExamHistory
           history={historyView} unavailable={!history.data}
           attempts={historyView.attempts}
-          filter={history.filter} onFilterChange={history.setFilter} onBack={backToRoom}
+          filter={history.filter} onFilterChange={history.setFilter}
           onOpen={id => void run(() => openResult(id, "history"))}
           onRetry={id => void run(async () => { await session.call<RuntimeAttempt>("retry_grading", { attemptId: id }); await history.refresh(); })}
           onLoadMore={history.data?.page.nextCursor ? () => void history.loadMore() : undefined}

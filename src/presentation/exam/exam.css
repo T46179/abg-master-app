@@ -116,7 +116,6 @@
   .exam-feature h4 { grid-column: 2; margin-top: 0; }
   .exam-feature p { grid-column: 2; }
 }
-.exam-back { display: inline-flex; align-items: center; gap: .375rem; margin-bottom: 2rem; padding: 0; border: 0; background: transparent; color: var(--color-text-muted) !important; font-size: .84375rem; font-weight: 500; }
 .exam-result-heading { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem; }
 .exam-target { display: inline-flex; align-items: center; gap: .5rem; padding: .375rem .875rem; border-radius: 999px; color: var(--exam-coral); background: color-mix(in srgb, var(--exam-coral) 10%, var(--color-surface)); font-size: .8125rem; font-weight: 600; }
 .exam-result-summary { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--exam-space); margin-top: 2rem; }

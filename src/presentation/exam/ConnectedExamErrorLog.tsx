@@ -7,7 +7,6 @@ import type { DrillTarget } from "./errorLogTypes";
 import { useCallback, useEffect, useSyncExternalStore, useLayoutEffect, useRef, useState } from "react";
 import { ExamErrorLog } from "./ExamErrorLog";
 import { examKindLabel } from "./examLabels";
-import { BackLink } from "./ExamUi";
 import { ExamNotice, NoticeMessage, RetryAction } from "./ExamNotice";
 import type { ErrorLogConceptPresentation, ErrorLogExample } from "./errorLogTypes";
 import type { useExamErrorLog } from "./useExamErrorLog";
@@ -19,9 +18,9 @@ const emptySnapshot = () => emptyPages;
 const emptySubscribe = () => () => {};
 const date = (value: string) => new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short" }).format(new Date(value));
 
-export function ConnectedExamErrorLog({ log, onBack, onOpenExample, onOpenLatest, loadDrill, pressureUnit = "mmHg" }: {
+export function ConnectedExamErrorLog({ log, onOpenExample, onOpenLatest, loadDrill, pressureUnit = "mmHg" }: {
   loadDrill?: DrillLoader; pressureUnit?: PressureUnit;
-  log: ReturnType<typeof useExamErrorLog>; onBack: () => void;
+  log: ReturnType<typeof useExamErrorLog>;
   onOpenExample: (attemptId: string, partId: string) => Promise<void>; onOpenLatest?: () => Promise<void>;
 }) {
   const drill = useDrillSession(loadDrill);
@@ -72,7 +71,7 @@ export function ConnectedExamErrorLog({ log, onBack, onOpenExample, onOpenLatest
     try { await action(); } catch { setActionError({ message: "We couldn't open that exam result. Please try again.", conceptId }); } finally { setOpening(false); }
   }
   const pageNotice = log.error ? <ExamNotice><NoticeMessage message={log.error} />{" "}<RetryAction busy={log.loading} onClick={() => void log.refresh()} /></ExamNotice> : undefined;
-  if (!log.data) return <div className="exam-error-log">{pageNotice}<BackLink onClick={onBack} />
+  if (!log.data) return <div className="exam-error-log">{pageNotice}
     <h1>Error log</h1>{!log.error && <p role="status">Loading your Error log…</p>}
   </div>;
   function example(e: ErrorLogExample): ErrorLogConceptPresentation["examples"][number] {
@@ -99,7 +98,7 @@ export function ConnectedExamErrorLog({ log, onBack, onOpenExample, onOpenLatest
       onRepeat={() => { if (drill.session) void drill.start(drill.session.request); }} />}
     <div hidden={Boolean(drill.session)} ref={list}>
     <ExamErrorLog onPractice={loadDrill ? practice : undefined}
-      launchingId={drill.busy ? origin.current?.id : undefined} concepts={concepts} onBack={onBack} busy={log.busy || opening} pageNotice={pageNotice} actionError={drill.error || actionError?.message} actionErrorConceptId={drill.error ? origin.current?.id : actionError?.conceptId}
+      launchingId={drill.busy ? origin.current?.id : undefined} concepts={concepts} busy={log.busy || opening} pageNotice={pageNotice} actionError={drill.error || actionError?.message} actionErrorConceptId={drill.error ? origin.current?.id : actionError?.conceptId}
       onExpand={expand} onLoadMore={id => void cache?.load(id, Boolean(pages[id]?.nextCursor))}
       onArchive={id => void review(id, true)} onRestore={id => void review(id, false)}
       onOpenResult={onOpenLatest ? () => void open(onOpenLatest) : undefined}

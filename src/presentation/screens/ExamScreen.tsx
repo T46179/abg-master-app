@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import { useExamSitting } from "../exam/ExamSittingContext";
 import { ExamSitting } from "../exam/ExamSitting";
@@ -41,9 +42,16 @@ export function ExamScreen() {
       if (mounted.current) setLaunching(false);
     }
   }
-  const [state, setState] = useState<ExamPrototypeState>(() => ({ ...initialPrototypeState }));
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [settings, setState] = useState<ExamPrototypeState>(() => ({ ...initialPrototypeState }));
+
+  const state = { ...settings, view: location.state?.examPrototypeView ?? initialPrototypeState.view };
 
   function updateState(patch: Partial<ExamPrototypeState>) {
+    if (patch.view && patch.view !== state.view) {
+      void navigate(location.pathname + location.search + location.hash, { state: { ...location.state, examPrototypeView: patch.view } });
+    }
     setState(current => ({ ...current, ...patch }));
   }
 
@@ -73,12 +81,11 @@ export function ExamScreen() {
         <Suspense fallback={<p>Loading exam explanations…</p>}><DemoLatestResult pressureUnit={appState.sessionState?.pressureUnit ?? "mmHg"} onExit={() => updateState({ view: "exam" })} /></Suspense> : (
         <ExamResults
           result={mockLatestResult}
-          onBack={() => updateState({ view: "exam" })}
           onHistory={() => updateState({ view: "history" })}
         />
       ))}
       {state.view === "error-log" && DemoErrorLog && <Suspense fallback={<p>Loading error log…</p>}>
-        <DemoErrorLog onBack={() => updateState({ view: "exam" })} onOpenResult={() => updateState({ view: "results" })} />
+        <DemoErrorLog onOpenResult={() => updateState({ view: "results" })} />
       </Suspense>}
       {state.view === "history" && (
         <ExamHistory
@@ -86,7 +93,6 @@ export function ExamScreen() {
           attempts={filterAttempts(mockHistory.attempts, state.historyFilter)}
           filter={state.historyFilter}
           onFilterChange={historyFilter => updateState({ historyFilter })}
-          onBack={() => updateState({ view: "exam" })}
           onOpen={() => updateState({ view: "results" })}
         />
       )}

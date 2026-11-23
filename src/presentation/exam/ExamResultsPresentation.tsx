@@ -1,5 +1,5 @@
 import { Component, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { Check, ChevronDown, ChevronLeft, CircleDashed, CirclePlus, Lightbulb, RotateCcw, Wrench, X } from "lucide-react";
+import { Check, ChevronDown, CircleDashed, CirclePlus, Lightbulb, RotateCcw, Wrench, X } from "lucide-react";
 import type { PressureUnit } from "../../core/types";
 import type { GradingStatus, PartFeedback, PartGrade } from "./resultsTypes";
 import { isCompletedPartGrade } from "./resultsModel";
@@ -268,7 +268,6 @@ export default function ExamResultsPresentation({ sitting, onExit, pressureUnit 
   const elapsed = Math.floor(Math.max(0, (sitting.finishedAt ?? sitting.startedAt) - sitting.startedAt) / 1000);
   const statusText = allDone ? "Grading complete" : unresolved ? "Some grading could not be completed" : "Grading in progress";
   return <div className="exam-results">
-    <button type="button" className="exam-results__back" onClick={onExit}><ChevronLeft size={16} aria-hidden="true" />Back to Exam Room</button>
     {notice}
     <section className="exam-results__summary" aria-label="Exam submitted" data-failed={unresolved} data-pending={!allDone && !unresolved}>
       <div className="exam-results__summary-main">

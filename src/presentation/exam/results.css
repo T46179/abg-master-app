@@ -69,7 +69,6 @@
 .exam-results__error-saved > span:last-child { color: var(--color-text-faint); }
 .exam-results__error-saved-row { padding: 6px 0 6px 2px; }
 .exam-results__error-options input:focus-visible { outline: 2px solid var(--result-blue); outline-offset: 3px; }
-.exam-results .exam-results__back { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: var(--result-muted); font-size: 13.5px; font-weight: 500; }
 .exam-results__summary { margin-top: 24px; border: 1px solid var(--result-border); border-radius: 24px; background: white; overflow: hidden; box-shadow: 0 2px 6px #090b0c0d, 0 18px 40px #090b0c12; }
 .exam-results__summary[data-failed="true"] { border-color: color-mix(in srgb, var(--result-amber) 40%, white); }
 .exam-results__summary-main { display: flex; flex-wrap: wrap; align-items: center; gap: 28px; padding: 32px; }

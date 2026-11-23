@@ -3,15 +3,14 @@ import { examKindLabel } from "./examLabels";
 import { NoticeMessage, RetryAction } from "./ExamNotice";
 import { Surface } from "../primitives/Surface";
 import { ArrowIcon, CheckIcon, ChevronRightIcon, CrossIcon, DotIcon, HistoryIcon, LayersIcon, ReportIcon, SplitIcon } from "./ExamIcons";
-import { AccuracyBar, BackLink, IconBadge, ScoreRing, SummaryTiles, toneStyle } from "./ExamUi";
+import { AccuracyBar, IconBadge, ScoreRing, SummaryTiles, toneStyle } from "./ExamUi";
 import { attemptPercent, scoreTone } from "./presentationModel";
 import type { AttemptPresentation, HistoryFilter, HistoryPresentation, LatestResultPresentation } from "./presentationTypes";
 
-export function ExamResults({ result, onBack, onHistory }: {
-  result: LatestResultPresentation; onBack: () => void; onHistory: () => void;
+export function ExamResults({ result, onHistory }: {
+  result: LatestResultPresentation; onHistory: () => void;
 }) {
   return <div className="exam-review">
-    <BackLink onClick={onBack} />
     <header className="exam-result-heading">
       <div><p className="exam-eyebrow">{result.sittingLabel}</p><h1>Sitting complete</h1></div>
       <span className="exam-target"><DotIcon />{result.percent}% · below {result.target}% target</span>
@@ -68,12 +67,11 @@ export function ExamResults({ result, onBack, onHistory }: {
   </div>;
 }
 
-export function ExamHistory({ history, attempts, filter, onFilterChange, onBack, onOpen, onRetry, onLoadMore, total, loading, busy, unavailable, loadMoreError }: {
+export function ExamHistory({ history, attempts, filter, onFilterChange, onOpen, onRetry, onLoadMore, total, loading, busy, unavailable, loadMoreError }: {
   history: HistoryPresentation;
   attempts: AttemptPresentation[];
   filter: HistoryFilter;
   onFilterChange: (filter: HistoryFilter) => void;
-  onBack: () => void;
   onOpen: (id: string) => void;
   onRetry?: (id: string) => void;
   onLoadMore?: () => void;
@@ -103,7 +101,6 @@ export function ExamHistory({ history, attempts, filter, onFilterChange, onBack,
     { value: String(history.awaiting), label: "Awaiting grade", note: history.awaiting > 0 }
   ];
   return <div className="exam-history">
-    <BackLink onClick={onBack} />
     <header><h1>Past attempts</h1><p className="exam-history-description">Revisit your completed exams to review your answers, marks and explanations, and track your progress over time.</p></header>
     <Surface className="exam-history-summary">
       <div className="exam-history-average">

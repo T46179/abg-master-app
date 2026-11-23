@@ -60,9 +60,10 @@ it("loads examples only once on expansion, paginates and uses the exact saved Pa
   const open = vi.fn().mockResolvedValue(undefined); const review = vi.fn().mockRejectedValue(new Error("offline"));
   const log = { data: state(), loading: false, error: "", busy: false, refresh: vi.fn(), save: vi.fn(), review,
     client: { list: vi.fn(), save: vi.fn(), review: vi.fn(), examples } } as ReturnType<typeof useExamErrorLog>;
-  await act(async () => root.render(<ConnectedExamErrorLog log={log} onBack={vi.fn()} onOpenExample={open} />));
+  await act(async () => root.render(<ConnectedExamErrorLog log={log} onOpenExample={open} />));
   expect(examples).toHaveBeenCalledTimes(1);
-  expect(container.textContent).toContain("21 examples");
+  expect(container.querySelector(".exam-error-log__count")?.textContent).toBe("21");
+  expect(container.querySelector(".exam-error-log__example-copy small")?.textContent).toContain("6 Oct");
   expect(container.textContent).toContain("Current calculation label");
   expect(container.querySelector(".exam-error-log__examples")?.textContent).toContain("Standard Exam");
   await click("Load more");
@@ -81,9 +82,9 @@ it("retries failed example loads and hides the latest-result action when there i
   const examples = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValue({ examples: [], nextCursor: null });
   const log = { data: state(), loading: false, error: "", busy: false, refresh: vi.fn(), save: vi.fn(), review: vi.fn(),
     client: { list: vi.fn(), save: vi.fn(), review: vi.fn(), examples } } as ReturnType<typeof useExamErrorLog>;
-  await act(async () => root.render(<ConnectedExamErrorLog log={log} onBack={vi.fn()} onOpenExample={vi.fn()} />));
+  await act(async () => root.render(<ConnectedExamErrorLog log={log} onOpenExample={vi.fn()} />));
   await click("Retry"); expect(examples).toHaveBeenCalledTimes(2);
-  await act(async () => root.render(<ConnectedExamErrorLog log={{ ...log, data: { ...state(), entries: [], toReviewCount: 0 } }} onBack={vi.fn()} onOpenExample={vi.fn()} />));
+  await act(async () => root.render(<ConnectedExamErrorLog log={{ ...log, data: { ...state(), entries: [], toReviewCount: 0 } }} onOpenExample={vi.fn()} />));
   expect(container.textContent).toContain("Your Error Log is empty");
   expect(container.textContent).not.toContain("Review latest result");
 });
@@ -95,7 +96,7 @@ it("does not fetch archived examples until their row is actually expanded", asyn
   data.entries = [...data.entries, { ...data.entries[0], conceptId: "archived_concept", status: "archived", archivedAt: "2026-10-07T03:00:00Z" }];
   const log = { data, loading: false, error: "", busy: false, refresh: vi.fn(), save: vi.fn(), review: vi.fn(),
     client: { list: vi.fn(), save: vi.fn(), review: vi.fn(), examples } } as ReturnType<typeof useExamErrorLog>;
-  await act(async () => root.render(<ConnectedExamErrorLog log={log} onBack={vi.fn()} onOpenExample={vi.fn()} />));
+  await act(async () => root.render(<ConnectedExamErrorLog log={log} onOpenExample={vi.fn()} />));
   expect(examples.mock.calls.map(c => c[0])).toEqual(["calculation"]);
   await click("Archived 1");
   expect(examples).toHaveBeenCalledTimes(1);
@@ -149,7 +150,7 @@ it("returns each respiratory set to its own concept after retry, completion or e
   const loader = vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue(set);
   const scroll = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
   const render = (enabled: boolean) => act(async () => root.render(<ConnectedExamErrorLog log={log}
-    loadDrill={enabled ? loader : undefined} pressureUnit="kPa" onBack={vi.fn()} onOpenExample={vi.fn()} />));
+    loadDrill={enabled ? loader : undefined} pressureUnit="kPa" onOpenExample={vi.fn()} />));
   await render(false);
   expect(container.querySelector("[data-practice]")).toBeNull();
   await render(true);
