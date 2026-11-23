@@ -43,6 +43,30 @@ export const demoErrorLogCatalogue: ErrorLogCatalogue = {
     {
       "id": "serial_gases",
       "label": "Serial blood gases"
+    },
+    {
+      "id": "intracranial_pressure",
+      "label": "Intracranial pressure"
+    },
+    {
+      "id": "electrolytes",
+      "label": "Electrolytes"
+    },
+    {
+      "id": "glucose",
+      "label": "Glucose"
+    },
+    {
+      "id": "renal_function",
+      "label": "Renal function"
+    },
+    {
+      "id": "osmolality",
+      "label": "Osmolality"
+    },
+    {
+      "id": "refeeding_syndrome",
+      "label": "Refeeding syndrome"
     }
   ],
   "concepts": [
@@ -68,6 +92,13 @@ export const demoErrorLogCatalogue: ErrorLogCatalogue = {
       "active": true
     },
     {
+      "id": "metabolic_alkalosis_recognition",
+      "label": "Metabolic alkalosis: recognition and mechanism",
+      "topicId": "acid_base",
+      "errorType": "Interpretation and mechanism",
+      "active": true
+    },
+    {
       "id": "hagma_recognition",
       "label": "High anion gap metabolic acidosis recognition",
       "topicId": "acid_base",
@@ -79,6 +110,28 @@ export const demoErrorLogCatalogue: ErrorLogCatalogue = {
       "label": "Respiratory compensation in metabolic acidosis",
       "topicId": "compensation",
       "errorType": "Calculation and interpretation",
+      "active": true,
+      "drillTarget": {
+        "drill": "compensation",
+        "rule": "met-acidosis"
+      }
+    },
+    {
+      "id": "respiratory_compensation_metabolic_alkalosis",
+      "label": "Respiratory compensation in metabolic alkalosis",
+      "topicId": "compensation",
+      "errorType": "Knowledge and interpretation",
+      "active": true,
+      "drillTarget": {
+        "drill": "compensation",
+        "rule": "met-alkalosis"
+      }
+    },
+    {
+      "id": "renal_compensation_respiratory_acidosis",
+      "label": "Renal compensation in respiratory acidosis",
+      "topicId": "compensation",
+      "errorType": "Knowledge and mechanism",
       "active": true
     },
     {
@@ -86,14 +139,20 @@ export const demoErrorLogCatalogue: ErrorLogCatalogue = {
       "label": "Anion gap calculation and interpretation",
       "topicId": "anion_gap",
       "errorType": "Calculation and interpretation",
-      "active": true
+      "active": true,
+      "drillTarget": {
+        "drill": "anion-gap"
+      }
     },
     {
       "id": "delta_ratio_calculation_interpretation",
       "label": "Delta ratio calculation and interpretation",
       "topicId": "delta_ratio",
       "errorType": "Calculation and interpretation",
-      "active": true
+      "active": true,
+      "drillTarget": {
+        "drill": "delta-ratio"
+      }
     },
     {
       "id": "mixed_acid_base_disorder_recognition",
@@ -110,6 +169,41 @@ export const demoErrorLogCatalogue: ErrorLogCatalogue = {
       "active": true
     },
     {
+      "id": "copd_airflow_dead_space_co2_clearance",
+      "label": "Airflow limitation, dead space and CO₂ clearance in COPD",
+      "topicId": "mechanisms",
+      "errorType": "Knowledge and mechanism",
+      "active": true
+    },
+    {
+      "id": "copd_ventilatory_pump_limitation",
+      "label": "Respiratory muscle load and hypoventilation in COPD",
+      "topicId": "mechanisms",
+      "errorType": "Knowledge and mechanism",
+      "active": true
+    },
+    {
+      "id": "emergency_intubation_hypercapnic_respiratory_failure",
+      "label": "Emergency intubation in acute hypercapnic respiratory failure",
+      "topicId": "mechanisms",
+      "errorType": "Clinical application",
+      "active": true
+    },
+    {
+      "id": "low_exhaled_tidal_volume_after_intubation_causes",
+      "label": "Causes of low exhaled tidal volume after intubation",
+      "topicId": "mechanisms",
+      "errorType": "Knowledge and mechanism",
+      "active": true
+    },
+    {
+      "id": "inadequate_ventilation_after_intubation_troubleshooting",
+      "label": "Troubleshooting inadequate ventilation after intubation",
+      "topicId": "mechanisms",
+      "errorType": "Clinical application",
+      "active": true
+    },
+    {
       "id": "oxyhaemoglobin_dissociation_curve",
       "label": "Oxyhaemoglobin dissociation curve",
       "topicId": "oxygenation",
@@ -121,6 +215,23 @@ export const demoErrorLogCatalogue: ErrorLogCatalogue = {
       "label": "A–a gradient calculation and interpretation",
       "topicId": "oxygenation",
       "errorType": "Calculation and interpretation",
+      "active": true,
+      "drillTarget": {
+        "drill": "aa-gradient"
+      }
+    },
+    {
+      "id": "hypoxaemia_recognition",
+      "label": "Hypoxaemia recognition",
+      "topicId": "oxygenation",
+      "errorType": "Interpretation",
+      "active": true
+    },
+    {
+      "id": "vq_mismatch_mechanisms",
+      "label": "Ventilation-perfusion mismatch",
+      "topicId": "mechanisms",
+      "errorType": "Knowledge and mechanism",
       "active": true
     },
     {
@@ -142,6 +253,13 @@ export const demoErrorLogCatalogue: ErrorLogCatalogue = {
       "label": "Management of methaemoglobinaemia",
       "topicId": "methaemoglobinaemia",
       "errorType": "Clinical application",
+      "active": true
+    },
+    {
+      "id": "hagma_causes",
+      "label": "Causes of high anion gap metabolic acidosis",
+      "topicId": "mechanisms",
+      "errorType": "Knowledge and mechanism",
       "active": true
     },
     {
@@ -177,6 +295,136 @@ export const demoErrorLogCatalogue: ErrorLogCatalogue = {
       "label": "Mechanical ventilation in severe asthma",
       "topicId": "severe_asthma",
       "errorType": "Clinical application",
+      "active": true
+    },
+    {
+      "id": "oxygenation_trend_interpretation",
+      "label": "Oxygenation trend interpretation",
+      "topicId": "oxygenation",
+      "errorType": "Interpretation",
+      "active": true
+    },
+    {
+      "id": "hyperkalaemia_trend_interpretation",
+      "label": "Hyperkalaemia trend interpretation",
+      "topicId": "serial_gases",
+      "errorType": "Interpretation",
+      "active": true
+    },
+    {
+      "id": "intracranial_pressure_management",
+      "label": "Measures to reduce intracranial pressure",
+      "topicId": "intracranial_pressure",
+      "errorType": "Clinical application",
+      "active": true
+    },
+    {
+      "id": "hyperkalaemia_recognition",
+      "label": "Hyperkalaemia recognition",
+      "topicId": "electrolytes",
+      "errorType": "Interpretation",
+      "active": true
+    },
+    {
+      "id": "hyperkalaemia_complications",
+      "label": "Hyperkalaemia and its complications",
+      "topicId": "electrolytes",
+      "errorType": "Interpretation and clinical application",
+      "active": true
+    },
+    {
+      "id": "hyponatraemia_complications",
+      "label": "Hyponatraemia and its complications",
+      "topicId": "electrolytes",
+      "errorType": "Interpretation and clinical application",
+      "active": true
+    },
+    {
+      "id": "hyperglycaemia_recognition",
+      "label": "Hyperglycaemia recognition",
+      "topicId": "glucose",
+      "errorType": "Interpretation",
+      "active": true
+    },
+    {
+      "id": "hyperglycaemia_corrected_sodium",
+      "label": "Sodium interpretation in hyperglycaemia",
+      "topicId": "electrolytes",
+      "errorType": "Interpretation",
+      "active": true,
+      "drillTarget": {
+        "drill": "corrections"
+      }
+    },
+    {
+      "id": "renal_impairment_recognition",
+      "label": "Renal impairment recognition",
+      "topicId": "renal_function",
+      "errorType": "Interpretation",
+      "active": true
+    },
+    {
+      "id": "serum_osmolality_calculation_interpretation",
+      "label": "Serum osmolality calculation and interpretation",
+      "topicId": "osmolality",
+      "errorType": "Calculation and interpretation",
+      "active": true
+    },
+    {
+      "id": "hyperlactataemia_recognition",
+      "label": "Hyperlactataemia recognition",
+      "topicId": "lactate",
+      "errorType": "Interpretation",
+      "active": true
+    },
+    {
+      "id": "bicarbonate_compensation_respiratory_alkalosis",
+      "label": "Bicarbonate compensation in respiratory alkalosis",
+      "topicId": "compensation",
+      "errorType": "Calculation and interpretation",
+      "active": true,
+      "drillTarget": {
+        "drill": "compensation",
+        "rule": "respiratory"
+      }
+    },
+    {
+      "id": "bicarbonate_compensation_respiratory_acidosis",
+      "label": "Bicarbonate compensation in respiratory acidosis",
+      "topicId": "compensation",
+      "errorType": "Calculation",
+      "active": true,
+      "drillTarget": {
+        "drill": "compensation",
+        "rule": "respiratory"
+      }
+    },
+    {
+      "id": "delta_gap_calculation_interpretation",
+      "label": "Delta gap and adjusted bicarbonate",
+      "topicId": "delta_ratio",
+      "errorType": "Calculation and interpretation",
+      "active": true
+    },
+    {
+      "id": "starvation_acidosis_mechanisms",
+      "label": "Mechanisms of acidosis in starvation",
+      "topicId": "mechanisms",
+      "errorType": "Knowledge and mechanism",
+      "active": true
+    },
+    {
+      "id": "refeeding_potassium_depletion_shifts",
+      "label": "Potassium depletion and shifts during refeeding",
+      "topicId": "refeeding_syndrome",
+      "errorType": "Knowledge and mechanism",
+      "active": true
+    },
+    {
+      "id": "refeeding_syndrome_complications",
+      "label": "Complications of refeeding syndrome",
+      "topicId": "refeeding_syndrome",
+      "errorType": "Knowledge",
       "active": true
     }
   ]

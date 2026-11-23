@@ -7,10 +7,19 @@ const id = (value: unknown) => typeof value === "string" && /^[a-z][a-z0-9_]*$/.
 const uuid = (value: unknown) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const text = (value: unknown) => typeof value === "string" && Boolean(value.trim());
 
+function validDrillTarget(target: unknown) {
+  if (!object(target)) return false;
+  if (target.drill === "compensation") return Object.keys(target).length === 2
+    && ["met-acidosis", "met-alkalosis", "respiratory"].includes(target.rule);
+  return Object.keys(target).length === 1
+    && ["anion-gap", "delta-ratio", "aa-gradient", "pf-ratio", "corrections"].includes(target.drill);
+}
+
 export function verifyErrorLogState(value: unknown): ErrorLogState {
   if (!object(value) || !object(value.catalogue) || !Array.isArray(value.catalogue.topics) || !Array.isArray(value.catalogue.concepts)
     || value.catalogue.topics.some((t: any) => !object(t) || !id(t.id) || !text(t.label))
     || value.catalogue.concepts.some((c: any) => !object(c) || !id(c.id) || !text(c.label) || !text(c.errorType)
+      || (c.drillTarget !== undefined && !validDrillTarget(c.drillTarget))
       || typeof c.active !== "boolean" || !value.catalogue.topics.some((t: any) => t.id === c.topicId))
     || !Array.isArray(value.entries) || value.entries.some((e: any) => !object(e) || !id(e.conceptId)
       || !["to_review", "archived"].includes(e.status) || !date(e.createdAt) || !date(e.lastSavedAt)

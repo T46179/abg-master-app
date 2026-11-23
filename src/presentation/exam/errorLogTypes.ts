@@ -1,3 +1,7 @@
+import type { DrillKey, CompensationRule } from "../../core/examDrills";
+
+export type DrillTarget = { drill: Exclude<DrillKey, "compensation"> } | { drill: "compensation"; rule: CompensationRule };
+
 // Optional presentation inputs, separate from authored assessment and grading contracts.
 export interface ErrorLogConceptPresentation {
   id: string;
@@ -11,6 +15,7 @@ export interface ErrorLogConceptPresentation {
   examplesLoading?: boolean;
   examplesError?: string;
   hasMoreExamples?: boolean;
+  drillTarget?: DrillTarget;
   archived?: boolean;
   reopened?: boolean;
 }
@@ -58,7 +63,7 @@ export interface ErrorLogMapping {
 
 export interface ErrorLogCatalogue {
   topics: { id: string; label: string }[];
-  concepts: { id: string; label: string; topicId: string; errorType: string; active: boolean }[];
+  concepts: { id: string; label: string; topicId: string; errorType: string; active: boolean; drillTarget?: DrillTarget }[];
 }
 
 // One suggested study area per source Part. Display labels resolve from the current catalogue.

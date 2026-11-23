@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { drillCounts, type CompensationRule, type DrillCount, type DrillKey, type DrillLoader, type DrillRequest, type DrillSet } from "../../core/examDrills";
+import { useDrillSession } from "./useDrillSession";
+import { useId, useRef, useState, type ReactNode } from "react";
+import { drillCounts, type CompensationRule, type DrillCount, type DrillKey, type DrillLoader, type DrillRequest } from "../../core/examDrills";
 import type { PressureUnit } from "../../core/types";
 import { Surface } from "../primitives/Surface";
 import { compensationRules, drillCards, drillDefinitions } from "./drillDefinitions";
@@ -18,41 +19,13 @@ export function FocusedDrills({ loadDrill, dashboardHeader, pressureUnit }: {
   const [drill, selectDrill] = useState<DrillKey>("anion-gap");
   const [rule, selectRule] = useState<CompensationRule>("met-acidosis");
   const [count, setCount] = useState<DrillCount>(5);
-  const [session, setSession] = useState<{ id: number; request: DrillRequest; set: DrillSet } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const request = useRef<AbortController | null>(null);
+  const { session, busy, error, start, close, setError } = useDrillSession(loadDrill);
   const startButton = useRef<HTMLButtonElement>(null);
   const ruleLabelId = useId();
   const countLabelId = useId();
   const setupTitleId = useId();
-  useEffect(() => () => request.current?.abort(), []);
-
-  async function start(input: DrillRequest) {
-    if (request.current) return;
-    const controller = new AbortController();
-    request.current = controller;
-    setError("");
-    setBusy(true);
-    try {
-      const set = await loadDrill(input, controller.signal);
-      if (!controller.signal.aborted) setSession(previous => ({ id: (previous?.id ?? 0) + 1, request: input, set }));
-    } catch (cause) {
-      if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "We couldn’t generate this drill. Please try again.");
-    } finally {
-      if (request.current === controller) {
-        request.current = null;
-        if (!controller.signal.aborted) setBusy(false);
-      }
-    }
-  }
-
   function backToSetup() {
-    request.current?.abort();
-    request.current = null;
-    setBusy(false);
-    setError("");
-    setSession(null);
+    close();
     requestAnimationFrame(() => startButton.current?.focus());
   }
 

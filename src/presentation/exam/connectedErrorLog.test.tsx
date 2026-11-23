@@ -133,3 +133,54 @@ it("uses only confirmed mutation state, rejects concurrent actions and refreshes
   await act(async () => window.dispatchEvent(new Event("focus")));
   expect(call.mock.calls.filter(c => c[0] === "error_log_list")).toHaveLength(2);
 });
+
+it("returns each respiratory set to its own concept after retry, completion or early exit", async () => {
+  const data = state();
+  const ids = ["bicarbonate_compensation_respiratory_acidosis", "bicarbonate_compensation_respiratory_alkalosis"];
+  data.catalogue = { ...catalogue, concepts: ids.map(id => ({
+    ...catalogue.concepts[0], id, drillTarget: { drill: "compensation", rule: "respiratory" },
+  })) };
+  data.entries = ids.map(conceptId => ({ ...data.entries[0], conceptId }));
+  const log = { data, loading: false, error: "", busy: false, refresh: vi.fn(), save: vi.fn(), review: vi.fn(),
+    client: { list: vi.fn(), save: vi.fn(), review: vi.fn(), examples: vi.fn().mockResolvedValue({ examples: [], nextCursor: null }) } };
+  const question = { values: [], numeric: { prompt: "Calculate", target: 10, tolerance: 0.1, decimals: 1, unit: "mmol/L", working: "10" } };
+  const set = { help: { title: "Rule", formula: "Formula" }, questions: Array(5).fill(question) };
+  const pending = deferred<typeof set>();
+  const loader = vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue(set);
+  const scroll = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+  const render = (enabled: boolean) => act(async () => root.render(<ConnectedExamErrorLog log={log}
+    loadDrill={enabled ? loader : undefined} pressureUnit="kPa" onBack={vi.fn()} onOpenExample={vi.fn()} />));
+  await render(false);
+  expect(container.querySelector("[data-practice]")).toBeNull();
+  await render(true);
+  for (const [index, id] of ids.entries()) {
+    const row = container.querySelectorAll<HTMLButtonElement>(".exam-error-log__row")[index];
+    if (row.getAttribute("aria-expanded") !== "true") await act(async () => row.click());
+    const button = container.querySelector<HTMLButtonElement>(`[data-practice="${id}"]`)!;
+    await act(async () => { button.click(); button.click(); });
+    if (!index) {
+      expect(loader).toHaveBeenCalledTimes(1);
+      await act(async () => pending.reject(new Error("Try again")));
+      expect(button.closest("section")?.querySelector('[role="alert"]')).toBeTruthy();
+      await act(async () => button.click());
+    }
+    expect(loader).toHaveBeenLastCalledWith({ drill: "compensation", rule: "respiratory", count: 5, pressureUnit: "kPa" }, expect.any(AbortSignal));
+    if (index) {
+      for (let i = 0; i < 5; i++) {
+        const input = container.querySelector<HTMLInputElement>('input[inputmode="decimal"]')!;
+        await act(async () => {
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "10");
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+        await click("Check");
+        await click(i === 4 ? "See summary" : "Next question");
+      }
+      await click("Practise another set");
+    }
+    await click("End drill");
+    expect(document.activeElement).toBe(button);
+    expect(row.getAttribute("aria-expanded")).toBe("true");
+    expect(scroll).toHaveBeenCalledWith(0, window.scrollY);
+  }
+  scroll.mockRestore();
+});

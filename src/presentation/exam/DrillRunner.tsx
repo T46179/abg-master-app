@@ -137,7 +137,7 @@ function PFRatioInfo() {
   </DrillRuleInfo>;
 }
 
-export function DrillRunner({ title, set, request, pressureUnit, busy, error, onRepeat, onExit }: {
+export function DrillRunner({ title, set, request, pressureUnit, busy, error, onRepeat, onExit, returnLabel = "Back to drills" }: {
   title: string;
   set: DrillSet;
   request: DrillRequest;
@@ -145,6 +145,7 @@ export function DrillRunner({ title, set, request, pressureUnit, busy, error, on
   busy: boolean;
   error: string;
   onRepeat: () => void;
+  returnLabel?: string;
   onExit: () => void;
 }) {
   const [index, setIndex] = useState(0);
@@ -195,7 +196,7 @@ export function DrillRunner({ title, set, request, pressureUnit, busy, error, on
     <AccuracyBar percent={100 * correctSoFar / totalSteps} />
     {error && <p className="exam-inline-error exam-drill-error" role="alert">{error}</p>}
     <div className="exam-drill-summary-actions">
-      <button type="button" className="figma-button figma-button--secondary" onClick={onExit}>Back to drills</button>
+      <button type="button" className="figma-button figma-button--secondary" onClick={onExit}>{returnLabel}</button>
       <button type="button" className="figma-button exam-primary" disabled={busy} onClick={onRepeat}>
         {busy ? <span role="status">Generating questions…</span> : "Practise another set"}
       </button>

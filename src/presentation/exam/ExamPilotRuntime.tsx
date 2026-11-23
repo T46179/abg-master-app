@@ -557,7 +557,7 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
       <ExamSitting sitting={sitting} dispatch={dispatch} onExitConfirmed={() => abandonAttempt(attempt.id)} submitting={submitting} disabled={busy || (!!error && !answerError) || !!session.journal?.submission} />
       {exitOpen && <ExitSittingDialog busy={busy} error={exitError} onStay={() => setExitOpen(false)} onExit={() => void run(leave, false, true, exitFailure)} />}
     </> : <>
-      {roomView === "error-log" ? <ConnectedExamErrorLog key={`${environment}:${userId}`} log={errorLog}
+      {roomView === "error-log" ? <ConnectedExamErrorLog key={`${environment}:${userId}`} log={errorLog} loadDrill={loadDrill} pressureUnit={state.sessionState?.pressureUnit ?? "mmHg"}
         onBack={backToRoom} onOpenExample={(id, partId) => openResult(id, "error-log", partId)}
         onOpenLatest={history.latestAttemptId ? () => openResult(history.latestAttemptId!, "error-log") : undefined} /> : <>
         {roomView === "history" ? <ExamHistory

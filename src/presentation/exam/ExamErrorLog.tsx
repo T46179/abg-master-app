@@ -2,10 +2,10 @@ import { useEffect, useId, useState, type ReactNode } from "react";
 import { NoticeMessage, RetryAction } from "./ExamNotice";
 import { ArrowIcon, CheckIcon, ChevronRightIcon, CrossIcon, FlagIcon, HistoryIcon } from "./ExamIcons";
 import { BackLink } from "./ExamUi";
-import type { ErrorLogConceptPresentation } from "./errorLogTypes";
+import type { DrillTarget, ErrorLogConceptPresentation } from "./errorLogTypes";
 import "./errorLog.css";
 
-export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, onArchive, onRestore, onExpand, onLoadMore, busy, actionError, actionErrorConceptId, pageNotice }: {
+export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, onArchive, onRestore, onExpand, onLoadMore, launchingId, onPractice, busy, actionError, actionErrorConceptId, pageNotice }: {
   concepts: readonly ErrorLogConceptPresentation[];
   onBack: () => void;
   onOpenResult?: () => void;
@@ -14,6 +14,8 @@ export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, on
   onRestore?: (id: string) => void;
   onExpand?: (id: string) => void;
   onLoadMore?: (id: string) => void;
+  launchingId?: string;
+  onPractice?: (id: string, target: DrillTarget) => void;
   busy?: boolean;
   actionError?: string;
   actionErrorConceptId?: string;
@@ -50,7 +52,7 @@ export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, on
       <span className="exam-error-log__empty-icon"><FlagIcon /></span>
       <h2>Your Error Log is empty</h2>
       <p>Save concepts from your exam results to keep track of areas for improvement. Use <strong>Add to error log</strong> to include it here to guide your revision.</p>
-      {onOpenResult && <button type="button" disabled={busy} className="figma-button exam-primary" onClick={onOpenResult}>Review latest result <ArrowIcon /></button>}
+      {onOpenResult && <button type="button" disabled={busy || Boolean(launchingId)} className="figma-button exam-primary" onClick={onOpenResult}>Review latest result <ArrowIcon /></button>}
       {actionError && !actionErrorConceptId && <p className="exam-inline-error" role="alert"><NoticeMessage message={actionError} /></p>}
     </div> : <div className="exam-error-log__grid">
       <div className="exam-error-log__main">
@@ -59,11 +61,11 @@ export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, on
             {([
               { key: "open", label: "To review", count: open.length },
               { key: "archived", label: "Archived", count: done.length }
-            ] as const).map(t => <button type="button" key={t.key} aria-pressed={tab === t.key} onClick={() => setTab(t.key)}>
+            ] as const).map(t => <button type="button" key={t.key} disabled={Boolean(launchingId)} aria-pressed={tab === t.key} onClick={() => setTab(t.key)}>
               {t.label} <span>{t.count}</span>
             </button>)}
           </div>
-          {topic !== null && <button type="button" className="exam-error-log__filter" aria-label={`Clear ${topicLabel} filter`} onClick={() => setTopic(null)}>{topicLabel}<CrossIcon /></button>}
+          {topic !== null && <button type="button" className="exam-error-log__filter" disabled={Boolean(launchingId)} aria-label={`Clear ${topicLabel} filter`} onClick={() => setTopic(null)}>{topicLabel}<CrossIcon /></button>}
         </div>
         <div className="exam-error-log__list">
           {rows.map(c => {
@@ -72,7 +74,7 @@ export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, on
             const exampleCount = c.exampleCount ?? c.examples.length;
             const panelId = `${id}-${c.id}`;
             return <section key={c.id} className="exam-error-log__concept">
-              <button type="button" className="exam-error-log__row" aria-expanded={expanded} aria-controls={panelId} onClick={() => setOpenId(expanded ? null : c.id)}>
+              <button type="button" className="exam-error-log__row" disabled={Boolean(launchingId)} aria-expanded={expanded} aria-controls={panelId} onClick={() => setOpenId(expanded ? null : c.id)}>
                 <span className="exam-error-log__dot" data-archived={arch} aria-hidden="true" />
                 <span className="exam-error-log__copy">
                   <span className="exam-error-log__title"><strong>{c.label}</strong>{c.reopened && !arch && <span className="exam-error-log__reopened">Reopened</span>}</span>
@@ -84,7 +86,7 @@ export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, on
               <div id={panelId} hidden={!expanded} className="exam-error-log__expanded">
                 <h3 className="exam-error-log__eyebrow">Saved examples</h3>
                 <div className="exam-error-log__examples">
-                  {c.examples.map((example, index) => <button type="button" disabled={busy} key={example.id ?? index} onClick={() => onOpenExample ? onOpenExample(example) : onOpenResult?.()}>
+                  {c.examples.map((example, index) => <button type="button" disabled={busy || Boolean(launchingId)} key={example.id ?? index} onClick={() => onOpenExample ? onOpenExample(example) : onOpenResult?.()}>
                     <span className="exam-error-log__example-copy"><span>{example.prompt}</span><small>{example.part} · {example.attempt} · {example.date}</small></span>
                     <span className="exam-error-log__view">View in Results <ChevronRightIcon /></span>
                   </button>)}
@@ -93,7 +95,13 @@ export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, on
                 {c.examplesError && <p className="exam-inline-error" role="alert"><NoticeMessage message={c.examplesError} />{" "}<RetryAction busy={Boolean(c.examplesLoading)} onClick={() => onLoadMore?.(c.id)} /></p>}
                 {c.hasMoreExamples && !c.examplesError && <button type="button" className="exam-error-log__text-button" disabled={c.examplesLoading} onClick={() => onLoadMore?.(c.id)}>Load more</button>}
                 <div className="exam-error-log__footer">
-                  <button type="button" disabled={busy} className={`figma-button exam-error-log__archive${arch ? " figma-button--secondary" : " exam-primary"}`} onClick={() => arch ? onRestore?.(c.id) : onArchive?.(c.id)}>
+                  {expanded && !arch && c.drillTarget && onPractice && <button type="button"
+                    className="figma-button figma-button--secondary" data-practice={c.id}
+                    disabled={busy || Boolean(launchingId)} aria-label={`Practice ${c.label}`}
+                    onClick={() => onPractice(c.id, c.drillTarget!)}>
+                    {launchingId === c.id ? "Starting drill…" : "Practice"}
+                  </button>}
+                  <button type="button" disabled={busy || Boolean(launchingId)} className={`figma-button exam-error-log__archive${arch ? " figma-button--secondary" : " exam-primary"}`} onClick={() => arch ? onRestore?.(c.id) : onArchive?.(c.id)}>
                     {busy && <span className="figma-button__spinner" aria-hidden="true" />}{arch ? <><HistoryIcon /> Restore to review</> : <><CheckIcon /> Archive</>}
                   </button>
                 </div>
@@ -114,7 +122,7 @@ export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, on
       </div>
       <aside className="exam-error-log__topics" aria-label="To review by topic">
         <h2 className="exam-error-log__eyebrow">To review by topic</h2>
-        {byTopic.length === 0 ? <p>All clear.</p> : <div>{byTopic.map(([name, count]) => <button type="button" key={name} aria-pressed={topic === name} onClick={() => { setTab("open"); setTopic(topic === name ? null : name); }}>
+        {byTopic.length === 0 ? <p>All clear.</p> : <div>{byTopic.map(([name, count]) => <button type="button" key={name} disabled={Boolean(launchingId)} aria-pressed={topic === name} onClick={() => { setTab("open"); setTopic(topic === name ? null : name); }}>
           <span className="exam-error-log__topic-label"><span>{concepts.find(c => (c.topicId ?? c.topic) === name)?.topic ?? name}</span><span>{count}</span></span>
           <span className="exam-error-log__bar" aria-hidden="true"><span style={{ width: `${count / byTopic[0][1] * 100}%` }} /></span>
         </button>)}</div>}

@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useDrillSession } from "./useDrillSession";
+import { DrillRunner } from "./DrillRunner";
+import { compensationRules, drillDefinitions } from "./drillDefinitions";
+import type { DrillLoader } from "../../core/examDrills";
+import type { PressureUnit } from "../../core/types";
+import type { DrillTarget } from "./errorLogTypes";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ExamErrorLog } from "./ExamErrorLog";
 import { examKindLabel } from "./examLabels";
 import { BackLink } from "./ExamUi";
@@ -9,10 +15,39 @@ import type { useExamErrorLog } from "./useExamErrorLog";
 type Page = ErrorLogExamplePage & { loading?: boolean; error?: string };
 const date = (value: string) => new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short" }).format(new Date(value));
 
-export function ConnectedExamErrorLog({ log, onBack, onOpenExample, onOpenLatest }: {
+export function ConnectedExamErrorLog({ log, onBack, onOpenExample, onOpenLatest, loadDrill, pressureUnit = "mmHg" }: {
+  loadDrill?: DrillLoader; pressureUnit?: PressureUnit;
   log: ReturnType<typeof useExamErrorLog>; onBack: () => void;
   onOpenExample: (attemptId: string, partId: string) => Promise<void>; onOpenLatest?: () => Promise<void>;
 }) {
+  const drill = useDrillSession(loadDrill);
+  const origin = useRef<{ id: string; scroll: number } | null>(null);
+  const list = useRef<HTMLDivElement>(null);
+  const returning = useRef(false);
+  function practice(id: string, target: DrillTarget) {
+    origin.current = { id, scroll: window.scrollY };
+    setActionError(null);
+    const input = target.drill === "anion-gap" || target.drill === "corrections"
+      ? { drill: target.drill, count: 5 as const } : { ...target, count: 5 as const, pressureUnit };
+    void drill.start(input);
+  }
+  function exitDrill() {
+    returning.current = true;
+    drill.close();
+  }
+  useLayoutEffect(() => {
+    if (drill.session || !returning.current || !origin.current) return;
+    const { id, scroll } = origin.current;
+    returning.current = false;
+    origin.current = null;
+    window.scrollTo(0, scroll);
+    const button = list.current?.querySelector<HTMLButtonElement>(`[data-practice="${id}"]`);
+    if (button) {
+      const bounds = button.getBoundingClientRect();
+      if (bounds.top < 0 || bounds.bottom > window.innerHeight) button.scrollIntoView({ block: "nearest" });
+      button.focus({ preventScroll: true });
+    } else list.current?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus({ preventScroll: true });
+  }, [drill.session]);
   const [pages, setPages] = useState<Record<string, Page>>({});
   const [actionError, setActionError] = useState<{ message: string; conceptId?: string } | null>(null);
   const [opening, setOpening] = useState(false);
@@ -68,16 +103,24 @@ export function ConnectedExamErrorLog({ log, onBack, onOpenExample, onOpenLatest
   }).map(entry => {
     const definition = log.data!.catalogue.concepts.find(c => c.id === entry.conceptId)!;
     const page = pages[entry.conceptId];
-    return { id: entry.conceptId, label: definition.label, topicId: definition.topicId,
+    return { id: entry.conceptId, label: definition.label, drillTarget: definition.active ? definition.drillTarget : undefined, topicId: definition.topicId,
       topic: log.data!.catalogue.topics.find(t => t.id === definition.topicId)!.label, type: definition.errorType,
       lastSaved: date(entry.lastSavedAt), exampleCount: entry.exampleCount, archived: entry.status === "archived", reopened: Boolean(entry.reopenedAt),
       examples: page?.examples.map(example) ?? [], examplesLoading: page?.loading, examplesError: page?.error, hasMoreExamples: Boolean(page?.nextCursor) };
   });
   return <>
-    <ExamErrorLog concepts={concepts} onBack={onBack} busy={log.busy || opening} pageNotice={pageNotice} actionError={actionError?.message} actionErrorConceptId={actionError?.conceptId}
+    {drill.session && <DrillRunner key={drill.session.id}
+      title={drillDefinitions[drill.session.request.drill].title + (drill.session.request.drill === "compensation" ? " · " + compensationRules[drill.session.request.rule].label : "")}
+      request={drill.session.request} set={drill.session.set} busy={drill.busy} error={drill.error}
+      pressureUnit={pressureUnit} onExit={exitDrill} returnLabel="Back to Error Log"
+      onRepeat={() => { if (drill.session) void drill.start(drill.session.request); }} />}
+    <div hidden={Boolean(drill.session)} ref={list}>
+    <ExamErrorLog onPractice={loadDrill ? practice : undefined}
+      launchingId={drill.busy ? origin.current?.id : undefined} concepts={concepts} onBack={onBack} busy={log.busy || opening} pageNotice={pageNotice} actionError={drill.error || actionError?.message} actionErrorConceptId={drill.error ? origin.current?.id : actionError?.conceptId}
       onExpand={expand} onLoadMore={id => void loadExamples(id, Boolean(pages[id]?.nextCursor))}
       onArchive={id => void review(id, true)} onRestore={id => void review(id, false)}
       onOpenResult={onOpenLatest ? () => void open(onOpenLatest) : undefined}
       onOpenExample={e => { if (e.attemptId && e.partId) void open(() => onOpenExample(e.attemptId!, e.partId!), concepts.find(c => c.examples.includes(e))?.id); }} />
+    </div>
   </>;
 }
