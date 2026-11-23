@@ -162,3 +162,26 @@ function feedbackForSaq(): PartFeedback {
   return { ...feedback, criteria: [{ id: "c1", label: "Mapped skill" }, { id: "c2", label: "Unmapped skill" }],
     errorLog: { criterionConceptIds: { c1: ["area"] } } };
 }
+
+it("resolves EXAM-0013 Part 6 misses against the supplied teaching revision", () => {
+  const combined = "hagma_respiratory_alkalosis_causes";
+  const metabolic = "metabolic_alkalosis_recognition";
+  const ids = ["metabolic_alkalosis", "hagma", "resp_alkalosis"];
+  const targets = [metabolic, "hagma_causes", "respiratory_alkalosis_causes"];
+  for (const revision of ["t1", "t2"]) {
+    const mapped = revision === "t1" ? [metabolic, combined, combined] : targets;
+    for (const missed of [[], [0], [1], [2], [1, 2]]) {
+      const candidates = derive({
+        part: { ...part, id: "EXAM-0013-P6", kind: "concept", marks: 3 },
+        catalogue: demoErrorLogCatalogue,
+        feedback: { ...feedback, criteria: ids.map(id => ({ id, label: id })),
+          errorLog: { criterionConceptIds: Object.fromEntries(ids.map((id, i) => [id, [mapped[i]]])) } },
+        grade: { status: "completed", score: 3 - missed.length,
+          criteria: Object.fromEntries(ids.map((id, i) => [id, missed.includes(i) ? 0 : 1])) },
+      });
+      const expectedIds = [...new Set(missed.map(i => mapped[i]))];
+      expect(candidates.map(c => [c.conceptId, c.evidence.criterionIds])).toEqual(
+        expectedIds.map(target => [target, missed.filter(i => mapped[i] === target).map(i => ids[i])]));
+    }
+  }
+});

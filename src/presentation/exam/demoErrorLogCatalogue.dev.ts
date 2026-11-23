@@ -89,7 +89,7 @@ export const demoErrorLogCatalogue: ErrorLogCatalogue = {
     },
     {
       "id": "renal_compensation_respiratory_acidosis",
-      "label": "Renal compensation in respiratory acidosis",
+      "label": "Interpreting renal compensation in respiratory acidosis",
       "topicId": "acid_base",
       "errorType": "Knowledge and mechanism",
       "active": true
@@ -123,28 +123,28 @@ export const demoErrorLogCatalogue: ErrorLogCatalogue = {
     },
     {
       "id": "acute_respiratory_acidosis_causes",
-      "label": "Causes of acute respiratory acidosis",
+      "label": "Causes and mechanisms of acute respiratory acidosis",
       "topicId": "respiratory_ventilation",
       "errorType": "Knowledge and mechanism",
       "active": true
     },
     {
       "id": "copd_airflow_dead_space_co2_clearance",
-      "label": "Airflow limitation, dead space and CO₂ clearance in COPD",
+      "label": "Airflow limitation, dead space and CO₂ clearance",
       "topicId": "respiratory_ventilation",
       "errorType": "Knowledge and mechanism",
       "active": true
     },
     {
       "id": "copd_ventilatory_pump_limitation",
-      "label": "Respiratory muscle load and hypoventilation in COPD",
+      "label": "Respiratory muscle load and hypoventilation",
       "topicId": "respiratory_ventilation",
       "errorType": "Knowledge and mechanism",
       "active": true
     },
     {
       "id": "emergency_intubation_hypercapnic_respiratory_failure",
-      "label": "Emergency intubation in acute hypercapnic respiratory failure",
+      "label": "Indications for emergency intubation in ventilatory failure",
       "topicId": "respiratory_ventilation",
       "errorType": "Clinical application",
       "active": true
@@ -218,6 +218,13 @@ export const demoErrorLogCatalogue: ErrorLogCatalogue = {
     {
       "id": "hagma_causes",
       "label": "Causes of high anion gap metabolic acidosis",
+      "topicId": "acid_base",
+      "errorType": "Knowledge and mechanism",
+      "active": true
+    },
+    {
+      "id": "respiratory_alkalosis_causes",
+      "label": "Causes of respiratory alkalosis",
       "topicId": "acid_base",
       "errorType": "Knowledge and mechanism",
       "active": true
