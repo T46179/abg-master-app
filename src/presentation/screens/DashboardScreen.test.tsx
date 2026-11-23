@@ -360,6 +360,7 @@ describe("DashboardScreen", () => {
       "About:/about",
       "Privacy:/privacy"
     ]);
+    expect(container.querySelector(".dashboard-page-footer__navigation")?.textContent).not.toContain("Analytics");
     const privacyLink = container.querySelector<HTMLAnchorElement>(".dashboard-page-footer__privacy");
     expect(privacyLink?.getAttribute("href")).toBe("/privacy");
     expect(privacyLink?.getAttribute("target")).toBe("_blank");

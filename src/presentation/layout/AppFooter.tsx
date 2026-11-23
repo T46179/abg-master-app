@@ -2,7 +2,6 @@ import { RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAppContext } from "../../app/AppProvider";
 import { clearPendingCalibrationCompletion } from "../../core/calibrationRecovery";
-import { OPEN_ANALYTICS_CHOICES_EVENT } from "./AnalyticsConsentBanner";
 import { APP_BUILD_LABEL } from "./appBuild";
 
 function clearLearnModuleResumeState() {
@@ -49,13 +48,6 @@ export function AppFooter() {
             <Link className="dashboard-page-footer__link" to="/updates">Updates</Link>
             <Link className="dashboard-page-footer__link" to="/resources">Resources</Link>
             <Link className="dashboard-page-footer__link" to="/contact">Contact</Link>
-            <button
-              className="dashboard-page-footer__link dashboard-page-footer__analytics"
-              type="button"
-              onClick={() => window.dispatchEvent(new Event(OPEN_ANALYTICS_CHOICES_EVENT))}
-            >
-              Analytics
-            </button>
             <Link className="dashboard-page-footer__link" to="/about">About</Link>
             <Link className="dashboard-page-footer__link dashboard-page-footer__privacy" to="/privacy" target="_blank" rel="noopener noreferrer">
               Privacy
