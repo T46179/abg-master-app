@@ -308,8 +308,7 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
     cancelSave.current();
     session?.releaseWriter();
     setRoomView(view);
-    if (view === "error-log") void errorLog.refresh();
-    else void history.refresh();
+    if (view !== "error-log") void history.refresh();
     void loadRoom().catch(cause => { if (mounted.current) failure(cause); });
   }
   // Record only screen identity in browser history; answers and grades stay in the runtime.
@@ -485,7 +484,7 @@ export default function ExamPilotRuntime({ enableOwnerUnitPicker = false, access
           </fieldset> : undefined}
           chooseUnits={canChooseUnits ? { active: pickedUnits !== null, toggle: () => setSelectedSnapshotIds(pickedUnits === null ? [] : null) } : undefined}
           launching={preparing} beginDisabled={!canStart || !ready || (trial ? (trialStatus !== "ready" || trialLifecycle?.state !== "available") : (!canStartStandard || (pickedUnits !== null ? pickedUnits.length === 0 : !counts.includes(setupState.caseCount)))) || (trial && (!feedbackPreference.ready || feedbackPreference.busy))} setupLocked={setupLocked}
-          latestDisabled={busy || !history.latestAttemptId} errorLogCount={errorLog.error ? undefined : errorLog.data?.toReviewCount}
+          latestDisabled={busy || !history.latestAttemptId} errorLogCount={errorLog.data?.toReviewCount}
           onChange={patch => {
             if (patch.view === "results" && history.latestAttemptId) { void run(() => openResult(history.latestAttemptId!, "exam")); return; }
             if (patch.view === "history" || patch.view === "error-log") { enterRoom(patch.view); return; }

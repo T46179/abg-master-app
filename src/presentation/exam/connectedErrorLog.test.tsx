@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ErrorLogSave } from "./ErrorLogSave";
@@ -116,7 +116,7 @@ it("clears account/environment state and ignores delayed responses from the old 
   expect(log.data?.toReviewCount).toBe(0);
 });
 
-it("uses only confirmed mutation state, rejects concurrent actions and refreshes on focus", async () => {
+it("uses only confirmed mutation state, rejects concurrent actions and reuses the confirmed response on focus", async () => {
   const mutation = deferred<ErrorLogState>();
   const call = vi.fn().mockImplementation((operation: string) => operation === "error_log_save" ? mutation.promise : Promise.resolve(state(attempt)));
   let log!: ReturnType<typeof useExamErrorLog>;
@@ -131,7 +131,7 @@ it("uses only confirmed mutation state, rejects concurrent actions and refreshes
   await act(async () => { mutation.resolve({ ...state(attempt), savedConceptIds: ["calculation"] } as ErrorLogState); await saving; });
   expect(log.busy).toBe(false);
   await act(async () => window.dispatchEvent(new Event("focus")));
-  expect(call.mock.calls.filter(c => c[0] === "error_log_list")).toHaveLength(2);
+  expect(call.mock.calls.filter(c => c[0] === "error_log_list")).toHaveLength(1);
 });
 
 it("returns each respiratory set to its own concept after retry, completion or early exit", async () => {
@@ -231,4 +231,83 @@ it("keeps saved concepts independent when they share a broad topic", async () =>
   await click("Archived 1");
   expect(texts(".exam-error-log__title strong")).toEqual([labels[2]]);
   expect(log.review).not.toHaveBeenCalled();
+});
+
+it("reuses list and paginated examples across visits and refreshes only changed examples", async () => {
+  let now = 1_000;
+  const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+  const first = deferred<ErrorLogState>();
+  const data = state();
+  const secondId = "22345678-1234-1234-1234-123456789abc";
+  const sample = { id: attempt, attemptId: attempt, unitId: "EXAM-0001", partId: "part", prompt: "First example",
+    questionNumber: 1, partNumber: 1, examKind: "mock", savedAt: data.entries[0].lastSavedAt, finishedAt: data.entries[0].lastSavedAt };
+  const cursor = { savedAt: sample.savedAt, id: sample.id };
+  const list = vi.fn().mockReturnValueOnce(first.promise).mockResolvedValue(data);
+  const examples = vi.fn().mockResolvedValueOnce({ examples: [sample], nextCursor: cursor })
+    .mockResolvedValue({ examples: [{ ...sample, id: secondId, prompt: "Second example" }], nextCursor: null });
+  const call = vi.fn((op, args) => op === "error_log_list" ? list() : examples(args));
+  let log!: ReturnType<typeof useExamErrorLog>;
+  function Harness({ open }: { open: boolean }) {
+    log = useExamErrorLog(call as RuntimeCall, "staging:alice");
+    const props = { log, onBack: vi.fn(), onOpenExample: vi.fn() };
+    return open ? <ConnectedExamErrorLog {...props} /> : null;
+  }
+  const render = (open: boolean) => act(async () => root.render(<StrictMode><Harness open={open} /></StrictMode>));
+  try {
+    await render(false);
+    await render(true);
+    await act(async () => window.dispatchEvent(new Event("focus")));
+    expect(list).toHaveBeenCalledTimes(1);
+    await act(async () => first.resolve(data));
+    await click("Load more");
+    expect(examples.mock.calls[1][0]).toEqual({ conceptId: "calculation", cursor });
+    await render(false);
+    now += 59_999;
+    await render(true);
+    expect(list).toHaveBeenCalledTimes(1);
+    expect(examples).toHaveBeenCalledTimes(2);
+    expect(container.querySelectorAll(".exam-error-log__examples button")).toHaveLength(2);
+    now += 1;
+    await act(async () => window.dispatchEvent(new Event("focus")));
+    expect(list).toHaveBeenCalledTimes(2);
+    expect(examples).toHaveBeenCalledTimes(2);
+    list.mockRejectedValueOnce(new Error("offline"));
+    await act(async () => log.refresh());
+    expect(log.data?.entries).toEqual(data.entries);
+    expect(container.querySelectorAll(".exam-error-log__examples button")).toHaveLength(2);
+    list.mockResolvedValueOnce({ ...data, entries: [{ ...data.entries[0], exampleCount: 22 }] });
+    await click("Retry");
+    expect(list).toHaveBeenCalledTimes(4);
+    expect(examples).toHaveBeenCalledTimes(3);
+    expect(container.querySelectorAll(".exam-error-log__examples button")).toHaveLength(1);
+  } finally { clock.mockRestore(); }
+});
+
+it("keeps attempt selections separate and ignores a list response superseded by an archive", async () => {
+  const late = deferred<ErrorLogState>();
+  const another = "22345678-1234-1234-1234-123456789abc";
+  const data = state();
+  const archived = { ...data, entries: [{ ...data.entries[0], status: "archived", archivedAt: data.entries[0].lastSavedAt }], toReviewCount: 0 };
+  const list = vi.fn((source?: string) => Promise.resolve(state(source)));
+  const call = vi.fn((op, args) => op === "error_log_list" ? list(args.attemptId) : Promise.resolve(archived));
+  let log!: ReturnType<typeof useExamErrorLog>;
+  function Harness({ source }: { source?: string }) {
+    log = useExamErrorLog(call as RuntimeCall, "staging:alice", source);
+    return null;
+  }
+  const render = (source?: string) => act(async () => root.render(<Harness source={source} />));
+  await render();
+  await render(attempt);
+  await render(another);
+  expect(log.data?.attemptId).toBe(another);
+  await render(attempt);
+  expect(log.data?.attemptId).toBe(attempt);
+  await render();
+  expect(log.data?.savedSources).toEqual({});
+  expect(list.mock.calls).toEqual([[undefined], [attempt], [another]]);
+  list.mockReturnValueOnce(late.promise);
+  await act(async () => { void log.refresh(); });
+  await act(async () => log.review("calculation", true));
+  await act(async () => late.resolve(data));
+  expect(log.data?.entries[0].status).toBe("archived");
 });

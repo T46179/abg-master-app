@@ -4,15 +4,19 @@ import { compensationRules, drillDefinitions } from "./drillDefinitions";
 import type { DrillLoader } from "../../core/examDrills";
 import type { PressureUnit } from "../../core/types";
 import type { DrillTarget } from "./errorLogTypes";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useSyncExternalStore, useLayoutEffect, useRef, useState } from "react";
 import { ExamErrorLog } from "./ExamErrorLog";
 import { examKindLabel } from "./examLabels";
 import { BackLink } from "./ExamUi";
 import { ExamNotice, NoticeMessage, RetryAction } from "./ExamNotice";
-import type { ErrorLogConceptPresentation, ErrorLogExample, ErrorLogExamplePage } from "./errorLogTypes";
+import type { ErrorLogConceptPresentation, ErrorLogExample } from "./errorLogTypes";
 import type { useExamErrorLog } from "./useExamErrorLog";
 
-type Page = ErrorLogExamplePage & { loading?: boolean; error?: string };
+import { examplesFor, type ExamplePages } from "./errorLogExamples";
+
+const emptyPages: ExamplePages = {};
+const emptySnapshot = () => emptyPages;
+const emptySubscribe = () => () => {};
 const date = (value: string) => new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short" }).format(new Date(value));
 
 export function ConnectedExamErrorLog({ log, onBack, onOpenExample, onOpenLatest, loadDrill, pressureUnit = "mmHg" }: {
@@ -48,37 +52,16 @@ export function ConnectedExamErrorLog({ log, onBack, onOpenExample, onOpenLatest
       button.focus({ preventScroll: true });
     } else list.current?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus({ preventScroll: true });
   }, [drill.session]);
-  const [pages, setPages] = useState<Record<string, Page>>({});
+  const refresh = log.refresh;
+  useEffect(() => { void refresh(false); }, [refresh]);
+  const cache = log.client ? examplesFor(log.client) : null;
+  const pages = useSyncExternalStore(cache?.subscribe ?? emptySubscribe, cache?.snapshot ?? emptySnapshot);
+  useLayoutEffect(() => { if (log.data) cache?.reconcile(log.data.entries); }, [cache, log.data]);
+  const expand = useCallback((id: string) => {
+    if (!cache?.snapshot()[id]) void cache?.load(id);
+  }, [cache, pages]);
   const [actionError, setActionError] = useState<{ message: string; conceptId?: string } | null>(null);
   const [opening, setOpening] = useState(false);
-  const generation = useRef(0);
-  const inFlight = useRef(new Set<string>());
-  const previousData = useRef(log.data);
-  useEffect(() => {
-    if (previousData.current && previousData.current !== log.data) { ++generation.current; setPages({}); inFlight.current.clear(); }
-    previousData.current = log.data;
-  }, [log.data]);
-  useEffect(() => () => { ++generation.current; }, [log.client]);
-  const loadExamples = useCallback(async (conceptId: string, next = false) => {
-    if (!log.client || inFlight.current.has(conceptId)) return;
-    inFlight.current.add(conceptId);
-    const request = generation.current;
-    const existing = pages[conceptId];
-    const cursor = next ? existing?.nextCursor : null;
-    setPages(current => ({ ...current, [conceptId]: { examples: existing?.examples ?? [], nextCursor: cursor ?? null, error: existing?.error, loading: true } }));
-    try {
-      const page = await log.client.examples(conceptId, cursor);
-      if (generation.current === request) setPages(current => ({ ...current, [conceptId]: {
-        examples: cursor ? [...(existing?.examples ?? []), ...page.examples.filter(e => !existing?.examples.some(old => old.id === e.id))] : page.examples,
-        nextCursor: page.nextCursor,
-      } }));
-    } catch {
-      if (generation.current === request) setPages(current => ({ ...current, [conceptId]: {
-        examples: existing?.examples ?? [], nextCursor: cursor ?? null, error: "We couldn't load your saved examples. Please try again.",
-      } }));
-    } finally { if (generation.current === request) inFlight.current.delete(conceptId); }
-  }, [log.client, pages]);
-  const expand = useCallback((id: string) => { if (!pages[id]) void loadExamples(id); }, [pages, loadExamples]);
   async function review(id: string, archive: boolean) {
     setActionError(null); try { await log.review(id, archive); }
     catch { setActionError({ message: "We couldn't confirm that change. Please try again.", conceptId: id }); }
@@ -117,7 +100,7 @@ export function ConnectedExamErrorLog({ log, onBack, onOpenExample, onOpenLatest
     <div hidden={Boolean(drill.session)} ref={list}>
     <ExamErrorLog onPractice={loadDrill ? practice : undefined}
       launchingId={drill.busy ? origin.current?.id : undefined} concepts={concepts} onBack={onBack} busy={log.busy || opening} pageNotice={pageNotice} actionError={drill.error || actionError?.message} actionErrorConceptId={drill.error ? origin.current?.id : actionError?.conceptId}
-      onExpand={expand} onLoadMore={id => void loadExamples(id, Boolean(pages[id]?.nextCursor))}
+      onExpand={expand} onLoadMore={id => void cache?.load(id, Boolean(pages[id]?.nextCursor))}
       onArchive={id => void review(id, true)} onRestore={id => void review(id, false)}
       onOpenResult={onOpenLatest ? () => void open(onOpenLatest) : undefined}
       onOpenExample={e => { if (e.attemptId && e.partId) void open(() => onOpenExample(e.attemptId!, e.partId!), concepts.find(c => c.examples.includes(e))?.id); }} />
