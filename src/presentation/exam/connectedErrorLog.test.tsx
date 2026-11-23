@@ -153,8 +153,8 @@ it("returns each respiratory set to its own concept after retry, completion or e
   await render(false);
   expect(container.querySelector("[data-practice]")).toBeNull();
   await render(true);
-  for (const [index, id] of ids.entries()) {
-    const row = container.querySelectorAll<HTMLButtonElement>(".exam-error-log__row")[index];
+  for (const [index, id] of [...ids, ids[1]].entries()) {
+    const row = container.querySelectorAll<HTMLButtonElement>(".exam-error-log__row")[ids.indexOf(id)];
     if (row.getAttribute("aria-expanded") !== "true") await act(async () => row.click());
     const button = container.querySelector<HTMLButtonElement>(`[data-practice="${id}"]`)!;
     await act(async () => { button.click(); button.click(); });
@@ -165,17 +165,28 @@ it("returns each respiratory set to its own concept after retry, completion or e
       await act(async () => button.click());
     }
     expect(loader).toHaveBeenLastCalledWith({ drill: "compensation", rule: "respiratory", count: 5, pressureUnit: "kPa" }, expect.any(AbortSignal));
-    if (index) {
-      for (let i = 0; i < 5; i++) {
+    if (index === 1) {
+      for (let i = 0; i < 10; i++) {
         const input = container.querySelector<HTMLInputElement>('input[inputmode="decimal"]')!;
         await act(async () => {
           Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "10");
           input.dispatchEvent(new Event("input", { bubbles: true }));
         });
         await click("Check");
-        await click(i === 4 ? "See summary" : "Next question");
+        await click(i % 5 === 4 ? "See summary" : "Next question");
+        if (i === 4) await click("Practise another set");
       }
-      await click("Practise another set");
+      await click("Back to Error Log");
+      expect(document.activeElement).toBe(button);
+      await act(async () => button.click());
+    }
+    if (index === 2) {
+      data.entries = data.entries.filter(entry => entry.conceptId !== id);
+      await render(true);
+      await click("End drill");
+      expect(container.querySelector('[aria-expanded="true"]')).toBeNull();
+      expect(document.activeElement?.textContent).toMatch(/To review/);
+      break;
     }
     await click("End drill");
     expect(document.activeElement).toBe(button);
