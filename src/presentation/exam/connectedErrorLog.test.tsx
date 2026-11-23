@@ -195,3 +195,40 @@ it("returns each respiratory set to its own concept after retry, completion or e
   }
   scroll.mockRestore();
 });
+
+it("keeps saved concepts independent when they share a broad topic", async () => {
+  const data = state();
+  const ids = ["anion_gap_calculation_interpretation", "metabolic_acidosis_recognition", "delta_ratio_calculation_interpretation"];
+  const labels = ["Anion gap calculation and interpretation", "Metabolic acidosis recognition", "Delta ratio calculation and interpretation"];
+  data.catalogue = { ...catalogue, concepts: ids.map((id, index) => ({ ...catalogue.concepts[0], id, label: labels[index] })) };
+  data.entries = ids.map((conceptId, index) => ({
+    ...data.entries[0], conceptId, exampleCount: index === 1 ? 2 : 1,
+    lastSavedAt: index === 1 ? "2026-10-08T01:00:00Z" : data.entries[0].lastSavedAt,
+    status: index === 2 ? "archived" : "to_review", archivedAt: index === 2 ? "2026-10-09T01:00:00Z" : null,
+  }));
+  data.toReviewCount = 2;
+  const examples = vi.fn(async (conceptId: string) => ({
+    examples: Array.from({ length: conceptId === ids[1] ? 2 : 1 }, (_, i) => ({
+      id: conceptId + i, attemptId: attempt, unitId: "EXAM-0001", partId: "part" + i,
+      prompt: conceptId + " example " + i, questionNumber: i + 1, partNumber: 1, examKind: "mock" as const,
+      finishedAt: data.entries[0].lastSavedAt, savedAt: data.entries[0].lastSavedAt,
+    })), nextCursor: null,
+  }));
+  const log = { data, loading: false, error: "", busy: false, refresh: vi.fn(), save: vi.fn(), review: vi.fn(),
+    client: { list: vi.fn(), save: vi.fn(), review: vi.fn(), examples } };
+  const props = { log, onBack: vi.fn(), onOpenExample: vi.fn() };
+  await act(async () => root.render(<ConnectedExamErrorLog {...props} />));
+  const texts = (selector: string) => Array.from(container.querySelectorAll(selector), el => el.textContent);
+  expect(texts(".exam-error-log__title strong")).toEqual([labels[1], labels[0]]);
+  expect(texts(".exam-error-log__meta")).toEqual(["Acid–base", "Acid–base"]);
+  expect(texts(".exam-error-log__count > span").map(value => parseInt(value!, 10))).toEqual([2, 1]);
+  expect(texts(".exam-error-log__topic-label")).toEqual(["Acid–base2"]);
+  expect(examples.mock.calls.map(([id]) => id)).toEqual([ids[1]]);
+  expect(texts(".exam-error-log__example-copy > span")).toEqual([ids[1] + " example 0", ids[1] + " example 1"]);
+  await act(async () => container.querySelectorAll<HTMLButtonElement>(".exam-error-log__row")[1].click());
+  expect(examples.mock.calls.map(([id]) => id)).toEqual([ids[1], ids[0]]);
+  expect(texts(".exam-error-log__expanded:not([hidden]) .exam-error-log__example-copy > span")).toEqual([ids[0] + " example 0"]);
+  await click("Archived 1");
+  expect(texts(".exam-error-log__title strong")).toEqual([labels[2]]);
+  expect(log.review).not.toHaveBeenCalled();
+});

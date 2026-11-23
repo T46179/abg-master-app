@@ -78,7 +78,7 @@ export function ExamErrorLog({ concepts, onBack, onOpenResult, onOpenExample, on
                 <span className="exam-error-log__dot" data-archived={arch} aria-hidden="true" />
                 <span className="exam-error-log__copy">
                   <span className="exam-error-log__title"><strong>{c.label}</strong>{c.reopened && !arch && <span className="exam-error-log__reopened">Reopened</span>}</span>
-                  <span className="exam-error-log__meta">{c.topic} <span>·</span> {c.type}</span>
+                  <span className="exam-error-log__meta">{c.topic}</span>
                 </span>
                 <span className="exam-error-log__count"><span>{exampleCount} {exampleCount === 1 ? "example" : "examples"}</span><small>Last saved {c.lastSaved}</small></span>
                 <span className="exam-error-log__chevron" data-open={expanded} aria-hidden="true"><ChevronRightIcon /></span>
