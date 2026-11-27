@@ -10,6 +10,7 @@ export function PasswordRecoveryPages({ page, destination, onPage }: { page: Acc
   const { registration: r, registrationState: flow } = useRegistration();
   const busy = r.isBusy();
   const { identity } = useSiteAccount();
+  const setup = r.isFirstPasswordRecovery();
   const [email, setEmail] = useState(() => flow.email || identity.email || "");
   const [requestingEmail, setRequestingEmail] = useState(false);
   const resetFormShown = useRef(false);
@@ -24,10 +25,10 @@ export function PasswordRecoveryPages({ page, destination, onPage }: { page: Acc
     void r.requestResetEmail(email, destination).finally(() => setRequestingEmail(false));
   }
   if (flow.phase === "reset_password" || (flow.phase === "error" && r.canResetPassword()) || (flow.phase === "checking" && (r.canResetPassword() || resetFormShown.current))) {
-    resetFormShown.current = true; return <ResetPassword />;
+    resetFormShown.current = true; return <ResetPassword setup={setup} />;
   }
   if (flow.phase === "checking" && !requestingEmail) return <div className="account-setup-loading" role="status" aria-label="Checking password reset"><span className="loading-chip__spinner" aria-hidden="true" /></div>;
-  if (flow.phase === "reset_complete") return <AccountCard className="account-entry-card account-recovery-card" title="Password updated">
+  if (flow.phase === "reset_complete") return <AccountCard className="account-entry-card account-recovery-card" title={setup ? "Password enabled" : "Password updated"}>
     <p className="account-entry-intro">You can now sign in using your new password.</p>
     <div className="account-verification-actions"><AccountButton className="account-entry-submit" showArrow={false} onClick={back}>Sign in</AccountButton></div>
   </AccountCard>;
@@ -52,7 +53,7 @@ export function PasswordRecoveryPages({ page, destination, onPage }: { page: Acc
   </AccountCard>;
 }
 
-function ResetPassword() {
+function ResetPassword({ setup }: { setup: boolean }) {
   const { registration: r, registrationState: flow } = useRegistration();
   const busy = r.isBusy();
   const [password, setPassword] = useState(""); const [confirm, setConfirm] = useState(""); const [error, setError] = useState("");
@@ -64,7 +65,7 @@ function ResetPassword() {
     if (password !== confirm) { setError("The passwords don't match."); document.getElementById("reset-confirm-password")?.focus(); return; }
     const value = password; setPassword(""); setConfirm(""); setError(""); void r.completeReset(value);
   }
-  return <AccountCard className="account-entry-card account-recovery-card" eyebrow="Reset password" title="Set a new password">
+  return <AccountCard className="account-entry-card account-recovery-card" eyebrow={setup ? "Set password" : "Reset password"} title={setup ? "Set your password" : "Set a new password"}>
     <p className="account-entry-intro">Choose a new password for your account.</p>
     <PasswordRequirements password={password} />
     <form noValidate onSubmit={submit} className="account-form ph-no-capture" data-sentry-mask="true">

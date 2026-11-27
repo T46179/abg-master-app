@@ -1,5 +1,5 @@
 export const REGISTRATION_RETURN_URL = "http://127.0.0.1:5184/dev/exam-pilot";
-export const REGISTRATION_DESTINATIONS = ["trial", "exam", "dashboard", "practice", "learn", "insights"] as const;
+export const REGISTRATION_DESTINATIONS = ["trial", "exam", "dashboard", "practice", "learn", "insights", "profile"] as const;
 export type RegistrationDestination = typeof REGISTRATION_DESTINATIONS[number];
 export type RegistrationCallback = { kind: "session"; accessToken: string; refreshToken: string; purpose: "verify" | "complete"; destination: RegistrationDestination }
   | { kind: "recovery"; tokenHash: string; purpose: "reset"; destination: RegistrationDestination }
@@ -39,6 +39,7 @@ export function takeRegistrationCallback(location: Pick<Location, "href">, histo
   url.hash = fragment.toString();
   url.searchParams.delete("account_action"); url.searchParams.delete("return_to");
   if (purpose === "reset") url.searchParams.set("account", "reset");
+  if (purpose === "reset" && destination === "profile") url.searchParams.set("return_to", "profile");
   history.replaceState(history.state, "", url.pathname + url.search + url.hash);
   if (validRecovery) return { kind: "recovery", tokenHash, purpose: "reset", destination };
   if (validSession) return { kind: "session", accessToken, refreshToken, purpose: purpose as "verify" | "complete", destination };

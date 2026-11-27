@@ -19,6 +19,7 @@ export const REGISTRATION_RESEND_DELAY_MS = 60_000;
 export type RegistrationCodeRequest = { version: 1; ownerId: string | null; email: string; purpose: "verify" | "complete"; destination: RegistrationDestination; sentAt: number; resendAvailableAt: number };
 
 export const REGISTRATION_AUTH_KEY = "abgm-registration-auth-clpfecuohwzwrgmqzeos";
+const profileReturnKey = (userId: string) => REGISTRATION_AUTH_KEY + ":profile-return:" + userId;
 
 function loadPending(storage: BrowserStorageLike): PendingRegistration | null {
   try {
@@ -52,6 +53,7 @@ export function createAccountRegistration(account: SiteAccount, canonical: Supab
   let candidate: SupabaseClient | null = null;
   let candidateId: string | null = null;
   let candidatePurpose: "setup" | "reset" = "setup";
+  let firstPasswordRecovery = false;
   let candidateOwner: ReturnType<SiteAccount["getSnapshot"]> | null = null;
   let confirmedSwitch = false;
   let revision = 0;
@@ -137,8 +139,19 @@ export function createAccountRegistration(account: SiteAccount, canonical: Supab
     if (purpose === "reset") {
       const recovered = await checkPasswordRecoverySession(client);
       assertOwner(owner, ticket);
+      // The staging mail template only emits recovery tokens for its registered return URLs.
+      // Determine first-time setup from the verified account, including in a different browser.
+      const firstPassword = destination === "exam" && (await readAccountSetupStatus(client).catch(() => null)) === false;
+      assertOwner(owner, ticket);
+      firstPasswordRecovery = firstPassword;
+      const returnKey = profileReturnKey(recovered.id);
+      let requestedFromProfile = false;
+      try {
+        requestedFromProfile = Number(storage.getItem(returnKey)) > Date.now();
+        storage.removeItem(returnKey);
+      } catch { /* A navigation preference is optional for recovery. */ }
       candidate = client; candidateId = recovered.id; candidateOwner = owner; candidatePurpose = "reset";
-      publish("reset_password", "", recovered.email, destination); return;
+      publish("reset_password", "", recovered.email, firstPassword || (destination === "exam" && requestedFromProfile) ? "profile" : destination); return;
     }
     const hasPassword = await readAccountSetupStatus(client);
     assertOwner(owner, ticket);
@@ -155,6 +168,7 @@ export function createAccountRegistration(account: SiteAccount, canonical: Supab
     getSnapshot: () => snapshot,
     subscribe(fn: () => void) { listeners.add(fn); return () => { listeners.delete(fn); }; },
     isBusy: () => running,
+    isFirstPasswordRecovery: () => firstPasswordRecovery,
     canSetPassword: () => Boolean(candidate && candidateId && candidatePurpose === "setup"),
     canResetPassword: () => Boolean(candidate && candidateId && candidatePurpose === "reset"),
     emailPurpose: () => emailPurpose,
@@ -297,15 +311,36 @@ export function createAccountRegistration(account: SiteAccount, canonical: Supab
       storage.removeItem(REGISTRATION_CODE_KEY); codeRequest = null;
       publish("idle", "", current.email, destination); publish("complete", "", current.email, destination);
     },
+    async requestProfilePasswordSetup(expectedUserId: string) {
+      const owner = account.getSnapshot();
+      const ticket = revision;
+      const user = await checkedUser(canonical);
+      assertOwner(owner, ticket);
+      if (owner.status !== "verified" || owner.userId !== expectedUserId || user.id !== expectedUserId ||
+          !user.email || !user.email_confirmed_at || user.is_anonymous !== false)
+        throw new Error("Your verified profile email could not be checked. Please retry.");
+      const { error } = await temporary("callback").auth.resetPasswordForEmail(user.email, { redirectTo: registrationReturnUrl("reset", "exam") });
+      if (error) throw new Error("The setup email could not be requested. Please wait and try again.");
+      assertOwner(owner, ticket);
+      return user.email;
+    },
     requestResetEmail(email: string, destination: RegistrationDestination = "exam") {
       return operation(async (owner, ticket) => {
         emailPurpose = "reset"; candidate = null; candidateId = null; candidateOwner = null;
         const address = email.trim(); publish("checking", "", address, destination);
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) throw new Error("Enter a valid email address.");
-        const result = await temporary("callback").auth.resetPasswordForEmail(address, { redirectTo: registrationReturnUrl("reset", destination) });
+        const returnUrl = registrationReturnUrl("reset", destination === "profile" ? "exam" : destination);
+        const result = await temporary("callback").auth.resetPasswordForEmail(address, { redirectTo: returnUrl });
         assertOwner(owner, ticket);
         if (result.error && !["user_not_found", "email_not_found"].includes(result.error.code ?? ""))
           throw new Error("The reset email could not be requested. Please wait and try again.");
+        if (owner.userId && owner.email?.toLowerCase() === address.toLowerCase()) {
+          const key = profileReturnKey(owner.userId);
+          try {
+            if (destination === "profile") storage.setItem(key, String(Date.now() + 60 * 60_000));
+            else storage.removeItem(key);
+          } catch { /* The recovery email can be used with browser storage disabled. */ }
+        }
         publish("awaiting_email", "", address, destination);
       });
     },

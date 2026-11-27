@@ -1,7 +1,7 @@
 import { createClient, type Session, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { registrationDestination, REGISTRATION_RETURN_URL, type RegistrationDestination } from "./registrationCallback";
 
-type Action = "link" | "signup" | "signin";
+type Action = "link" | "profile-link" | "signup" | "signin";
 type Attempt = {
   action: Action;
   destination: RegistrationDestination;
@@ -37,7 +37,9 @@ export function clearGoogleAttempt(storage: Storage) {
 
 export function takeGoogleReturn(location: Pick<Location, "href">, storage: Storage): GoogleReturn | null {
   const url = new URL(location.href);
-  if (url.origin + url.pathname !== REGISTRATION_RETURN_URL || url.searchParams.has("account_action")) return null;
+  if (url.origin !== new URL(REGISTRATION_RETURN_URL).origin || url.searchParams.has("account_action")) return null;
+  const isProfile = url.pathname === "/profile";
+  if (!isProfile && url.origin + url.pathname !== REGISTRATION_RETURN_URL) return null;
   const fragment = new URLSearchParams(url.hash.slice(1));
   const code = url.searchParams.get("code");
   const errorCode = url.searchParams.get("error_code") ?? fragment.get("error_code");
@@ -46,7 +48,12 @@ export function takeGoogleReturn(location: Pick<Location, "href">, storage: Stor
     const raw = storage.getItem(key);
     if (!raw) return null;
     const attempt: Attempt = JSON.parse(raw);
-    if (!["link", "signup", "signin"].includes(attempt.action) ||
+    if (isProfile) {
+      // Back from the chooser can reload the profile without an OAuth callback.
+      if (attempt.action === "profile-link") clearGoogleAttempt(storage);
+      return null;
+    }
+    if (!["link", "profile-link", "signup", "signin"].includes(attempt.action) ||
         !Number.isFinite(attempt.started) || Date.now() - attempt.started > maxAge) {
       clearGoogleAttempt(storage);
       return null;
@@ -183,27 +190,30 @@ export function createGoogleAccount(canonical: SupabaseClient, url: string, apiK
         }
       };
     } : undefined,
-    async begin(action: Action, destination: RegistrationDestination, options?: { expectedOwner: string | null; hadProgress: boolean }) {
+    async begin(action: Action, destination: RegistrationDestination, options?: { expectedOwner: string | null; hadProgress?: boolean }) {
       clearGoogleAttempt(tab);
       const current = await readSession(canonical);
       if (options && (current?.user.id ?? null) !== options.expectedOwner) {
         throw new Error("The active account changed. Start Google sign-in again.");
       }
-      if (action === "link") {
+      const linking = action === "link" || action === "profile-link";
+      if (linking) {
         const verified = await canonical.auth.getUser();
-        if (verified.error || !current || verified.data.user?.id !== current.user.id ||
-            verified.data.user.is_anonymous !== true) {
-          throw new Error("Your current guest account could not be checked. Please retry.");
+        const user = verified.data.user;
+        if (verified.error || !current || !user || user.id !== current.user.id ||
+            (action === "link" ? user.is_anonymous !== true : user.is_anonymous !== false || !user.email_confirmed_at)) {
+          throw new Error("Your current account could not be checked. Please retry.");
         }
       }
       const attempt: Attempt = { action, destination, owner: current?.user.id ?? null,
         ownerSession: sessionId(current), started: Date.now(), hadProgress: options?.hadProgress };
-      const temporary = createGoogleClient(url, apiKey, tab, action === "link" ? current : null);
+      const temporary = createGoogleClient(url, apiKey, tab, linking ? current : null);
       try {
         const credentials = { provider: "google" as const, options: {
-          redirectTo: REGISTRATION_RETURN_URL, skipBrowserRedirect: true
+          redirectTo: REGISTRATION_RETURN_URL, skipBrowserRedirect: true,
+          ...(action === "profile-link" ? { queryParams: { prompt: "select_account" } } : {})
         } };
-        const result = action === "link"
+        const result = linking
           ? await temporary.client.auth.linkIdentity(credentials)
           : await temporary.client.auth.signInWithOAuth(credentials);
         if (result.error || !result.data.url) throw new Error("Google sign-in could not start. Please retry.");
@@ -220,7 +230,7 @@ export function createGoogleAccount(canonical: SupabaseClient, url: string, apiK
       const { attempt, code, conflict } = callback;
       if (!code) {
         clearGoogleAttempt(tab);
-        if (conflict && attempt.action === "link") {
+        if (conflict && (attempt.action === "link" || attempt.action === "profile-link")) {
           await checkOwner(attempt);
           throw new GoogleLinkConflict("This Google account is already linked.");
         }
@@ -237,7 +247,7 @@ export function createGoogleAccount(canonical: SupabaseClient, url: string, apiK
         const verified = candidate && await temporary.client.auth.getUser();
         const user = verified && !verified.error ? verified.data.user : null;
         if (result.error || !candidate || !user || user.id !== candidate.user.id || !user.email || !hasGoogleSignIn(user) ||
-            (attempt.action === "link" && user.id !== attempt.owner)) {
+            ((attempt.action === "link" || attempt.action === "profile-link") && user.id !== attempt.owner)) {
           throw new Error("Google sign-in could not be verified. Please retry.");
         }
         await checkOwner(attempt);

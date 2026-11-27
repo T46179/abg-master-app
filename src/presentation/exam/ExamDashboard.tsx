@@ -98,11 +98,11 @@ function MockExam({ state, minutesPerCase, onChange, onBegin, launching, setupLo
     {!trial && <ExamOverview state={state} pressureUnit={pressureUnit} hero={overviewHero} />}
     {setupContent ?? (<Surface as="aside" className="exam-setup exam-sitting-setup" aria-labelledby="exam-build-title">
       <fieldset className="exam-setup-fields" disabled={setupLocked}>
-      <div className="exam-build-heading"><div>{trial && <p className="exam-eyebrow">Trial Exam</p>}<h3 id="exam-build-title">{trial ? "Your Trial Session" : "Build your session"}</h3>{trial && <p className="exam-trial-intro">Test your acid–base interpretation and clinical reasoning across three cases, then review your performance with detailed marking and feedback.</p>}</div></div>
+      <div className="exam-build-heading"><div>{trial && <p className="exam-eyebrow">Trial Exam</p>}<h3 id="exam-build-title" className="exam-panel-title">{trial ? "Your Trial Session" : "Build your session"}</h3>{trial && <p className="exam-panel-description">Test your acid–base interpretation and clinical reasoning across three cases, then review your performance with detailed marking and feedback.</p>}</div></div>
       <div className="exam-kind-picker" role="group" aria-label="Sitting type" data-kind={state.examKind}>
         <span className="exam-picker-highlight" aria-hidden="true" />
         {kinds.map(kind => <button type="button" key={kind.key} disabled={kind.key === "custom" && (trial || customDisabled)} aria-pressed={state.examKind === kind.key} onClick={() => onChange({ examKind: kind.key })}>
-          <strong>{kind.label}</strong><span>{kind.description}{trial && kind.key === "custom" && <LockKeyhole className="exam-feature-lock" aria-hidden="true" />}</span>
+          <strong className="exam-option-title">{kind.label}</strong><span className="exam-option-detail">{kind.description}{trial && kind.key === "custom" && <LockKeyhole className="exam-feature-lock" aria-hidden="true" />}</span>
         </button>)}
       </div>
       {!trial && <div className="exam-specialist-reveal" data-open={custom} aria-hidden={!custom} inert={!custom}>

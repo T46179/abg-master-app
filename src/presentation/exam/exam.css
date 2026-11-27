@@ -33,6 +33,10 @@
 .exam-screen .surface { border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
 .exam-screen .exam-eyebrow { font-size: .75rem; font-weight: 600; line-height: 1.5; letter-spacing: .14em; text-transform: uppercase; color: var(--color-text-muted); }
 .exam-screen .exam-small { display: block; font-size: .75rem; line-height: 1.5; font-weight: 400; color: var(--color-text-muted); }
+.exam-screen .exam-panel-title { font-size: 1.1875rem; font-weight: 700; line-height: 1.3; letter-spacing: -.025em; }
+.exam-screen .exam-panel-description { margin-top: .375rem; font-size: .875rem; line-height: 1.6; color: var(--color-text-muted); }
+.exam-option-title { display: block; font-size: .875rem; font-weight: 600; }
+.exam-screen .exam-option-detail { margin-top: .125rem; font-size: .75rem; line-height: 1.4; font-weight: 400; color: var(--color-text-muted); }
 .exam-screen .exam-number { font-size: .875rem; font-variant-numeric: tabular-nums; }
 .exam-screen .exam-accent { color: var(--exam-accent); }
 .exam-toolbar, .exam-actions, .exam-label-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
@@ -218,23 +222,26 @@
   .exam-screen *, .exam-screen *::before, .exam-screen *::after { transition: none !important; }
 }
 
-/* Figma Make dashboard/history transfer. Keep this palette inside these views. */
+/* Text colors shared by the exam builder, history, and profile. */
+.exam-panel-typography, .exam-mock-workspace, .exam-history {
+  --exam-ink: #0f2942;
+  --color-text: var(--exam-ink);
+  --color-text-soft: #33465a;
+  --color-text-muted: #6b7789;
+  color: var(--color-text);
+}
+/* Figma Make dashboard/history transfer. */
 .exam-mock-workspace, .exam-history {
   --exam-navy: #10243d;
-  --exam-ink: #0f2942;
   --exam-faint: #9aa5b3;
   --exam-strong: #c8ced7;
   --exam-coral-soft: #f0a58a;
   --exam-amber: #c08a2e;
   --exam-red: #c4503a;
-  --color-text: var(--exam-ink);
-  --color-text-soft: #33465a;
-  --color-text-muted: #6b7789;
   --color-border: #e8ebef;
   --color-surface: #fff;
   --color-surface-muted: #fbfcfd;
   --color-surface-soft: #fbfcfd;
-  color: var(--exam-ink);
   font-variant-numeric: tabular-nums;
 }
 .exam-mock-workspace { grid-template-columns: minmax(0, 1fr); align-items: start; }
@@ -257,7 +264,6 @@
 .exam-screen .exam-mock-workspace .exam-sitting-setup { padding: 1.5rem; border-color: var(--color-border); box-shadow: 0 0 0 3px rgb(16 36 61 / 3%), 0 16px 30px -18px rgb(16 36 61 / 35%); }
 .exam-build-heading { display: flex; align-items: center; gap: .75rem; }
 .exam-build-heading .exam-icon-badge { width: 2.25rem; height: 2.25rem; flex-basis: 2.25rem; border-radius: .625rem; }
-.exam-build-heading h3 { font-size: 1.1875rem; font-weight: 700; }
 .exam-build-heading .exam-small { margin-top: .375rem; font-size: .8125rem; }
 .exam-kind-picker, .exam-case-picker { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: .25rem; gap: 0; border: 1px solid var(--color-border); background: var(--color-surface-muted); }
 .exam-kind-picker { margin-top: 1.5rem; border-radius: 1rem; }
@@ -266,8 +272,7 @@
 .exam-kind-picker[data-kind="custom"] .exam-picker-highlight, .exam-case-picker[data-count="5"] .exam-picker-highlight { transform: translateX(100%); }
 .exam-kind-picker button, .exam-case-picker button { position: relative; border: 0; background: transparent; border-radius: .75rem; text-align: left; transition: color 200ms ease; }
 .exam-kind-picker button { padding: .75rem 1rem; color: var(--color-text-soft); }
-.exam-kind-picker strong { display: block; font-size: .875rem; font-weight: 600; }
-.exam-kind-picker button > span { display: block; margin-top: .125rem; font-size: .75rem; line-height: 1.4; color: var(--color-text-muted); }
+.exam-kind-picker .exam-option-detail { display: block; }
 .exam-kind-picker button[aria-pressed="true"] { color: #fff; }
 .exam-kind-picker button[aria-pressed="true"] > span { color: rgb(255 255 255 / 60%); }
 .exam-specialist-reveal { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows 250ms ease, visibility 250ms; }
@@ -430,6 +435,6 @@
 .exam-trial-builder .exam-start { position:relative; justify-content:center; text-align:center; }
 .exam-trial-builder .exam-start > svg { position:absolute; right:1.25rem; }
 .exam-trial-builder .exam-build-heading .exam-eyebrow { margin:0 0 .75rem; }
-.exam-trial-builder .exam-trial-intro { margin:.75rem 0 0; font-size:.875rem; line-height:1.6; color:var(--color-text-muted); }
+.exam-screen .exam-trial-builder .exam-panel-description { margin-top: .75rem; }
 .exam-trial-builder .exam-kind-picker button:disabled, .exam-trial-builder .exam-case-picker button:disabled { color:var(--color-text-muted); opacity:.65; cursor:not-allowed; }
 .exam-feature-lock { display:inline-block; width:13px; height:13px; margin-left:5px; vertical-align:-2px; }

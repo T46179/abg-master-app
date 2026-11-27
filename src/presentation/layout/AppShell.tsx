@@ -33,7 +33,7 @@ function AppShellContent() {
   const location = useLocation();
   const background = useBackgroundAccount();
   const site = useOptionalSiteAccount();
-  const accountRoute = Boolean(accountPageFromPath(location.pathname)) || location.pathname === "/dev/exam-pilot";
+  const accountRoute = Boolean(accountPageFromPath(location.pathname)) || location.pathname === "/dev/exam-pilot" || (import.meta.env.DEV && location.pathname.replace(/\/$/, "") === "/profile");
   const localAccountRoute = import.meta.env.DEV && Boolean(background && accountRoute);
   const needsGuest = /^\/(practice|dashboard|insights|learn|calibration|featured-case)(\/|$)/.test(location.pathname);
   const [guestError, setGuestError] = useState(false);

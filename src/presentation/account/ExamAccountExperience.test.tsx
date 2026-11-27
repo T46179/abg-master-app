@@ -34,6 +34,7 @@ vi.mock("../exam/ExamPilotRuntime", () => ({ default: (props: any) => {
   const controls = { trialLifecycle: m.lifecycle, openTrialResult: vi.fn(), refreshTrial: vi.fn(), fullSetup, trialSetup, withSetup: (content: unknown, hero: unknown) => <div>Trial overview{hero as any}{content as any}</div>, canRecover: m.recover, ready: true, busy: false, canBegin: props.canStart && props.allowedUnitCounts.includes(3), timed: true, showRanges: true, setTimed: vi.fn(), setShowRanges: vi.fn(), begin: m.begin };
   return <div>{props.accessNotice?.visible && <button disabled={props.accessNotice.busy} onClick={props.accessNotice.onRetry}>Retry</button>}{props.renderDashboard(controls)}</div>;
 } }));
+import ProfileScreen from "../screens/ProfileScreen";
 import Experience from "./ExamAccountExperience.dev";
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let container: HTMLDivElement; let host: HTMLDivElement; let root: ReturnType<typeof createRoot>;
@@ -51,7 +52,7 @@ async function click(text: string) { const scope = host.querySelector(".exam-acc
 async function fill(id: string, value: string) { await act(async () => { const input = document.getElementById(id) as HTMLInputElement; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value); input.dispatchEvent(new Event("input", { bubbles: true })); }); }
 function OwnedExperience({ strict = false }: { strict?: boolean }) {
   const { identity } = useSiteAccount();
-  const screen = <Experience key={identity.generation} />;
+  const screen = useLocation().pathname === "/profile" ? <ProfileScreen /> : <Experience key={identity.generation} />;
   return strict ? <StrictMode>{screen}</StrictMode> : screen;
 }
 function RouteProbe() { const location = useLocation(); return <output data-testid="account-location">{location.pathname + location.search}</output>; }
@@ -776,6 +777,20 @@ describe("connected password reset pages", () => {
     expect(auth.signInWithPassword).not.toHaveBeenCalled(); expect(current?.id).toBe("a");
     await login("b"); expect(auth.signInWithPassword).toHaveBeenCalled(); expect(current?.id).toBe("b");
   });
+  it("returns a first-password learner to My profile after explicit sign-in", async () => {
+    const { proof, callback } = resetProof();
+    m.temporary = { ...proof, rpc: vi.fn().mockResolvedValue({ data: { hasPassword: false } }) };
+    await render(callback, "/reset-password");
+    expect(container.textContent).toContain("Set your password");
+    await fill("reset-password", "First-test-password1!");
+    await fill("reset-confirm-password", "First-test-password1!");
+    await click("Save new password");
+    expect(container.textContent).toContain("Password enabled");
+    await click("Sign in");
+    await login("b");
+    expect(route()).toBe("/profile");
+    expect(container.textContent).toContain("Password enabled");
+  });
   it("offers another reset request for expired or already-used links", async () => {
     await render({ kind: "error", purpose: "reset" });
     expect(container.querySelector("#reset-request-email-error")?.textContent).toContain("expired or already been used");
@@ -916,4 +931,97 @@ it("offers to reload the latest saved answers after a conflicting edit", async (
   await click("Reload saved answers");
   expect(container.querySelector<HTMLInputElement>('input[value="Nurse"]')?.checked).toBe(true);
   expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
+});
+
+it("returns a guest to the profile after sign-in and clears the previous owner's details", async () => {
+  await render(undefined, "/profile");
+  expect(route()).toBe("/sign-in?return_to=profile");
+  await login("learner");
+  expect(route()).toBe("/profile");
+  expect(container.textContent).toContain("learner@example.test");
+  expect(container.querySelector('a[href="/forgot-password?return_to=profile"]')).toBeTruthy();
+  await act(async () => emit("SIGNED_IN", "other"));
+  await flush();
+  expect(container.textContent).toContain("other@example.test");
+  expect(container.textContent).not.toContain("learner@example.test");
+});
+
+it("edits professional background without starting a trial or changing account identity", async () => {
+  current = { id: "a", email: "a@example.test" };
+  await render();
+  await menu();
+  await click("My profile");
+  expect(route()).toBe("/profile");
+  const begins = m.begin.mock.calls.length;
+  await click("Add background");
+  await click("Save changes");
+  expect(container.textContent).toContain("Select your professional role");
+  await click("Cancel");
+  await click("Add background");
+  for (const value of ["Medical student", "Teaching others"]) {
+    await act(async () => container.querySelector<HTMLInputElement>('input[value="' + value + '"]')!.click());
+  }
+  await click("Save changes");
+  expect(container.textContent).toContain("Teaching others");
+  expect(container.querySelector(".profile-panel-heading button")?.textContent).toBe("Edit");
+  expect(route()).toBe("/profile");
+  expect(profileInvoke.mock.calls.map(call => call[1].body.operation)).toContain("onboarding_save");
+  expect(m.begin.mock.calls).toHaveLength(begins);
+  expect(auth.updateUser).not.toHaveBeenCalled();
+  expect(auth.setSession).not.toHaveBeenCalled();
+});
+
+it("reloads a conflicting profile edit in place and only calls background operations", async () => {
+  current = { id: "a", email: "a@example.test" };
+  await render(undefined, "/profile");
+  await click("Add background");
+  await selectAnswer("Medical student");
+  await selectAnswer("Teaching others");
+  profileInvoke.mockResolvedValueOnce({ error: { context: { json: async () => ({ code: "EXAM_ONBOARDING_CONFLICT" }) } } });
+  await click("Save changes");
+  expect(container.textContent).toContain("changed elsewhere");
+  expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+  await click("Reload saved answers");
+  expect(container.textContent).toContain("Add background");
+  expect(route()).toBe("/profile");
+  expect(profileInvoke.mock.calls.map(([, args]) => args.body.operation)).toEqual(["onboarding_read", "onboarding_save", "onboarding_read"]);
+  expect(m.begin).not.toHaveBeenCalled();
+});
+
+it.each([false, null])("withholds password reset for a Google account with password status %s", async hasPassword => {
+  current = { id: "a", email: "a@example.test" };
+  auth.getUser.mockResolvedValue({ data: { user: { ...current, is_anonymous: false, email_confirmed_at: "verified", identities: [{ provider: "google" }] } } });
+  (m.client as { rpc: ReturnType<typeof vi.fn> }).rpc.mockResolvedValue({ data: { hasPassword } });
+  await render(undefined, "/profile");
+  expect(container.textContent).toContain(hasPassword === false ? "No password configured" : "Unknown");
+  expect(container.textContent).toContain("Connected");
+  expect(container.textContent).not.toContain("Disconnect");
+  expect(container.textContent?.includes("Set password")).toBe(hasPassword === false);
+  expect(container.querySelector('a[href^="/forgot-password"]')).toBeNull();
+});
+
+it("sends a first-password link to the verified profile email only once on repeated clicks", async () => {
+  current = { id: "a", email: "work@example.test" };
+  auth.getUser.mockResolvedValue({ data: { user: { ...current, is_anonymous: false, email_confirmed_at: "verified",
+    identities: [{ provider: "google", identity_data: { email: "personal@example.test" } }] } } });
+  (m.client as { rpc: ReturnType<typeof vi.fn> }).rpc.mockResolvedValue({ data: { hasPassword: false } });
+  await render(undefined, "/profile");
+  const button = Array.from(container.querySelectorAll("button")).find(node => node.textContent === "Set password")!;
+  await act(async () => { button.click(); button.click(); });
+  expect(auth.resetPasswordForEmail).toHaveBeenCalledExactlyOnceWith("work@example.test", { redirectTo: expect.stringContaining("account_action=reset&return_to=exam") });
+  expect(container.textContent).toContain("Check work@example.test");
+});
+
+it("lets a learner retry a Google conflict from the same profile", async () => {
+  current = { id: "a", email: "work@example.test" };
+  auth.getUser.mockResolvedValue({ data: { user: { ...current, is_anonymous: false, email_confirmed_at: "verified", identities: [] } } });
+  const google = mockGoogle();
+  google.begin.mockRejectedValue(new Error("Google connection could not start."));
+  await render(undefined, "/profile?google_link=conflict", undefined, google);
+  expect(route()).toBe("/profile");
+  expect(container.textContent).toContain("already linked to another profile");
+  await click("Connect Google");
+  expect(google.begin).toHaveBeenCalledExactlyOnceWith("profile-link", "profile", { expectedOwner: "a" });
+  expect(container.textContent).toContain("Google connection could not start.");
+  expect(auth.signOut).not.toHaveBeenCalled();
 });

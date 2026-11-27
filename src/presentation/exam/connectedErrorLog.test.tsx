@@ -91,17 +91,24 @@ it("retries failed example loads and hides the latest-result action when there i
 
 it("does not fetch archived examples until their row is actually expanded", async () => {
   const examples = vi.fn().mockResolvedValue({ examples: [], nextCursor: null });
+  const archived = deferred<{ examples: []; nextCursor: null }>();
   const data = state();
   data.catalogue = { ...catalogue, concepts: [...catalogue.concepts, { ...catalogue.concepts[0], id: "archived_concept", label: "Archived area" }] };
-  data.entries = [...data.entries, { ...data.entries[0], conceptId: "archived_concept", status: "archived", archivedAt: "2026-10-07T03:00:00Z" }];
+  data.entries = [...data.entries, { ...data.entries[0], conceptId: "archived_concept", status: "archived", exampleCount: 1, archivedAt: "2026-10-07T03:00:00Z" }];
   const log = { data, loading: false, error: "", busy: false, refresh: vi.fn(), save: vi.fn(), review: vi.fn(),
     client: { list: vi.fn(), save: vi.fn(), review: vi.fn(), examples } } as ReturnType<typeof useExamErrorLog>;
   await act(async () => root.render(<ConnectedExamErrorLog log={log} onOpenExample={vi.fn()} />));
   expect(examples.mock.calls.map(c => c[0])).toEqual(["calculation"]);
+  examples.mockReturnValueOnce(archived.promise);
   await click("Archived 1");
   expect(examples).toHaveBeenCalledTimes(1);
   await act(async () => container.querySelector<HTMLButtonElement>(".exam-error-log__row")!.click());
   expect(examples.mock.calls.map(c => c[0])).toEqual(["calculation", "archived_concept"]);
+  expect(container.querySelectorAll(".exam-error-log__skeleton--example")).toHaveLength(1);
+  await act(async () => archived.reject(new Error("offline")));
+  expect(container.querySelector(".exam-error-log__skeleton")).toBeNull();
+  await click("Retry");
+  expect(examples).toHaveBeenCalledTimes(3);
 });
 
 it("clears account/environment state and ignores delayed responses from the old account", async () => {
@@ -244,7 +251,9 @@ it("reuses list and paginated examples across visits and refreshes only changed 
     questionNumber: 1, partNumber: 1, examKind: "mock", savedAt: data.entries[0].lastSavedAt, finishedAt: data.entries[0].lastSavedAt };
   const cursor = { savedAt: sample.savedAt, id: sample.id };
   const list = vi.fn().mockReturnValueOnce(first.promise).mockResolvedValue(data);
-  const examples = vi.fn().mockResolvedValueOnce({ examples: [sample], nextCursor: cursor })
+  const initialPage = deferred<{ examples: typeof sample[]; nextCursor: typeof cursor }>();
+  const nextPage = deferred<{ examples: typeof sample[]; nextCursor: null }>();
+  const examples = vi.fn().mockReturnValueOnce(initialPage.promise).mockReturnValueOnce(nextPage.promise)
     .mockResolvedValue({ examples: [{ ...sample, id: secondId, prompt: "Second example" }], nextCursor: null });
   const call = vi.fn((op, args) => op === "error_log_list" ? list() : examples(args));
   let log!: ReturnType<typeof useExamErrorLog>;
@@ -259,8 +268,16 @@ it("reuses list and paginated examples across visits and refreshes only changed 
     await render(true);
     await act(async () => window.dispatchEvent(new Event("focus")));
     expect(list).toHaveBeenCalledTimes(1);
+    expect(container.querySelector("h1")?.textContent).toBe("Error log");
+    expect(container.querySelectorAll('.exam-error-log__skeleton--concept[aria-hidden="true"]')).toHaveLength(3);
+    expect(container.querySelectorAll('[role="status"]')).toHaveLength(1);
     await act(async () => first.resolve(data));
+    expect(container.querySelectorAll(".exam-error-log__examples .exam-error-log__skeleton--example")).toHaveLength(3);
+    await act(async () => initialPage.resolve({ examples: [sample], nextCursor: cursor }));
     await click("Load more");
+    expect(container.querySelectorAll(".exam-error-log__examples button")).toHaveLength(1);
+    expect(container.querySelectorAll(".exam-error-log__skeleton--example")).toHaveLength(3);
+    await act(async () => nextPage.resolve({ examples: [{ ...sample, id: secondId }], nextCursor: null }));
     expect(examples.mock.calls[1][0]).toEqual({ conceptId: "calculation", cursor });
     await render(false);
     now += 59_999;
@@ -268,6 +285,7 @@ it("reuses list and paginated examples across visits and refreshes only changed 
     expect(list).toHaveBeenCalledTimes(1);
     expect(examples).toHaveBeenCalledTimes(2);
     expect(container.querySelectorAll(".exam-error-log__examples button")).toHaveLength(2);
+    expect(container.querySelector(".exam-error-log__skeleton")).toBeNull();
     now += 1;
     await act(async () => window.dispatchEvent(new Event("focus")));
     expect(list).toHaveBeenCalledTimes(2);

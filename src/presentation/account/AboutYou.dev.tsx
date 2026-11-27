@@ -7,7 +7,7 @@ const questionErrors = {
   specialty: "Select your specialty to continue.",
   reason: "Select your main reason for using ABG Master to continue."
 };
-export function AboutYou({ value, onChange, onDone, storageError, saving = false, saveError, onReloadSaved }: { value: ExamOnboarding; onChange: (v: ExamOnboarding) => void; onDone: (v: ExamOnboarding) => void; storageError: boolean; saving?: boolean; saveError?: string; onReloadSaved?: () => void }) {
+export function AboutYou({ value, onChange, onDone, storageError, saving = false, saveError, onReloadSaved, editingProfile = false }: { value: ExamOnboarding; onChange: (v: ExamOnboarding) => void; onDone: (v: ExamOnboarding) => void; editingProfile?: boolean; storageError: boolean; saving?: boolean; saveError?: string; onReloadSaved?: () => void }) {
   const [submitted, setSubmitted] = useState(false);
   const missing = missingExamOnboarding(value);
   function submit(event: FormEvent) {
@@ -31,8 +31,7 @@ export function AboutYou({ value, onChange, onDone, storageError, saving = false
       {error && <p role="alert" className="account-field-error" id={errorId}>{questionErrors[key]}</p>}
     </fieldset>;
   }
-  return <AccountCard className="account-entry-card account-about-card" title="Tell us a little about yourself">
-    <form className="account-form" noValidate onSubmit={submit}>
+  const form = <form className="account-form" noValidate onSubmit={submit}>
       {question("role", "Professional role", EXAM_ROLES)}
       {value.role === "Other" && <label className="account-other">Your role (optional)<input disabled={saving} maxLength={120} value={value.otherRole} onChange={event => onChange({ ...value, otherRole: event.target.value, complete: false })} /></label>}
       {value.role === "Doctor" && question("stage", "Stage of training", EXAM_STAGES)}
@@ -42,8 +41,8 @@ export function AboutYou({ value, onChange, onDone, storageError, saving = false
       {storageError && <p role="alert" className="account-field-error">Your answers could not be saved on this device. Enable browser storage and try again.</p>}
       {saveError && <p role="alert" className="account-field-error">{saveError}</p>}
       {onReloadSaved && <AccountButton onClick={onReloadSaved}>Reload saved answers</AccountButton>}
-      <AccountButton type="submit" busy={saving} busyLabel="Saving answers…" disabled={Boolean(onReloadSaved)} className="account-entry-submit" showArrow={false}>Continue to exam setup</AccountButton>
+      <AccountButton type="submit" busy={saving} busyLabel="Saving answers…" disabled={Boolean(onReloadSaved)} className="account-entry-submit" showArrow={false}>{editingProfile ? "Save changes" : "Continue to exam setup"}</AccountButton>
       <p className="account-footnote account-entry-footer">Your answers help us improve ABG Master</p>
-    </form>
-  </AccountCard>;
+    </form>;
+  return editingProfile ? form : <AccountCard className="account-entry-card account-about-card" title="Tell us a little about yourself">{form}</AccountCard>;
 }

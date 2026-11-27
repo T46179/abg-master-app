@@ -5,7 +5,7 @@ import type { DrillLoader } from "../../core/examDrills";
 import type { PressureUnit } from "../../core/types";
 import type { DrillTarget } from "./errorLogTypes";
 import { useCallback, useEffect, useSyncExternalStore, useLayoutEffect, useRef, useState } from "react";
-import { ExamErrorLog } from "./ExamErrorLog";
+import { ErrorLogSkeleton, ExamErrorLog } from "./ExamErrorLog";
 import { examKindLabel } from "./examLabels";
 import { ExamNotice, NoticeMessage, RetryAction } from "./ExamNotice";
 import type { ErrorLogConceptPresentation, ErrorLogExample } from "./errorLogTypes";
@@ -72,7 +72,10 @@ export function ConnectedExamErrorLog({ log, onOpenExample, onOpenLatest, loadDr
   }
   const pageNotice = log.error ? <ExamNotice><NoticeMessage message={log.error} />{" "}<RetryAction busy={log.loading} onClick={() => void log.refresh()} /></ExamNotice> : undefined;
   if (!log.data) return <div className="exam-error-log">{pageNotice}
-    <h1>Error log</h1>{!log.error && <p role="status">Loading your Error log…</p>}
+    <header className="exam-error-log__heading"><h1>Error log</h1></header>
+    {(!log.error || log.loading) && <div className="exam-error-log__grid">
+      <div className="exam-error-log__list"><ErrorLogSkeleton kind="concept" count={3} /></div>
+    </div>}
   </div>;
   function example(e: ErrorLogExample): ErrorLogConceptPresentation["examples"][number] {
     return { id: e.id, attemptId: e.attemptId, partId: e.partId, prompt: e.prompt,

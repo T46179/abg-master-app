@@ -385,6 +385,7 @@ function AccountExperience({ client }: { client: SupabaseClient }) {
     body = <div className="account-narrow ph-no-capture" data-sentry-mask="true"><PasswordRecoveryPages page={page as AccountPage} destination={destination} onPage={next => {
       if (next !== "signin") { setPage(next); return; }
       const params = new URLSearchParams(location.search); params.set("account", "signin"); params.set("reauthenticate", "1");
+      if (flow.phase === "reset_complete") params.set("return_to", flow.destination);
       void navigate(accountPageUrl("signin", params.toString()));
     }} /></div>;
   } else if (registrationActive || registrationPage || identity.status === "unverified") {
@@ -439,7 +440,7 @@ function SignInForm({ busy, error, onSubmit, onPage, onGoogle }: { busy: boolean
   </AccountCard>;
 }
 
-export function ProfileControl({ email, busy, paid, active, onPage, onSignOut, onPaid }: { email: string | null; busy: boolean; paid: boolean; active: boolean; onPage: (page: AccountPage) => void; onSignOut: () => void; onPaid: () => void }) {
+export function ProfileControl({ email, busy, paid, active, profileBlocked, onProfile, onPage, onSignOut, onPaid }: { email: string | null; busy: boolean; paid: boolean; active: boolean; profileBlocked: boolean; onProfile: () => void; onPage: (page: AccountPage) => void; onSignOut: () => void; onPaid: () => void }) {
   const [open, setOpen] = useState(false); const ref = useRef<HTMLDivElement>(null); const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => { setOpen(false); }, [email]);
   useEffect(() => {
@@ -454,6 +455,7 @@ export function ProfileControl({ email, busy, paid, active, onPage, onSignOut, o
     <button ref={trigger} type="button" className="exam-account-trigger" aria-label={email ? `Account: ${email}` : "Sign in"} aria-expanded={email ? open : undefined} aria-controls={email ? "exam-account-menu" : undefined} disabled={!email && busy} onClick={() => { if (email) setOpen(v => !v); else onPage("signin"); }}>{email ? <span className="exam-account-avatar">{email.slice(0, 1).toUpperCase()}</span> : <><UserIcon /><span>Sign in</span></>}</button>
     {email && open && <section className="exam-account-menu" id="exam-account-menu" aria-label="Account">
       <strong className="account-private ph-no-capture">{email}</strong><p>{paid ? "Paid account" : "Free account"}</p>
+        <button type="button" className="account-menu-action" disabled={busy || profileBlocked} onClick={() => { setOpen(false); onProfile(); }}><UserIcon />My profile</button>
         <button type="button" className="account-menu-action" disabled={busy} onClick={() => { setOpen(false); onSignOut(); }}><SignOutIcon />Sign out</button>
         <div className="account-paid-control"><span>Local development</span><label><input type="checkbox" role="switch" checked={paid} disabled={active || busy} onChange={onPaid} />Paid account</label><small>{isLocalDrillPreview() ? "Includes a local Focused Drills preview. Exam starts still require pilot access." : "Interface only. Existing pilot permissions still apply."}</small></div>
     </section>}

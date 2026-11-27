@@ -14,9 +14,22 @@ export default function AccountNav() {
   return background && (!background.ready || background.error) ? <span style={{ display: "inline-block", minWidth: 40 }}><AccountWaiting attempt={background.attempt} retry={background.retry} error={background.error ? "Account unavailable" : undefined} /></span> : registration ? <ConnectedAccountNav /> : null;
 }
 function ConnectedAccountNav() {
-  const { account, identity } = useSiteAccount(); const { registration, accountReady, paid, togglePaid } = useRegistration();
-  const { state } = useAppContext(); const sitting = useOptionalExamSitting()?.sitting ?? null; const navigate = useNavigate(); const location = useLocation();
+  const { identity } = useSiteAccount(); const { registration, accountReady, paid, togglePaid } = useRegistration();
+  const sitting = useOptionalExamSitting()?.sitting ?? null; const navigate = useNavigate(); const location = useLocation();
   const active = Boolean(sitting && sitting.phase !== "complete");
+  const signOut = useGuardedSignOut();
+  return <ProfileControl profileBlocked={active} onProfile={() => void navigate("/profile")} email={identity.status === "verified" ? identity.email : null} busy={registration.isBusy()} paid={paid} active={active || accountReady !== true}
+    onPage={page => { registration.resetView(); const destination = registrationDestination(accountPageFromPath(location.pathname) ? new URLSearchParams(location.search).get("return_to") : location.pathname.split("/")[1]); void navigate(accountPageUrl(page, "return_to=" + destination)); }}
+    onSignOut={() => void signOut()} onPaid={() => { if (!active && accountReady === true) { togglePaid(); registration.resetView(); void navigate("/dev/exam-pilot"); } }} />;
+}
+
+export function useGuardedSignOut() {
+  const { account, identity } = useSiteAccount();
+  const { registration } = useRegistration();
+  const { state } = useAppContext();
+  const sitting = useOptionalExamSitting()?.sitting;
+  const active = Boolean(sitting && sitting.phase !== "complete");
+  const navigate = useNavigate();
   async function signOut() {
     if (registration.isBusy()) return;
     let saved = false;
@@ -26,7 +39,5 @@ function ConnectedAccountNav() {
     try { await account.signOut(); void navigate("/dev/exam-pilot", { replace: true }); }
     catch { window.alert("Sign-out could not be completed. Please try again."); }
   }
-  return <ProfileControl email={identity.status === "verified" ? identity.email : null} busy={registration.isBusy()} paid={paid} active={active || accountReady !== true}
-    onPage={page => { registration.resetView(); const destination = registrationDestination(accountPageFromPath(location.pathname) ? new URLSearchParams(location.search).get("return_to") : location.pathname.split("/")[1]); void navigate(accountPageUrl(page, "return_to=" + destination)); }}
-    onSignOut={() => void signOut()} onPaid={() => { if (!active && accountReady === true) { togglePaid(); registration.resetView(); void navigate("/dev/exam-pilot"); } }} />;
+  return signOut;
 }

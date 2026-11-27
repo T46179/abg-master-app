@@ -29,6 +29,18 @@ export async function mountLocalAccountApp(container: HTMLElement) {
         ? { linkConflict: true }
         : { error: cause instanceof Error ? cause.message : "Google sign-in could not finish. Please retry." } };
     }
+    if (googleReturn.attempt.action === "profile-link") {
+      const { result } = googleCompletion;
+      let path = "/profile";
+      if ("candidate" in result) {
+        try { await result.candidate.adopt(); }
+        catch { path += "?google_link=error"; }
+      } else {
+        path += "linkConflict" in result ? "?google_link=conflict" : "?google_link=error";
+      }
+      window.history.replaceState(null, "", path);
+      googleCompletion = null;
+    }
   }
   const { mountLocalAccountRoot } = await import("./localAccountRoot");
   mountLocalAccountRoot(container, { client, config, callback: googleReturn ? null : emailCallback, google, googleCompletion });

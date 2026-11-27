@@ -161,6 +161,19 @@ async function resetFixture(method = "otp") {
   return { ...f, callback };
 }
 describe("password recovery", () => {
+  it("sets a first password for the email link owner and returns to profile after sign-in", async () => {
+    const f = await resetFixture();
+    f.canonical.change("other"); await f.account.refresh();
+    f.proof.hasPassword(false);
+    await f.r.callback({ kind: "recovery", tokenHash: "setup-link", purpose: "reset", destination: "exam" });
+    expect(f.r.isFirstPasswordRecovery()).toBe(true);
+    expect(f.r.getSnapshot()).toMatchObject({ phase: "reset_password", destination: "profile" });
+    await f.r.completeReset("First-test-password1!");
+    expect(f.r.getSnapshot()).toMatchObject({ phase: "reset_complete", destination: "profile" });
+    expect(f.proof.auth.updateUser).toHaveBeenCalledExactlyOnceWith({ password: "First-test-password1!" });
+    expect(f.canonical.auth.updateUser).not.toHaveBeenCalled();
+    expect(f.canonical.auth.signOut).not.toHaveBeenCalled();
+  });
   it("uses the standard reset email, a safe local destination and no signup or canonical session write", async () => {
     const f = await resetFixture();
     await f.r.requestResetEmail(" recovered@example.test ", "practice");
@@ -177,6 +190,18 @@ describe("password recovery", () => {
     f.proof.auth.resetPasswordForEmail.mockResolvedValueOnce({ error: { code: "over_email_send_rate_limit" } } as any);
     await f.r.requestResetEmail("recovered@example.test");
     expect(f.r.getSnapshot()).toMatchObject({ phase: "error" });
+  });
+  it("uses an accepted email return URL for an existing password reset from My profile", async () => {
+    const f = await resetFixture();
+    f.canonical.change("recovered");
+    await f.account.refresh();
+    await f.r.requestResetEmail("recovered@example.test", "profile");
+    expect(f.proof.auth.resetPasswordForEmail).toHaveBeenCalledWith("recovered@example.test", {
+      redirectTo: "http://127.0.0.1:5184/dev/exam-pilot?account_action=reset&return_to=exam"
+    });
+    await f.r.callback({ kind: "recovery", tokenHash: "profile-reset", purpose: "reset", destination: "exam" });
+    expect(f.r.isFirstPasswordRecovery()).toBe(false);
+    expect(f.r.getSnapshot()).toMatchObject({ phase: "reset_password", destination: "profile" });
   });
   it("resets only the proven target without switching a different active account or its progress", async () => {
     const f = await resetFixture(); f.canonical.change("other"); await f.account.refresh();

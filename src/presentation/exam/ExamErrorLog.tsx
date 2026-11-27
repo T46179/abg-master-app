@@ -4,6 +4,19 @@ import { ArrowIcon, CheckIcon, ChevronRightIcon, CrossIcon, FlagIcon, HistoryIco
 import type { DrillTarget, ErrorLogConceptPresentation } from "./errorLogTypes";
 import "./errorLog.css";
 
+export function ErrorLogSkeleton({ kind, count }: { kind: "concept" | "example"; count: number }) {
+  return <>
+    <span className="exam-error-log__loading-status" role="status">
+      {kind === "concept" ? "Loading your Error log…" : "Loading saved examples…"}
+    </span>
+    {Array.from({ length: Math.min(count, 3) }, (_, index) =>
+      <div key={index} aria-hidden="true" className={`exam-error-log__skeleton exam-error-log__skeleton--${kind}`}>
+        <span className="exam-error-log__skeleton-line" />
+        <span className="exam-error-log__skeleton-line exam-error-log__skeleton-line--detail" />
+      </div>)}
+  </>;
+}
+
 export function ExamErrorLog({ concepts, onOpenResult, onOpenExample, onArchive, onRestore, onExpand, onLoadMore, launchingId, onPractice, busy, actionError, actionErrorConceptId, pageNotice }: {
   concepts: readonly ErrorLogConceptPresentation[];
   onOpenResult?: () => void;
@@ -87,9 +100,9 @@ export function ExamErrorLog({ concepts, onOpenResult, onOpenExample, onArchive,
                     <span className="exam-error-log__example-copy"><span>{example.prompt}</span><small>{example.part} · {example.attempt} · {example.date}</small></span>
                     <span className="exam-error-log__view">View <ChevronRightIcon /></span>
                   </button>)}
+                  {expanded && c.examplesLoading && <ErrorLogSkeleton kind="example" count={Math.max(1, exampleCount - c.examples.length)} />}
                 </div>
-                {c.examplesLoading && !c.examplesError && <p role="status">Loading saved examples…</p>}
-                {c.examplesError && <p className="exam-inline-error" role="alert"><NoticeMessage message={c.examplesError} />{" "}<RetryAction busy={Boolean(c.examplesLoading)} onClick={() => onLoadMore?.(c.id)} /></p>}
+                {c.examplesError && !c.examplesLoading && <p className="exam-inline-error" role="alert"><NoticeMessage message={c.examplesError} />{" "}<RetryAction busy={Boolean(c.examplesLoading)} onClick={() => onLoadMore?.(c.id)} /></p>}
                 {c.hasMoreExamples && !c.examplesError && <button type="button" className="exam-error-log__text-button" disabled={c.examplesLoading} onClick={() => onLoadMore?.(c.id)}>Load more</button>}
                 <div className="exam-error-log__footer">
                   <button type="button" disabled={busy || Boolean(launchingId)} className={`figma-button figma-button--secondary${arch ? "" : " exam-error-log__archive"}`} onClick={() => arch ? onRestore?.(c.id) : onArchive?.(c.id)}>

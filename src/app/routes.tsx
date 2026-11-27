@@ -32,6 +32,8 @@ const ExamPilotAuth = (import.meta.env.DEV || hostedExamPilot) ? lazy(() => impo
 
 const UnifiedExamAccount = import.meta.env.DEV && !["production", "exam-pilot", "account-staging"].includes(import.meta.env.MODE) ? lazy(() => import("../presentation/account/ExamAccountExperience.dev")) : null;
 
+const LocalProfile = import.meta.env.DEV && import.meta.env.MODE === "development" ? lazy(() => import("../presentation/screens/ProfileScreen")) : null;
+
 export const appRoutes: RouteObject[] = [
   {
     path: "/a-a-gradient",
@@ -97,6 +99,7 @@ export const appRoutes: RouteObject[] = [
           { path: "*", element: <Navigate to="/learn" replace /> }
         ]
       },
+      ...(LocalProfile ? [{ path: "profile", element: <Suspense fallback={<p>Loading profile...</p>}><LocalProfile /></Suspense> }] : []),
       ...(UnifiedExamAccount ? Object.values(ACCOUNT_PAGE_PATHS).map(path => ({ path: path.slice(1), element: <Suspense fallback={<p>Loading…</p>}><UnifiedExamAccount /></Suspense> })) : []),
       ...(ExamPilotAuth ? [{ path: "dev/exam-pilot", element: hostedExamPilot ? <Navigate to="/exam" replace /> : <Suspense fallback={<p>Loading…</p>}>{UnifiedExamAccount ? <UnifiedExamAccount /> : <ExamPilotAuth />}</Suspense> }] : []),
       { path: "exam", element: hostedExamPilot && ExamPilotAuth ? <Suspense fallback={<p>Loading…</p>}><ExamPilotAuth /></Suspense> : <ExamScreen /> },

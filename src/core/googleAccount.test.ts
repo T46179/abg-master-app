@@ -48,11 +48,11 @@ function fixture(existing = session(guest, "guest-session"), candidate = session
   createClient.mockReturnValue({ auth: temporary });
   const google = createGoogleAccount({ auth: active } as unknown as SupabaseClient, url, "public-key", storage, enableCodeRecovery);
 
-  async function receive(action: "link" | "signup" | "signin", query = "code=single-use") {
-    await google.begin(action, "trial");
+  async function receive(action: "link" | "signup" | "signin" | "profile-link", query = "code=single-use") {
+    await google.begin(action, action === "profile-link" ? "profile" : "trial");
     return takeGoogleReturn({ href: REGISTRATION_RETURN_URL + "?" + query }, storage)!;
   }
-  return { google, active, temporary, receive, readback, serverSessions, tab, existing };
+  return { google, active, temporary, receive, readback, serverSessions, tab, storage, existing };
 }
 
 describe("Google account flow", () => {
@@ -142,6 +142,51 @@ describe("Google account flow", () => {
     await expect(mismatch.google.complete(await mismatch.receive("link"))).rejects.toThrow("could not be verified");
     expect(mismatch.active.setSession).not.toHaveBeenCalled();
     expect(mismatch.temporary.signOut).not.toHaveBeenCalled();
+  });
+
+  it("links a different Google email to the same verified profile without switching sessions", async () => {
+    const owner = { ...googleUser, email: "work@example.test", identities: [] };
+    const linked: User = { ...owner, identities: [{ id: "subject", identity_id: "google-id", user_id: owner.id,
+      provider: "google", identity_data: { email: "personal@example.test" } }] };
+    const f = fixture(session(owner, "profile-session"), session(linked, "link-session"));
+    const callback = await f.receive("profile-link");
+    expect(callback.attempt.destination).toBe("profile");
+    expect(f.temporary.linkIdentity).toHaveBeenCalledWith(expect.objectContaining({
+      provider: "google", options: expect.objectContaining({ queryParams: { prompt: "select_account" } })
+    }));
+    const candidate = await f.google.complete(callback);
+    expect(candidate.requiresConfirmation).toBe(false);
+    expect(await candidate.adopt()).toBe(owner.id);
+    expect(f.active.setSession).not.toHaveBeenCalled();
+    expect(f.serverSessions.has("profile-session")).toBe(true);
+  });
+
+  it.each([
+    ["error=access_denied", "cancelled"],
+    ["error=server_error&error_code=identity_already_exists", "already linked"]
+  ])("leaves the profile session intact on %s", async (query, message) => {
+    const f = fixture(session(googleUser, "profile-session"));
+    await expect(f.google.complete(await f.receive("profile-link", query))).rejects.toThrow(message);
+    expect(f.active.setSession).not.toHaveBeenCalled();
+    expect(f.active.signOut).not.toHaveBeenCalled();
+    expect(f.tab.size).toBe(0);
+  });
+
+  it("rejects guest profile links, account switches, and callbacks that identify a different user", async () => {
+    await expect(fixture().google.begin("profile-link", "profile")).rejects.toThrow();
+    const f = fixture(session({ ...googleUser, id: "owner" }, "profile-session"));
+    await expect(f.google.complete(await f.receive("profile-link"))).rejects.toThrow("could not be verified");
+    const callback = await f.receive("profile-link");
+    f.readback.session = session(googleUser, "different-session");
+    await expect(f.google.complete(callback)).rejects.toThrow("active account changed");
+    expect(f.active.setSession).not.toHaveBeenCalled();
+  });
+
+  it("clears an abandoned profile link when Back reloads My profile", async () => {
+    const f = fixture(session({ ...googleUser, identities: [] }, "profile-session"));
+    await f.google.begin("profile-link", "profile");
+    expect(takeGoogleReturn({ href: new URL("/profile", REGISTRATION_RETURN_URL).href }, f.storage)).toBeNull();
+    expect(f.tab.size).toBe(0);
   });
 
   it("preserves the guest on an identity conflict or a cancelled OAuth return", async () => {
